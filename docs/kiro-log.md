@@ -8,6 +8,7 @@ submission write-up is impossible to reconstruct in week 5.
 |---|---|---|---|---|---|---|
 
 ## Setup notes
+- 2026-10-31: landing design decided outside Kiro (contest skill, 4 rounds, Claude Opus 5.5 seats); spec `landing` rewritten by the director, so Kiro builds the port. Disclosed in docs/kiro-writeup.md.
 - 2026-10-31: kiro-cli 2.34.0. Headless `chat --v3 --agent sr-builder --no-interactive --trust-all-tools`
   verified: allow-listed writes go through; the agent profile's deny rules block `git commit` and
   edits to `.kiro/steering|agents|hooks` and spec requirements/design even under trust-all

@@ -20,7 +20,7 @@
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
 
 - [ ] 4. App shell from one manifest
-  - [ ] 4.1 `pages.ts` (landing, creator, air, characters), `router.ts` (history router), `keys.ts` (hotkeys from manifest + Ctrl+K + T).
+  - [ ] 4.1 `pages.ts` (landing 2, creator 3, characters 4, daemon 6, sealed 9, air O - see requirements 3.3), `router.ts` (history router), `keys.ts` (hotkeys from manifest + Ctrl+K + T).
   - [ ] 4.2 Property test (fast-check): uniqueness check rejects any manifest with duplicate hotkey or path and accepts unique ones.
   - [ ] 4.3 `Shell.tsx`: renders the active page placeholder or the sealed door (`status: "sealed"` + `lore`), the theme toggle (localStorage, halloween default until 2026-12-31), and reduced-motion handling via a `data-motion` attribute.
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_

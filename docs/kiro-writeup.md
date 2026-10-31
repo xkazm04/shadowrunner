@@ -9,6 +9,11 @@
   owner, dispatches tasks to Kiro (`scripts/kiro-task.sh`), reviews each diff against the spec's
   acceptance criteria, runs the gates and commits. We disclose this openly: the experiment is
   "spec-driven development where one agent plans and Kiro executes against a contract it cannot edit".
+- **Art direction came from a design contest, not from Kiro.** Claude Opus and Sonnet seats
+  built static HTML prototypes over four rounds, and the owner picked the winner. Images came
+  from Gemini 3 Pro Image. The winning prototype is kept as a reference
+  (`assets/_incoming/landing-winner/`). The `landing` spec turns it into acceptance criteria, and
+  Kiro writes the React port.
 
 ## Spec-driven development
 (spec structure, how specs prevented drift, spec vs vibe comparison - TODO with evidence)

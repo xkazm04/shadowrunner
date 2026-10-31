@@ -36,6 +36,6 @@
   - `CreatorPage.tsx` regions (stage ≥ 60% desktop; stage-first stack at 390 px), designed loading/empty/failed states, role tokens only, stylelint and AA contrast checks green in both themes; mark the `creator` page `live` in the manifest.
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
 
-- [ ] 8. Apply the contest winner's art direction (BLOCKED on spec `landing` verdict)
-  - Restyle the three regions to the winning direction using only role tokens the `landing` spec adds; no behaviour or test changes.
-  - _Requirements: 6.1_
+- [ ] 8. Apply the contest winner's art direction (The Harvest Floor; after `landing` tasks 1, 2 and 9)
+  - Restyle the regions to `ch-forge-1600x900.png` using only role tokens the `landing` spec adds: `ChannelFrame`, the stage on the left, the parchment tab panel (LOOKS | FACE | VOICE | FORGE NEW) and the two channel actions. No behaviour or test changes.
+  - _Requirements: 6.1, 6.2_

@@ -33,11 +33,13 @@ vercel.json, .env.example
 ```ts
 export type PageStatus = "live" | "sealed";
 export interface PageDef { id: PageId; title: string; path: `/${string}`; hotkey: string; status: PageStatus; lore?: string }
-export type PageId = "landing" | "creator" | "air" | "characters";
+export type PageId = "landing" | "creator" | "air" | "characters" | "daemon" | "sealed";
+// PageDef also has: channel?: number; subtitle?: string  (channels 2,3,4,6,9 - see spec landing)
 export const PAGES: readonly PageDef[];
 ```
 Router: a 60-line history router (pathname -> PageDef) is enough; no router dependency. The
-keyboard map binds `hotkey` per page plus `Ctrl+K` (go to) and `T` (theme toggle); `keys.test.ts`
+keyboard map binds `hotkey` per page (channel digits 2/3/4/6/9, `O` for air), `ArrowLeft`/`ArrowRight` (previous/next
+channel), `Esc` (back to `/`), `D` (daemon sample toggle, replay only), plus `Ctrl+K` (go to) and `T` (theme toggle); `keys.test.ts`
 asserts uniqueness across the manifest and the globals.
 
 ## Tokens

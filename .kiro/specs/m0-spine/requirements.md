@@ -33,7 +33,14 @@ and `pnpm typecheck && pnpm lint && pnpm test` is green on a fresh clone.
 #### Acceptance criteria
 1. `apps/web/src/app/pages.ts` SHALL be the only declaration of pages: `id`, `title`, `path`, `hotkey`, `status` (`live` | `sealed`).
 2. The router, the keyboard map and the navigation SHALL derive from the manifest; a test SHALL fail if two pages share a hotkey or path.
-3. The initial manifest SHALL list `landing` (`/`), `creator` (`/creator`), `air` (`/air`), `characters` (`/characters`) and render a placeholder per page.
+3. The initial manifest SHALL list these pages and render a placeholder for each:
+   - `landing` (`/`, channel 2, key `2`);
+   - `creator` (`/creator`, channel 3, key `3`);
+   - `characters` (`/characters`, channel 4, key `4`);
+   - `daemon` (`/daemon`, channel 6, key `6`);
+   - `sealed` (`/sealed`, channel 9, key `9`, status `sealed`);
+   - `air` (`/air`, no channel, key `O`).
+   `PageDef` SHALL carry the optional `channel` and `subtitle` fields. The page set and the keys follow the landing verdict, The Harvest Floor (spec `landing`, design.md "Channels and the manifest").
 4. WHEN a page has `status: "sealed"` THEN the shell SHALL render a sealed door with one line of lore instead of the page.
 5. The shell SHALL switch theme via `data-theme` on `<html>`, persisted in localStorage, defaulting to `halloween` until 2026-12-31 and `baseline` after, and SHALL honour `prefers-reduced-motion` and `prefers-color-scheme` as inputs.
 
