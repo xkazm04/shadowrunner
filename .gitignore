@@ -1,0 +1,13 @@
+# runtime output
+var/
+node_modules/
+dist/
+target/
+.env
+.env.*
+!.env.example
+# local orchestration host (Claude Code) - disclosed in docs/kiro-writeup.md, not part of the product
+.claude/
+.spark/
+.contest/
+# NOTE: .kiro/ must stay tracked (Kiroween rule 4) - never ignore it

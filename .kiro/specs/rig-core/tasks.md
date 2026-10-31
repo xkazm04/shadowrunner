@@ -1,0 +1,26 @@
+# Implementation plan: rig-core
+
+- [ ] 1. Contract types and Result
+  - Write `packages/rig/src/types.ts` and `result.ts` exactly per design.md "Data model"; write `docs/rig-format.md` describing the same fields in prose and a JSON example.
+  - _Requirements: 1.1, 1.3_
+
+- [ ] 2. Serialize and validate
+  - [ ] 2.1 Write fast-check arbitraries for valid `Rig` values (`src/__tests__/arb.ts`).
+  - [ ] 2.2 `serialize.ts` (drop undefined, stable key order) with a test that no `null` ever appears.
+  - [ ] 2.3 `validate.ts` with codes `bbox_out_of_bounds`, `duplicate_name`, `duplicate_z`, `bad_follow`, `bad_color`, `bad_shape`; round-trip property; one fault-seeding property per code.
+  - _Requirements: 1.2, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6_
+
+- [ ] 3. Legacy import and Malakor golden
+  - [ ] 3.1 Copy Malakor's rig into `assets/characters/malakor/rig/` from `assets/_incoming/malakor-rig/` (the orchestrator stages it there; record provenance in `docs/provenance.md`).
+  - [ ] 3.2 `legacy.ts` per the mapping table; warnings for unknown kinds.
+  - [ ] 3.3 Golden test: imports with 0 errors, 18 layers, palette from `m8.spec.json`.
+  - _Requirements: 3.1, 3.2, 3.3_
+
+- [ ] 4. Pose math
+  - [ ] 4.1 `pose.ts` per design.md (parallax, follow, jaw, blink, gesture curves, clamps).
+  - [ ] 4.2 Properties: purity under deep-freeze; parallax monotonic in depth; jaw moves only jaw layers; hidden layers absent; followers keep relative offset at yaw 0.
+  - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6_
+
+- [ ] 5. Looks
+  - `look.ts`: `defaultLook`, `applyLook`, `lookToEmotionDrive` (table in design.md); non-mutation property; table test covers all 10 emotions.
+  - _Requirements: 5.1, 5.2, 5.3_

@@ -1,0 +1,36 @@
+{
+  "name": "sr-builder",
+  "description": "Implements exactly one task from a Shadowrunner spec in .kiro/specs/, inside the task's file scope, then runs the gates.",
+  "prompt": "file://./prompts/sr-builder.md",
+  "model": "claude-sonnet-4.5",
+  "tools": ["read", "write", "shell", "@playwright"],
+  "permissions": {
+    "rules": [
+      { "capability": "fs_write", "match": ["apps/**", "packages/**", "api/**", "assets/**", "docs/**", "scripts/**", "package.json", "pnpm-workspace.yaml", "tsconfig*.json", "eslint.config.*", "stylelint.config.*", "vitest.config.*", "vercel.json", ".env.example"], "effect": "allow" },
+      { "capability": "fs_write", "match": [".kiro/specs/**/tasks.md"], "effect": "allow" },
+      { "capability": "fs_write", "match": [".kiro/steering/**", ".kiro/agents/**", ".kiro/hooks/**", ".kiro/specs/**/requirements.md", ".kiro/specs/**/design.md"], "effect": "deny" },
+      { "capability": "shell", "match": ["pnpm *", "node *", "npx *", "git status*", "git diff*", "git log*"], "effect": "allow" },
+      { "capability": "shell", "match": ["git commit*", "git push*", "git reset*", "git checkout*", "rm -rf *"], "effect": "deny" }
+    ]
+  },
+  "resources": [
+    "file://.kiro/steering/**/*.md"
+  ],
+  "includeMcpJson": true,
+  "hooks": [
+    {
+      "name": "gates-on-stop",
+      "trigger": "Stop",
+      "action": { "type": "command", "command": "node scripts/hooks/gates.mjs" },
+      "timeout": 600
+    },
+    {
+      "name": "secret-scan-on-write",
+      "trigger": "PostToolUse",
+      "matcher": "^(fs_write|write|str_replace)$",
+      "action": { "type": "command", "command": "node scripts/hooks/secret-scan.mjs" },
+      "timeout": 30
+    }
+  ],
+  "welcomeMessage": "sr-builder: give me a spec name and a task id."
+}

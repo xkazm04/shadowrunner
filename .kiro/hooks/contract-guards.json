@@ -1,0 +1,26 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Rig contract drift",
+      "description": "When the Rig v1 types change, the format doc and the rig-core spec must still agree.",
+      "trigger": "PostFileSave",
+      "matcher": "packages/rig/src/(types|validate)\.ts$",
+      "action": { "type": "agent", "prompt": "The Rig v1 contract file was just saved. Compare packages/rig/src/types.ts with docs/rig-format.md and .kiro/specs/rig-core/design.md (section Data model). List every field, enum value or optionality that differs. Do not edit the spec; if the code drifted from the spec, revert the code or report the conflict." }
+    },
+    {
+      "name": "Secrets never reach the client",
+      "description": "Blocks API keys or key-shaped strings in files that ship to the browser.",
+      "trigger": "PostFileSave",
+      "matcher": "^(apps|packages)/.*\.(ts|tsx|js|json|css|html)$",
+      "action": { "type": "command", "command": "node scripts/hooks/secret-scan.mjs" },
+      "timeout": 30
+    },
+    {
+      "name": "Spec task finished -> review",
+      "description": "Manual trigger: asks the agent to self-review the current diff against the active task's acceptance criteria.",
+      "trigger": "UserTriggered",
+      "action": { "type": "agent", "prompt": "Review the working-tree diff against the acceptance criteria of the task you just implemented in .kiro/specs. Output one line per criterion: met/unmet with file:line evidence." }
+    }
+  ]
+}

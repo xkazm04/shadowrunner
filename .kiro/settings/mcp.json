@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@0.0.83", "--headless", "--viewport-size", "1600,900"],
+      "timeout": 120000
+    }
+  }
+}

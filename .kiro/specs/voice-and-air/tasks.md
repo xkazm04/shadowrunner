@@ -1,0 +1,29 @@
+# Implementation plan: voice-and-air
+
+- [ ] 1. Engine contract and scripted engine
+  - [ ] 1.1 `types.ts`, `voices.ts`, `picker.ts` with properties (never self, never twice).
+  - [ ] 1.2 Write `assets/replay/shows/malakor-night.json` (fictional audience of ~40 messages, ~24 beats in Malakor's voice from `assets/characters/malakor/bible.md`, generic beats for visitors); `scripted.ts` with the determinism property.
+  - _Requirements: 1.1, 1.2_
+
+- [ ] 2. Anthropic engine
+  - `schema.ts` (REPLY_SCHEMA, `parseReply` with trimming property), `persona.ts`, `anthropic.ts` with injectable fetch; fake-fetch tests for model, schema, chat quoting and limits.
+  - _Requirements: 1.3, 1.4, 1.5_
+
+- [ ] 3. Engine endpoint
+  - `api/engine/reply.ts` using the plane switch and `checkAndCharge(ip, "engine", usd)` from `api/_lib/quota.ts` (created by forge-pipeline task 6.2; if absent, stop and report); tests: replay zero fetches, quota before call, input cut to 20 x 300.
+  - _Requirements: 2.1, 2.2, 2.3, 2.4_
+
+- [ ] 4. Voice
+  - [ ] 4.1 `api/_lib/tts.ts` (Gemini TTS -> PCM -> WAV header) and `api/voice.ts` with voice validation and quota kind `voice`.
+  - [ ] 4.2 `scripts/render-show.mjs` (owner key, not in tests) renders the show's lines to `assets/replay/shows/malakor-night/*.wav`; replay `/api/voice` returns recorded WAVs; provenance noted in `docs/provenance.md`.
+  - _Requirements: 3.1, 3.2, 3.3_
+
+- [ ] 5. Stage page
+  - [ ] 5.1 `useLoudness.ts` (AnalyserNode RMS -> jawOpen with attack/release) with a unit test on synthetic buffers.
+  - [ ] 5.2 `useShow.ts` beat loop (pick -> reply -> voice -> play -> captions), TTS failure -> caption only, one retry.
+  - [ ] 5.3 `AirPage.tsx`, `Chat.tsx` (visitor input), `OnAirLamp.tsx`, `Captions.tsx`, `air.module.css` with role tokens only; register `air` in the page manifest as `live`.
+  - _Requirements: 3.4, 4.1, 4.2, 4.3, 4.4, 4.5, 4.6_
+
+- [ ] 6. Haunt bound to status
+  - Stage state machine with `dead_line` (`DeadLine.tsx`), health polling, fog from chat velocity via `--sr-haunt-fog`, reduced-motion twins, baseline theme check; component tests for enter/recover and the lamp role.
+  - _Requirements: 5.1, 5.2, 5.3, 5.4_
