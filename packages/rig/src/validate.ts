@@ -1,6 +1,7 @@
 // validateRig (rig-core req 2): the only place @sr/rig checks external rig data (tech.md).
-// It takes an already-decoded JSON value. Shape is checked first (`bad_shape`, naming the JSON
-// path); the semantic checks run only on shape-valid input. Every error found is collected.
+// validateRig takes an already-decoded JSON value; parseRigJson is the only JSON.parse of rig
+// text. Shape is checked first (`bad_shape`, naming the JSON path); the semantic checks run only
+// on shape-valid input. Every error found is collected.
 // The returned Rig is a fresh object holding only contract fields.
 import type { Result } from "./result.js";
 import { RIG_VERSION, type Layer, type LayerKind, type Palette, type Rig } from "./types.js";
@@ -51,6 +52,29 @@ const isKind = (value: unknown): value is LayerKind => typeof value === "string"
 const isTrue = (value: unknown): value is true => value === true;
 const isFalse = (value: unknown): value is false => value === false;
 const isDepth = (value: unknown): value is number => isFinite(value) && value >= 0 && value <= 1;
+const isDimension = (value: unknown): value is number => isInteger(value) && value > 0;
+
+/** Right and bottom edges may overshoot the canvas by this much (float bboxes from the forge). */
+const EDGE_TOLERANCE = 1e-6;
+/** design.md: a layer file may be a "data:" URL from the forge; only PNG ones are accepted. */
+const PNG_DATA_URL = "data:image/png;base64,";
+
+/**
+ * Why `file` is not a relative POSIX path inside the rig folder (or a non-empty PNG data: URL),
+ * or undefined when it is.
+ */
+function fileProblem(file: string): string | undefined {
+  if (file.startsWith(PNG_DATA_URL)) return file.length > PNG_DATA_URL.length ? undefined : "is an empty data: URL";
+  if (file === "") return "must not be empty";
+
+  if (file.startsWith("/")) return "must be relative (no leading /)";
+  if (file.includes("\\")) return "must use / separators (no backslash)";
+  if (file.includes(":")) return "must not carry a scheme or drive (no :)";
+  const segments = file.split("/");
+  if (segments.includes("")) return "must not have an empty path segment (no // or trailing /)";
+  if (segments.includes("..")) return "must stay inside the rig folder (no .. segment)";
+  return undefined;
+}
 
 function got(value: unknown, expected: string): string {
   if (value === undefined) return `missing; expected ${expected}`;
@@ -112,6 +136,8 @@ class Reader {
     const z = this.required(value, "z", path, isInteger, "an integer", named);
     const kind = this.required(value, "kind", path, isKind, `one of ${Object.keys(LAYER_KINDS).join(", ")}`, named);
     const file = this.required(value, "file", path, isString, "a string", named);
+    const problem = file === undefined ? undefined : fileProblem(file);
+    if (problem !== undefined) this.fail(`${path}.file`, `${JSON.stringify(file)} ${problem}`, named);
     const bbox = this.tuple(value, "bbox", path, 4, named);
     const [x, y, w, h] = bbox ?? [];
     if (w !== undefined && w <= 0) this.fail(`${path}.bbox[2]`, `width must be > 0, got ${w}`, named);
@@ -157,8 +183,8 @@ class Reader {
     const version = this.required(value, "version", "$", isVersion, `${RIG_VERSION}`);
     const id = this.required(value, "id", "$", isString, "a string");
     const name = this.required(value, "name", "$", isString, "a string");
-    const width = this.required(value, "width", "$", isFinite, "a finite number");
-    const height = this.required(value, "height", "$", isFinite, "a finite number");
+    const width = this.required(value, "width", "$", isDimension, "a positive integer");
+    const height = this.required(value, "height", "$", isDimension, "a positive integer");
     const source = this.required(value, "source", "$", isSource, `one of ${Object.keys(SOURCES).join(", ")}`);
     const fictional = this.optional(value, "fictional", "$", isTrue, "true (omit the field when not fictional)");
     const palette = this.palette(value.palette, "$.palette");
@@ -181,7 +207,7 @@ function checkPalette(palette: Palette, errors: RigError[]): void {
 function checkBounds(rig: Rig, errors: RigError[]): void {
   rig.layers.forEach((layer, i) => {
     const [x, y, w, h] = layer.bbox;
-    if (x < 0 || y < 0 || x + w > rig.width || y + h > rig.height) {
+    if (x < 0 || y < 0 || x + w > rig.width + EDGE_TOLERANCE || y + h > rig.height + EDGE_TOLERANCE) {
       errors.push({
         code: "bbox_out_of_bounds",
         message: `layer "${layer.name}" bbox [${x}, ${y}, ${w}, ${h}] leaves the ${rig.width} x ${rig.height} canvas`,
@@ -257,4 +283,16 @@ export function validateRig(input: unknown): Result<Rig, RigError[]> {
   checkUnique(rig, "z", "duplicate_z", errors);
   checkFollows(rig, errors);
   return errors.length > 0 ? { ok: false, errors } : { ok: true, value: rig };
+}
+
+/** Rig JSON text -> Rig. The only JSON.parse of rig text; malformed JSON is `bad_shape` at `$`. */
+export function parseRigJson(text: string): Result<Rig, RigError[]> {
+  let value: unknown;
+  try {
+    value = JSON.parse(text);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    return { ok: false, errors: [{ code: "bad_shape", message: `$: not valid JSON (${reason})`, path: "$" }] };
+  }
+  return validateRig(value);
 }

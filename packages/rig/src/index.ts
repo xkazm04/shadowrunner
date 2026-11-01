@@ -3,3 +3,4 @@ export * from "./types.js";
 export * from "./result.js";
 export * from "./serialize.js";
 export * from "./validate.js";
+export * from "./legacy.js";

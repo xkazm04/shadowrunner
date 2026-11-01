@@ -1,0 +1,60 @@
+{
+  "calibration": {
+    "clipped": 0.0,
+    "gain": 134.097059,
+    "offset": -284.95,
+    "tilt": [
+      1.835,
+      21.846
+    ]
+  },
+  "far": -92.362,
+  "height": 1024,
+  "inputs": {
+    "background.png": "638c157b58c8509ef65ff8e279e4fb73a40b791c5db827e2b6282a7b683e3cd8",
+    "eye_l.png": "58efdc324f7273ba181919d77d82c625e749d1a2e10bd437a7a9ec5a09abc3db",
+    "eye_r.png": "cd231714dce0d47d000fb5e9664d8bd9c7fd7d198398058820f87b71c5b4a020",
+    "head.png": "d832bacd2d2a4a29118a5b5ab336bdc0790a4672f8ff1041304e70b32ebc6d4f",
+    "jaw.png": "e82833d3c3ca5f5af832dec0d506ef7e3a7bc20959342af1b7fd30c18a26bebd",
+    "layers.json": "62a1c66adaddeffe2c1fba510c6baaf3107f42d7b2587e4084011fa105303456",
+    "monocle.png": "617c5a76d353c24e6014f8ee7112a3dab01b086495fdf7393712a3e040833ce6",
+    "shard_c.png": "8441649093821b3cbf75d5db25589ad4502c233fce775419fc8ffc334188a576",
+    "shard_l1.png": "be75edbe1aa597c8f4b951c045ba1e0181292df42dca6c02e2b567b90e10f32d",
+    "shard_l2.png": "cf57229ef9ae3f7f753752e06b46e9d5ae8b5ee64f66ebe7848dc1c161e638e0",
+    "shard_l3.png": "c43613d9b7698e3ba997c773edd2b40cbb2bd97762d92c330699f56c0a3e2c3f",
+    "shard_l4.png": "25b28054c754a3f592ac558ff30bffae5481e147960a1cb73e046243c74f34f5",
+    "shard_l5.png": "9ee494059c424ba751e436b83f56074a511889c5e9ec5e284bf15d5a09a3c581",
+    "shard_r1.png": "7974cfe6725d8dbe003be718781709e343903a5420ffe6f384b1892d5c0fb59d",
+    "shard_r2.png": "24e9d44ad3bab42aa1564d975a689f261cbc733cfe53aa57b4fb331f49017d07",
+    "shard_r3.png": "57e9315012691156629268afebc37d241003ee54242a814576147959beb72395",
+    "shard_r4.png": "74f4875fe903a375e54787d81dbca8fc1e444c7aa6570059192736bc73538e1d",
+    "shard_r5.png": "6bae41933c6ff3c3ee59eaf4412c5f2cd58c8ec2532763f59c852be443e6c3b7",
+    "torso.png": "aefad4ab58fadb3bed328f4f4b9714c6efb88c4c51230eb16e07354908ca13e7"
+  },
+  "method": "learned-v1",
+  "model": {
+    "file": "onnx/model.onnx",
+    "id": "onnx-community/depth-anything-v2-small",
+    "license": "apache-2.0",
+    "revision": "4472b7362082ad9968fee890ca0f1e5aca36b93d",
+    "sha256": "afb6a5c28f3b6bf1618c6e43f02073ef9dfdc70e937502d51603e57b0a1df10c"
+  },
+  "near": 203.885,
+  "planes": {
+    "shard_c": 138.0,
+    "shard_l1": 109.592,
+    "shard_l2": 85.236,
+    "shard_l3": 50.395,
+    "shard_l4": 70.426,
+    "shard_l5": 49.41,
+    "shard_r1": 109.713,
+    "shard_r2": 84.744,
+    "shard_r3": 51.274,
+    "shard_r4": 69.601,
+    "shard_r5": 47.89
+  },
+  "scale": 0.004520439,
+  "units": "source_px",
+  "version": 1,
+  "width": 1024
+}

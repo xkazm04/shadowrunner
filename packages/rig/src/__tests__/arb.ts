@@ -40,10 +40,20 @@ type LayerBody = Omit<Layer, "name" | "z" | "follow">;
 // Built once: fc.stringMatching is costly to construct, and rigArb rebuilds per-canvas parts
 // inside `chain` for every sample.
 const arbKind = fc.constantFrom(...LAYER_KINDS);
+
+/**
+ * A relative POSIX path inside the rig folder (task 3.0): one to three non-empty segments of any
+ * characters except `/`, `\` and `:`, none of them `..`.
+ */
+const arbSegment = fc.string({ minLength: 1, maxLength: 8 }).filter((s) => s !== ".." && !/[/\\:]/.test(s));
+export const arbRelativeFile: fc.Arbitrary<string> = fc
+  .array(arbSegment, { minLength: 1, maxLength: 3 })
+  .map((parts) => parts.join("/"));
+
 const arbFile = fc.oneof(
   fc.stringMatching(/^[a-z0-9_]{1,10}\.png$/),
   fc.constant("data:image/png;base64,iVBORw0KGgo="),
-  fc.string(),
+  arbRelativeFile,
 );
 const arbDepth = fc.double({ min: 0, max: 1, noNaN: true });
 const arbRigHead = fc.record(
