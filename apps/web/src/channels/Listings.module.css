@@ -7,6 +7,11 @@
 .page {
   position: relative;
   display: grid;
+  grid-template-areas:
+    "mast mast"
+    "listing later"
+    "slots later";
+  grid-template-rows: auto auto 1fr;
   grid-template-columns: 1.25fr 1fr;
   gap: var(--sr-space-6);
   box-sizing: border-box;
@@ -57,7 +62,7 @@
 /* The masthead: title left, the night's line right, over a double rule. */
 .mast {
   display: flex;
-  grid-column: 1 / -1;
+  grid-area: mast;
   flex-wrap: wrap;
   align-items: flex-end;
   justify-content: space-between;
@@ -82,6 +87,7 @@
 
 .listing {
   display: grid;
+  grid-area: listing;
   grid-template-columns: 15.625rem 1fr;
   gap: var(--sr-space-5);
   align-content: start;
@@ -189,9 +195,114 @@
   outline-offset: var(--sr-space-1);
 }
 
+/* Later tonight (landing task 12): the rest of the cast as programme entries, a still beside each. */
+.later {
+  display: grid;
+  grid-area: later;
+  align-content: start;
+  gap: var(--sr-space-3);
+  min-inline-size: 0;
+}
+
+.page .laterTitle {
+  padding-block-end: var(--sr-space-2);
+  border-block-end: thin solid var(--sr-paper-ink);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-lg);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.tuning {
+  font-style: italic;
+}
+
+.entries {
+  display: grid;
+  gap: var(--sr-space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.entry {
+  display: grid;
+  grid-template-areas:
+    "still head"
+    "still text";
+  grid-template-rows: auto 1fr;
+  grid-template-columns: 7rem minmax(0, 1fr);
+  gap: var(--sr-space-1) var(--sr-space-4);
+  align-items: start;
+  padding-block-end: var(--sr-space-4);
+  border-block-end: 0.125rem dotted color-mix(in srgb, var(--sr-paper-ink) 45%, var(--sr-paper));
+}
+
+.entry:last-child {
+  padding-block-end: 0;
+  border-block-end: 0;
+}
+
+.still {
+  display: block;
+  grid-area: still;
+  inline-size: 100%;
+  block-size: auto;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border: 0.1875rem solid var(--sr-paper-ink);
+  background-color: var(--sr-surface-0);
+}
+
+.entryHead {
+  display: grid;
+  grid-area: head;
+  gap: var(--sr-space-1);
+  min-inline-size: 0;
+}
+
+.entryText {
+  display: grid;
+  grid-area: text;
+  justify-items: start;
+  gap: var(--sr-space-1);
+  min-inline-size: 0;
+}
+
+.entry h3 {
+  font-size: var(--sr-size-display);
+}
+
+.hook {
+  font-size: var(--sr-size-text);
+  font-style: italic;
+  line-height: 1.4;
+}
+
+.shows {
+  font-size: var(--sr-size-text);
+  line-height: 1.4;
+}
+
+.shows b {
+  font-family: var(--sr-font-type);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.entry .button {
+  margin-block-start: var(--sr-space-1);
+  padding: var(--sr-space-2) var(--sr-space-3);
+  font-size: var(--sr-size-text);
+}
+
+/* The unclaimed hours and the sealed channel, under Malakor. */
 .slots {
   display: flex;
+  grid-area: slots;
   flex-direction: column;
+  align-self: start;
   gap: var(--sr-space-4);
 }
 
@@ -221,6 +332,12 @@
 
 @media (max-width: 60rem) {
   .page {
+    grid-template-areas:
+      "mast"
+      "listing"
+      "later"
+      "slots";
+    grid-template-rows: none;
     grid-template-columns: 1fr;
     padding: var(--sr-space-5);
     transform: none;
@@ -234,5 +351,19 @@
 
   .listing figure {
     max-inline-size: 15.625rem;
+  }
+
+  /* On a phone the name sits beside the still and the rest runs the full width under both. */
+  .entry {
+    grid-template-areas:
+      "still head"
+      "text text";
+    grid-template-columns: 5.5rem minmax(0, 1fr);
+    gap: var(--sr-space-2) var(--sr-space-3);
+    align-items: center;
+  }
+
+  .entry h3 {
+    font-size: var(--sr-size-text-lg);
   }
 }

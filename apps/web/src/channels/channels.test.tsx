@@ -58,13 +58,14 @@ describe("Listings (CH 4)", () => {
     expect(html).toMatch(/<h1 id="page-title">Cellar Listings<\/h1>/);
     expect(html).toContain("03:00 · ON AIR NOW · CH 2");
     expect(html).toContain("Arch-Lich Malakor");
+    expect(html).toContain("Later tonight");
     expect(html).toContain("04:00 · VACANT");
     expect(html).toContain("CH 9 · SEALED");
     expect(html).toMatch(/<img[^>]*alt="Portrait of Arch-Lich Malakor \(stylised\)"/);
   });
 
   it("links every call to action to its channel's path from the manifest", () => {
-    expect(html).toMatch(/href="\/creator"[^>]*>Open in the Forge · CH 3</);
+    expect(html).toMatch(/href="\/creator\?character=malakor"[^>]*>Open in the Forge · CH 3</);
     expect(html).toMatch(/href="\/"[^>]*>Watch · CH 2</);
     expect(html).toMatch(/href="\/creator"[^>]*>Forge a character · CH 3</);
     expect(html).toMatch(/href="\/sealed"[^>]*>Tune to 9</);

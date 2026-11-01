@@ -67,7 +67,7 @@
   - Add the carved-number AA check to the visual test (design.md "Fixes"), and the phosphor-on-glass check once 5.2 lands.
 
 
-- [ ] 12. CH 4 lists the whole cast (owner request 2026-11-01)
+- [x] 12. CH 4 lists the whole cast (owner request 2026-11-01)
   - "Cellar Listings" keeps its parchment programme look (`ch-characters-1600x900.png`) and lists every character as a programme entry: portrait, name, one-line persona hook and what part of the rig it shows off (from `assets/characters/presets/PROMPTS.md` "Teaches"; Malakor: crown shards and monocle), with "Open in the Forge · CH 3" linking to `/creator?character=<slug>`. Malakor stays "on now"; the others are the night's later hours. Data comes from the same recorded jobs + Malakor, not a hard-coded list of five; portraits are the job thumbnails, loaded lazily.
   - Visual proof at 1600x900 and 390x844 in both themes; `pnpm test:visual` stays green (CH 4 is not in the baselines).
   - _Requirements: 8.2, 8.3_
