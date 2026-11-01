@@ -3,7 +3,11 @@
 // (Malakor's eleven shards) a "Whole crown" toggle hides or shows them together, on top of the
 // per-layer toggles; it dispatches the same per-layer toggles.
 import type { Layer, LayerKind, Rig } from "@sr/rig";
+import { CrownMap } from "./CrownMap";
 import styles from "./Customize.module.css";
+
+/** From this many crown pieces on, they are toggled on the crown map instead of as chips. */
+export const MAP_FROM = 3;
 
 const TOGGLED: readonly LayerKind[] = ["accessory", "crown", "eye"];
 
@@ -39,33 +43,38 @@ export function PartToggles({ rig, hidden, onToggle }: PartTogglesProps) {
   const crown = layers.filter((l) => l.kind === "crown");
   if (layers.length === 0) return <p className={styles.note}>This character has no removable parts.</p>;
   const crownShown = crown.some((l) => !isHidden.has(l.name));
+  const mapped = crown.length >= MAP_FROM;
+  const chips = mapped ? layers.filter((l) => l.kind !== "crown") : layers;
   return (
-    <div className={styles.parts}>
-      {crown.length > 1 && (
-        <button
-          type="button"
-          className={`${styles.part} ${styles.partWhole}`}
-          aria-pressed={crownShown}
-          onClick={() => {
-            for (const l of crown) if (isHidden.has(l.name) === !crownShown) onToggle(l.name);
-          }}
-        >
-          <span className={styles.lamp} aria-hidden="true" />
-          Whole crown
-        </button>
-      )}
-      {layers.map((layer) => (
-        <button
-          key={layer.name}
-          type="button"
-          className={styles.part}
-          aria-pressed={!isHidden.has(layer.name)}
-          onClick={() => onToggle(layer.name)}
-        >
-          <span className={styles.lamp} aria-hidden="true" />
-          {partLabel(layer.name)}
-        </button>
-      ))}
-    </div>
+    <>
+      <div className={styles.parts}>
+        {crown.length > 1 && (
+          <button
+            type="button"
+            className={`${styles.part} ${styles.partWhole}`}
+            aria-pressed={crownShown}
+            onClick={() => {
+              for (const l of crown) if (isHidden.has(l.name) === !crownShown) onToggle(l.name);
+            }}
+          >
+            <span className={styles.lamp} aria-hidden="true" />
+            Whole crown
+          </button>
+        )}
+        {chips.map((layer) => (
+          <button
+            key={layer.name}
+            type="button"
+            className={styles.part}
+            aria-pressed={!isHidden.has(layer.name)}
+            onClick={() => onToggle(layer.name)}
+          >
+            <span className={styles.lamp} aria-hidden="true" />
+            {partLabel(layer.name)}
+          </button>
+        ))}
+      </div>
+      {mapped && <CrownMap layers={crown} hidden={isHidden} onToggle={onToggle} />}
+    </>
   );
 }

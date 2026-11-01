@@ -11,6 +11,7 @@ import { lookReducer } from "./customize/lookReducer";
 import { VoicePane } from "./customize/VoicePane";
 import type { CharacterRecord } from "./library/libraryStore";
 import { useRigAssets, type Library } from "./library/useLibrary";
+import { ChannelActions } from "./ChannelActions";
 import { Stage, useSpeaker } from "./Stage";
 import styles from "./CreatorPage.module.css";
 
@@ -41,8 +42,10 @@ export interface WorkbenchProps {
   badge?: ReactNode;
   /** Set when this character was just forged: plays the reveal and speaks one line. */
   revealKey?: string;
-  /** Under the controls: the channel actions and the library. */
+  /** Under the panel: the library. */
   below?: ReactNode;
+  /** What the stage caption says the face is doing, when the page knows better (a forge running). */
+  motion?: string;
 }
 
 function TabList({ tab, onTab }: { tab: Tab; onTab: (tab: Tab) => void }) {
@@ -85,7 +88,7 @@ function TabList({ tab, onTab }: { tab: Tab; onTab: (tab: Tab) => void }) {
   );
 }
 
-export function Workbench({ record, library, tab, onTab, forge, sheet, stageOverlay, badge, revealKey, below }: WorkbenchProps) {
+export function Workbench({ record, library, tab, onTab, forge, sheet, stageOverlay, badge, revealKey, below, motion: pageMotion }: WorkbenchProps) {
   const [look, dispatch] = useReducer(lookReducer, record.look);
   const [gesture, fireGesture] = useGesturePulse();
   const [lastGesture, setLastGesture] = useState<string | undefined>(undefined);
@@ -133,6 +136,8 @@ export function Workbench({ record, library, tab, onTab, forge, sheet, stageOver
 
   const motion = failed
     ? "The face could not be drawn"
+    : pageMotion !== undefined
+      ? pageMotion
     : speaker.line !== undefined
       ? `Speaking · ${speaker.line.reply.emotion}`
       : gesture !== undefined && lastGesture !== undefined
@@ -159,23 +164,26 @@ export function Workbench({ record, library, tab, onTab, forge, sheet, stageOver
         </Stage>
       </div>
       <div className={styles.controlsRegion}>
-        <div className={styles.panel}>
-          <TabList tab={tab} onTab={onTab} />
-          <div className={styles.sheet} role="tabpanel" id="creator-sheet" aria-labelledby={`tab-${tab}`} tabIndex={0}>
-            {sheet}
-            {sheet === undefined && tab === "looks" && <LooksPane rig={record.rig} look={look} dispatch={dispatch} />}
-            {sheet === undefined && tab === "face" && (
-              <FacePane
-                look={look}
-                onEmotion={onEmotion}
-                onGesture={onGesture}
-                onSpeak={speaker.toggle}
-                speaking={speaker.line !== undefined}
-                speakNote="A recorded line from the replay show, in the Clerk voice."
-              />
-            )}
-            {sheet === undefined && tab === "voice" && <VoicePane voice={record.voice} onVoice={onVoice} onSpeak={speaker.toggle} speaking={speaker.line !== undefined} />}
-            {sheet === undefined && tab === "forge" && forge}
+        <div className={styles.panelWrap}>
+          <div className={styles.panel}>
+            <TabList tab={tab} onTab={onTab} />
+            <div className={styles.sheet} role="tabpanel" id="creator-sheet" aria-labelledby={`tab-${tab}`} tabIndex={0}>
+              {sheet}
+              {sheet === undefined && tab === "looks" && <LooksPane rig={record.rig} look={look} dispatch={dispatch} />}
+              {sheet === undefined && tab === "face" && (
+                <FacePane
+                  look={look}
+                  onEmotion={onEmotion}
+                  onGesture={onGesture}
+                  onSpeak={speaker.toggle}
+                  speaking={speaker.line !== undefined}
+                  speakNote="A recorded line from the replay show, in the Clerk voice."
+                />
+              )}
+              {sheet === undefined && tab === "voice" && <VoicePane voice={record.voice} onVoice={onVoice} onSpeak={speaker.toggle} speaking={speaker.line !== undefined} />}
+              {sheet === undefined && tab === "forge" && forge}
+            </div>
+            <ChannelActions />
           </div>
         </div>
         {below}

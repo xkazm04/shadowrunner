@@ -7,13 +7,14 @@ import { usePlane, type Plane } from "../app/plane";
 import { createHttpForgeClient, type ForgeClient } from "./forgeClient";
 import { createReplayForgeClient, failOf } from "./forgeClient.replay";
 import { ForgePanel, type ForgeDraft } from "./forge/ForgePanel";
-import { ForgeProgress } from "./forge/ForgeProgress";
+import { ForgeProgress, stepLabel } from "./forge/ForgeProgress";
 import { recordOf } from "./forge/keep";
 import { useForgeJob } from "./forge/useForgeJob";
 import { Gallery } from "./gallery/Gallery";
 import type { GalleryEntry } from "./gallery/entries";
 import { Library } from "./library/Library";
 import { useLibrary } from "./library/useLibrary";
+import { ChannelActions } from "./ChannelActions";
 import { Stage } from "./Stage";
 import { Workbench, type Tab } from "./Workbench";
 import styles from "./CreatorPage.module.css";
@@ -67,6 +68,7 @@ export function CreatorPage() {
       draft={draft}
       onDraft={setDraft}
       onOpenGallery={() => setGalleryOpen(true)}
+      recorded={plane === "replay"}
       doneNote={
         keepError ?? (revealed === undefined ? "Keeping the new character…" : `Revealed: ${revealed.name}. It is in your library; dress it in LOOKS.`)
       }
@@ -123,8 +125,11 @@ export function CreatorPage() {
           </Stage>
         </div>
         <div className={styles.controlsRegion}>
-          <div className={styles.panel}>
-            <div className={styles.sheet}>{loading ? <p className={styles.sheetNote}>Opening the library…</p> : gallery}</div>
+          <div className={styles.panelWrap}>
+            <div className={styles.panel}>
+              <div className={styles.sheet}>{loading ? <p className={styles.sheetNote}>Opening the library…</p> : gallery}</div>
+              <ChannelActions />
+            </div>
           </div>
           {shelf}
         </div>
@@ -143,6 +148,7 @@ export function CreatorPage() {
       {...(galleryOpen ? { sheet: gallery } : {})}
       below={shelf}
       {...(stageOverlay === undefined ? {} : { stageOverlay })}
+      {...(running === undefined ? {} : { motion: `Forging · ${stepLabel(running.status)}` })}
       {...(reveal === undefined ? {} : { revealKey: reveal.jobId })}
       {...(isRecorded(active.rig) ? { badge: <span className={styles.recorded}>RECORDED</span> } : {})}
     />

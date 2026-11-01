@@ -23,9 +23,14 @@ export function LooksPane({ rig, look, dispatch }: LooksPaneProps) {
   return (
     <>
       <section className={styles.row} aria-labelledby="looks-light">
-        <h3 id="looks-light" className={styles.heading}>
-          Light
-        </h3>
+        <div className={styles.headRow}>
+          <h3 id="looks-light" className={styles.heading}>
+            Light
+          </h3>
+          <button type="button" className={styles.reset} disabled={!changed} onClick={() => dispatch({ type: "reset", rig })}>
+            Reset look
+          </button>
+        </div>
         {LIGHTS.map((key) => (
           <PaletteField
             key={key}
@@ -41,13 +46,8 @@ export function LooksPane({ rig, look, dispatch }: LooksPaneProps) {
           Parts
         </h3>
         <PartToggles rig={rig} hidden={look.hidden} onToggle={(layer) => dispatch({ type: "toggle", layer })} />
-        <p className={styles.note}>A lit lamp is a part on the face. Press one to lift it off; press again to put it back.</p>
+        <p className={styles.note}>Lit means on the face. Press a part to lift it off; press again to put it back.</p>
       </section>
-      <div className={styles.actions}>
-        <button type="button" className={styles.button} disabled={!changed} onClick={() => dispatch({ type: "reset", rig })}>
-          Reset look
-        </button>
-      </div>
     </>
   );
 }

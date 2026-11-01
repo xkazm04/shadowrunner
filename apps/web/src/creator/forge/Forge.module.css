@@ -162,6 +162,19 @@
   );
 }
 
+/* The reference's `.stamp`: a typewritten red stamp, slightly crooked. */
+.stamp {
+  display: inline-block;
+  padding: var(--sr-space-1) var(--sr-space-2);
+  border: 0.125rem solid var(--sr-paper-ink-signal);
+  color: var(--sr-paper-ink-signal);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  transform: rotate(-2deg);
+}
+
 /* A failure: a red-inked notice pinned to the sheet. */
 .failure {
   display: grid;
@@ -233,7 +246,7 @@
 
 .steps {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
   gap: var(--sr-space-1) var(--sr-space-3);
   margin: 0;
   padding: 0;
@@ -279,5 +292,6 @@
 @media (width <= 40rem) {
   .steps {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    font-size: var(--sr-size-text-sm);
   }
 }

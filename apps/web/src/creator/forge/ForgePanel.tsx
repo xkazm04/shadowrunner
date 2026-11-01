@@ -54,9 +54,11 @@ export interface ForgePanelProps {
   onOpenGallery: () => void;
   /** Shown after a job is done (the reveal and where the character went). */
   doneNote?: ReactNode;
+  /** On the replay plane: the forge plays a recording, and says so. */
+  recorded?: boolean;
 }
 
-export function ForgePanel({ job, draft, onDraft, onOpenGallery, doneNote }: ForgePanelProps) {
+export function ForgePanel({ job, draft, onDraft, onOpenGallery, doneNote, recorded = false }: ForgePanelProps) {
   const promptId = useId();
   const fileId = useId();
   const hintId = useId();
@@ -99,7 +101,7 @@ export function ForgePanel({ job, draft, onDraft, onOpenGallery, doneNote }: For
         <div className={styles.failure} role="alert" data-failure={failed.code}>
           <h3>{FAILURE_COPY[failed.code].title}</h3>
           <p>{FAILURE_COPY[failed.code].body}</p>
-          {failed.message !== "" && <p className={styles.detail}>{failed.message}</p>}
+          {!recorded && failed.message !== "" && <p className={styles.detail}>The forge said: {failed.message}</p>}
           <div className={styles.buttons}>
             {failed.code === "quota" && (
               <button type="button" className={`${styles.button} ${styles.signal}`} onClick={onOpenGallery}>
@@ -199,6 +201,11 @@ export function ForgePanel({ job, draft, onDraft, onOpenGallery, doneNote }: For
             <button type="submit" className={`${styles.button} ${styles.signal}`} disabled={!ready.ok || busy}>
               Forge it
             </button>
+            {recorded && (
+              <span className={styles.stamp} title="Replay plane: the forge plays a recorded character, no image model is called">
+                RECORDED
+              </span>
+            )}
             {!ready.ok && !busy && <span className={styles.note}>{ready.message}</span>}
           </div>
         </fieldset>
