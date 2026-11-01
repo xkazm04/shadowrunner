@@ -13,7 +13,7 @@
   gap: var(--sr-space-4);
   box-sizing: border-box;
   inline-size: 100%;
-  block-size: calc(100dvh - 7.5rem);
+  block-size: calc(100dvh - 8rem);
   min-block-size: 34rem;
 }
 
@@ -356,6 +356,11 @@
 @media (max-width: 40rem) {
   .anatomy {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* The pool stays inside the frame's narrower gutter, so it cannot widen the page. */
+  .anatomy::before {
+    inset: calc(-1 * var(--sr-space-3));
   }
 
   .centre {

@@ -140,7 +140,7 @@ describe("Shell", () => {
     expect(html.indexOf('data-badge="recorded"')).toBeLessThan(html.indexOf("data-lamp"));
     // Off the set the toggle keeps its words.
     const creator = PAGES.find((p) => p.id === "creator");
-    expect(view(creator, { theme: "baseline" })).toMatch(/data-toggle="theme"[^>]*>Theme: Baseline <kbd>/);
+    expect(view(creator, { theme: "baseline" })).toMatch(/data-toggle="theme"[^>]*>.*Theme: Baseline <\/span><kbd>/);
   });
 
   it("names the active theme on the toggle and mirrors the motion preference", () => {

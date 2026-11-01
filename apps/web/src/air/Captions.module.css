@@ -182,3 +182,11 @@
     font-size: var(--sr-size-text);
   }
 }
+
+/* Phone: the captions run the set's full width and sit tight to its foot, under the face. */
+@media (orientation: portrait) {
+  .captions {
+    inset-block-end: var(--sr-space-3);
+    inline-size: calc(100% - 1.5rem);
+  }
+}

@@ -17,3 +17,12 @@
   transform-origin: 0 0;
   background-color: var(--sr-surface-0);
 }
+
+/* Working text keeps its on-screen size when the world is scaled down (World.tsx textFactor): the
+   three text roles grow by the inverse of the scale inside the world. */
+.world {
+  --sr-size-text-sm: calc(0.875rem * var(--world-text, 1));
+  --sr-size-text: calc(1rem * var(--world-text, 1));
+  --sr-size-text-lg: calc(1.25rem * var(--world-text, 1));
+  --sr-slide-chalk: calc(1.5rem * var(--world-text, 1));
+}

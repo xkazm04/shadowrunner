@@ -170,7 +170,16 @@ function ThemeToggle({ theme, onToggle, icon = false }: { theme: ThemeName; onTo
       title={icon ? label : undefined}
       data-toggle="theme"
     >
-      {icon ? <ThemeIcon /> : `Theme: ${THEME_LABEL[theme]} `}
+      {icon ? (
+        <ThemeIcon />
+      ) : (
+        <>
+          <span className={styles.toggleDisc}>
+            <ThemeIcon />
+          </span>
+          <span className={styles.toggleWord}>{`Theme: ${THEME_LABEL[theme]} `}</span>
+        </>
+      )}
       {themeKey && <kbd>{themeKey}</kbd>}
     </button>
   );

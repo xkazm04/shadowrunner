@@ -64,3 +64,52 @@
   justify-content: center;
   padding: var(--sr-space-4) var(--sr-space-5) var(--sr-space-6);
 }
+
+/* Phone: two compact rows. Row 1 is the strip (it scrolls sideways if it must) and the badge and
+   toggle; row 2 is the breadcrumb on one line, its subtitle dropped. About 5.5rem in all. */
+@media (width < 40rem) {
+  .bar {
+    flex-wrap: wrap;
+    gap: var(--sr-space-2) var(--sr-space-3);
+    padding: var(--sr-space-2) var(--sr-space-3);
+  }
+
+  .bar > nav:first-child {
+    flex: 1 1 0;
+    min-inline-size: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .end {
+    flex: none;
+    gap: var(--sr-space-2);
+  }
+
+  .where {
+    order: 3;
+    flex: 1 1 100%;
+    min-inline-size: 0;
+  }
+
+  .where ol {
+    flex-wrap: nowrap;
+    overflow: hidden;
+    white-space: nowrap;
+    font-size: var(--sr-size-text);
+  }
+
+  .where li:last-child {
+    min-inline-size: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .where li span {
+    display: none;
+  }
+
+  .body {
+    padding-inline: var(--sr-space-3);
+  }
+}

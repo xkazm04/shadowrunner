@@ -187,7 +187,7 @@
 @media (orientation: portrait) {
   .stage {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: minmax(0, 64%) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 70%) minmax(0, 1fr);
   }
 
   .top {
@@ -198,8 +198,11 @@
     zoom: 1;
   }
 
+  /* The face stands clear above the caption band: the captions are the set's lower third, so the
+     well lifts by the band's height instead of sinking behind it. */
   .faceWell {
-    block-size: min(70cqh, 90cqw);
+    inset-block-end: 9.5rem;
+    block-size: min(60cqh, 88cqw);
   }
 
   .soundOn {

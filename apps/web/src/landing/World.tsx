@@ -47,6 +47,15 @@ export function fitWorld(stageWidth: number, stageHeight: number): WorldFit {
   return { layout, width, height, scale, x: (vw - width * scale) / 2, y: (vh - height * scale) / 2 };
 }
 
+/**
+ * Pure: how much the working-text sizes grow in world units so they land at their nominal screen
+ * size when the landscape world is scaled down (1 at scale >= 1, capped at 1.4). Portrait keeps 1.
+ */
+export function textFactor(fit: Pick<WorldFit, "layout" | "scale">): number {
+  if (fit.layout !== "landscape" || !(fit.scale > 0)) return 1;
+  return Math.min(1.4, Math.max(1, 1 / fit.scale));
+}
+
 export type WorldBand = "pillar" | "letter";
 
 /**
@@ -108,6 +117,7 @@ export function World({ children, className }: WorldProps) {
           width: fit.width,
           height: fit.height,
           transform: `translate(${fit.x}px, ${fit.y}px) scale(${fit.scale})`,
+          ["--world-text" as string]: textFactor(fit),
         }}
       >
         {children}

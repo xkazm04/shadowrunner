@@ -344,6 +344,22 @@
   .readings small {
     display: none;
   }
+
+  /* The word leaves the floor (where the readings stand) for the dark between the bulb and the
+     kicker, small enough to clear both; it is the state, so it stays in view. */
+  .floor {
+    inset-block: calc(var(--vault-ctop, 46vh) - 6.5rem) auto;
+    block-size: 5.5rem;
+    align-items: center;
+    perspective: none;
+  }
+
+  .word {
+    --sr-vault-word-size: clamp(3rem, 19vw, 5.5rem);
+
+    inset-block-end: 0;
+    transform: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

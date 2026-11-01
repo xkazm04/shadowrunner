@@ -323,3 +323,32 @@
   outline: 0.1875rem solid var(--sr-accent);
   outline-offset: 0.125rem;
 }
+
+/* Short screens (1280x720): the rite's column must fit without its own scroll, so the prompt, the
+   heads and the keys give up a little height. */
+@media (max-height: 50rem) {
+  .prompt {
+    block-size: 5.5rem;
+  }
+
+  .markHead {
+    padding-block: var(--sr-space-1);
+  }
+
+  .markBody {
+    padding-block-end: var(--sr-space-2);
+  }
+
+  .lbl {
+    margin-block: var(--sr-space-1);
+  }
+
+  .next,
+  .go {
+    padding-block: var(--sr-space-1);
+  }
+
+  .rite {
+    gap: var(--sr-space-1);
+  }
+}
