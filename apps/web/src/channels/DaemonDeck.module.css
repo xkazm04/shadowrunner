@@ -1,0 +1,355 @@
+/* CH 6, the root vault (Daemon.tsx): the instruments over the room, after r2/daemon-c.html's
+   centre, floor and columns. The state word lies on the floor in perspective; the memories and
+   readings stand in the bottom corners. Text over the photograph sits behind a surface-0
+   drop-shadow halo; the lost readings are vault-alarm, the moonlit ones phosphor. */
+
+/* ---------- upright instruments ---------- */
+.centre,
+.growing,
+.log,
+.readings {
+  z-index: 3;
+  filter: drop-shadow(0 0.0625rem 0.1875rem var(--sr-surface-0)) drop-shadow(0 0 0.875rem var(--sr-surface-0));
+}
+
+.growing {
+  position: absolute;
+  inset-block-start: var(--vault-stop, 20rem);
+  inset-inline-start: 50%;
+  margin: 0;
+  color: var(--sr-phosphor);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-lg);
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-align: center;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateX(-50%);
+  transition: opacity 1s ease 1.6s;
+  pointer-events: none;
+}
+
+.growing[data-show] {
+  opacity: 1;
+}
+
+.growing small {
+  display: block;
+  margin: var(--sr-space-1) 0 0;
+  color: var(--sr-phosphor);
+  font-size: var(--sr-size-text-sm);
+  font-weight: 400;
+  letter-spacing: 0.08em;
+}
+
+.centre {
+  position: absolute;
+  inset-block-start: var(--vault-ctop, 46vh);
+  inset-inline-start: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  inline-size: min(38.75rem, 46vw);
+  text-align: center;
+  transform: translateX(-50%);
+}
+
+.kick {
+  margin: 0;
+  color: var(--sr-text);
+  font-family: var(--sr-font-display);
+  font-size: var(--sr-size-text-lg);
+  font-weight: 700;
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+}
+
+.since {
+  margin: var(--sr-space-2) 0 0;
+  color: var(--sr-text-strong);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-vault-reading-size);
+  font-weight: 700;
+}
+
+[data-page="daemon"][data-lost] .since b {
+  color: var(--sr-vault-alarm);
+}
+
+.pullbtn {
+  display: flex;
+  align-items: center;
+  gap: var(--sr-space-3);
+  margin: var(--sr-space-4) 0 0;
+  padding: var(--sr-space-3) var(--sr-space-5);
+  border: 0.09375rem solid color-mix(in srgb, var(--sr-ember) 60%, transparent);
+  border-radius: var(--sr-radius-pill);
+  color: var(--sr-text-strong);
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--sr-surface-0) 82%, transparent),
+    color-mix(in srgb, var(--sr-surface-0) 82%, transparent)
+  );
+  font-family: var(--sr-font-display);
+  font-size: var(--sr-size-text-lg);
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  cursor: pointer;
+  backdrop-filter: blur(0.1875rem);
+}
+
+.pullbtn:hover:not(:disabled) {
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--sr-ember) 22%, var(--sr-surface-0)),
+    color-mix(in srgb, var(--sr-ember) 22%, var(--sr-surface-0))
+  );
+}
+
+[data-page="daemon"][data-lost] .pullbtn {
+  border-color: var(--sr-signal-warn);
+}
+
+.pullbtn:focus-visible {
+  outline: 0.125rem solid var(--sr-ember);
+  outline-offset: 0.25rem;
+}
+
+.pullbtn:disabled {
+  border-color: var(--sr-line);
+  cursor: default;
+}
+
+.pullbtn kbd {
+  padding: 0 var(--sr-space-1);
+  border: thin solid color-mix(in srgb, var(--sr-text) 40%, transparent);
+  border-radius: var(--sr-radius-1);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+  letter-spacing: 0;
+}
+
+.note {
+  margin: var(--sr-space-3) 0 0;
+  color: var(--sr-text);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+}
+
+/* ---------- the word carved into the floor ---------- */
+.floor {
+  position: absolute;
+  inset-block-end: -2vh;
+  inset-inline: 0;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  block-size: 46vh;
+  perspective: 32.5rem;
+  perspective-origin: 50% -40%;
+  pointer-events: none;
+}
+
+.word {
+  position: relative;
+  inset-block-end: 4vh;
+  margin: 0;
+  color: transparent;
+  background-image: linear-gradient(180deg, color-mix(in srgb, var(--sr-text-muted) 80%, var(--sr-surface-0)), var(--sr-text-strong) 70%);
+  background-clip: text;
+  font-family: var(--sr-font-display);
+  font-size: var(--sr-vault-word-size);
+  font-weight: 800;
+  line-height: 0.8;
+  letter-spacing: 0.05em;
+  transform: rotateX(52deg);
+  transform-origin: 50% 100%;
+  filter: drop-shadow(0 0.125rem 0 color-mix(in srgb, var(--sr-surface-0) 60%, transparent));
+}
+
+[data-page="daemon"][data-lost] .word {
+  color: var(--sr-signal-warn);
+  background-image: none;
+  filter: drop-shadow(0 0 1.125rem color-mix(in srgb, var(--sr-signal-onair) 80%, transparent))
+    drop-shadow(0 0 0.25rem color-mix(in srgb, var(--sr-signal-warn) 90%, transparent));
+}
+
+/* ---------- the columns ---------- */
+.log,
+.readings {
+  position: absolute;
+  inset-block-end: 1.75rem;
+  inline-size: clamp(15.625rem, 21vw, 19.375rem);
+}
+
+.log {
+  inset-inline-start: 2.5rem;
+}
+
+.log h2 {
+  margin: 0 0 var(--sr-space-2);
+  color: var(--sr-text);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+  font-weight: 700;
+  letter-spacing: 0.2em;
+}
+
+.log ol {
+  display: grid;
+  align-content: end;
+  gap: var(--sr-space-2);
+  max-block-size: 46vh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  list-style: none;
+  mask-image: linear-gradient(to top, var(--sr-surface-0) 70%, transparent);
+}
+
+.log li {
+  color: var(--sr-text-strong);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+  line-height: 1.35;
+  animation: rise 0.6s ease-out both;
+}
+
+.log time {
+  display: block;
+  color: var(--sr-accent);
+  font-weight: 700;
+}
+
+.log li[data-tone="bad"] {
+  color: var(--sr-vault-alarm);
+}
+
+.log li[data-tone="bad"] time {
+  color: var(--sr-signal-warn);
+}
+
+.log li[data-tone="cold"] {
+  color: var(--sr-phosphor);
+}
+
+.log li[data-tone="cold"] time {
+  color: var(--sr-phosphor-2);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(0.625rem);
+  }
+}
+
+.fict {
+  margin: var(--sr-space-2) 0 0;
+  color: var(--sr-text);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+}
+
+.readings {
+  inset-inline-end: 2.5rem;
+  display: grid;
+  gap: var(--sr-space-1);
+  margin: 0;
+}
+
+.readings div {
+  padding: var(--sr-space-2) 0;
+  border-block-start: thin solid color-mix(in srgb, var(--sr-text-strong) 22%, transparent);
+}
+
+.readings dt {
+  color: var(--sr-text);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.readings dd {
+  margin: 0;
+  color: var(--sr-text-strong);
+  font-family: var(--sr-font-display);
+  font-size: var(--sr-vault-reading-size);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: 0.02em;
+}
+
+.readings small {
+  margin: 0 0 0 var(--sr-space-2);
+  color: var(--sr-text);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+.readings [data-tone="bad"] dd {
+  color: var(--sr-vault-alarm);
+  filter: drop-shadow(0 0 0.75rem color-mix(in srgb, var(--sr-signal-onair) 75%, transparent));
+}
+
+.readings [data-tone="cold"] dd {
+  color: var(--sr-phosphor);
+  filter: drop-shadow(0 0 0.75rem color-mix(in srgb, var(--sr-phosphor-spill) 50%, transparent));
+}
+
+/* Short screens: the newest four memories, tighter readings, no footnote under the chain. */
+@media (max-height: 51.25rem) {
+  .log li:nth-last-child(n + 5) {
+    display: none;
+  }
+
+  .readings div {
+    padding: var(--sr-space-1) 0;
+  }
+
+  .note {
+    display: none;
+  }
+}
+
+/* Narrow screens: the memories step aside; the readings span the floor in two columns. */
+@media (max-width: 56rem) {
+  .log {
+    display: none;
+  }
+
+  .centre {
+    inline-size: calc(100% - 2rem);
+  }
+
+  .note {
+    display: none;
+  }
+
+  .kick {
+    letter-spacing: 0.2em;
+  }
+
+  .readings {
+    inset-inline: 1rem;
+    inline-size: auto;
+    grid-template-columns: 1fr 1fr;
+    column-gap: var(--sr-space-4);
+  }
+
+  .readings small {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .growing,
+  .log li {
+    animation: none;
+    transition: none;
+  }
+}

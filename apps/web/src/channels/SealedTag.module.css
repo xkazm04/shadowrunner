@@ -1,0 +1,205 @@
+/* CH 9, lights out (Sealed.tsx): the power knob with its pilot ring, the paper tag hung on the
+   set, and the torch's ring under the pointer. The tag is paper with paper-ink (AA pair in the
+   theme's contrast test); its status line is paper-ink-signal. */
+
+/* The power knob, with its pilot ring. */
+.power {
+  position: absolute;
+  inset-block-start: 80.9%;
+  inset-inline-start: 34%;
+  inline-size: 6.4%;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 0;
+  border-radius: var(--sr-radius-pill);
+  background-color: transparent;
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+  touch-action: none;
+}
+
+.power::before {
+  content: "";
+  position: absolute;
+  inset: -12%;
+  border: 0.09375rem solid color-mix(in srgb, var(--sr-ember) 55%, transparent);
+  border-radius: var(--sr-radius-pill);
+  filter: drop-shadow(0 0 0.5rem color-mix(in srgb, var(--sr-ember) 40%, transparent));
+  animation: pilot 2.8s ease-in-out infinite;
+}
+
+.power[aria-pressed="true"]::before {
+  border-color: var(--sr-phosphor);
+  filter: drop-shadow(0 0 0.75rem var(--sr-phosphor-spill));
+  animation: none;
+}
+
+.power:focus-visible {
+  outline: 0.125rem solid var(--sr-phosphor);
+  outline-offset: 0.5rem;
+}
+
+@keyframes pilot {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.lab {
+  position: absolute;
+  inset-block-start: calc(100% + 0.75rem);
+  inset-inline-start: 50%;
+  padding: var(--sr-space-2);
+  border: thin solid var(--sr-line);
+  border-radius: var(--sr-radius-1);
+  color: var(--sr-text-strong);
+  background-color: var(--sr-surface-0);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
+/* The tag: the honest label, never in the dark. */
+.tag {
+  position: absolute;
+  inset-block-start: 20%;
+  inset-inline-start: 76.5%;
+  inline-size: max(13.75rem, 19.5%);
+  padding: var(--sr-space-5) var(--sr-space-4) var(--sr-space-4);
+  border-radius: var(--sr-radius-1);
+  color: var(--sr-paper-ink);
+  background-color: var(--sr-paper);
+  background-image: radial-gradient(
+    ellipse 120% 80% at 30% 10%,
+    color-mix(in srgb, var(--sr-face-glow) 40%, var(--sr-paper)),
+    var(--sr-paper) 70%
+  );
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+  line-height: 1.4;
+  cursor: default;
+  filter: drop-shadow(0 1.125rem 2.5rem color-mix(in srgb, var(--sr-surface-0) 70%, transparent));
+  transform: rotate(2.2deg);
+  transform-origin: 50% 0;
+  animation: tag-in 1.2s ease 0.2s both;
+}
+
+@keyframes tag-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.tag::before {
+  content: "";
+  position: absolute;
+  inset-block-start: 0.5rem;
+  inset-inline-start: 50%;
+  inline-size: 0.75rem;
+  block-size: 0.75rem;
+  border-radius: var(--sr-radius-pill);
+  background-color: var(--sr-paper-ink);
+  transform: translateX(-50%);
+}
+
+.tag::after {
+  content: "";
+  position: absolute;
+  inset-block-end: 100%;
+  inset-inline-start: 50%;
+  inline-size: 0.0625rem;
+  block-size: 3.75rem;
+  background-image: linear-gradient(transparent, color-mix(in srgb, var(--sr-paper) 70%, var(--sr-surface-0)));
+}
+
+.tag h2 {
+  margin: 0 0 var(--sr-space-1);
+  font-family: var(--sr-font-display);
+  font-size: var(--sr-size-display);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+.tag p {
+  margin: 0 0 var(--sr-space-3);
+}
+
+.tag .st {
+  color: var(--sr-paper-ink-signal);
+  font-size: var(--sr-size-text);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.tag hr {
+  margin: var(--sr-space-3) 0;
+  border: 0;
+  border-block-start: thin dashed color-mix(in srgb, var(--sr-paper-ink) 55%, var(--sr-paper));
+}
+
+.tag .how a {
+  color: var(--sr-paper-ink);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tag .how a:focus-visible {
+  outline: 0.125rem solid var(--sr-paper-ink);
+  outline-offset: 0.125rem;
+}
+
+.tag .log {
+  margin: 0;
+  font-weight: 700;
+}
+
+.tag .log b {
+  color: var(--sr-paper-ink-signal);
+}
+
+/* The torch's ring under the pointer. */
+.ring {
+  position: fixed;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  z-index: 8;
+  inline-size: 1.125rem;
+  block-size: 1.125rem;
+  border: 0.09375rem solid color-mix(in srgb, var(--sr-ember) 80%, transparent);
+  border-radius: var(--sr-radius-pill);
+  opacity: 0;
+  transform: translate(var(--ring-x, -5rem), var(--ring-y, -5rem)) translate(-50%, -50%);
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+
+[data-door="sealed"]:hover .ring {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tag,
+  .power::before {
+    animation: none;
+  }
+}
+
+/* Narrow screens: the tag hangs under the set instead of beside it. */
+@media (max-width: 56rem) {
+  .tag {
+    inset-block-start: 112%;
+    inset-inline-start: 50%;
+    inline-size: min(20rem, 90vw);
+    transform: translateX(-50%) rotate(1deg);
+  }
+
+  .ring {
+    display: none;
+  }
+}

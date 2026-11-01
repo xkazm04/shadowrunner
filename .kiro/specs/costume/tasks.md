@@ -26,9 +26,9 @@
 - [ ] 4. Characters: the wall of sets (characters lane)
   - _Requirements: 5.1, 5.2_
 
-- [ ] 5. Daemon and Sealed (channels lane)
-  - [ ] 5.1 CH 6 per `r2/daemon-c.html`.
-  - [ ] 5.2 CH 9 per `r1/sealed-c.html`.
+- [x] 5. Daemon and Sealed (channels lane)
+  - [x] 5.1 CH 6 per `r2/daemon-c.html`.
+  - [x] 5.2 CH 9 per `r1/sealed-c.html`.
   - _Requirements: 6.1-6.3, 7.1, 7.2_
 
 - [ ] 6. The stage: candles of the catacomb (air lane)

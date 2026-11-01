@@ -42,5 +42,8 @@
   "size-text",
   "size-text-lg",
   "size-display",
-  "size-headline"
+  "size-headline",
+  "vault-alarm",
+  "vault-word-size",
+  "vault-reading-size"
 ]
