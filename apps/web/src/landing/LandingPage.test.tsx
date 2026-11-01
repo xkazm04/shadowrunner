@@ -42,4 +42,15 @@ describe("LandingPage (static)", () => {
     // Nothing is written on the glass until a gourd is hovered or focused.
     expect(html).not.toContain("data-glass-caption");
   });
+
+  it("hangs the chat strip in the world after the legend and under the status bar, scripted on replay", () => {
+    const html = renderToString(<LandingPage />);
+    const legend = html.indexOf("data-legend");
+    const chat = html.indexOf("data-chat=");
+    expect(chat).toBeGreaterThan(legend);
+    expect(html.indexOf("data-status-bar")).toBeGreaterThan(chat);
+    expect(html).toContain('aria-label="Live chat (simulated)"');
+    expect(html).toContain("first time here. why is it 3am in here");
+    expect(renderToString(<LandingPage plane="live" />)).toContain('aria-label="Live chat"');
+  });
 });

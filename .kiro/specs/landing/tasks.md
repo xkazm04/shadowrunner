@@ -40,7 +40,7 @@
   - `Gourds.tsx`: five channel buttons cut from `root-pile` with carved numbers (AA contrast) and labels, burn and ember states, hover and focus writing on the glass, legend box.
   - _Requirements: 5.1, 5.2, 5.4, 5.5_
 
-- [ ] 7. Chat strip
+- [x] 7. Chat strip
   - Paper contrast has no margin (landing task 1 measured signal ink 4.79:1 on the median paper, 4.40:1 on the darkest 10%). Keep the `paper.webp` texture at 0.24 opacity or less over the `paper` role, do not port the reference's darkening `.paper::after` gradient under text, and add a component test that the text box has the `paper` role as its opaque background.
   - `ChatStrip.tsx` with `chatScript.ts` (replay lines from the reference), typed in line by line, with a top fade mask that never renders under the header. On live, reads the engine stream once `voice-and-air` lands.
   - _Requirements: 6.1, 6.2, 6.3_
