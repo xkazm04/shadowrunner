@@ -28,6 +28,8 @@ const LANDING_ROLES = [
   ...["font-display", "font-body", "font-type"],
   // landing task 5.0: the ON AIR lamp and the daemon pill are fully rounded.
   "radius-pill",
+  // landing task 11: channel headlines at the reference's 64-72 px.
+  "size-headline",
 ];
 
 /** landing design.md: halloween values taken from the reference :root. */
@@ -121,6 +123,11 @@ describe.each(THEMES)("theme %s", (theme) => {
     const rem = /^(\d*\.?\d+)rem$/.exec(resolved(theme).get("radius-pill") ?? "")?.[1];
     expect(rem, `${theme}: radius-pill`).toBeDefined();
     expect(Number(rem)).toBeGreaterThanOrEqual(4);
+  });
+
+  it("sets size-headline at 4rem, between the display step and the reference's 72 px", () => {
+    expect(resolved(theme).get("size-headline")).toBe("4rem");
+    expect(resolved(theme).get("size-display")).toBe("2.5rem");
   });
 
   it(`keeps every text size at or above ${MIN_TEXT_REM}rem`, () => {
