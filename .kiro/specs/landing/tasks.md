@@ -60,3 +60,9 @@
   - [x] 10.1 Playwright visual test (`pnpm test:visual`): 1600x900 in both themes, 390x844 in halloween and daemon-lost at 1600x900, all with reduced motion on the replay plane, 2% tolerance, baselines committed.
   - [ ] 10.2 Lighthouse accessibility of 90 or more and a first load of 2 MB or less on the deployed URL, recorded in `docs/kiro-log.md`.
   - _Requirements: 9.4, 9.5, 10.1, 10.2_
+
+- [ ] 11. Follow-ups from the lane D build (director, 2026-11-01)
+  - After 5.2: re-baseline `pnpm test:visual`; decide whether CH 6 and CH 9 tune on the set's own glass like the reference (index.html:916-926) instead of framed pages (requirement 8.1 currently says framed pages, which ships).
+  - Add a `size-headline` role (about 4rem) so channel headlines reach the reference's 64-72 px; the creator restyle (creator task 8) uses it too.
+  - Add the carved-number AA check to the visual test (design.md "Fixes"), and the phosphor-on-glass check once 5.2 lands.
+
