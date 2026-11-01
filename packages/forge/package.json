@@ -8,6 +8,11 @@
     "./wire": "./src/wire.ts"
   },
   "dependencies": {
-    "@sr/rig": "workspace:*"
+    "@sr/rig": "workspace:*",
+    "jpeg-js": "^0.4.4",
+    "upng-js": "^2.1.0"
+  },
+  "devDependencies": {
+    "@types/upng-js": "^2.1.5"
   }
 }

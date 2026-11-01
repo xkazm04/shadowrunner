@@ -1,5 +1,8 @@
 // Forge spike (forge-pipeline task 1.1, requirement 1). Owner-only, paid, never run by tests.
 //   GEMINI_API_KEY=... node scripts/forge-spike.mjs [--force]
+//   GEMINI_API_KEY=... node scripts/forge-spike.mjs --parts-only <image> [--force]
+// --parts-only (task 2.2, director ruling (a)): one PARTS_PROMPT call on an existing PNG/JPEG,
+// output under var/forge-spike/parts-only/<image name>/; no portrait is generated.
 // For 3 preset prompts (assets/characters/presets/PROMPTS.md, characters 1, 3 and 5) it generates a
 // portrait with portraitPrompt(), asks the segmentation model for parts with PARTS_PROMPT, and
 // writes portrait, raw + parsed parts, a structural check, and overlays under var/forge-spike/.
@@ -9,8 +12,9 @@
 // the script refuses to run again over an existing var/forge-spike/summary.json without --force.
 // The key is sent only in the x-goog-api-key header; it is never printed or written, and any
 // upstream text that is recorded is scrubbed of it first.
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { createHash } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { basename, extname, join, relative } from "node:path";
 import { crc32, deflateSync, inflateSync } from "node:zlib";
 
 const OUT = join("var", "forge-spike");
@@ -55,8 +59,15 @@ if (!KEY) {
   console.error("forge-spike: GEMINI_API_KEY is not set. This spike makes paid calls and needs the owner's key.");
   process.exit(2);
 }
-if (existsSync(join(OUT, "summary.json")) && !process.argv.includes("--force")) {
-  console.error(`forge-spike: ${join(OUT, "summary.json")} exists. Re-running spends money again; pass --force to do it anyway.`);
+const FORCE = process.argv.includes("--force");
+const PARTS_ONLY = process.argv.includes("--parts-only") ? process.argv[process.argv.indexOf("--parts-only") + 1] : undefined;
+if (process.argv.includes("--parts-only") && (!PARTS_ONLY || PARTS_ONLY.startsWith("--") || !existsSync(PARTS_ONLY))) {
+  console.error("forge-spike: --parts-only needs an existing PNG or JPEG path.");
+  process.exit(2);
+}
+const GUARD = PARTS_ONLY ? join(OUT, "parts-only", basename(PARTS_ONLY, extname(PARTS_ONLY)), "run.json") : join(OUT, "summary.json");
+if (existsSync(GUARD) && !FORCE) {
+  console.error(`forge-spike: ${GUARD} exists. Re-running spends money again; pass --force to do it anyway.`);
   process.exit(2);
 }
 
@@ -279,7 +290,46 @@ function overlayPng(img, parts) {
   return encodePng(w, h, rgb);
 }
 
+/** --parts-only: one parts call on an existing image; records the raw response, parsed parts and overlays. */
+async function partsOnly(file) {
+  const bytes = readFileSync(file);
+  const mimeType = bytes.readUInt32BE(0) === 0x89504e47 ? "image/png" : bytes[0] === 0xff && bytes[1] === 0xd8 ? "image/jpeg" : undefined;
+  if (!mimeType) {
+    console.error(`forge-spike: ${file} is neither PNG nor JPEG.`);
+    process.exitCode = 2;
+    return;
+  }
+  const dir = join(OUT, "parts-only", basename(file, extname(file)));
+  mkdirSync(dir, { recursive: true });
+  const run = { ranAt: new Date().toISOString(), segmentModel: SEGMENT_MODEL, timeoutMs: TIMEOUT_MS, image: file.replaceAll("\\", "/"), mimeType, sha256: createHash("sha256").update(bytes).digest("hex") };
+  console.log(`forge-spike: parts-only ${run.image} (${SEGMENT_MODEL})...`);
+  try {
+    const parts = await requestParts(bytes, mimeType);
+    Object.assign(run, { partsMs: parts.ms, partsAttempts: parts.attempts, partsUsage: parts.usage });
+    writeFileSync(join(dir, "parts.raw.txt"), parts.raw);
+    const check = checkParts(parts.raw);
+    writeFileSync(join(dir, "check.json"), `${JSON.stringify({ ...check, data: undefined }, null, 2)}\n`);
+    if (check.data) writeFileSync(join(dir, "parts.json"), `${JSON.stringify(check.data, null, 2)}\n`);
+    const img = mimeType === "image/png" ? decodePng(bytes) : jpegSize(bytes);
+    const data = check.data ?? [];
+    writeFileSync(join(dir, "overlay.svg"), overlaySvg(relative(dir, file).replaceAll("\\", "/"), img?.w ?? 1024, img?.h ?? 1024, data));
+    if (img?.rgb) writeFileSync(join(dir, "overlay.png"), overlayPng(img, data));
+    Object.assign(run, { width: img?.w, height: img?.h, parsed: check.parsed, partCount: check.total ?? 0, validParts: check.valid ?? 0, headPresent: check.headPresent ?? false, duplicates: check.duplicates ?? [] });
+    console.log(`forge-spike: parts ${parts.ms} ms, ${run.validParts}/${run.partCount} valid, head ${run.headPresent}`);
+  } catch (err) {
+    run.partsError = err.detail ?? { message: scrub(err.message) };
+    console.error(`forge-spike: parts failed: ${scrub(err.message)}`);
+    process.exitCode = 1;
+  }
+  writeFileSync(join(dir, "run.json"), `${JSON.stringify(run, null, 2)}\n`);
+  console.log(`forge-spike: wrote ${join(dir, "run.json")}`);
+}
+
 // ---- run ----
+if (PARTS_ONLY) {
+  await partsOnly(PARTS_ONLY);
+  process.exit();
+}
 mkdirSync(OUT, { recursive: true });
 const results = [];
 for (const c of CHARACTERS) {
