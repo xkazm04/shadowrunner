@@ -4,7 +4,7 @@ import { spawnSync } from "node:child_process";
 mkdirSync("var/kiro-runs", { recursive: true });
 const row = { ts: new Date().toISOString(), gates: {} };
 if (!existsSync("pnpm-workspace.yaml")) row.note = "no workspace yet - gates skipped";
-else for (const g of ["typecheck", "lint", "test"]) {
+else for (const g of ["typecheck", "lint", "test", "test:gates"]) {
   const r = spawnSync("pnpm", ["-s", g], { encoding: "utf8", shell: process.platform === "win32" });
   row.gates[g] = r.status === 0 ? "pass" : "fail";
   if (r.status !== 0) row[`${g}_tail`] = (r.stdout + r.stderr).split("\n").slice(-15).join("\n");
