@@ -42,7 +42,8 @@ describe("reduced motion: the static twin", () => {
     expect(fxLoads.count).toBe(0);
     expect(q("[data-intro]")).toBeNull();
     expect(q("[data-intro-shade]")).toBeNull();
-    expect(q("canvas")).toBeNull();
+    // No dust canvas; the only canvas is the set's live picture (avatar-renderer's own reduced motion).
+    expect(all("canvas").filter((c) => c.closest("[data-avatar]") === null)).toEqual([]);
     expect(q("[data-typing]")).toBeNull();
 
     await m.rerender(<LandingPage plane="replay" daemonSample />);

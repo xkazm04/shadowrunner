@@ -1,7 +1,8 @@
 // Composition root of the landing (spec landing, design.md "Files"). The world holds the cellar
 // and its light, the eye and the spiral pumpkin, the gourd row and its legend, and the status bar
-// over them: on the set the status bar is the header (the shell renders none on /). The set
-// (task 5.2) joins here as its task lands. The chat strip hangs on the right (portrait: last).
+// over them: on the set the status bar is the header (the shell renders none on /). The set stands
+// in the middle of the room with Malakor live on its glass (or the user's own character once it
+// is on air). The chat strip hangs on the right (portrait: last).
 // The daemon's state (daemon.ts) comes from health, or from the replay sample (key D, owned by
 // the shell); every lit thing reads it. With motion, the effects chunk (fx/) adds the flicker
 // and the dust, and the set warms up in a short intro that any key or click skips.
@@ -9,13 +10,14 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefO
 import { PAGES, type PageDef } from "../app/pages";
 import { useHealth, type Plane } from "../app/plane";
 import { usePreferences, type Motion } from "../app/theme";
-import { Carrier } from "./Carrier";
 import { ChatStrip } from "./ChatStrip";
 import { createDaemon, isLost, type DaemonDriver, type DaemonState } from "./daemon";
 import { Eye } from "./Eye";
-import { GlassCaption, Gourds, LIGHTS } from "./Gourds";
+import type { OnAirCharacter } from "./Glass";
+import { Gourds, LIGHTS } from "./Gourds";
 import styles from "./LandingPage.module.css";
 import { Room } from "./Room";
+import { TvSet } from "./Set";
 import { Spiral, SpiralThrow } from "./Spiral";
 import { daemonOf, StatusBar } from "./StatusBar";
 import { World } from "./World";
@@ -111,9 +113,14 @@ export interface LandingPageProps {
   controls?: ReactNode;
   /** The replay sample (key D): play the daemon-lost state. The shell passes it on replay only. */
   daemonSample?: boolean;
+  /**
+   * The user's own character once they have put it on air (requirement 3.5): the set shows it
+   * instead of Malakor. The on-air flow (spec voice-and-air) supplies it; absent until then.
+   */
+  onAir?: OnAirCharacter;
 }
 
-export function LandingPage({ plane = "replay", badge, controls, daemonSample = false }: LandingPageProps) {
+export function LandingPage({ plane = "replay", badge, controls, daemonSample = false, onAir }: LandingPageProps) {
   const { motion } = usePreferences();
   const lost = daemonOf(useHealth()) === "lost" || (plane === "replay" && daemonSample);
   const daemon = useDaemon(lost, motion);
@@ -134,11 +141,17 @@ export function LandingPage({ plane = "replay", badge, controls, daemonSample = 
       <World className={styles.stage}>
         <Room daemon={daemon} motion={motion} lights={LIGHTS}>
           <SpiralThrow />
-          {/* The set (task 5.2) stands here, in front of the thrown light and behind the eye, and
-              hosts the carrier and the caption on its glass. The hovered channel is written there
-              while the set has a picture; once the daemon is lost it folds to NO CARRIER. */}
-          <Carrier daemon={daemon} plane={plane} />
-          {!isLost(daemon) && <GlassCaption page={hover} />}
+          {/* The set stands in front of the thrown light and behind the eye. The hovered channel is
+              written on its glass while it has a picture; once the daemon is lost it folds to
+              NO CARRIER. */}
+          <TvSet
+            daemon={daemon}
+            plane={plane}
+            motion={motion}
+            channel={CHANNEL.number}
+            {...(hover === undefined ? {} : { hover })}
+            {...(onAir === undefined ? {} : { character: onAir })}
+          />
           <Eye daemon={daemon} motion={motion} lights={LIGHTS} />
           <Spiral />
           {motion === "full" && <canvas ref={dust} className={styles.dust} data-fx="dust" aria-hidden="true" />}

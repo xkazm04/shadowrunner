@@ -1,8 +1,7 @@
 // The gourds are the remote (landing requirement 5). Five channel buttons cut from `root-pile`,
 // one per manifest channel in ascending order, each with its number carved through and its title
 // beneath. The current channel's gourd burns, the others hold an ember. Hovering or focusing a
-// gourd writes that channel across the glass (GlassCaption, which the composition root stands on
-// the set's glass). The legend box shows the keymap the shell actually binds (keys.ts).
+// gourd writes that channel across the glass (onHover; Glass.tsx GlassCaption writes it). The legend box shows the keymap the shell actually binds (keys.ts).
 // The light levels are CSS states on `--light`; the daemon-lost choreography (daemon.ts) moves
 // them with per-gourd delays, and the flicker (fx/, motion only) scales them through `--flicker`.
 import { useRef, type CSSProperties } from "react";
@@ -13,8 +12,6 @@ import { navigate } from "../app/router";
 import type { Motion } from "../app/theme";
 import { fadeMs, lightDelayMs, type DaemonState } from "./daemon";
 import styles from "./Gourds.module.css";
-import { clipPolygon, GLASS, PLATE, superellipse } from "./superellipse";
-import { SET_PLATE, WORLD_SIZE, type WorldLayout } from "./World";
 
 /** root-pile's pixel space (assets/plates/root-pile.webp). */
 export const PILE = { width: 1264, height: 848 } as const;
@@ -81,18 +78,6 @@ export function lightOf(page: PageDef, current: PageId | undefined, daemon: Daem
   return page.id === current ? "burn" : "ember";
 }
 
-/** The set's plate box (World.tsx SET_PLATE) as percentages of a world. */
-export function plateBox(layout: WorldLayout): { x: number; y: number; width: number; height: number } {
-  const world = WORLD_SIZE[layout];
-  const p = SET_PLATE[layout];
-  return {
-    x: (p.x / world.width) * 100,
-    y: (p.y / world.height) * 100,
-    width: ((PLATE.width * p.scale) / world.width) * 100,
-    height: ((PLATE.height * p.scale) / world.height) * 100,
-  };
-}
-
 type Vars = CSSProperties & Record<`--${string}`, string | number>;
 
 const pct = (v: number) => `${v.toFixed(4)}%`;
@@ -101,62 +86,6 @@ const DIAL = channelPages(PAGES);
 
 /** The room's lights in daemon.ts order: the spiral pumpkin (position 0), then the gourds. */
 export const LIGHTS = 1 + DIAL.length;
-
-/** The glass superellipse as a clip-path polygon in percentages of the plate. */
-export const GLASS_CLIP = clipPolygon(superellipse(GLASS, 96), PLATE);
-
-function plateVars(): Vars {
-  const vars: Vars = {};
-  for (const [layout, prefix] of [["landscape", "l"], ["portrait", "p"]] as const) {
-    const box = plateBox(layout);
-    vars[`--plate-${prefix}-x`] = pct(box.x);
-    vars[`--plate-${prefix}-y`] = pct(box.y);
-    vars[`--plate-${prefix}-w`] = pct(box.width);
-    vars[`--plate-${prefix}-h`] = pct(box.height);
-  }
-  return vars;
-}
-
-/** The plate box in both layouts, as the custom properties `.plate` rules read. */
-export const PLATE_VARS = plateVars();
-
-/** The glass box inside the plate, as percentages of the plate. */
-export const GLASS_BOX: Vars = {
-  "--glass-x": pct(((GLASS.cx - GLASS.a) / PLATE.width) * 100),
-  "--glass-y": pct(((GLASS.cy - GLASS.b) / PLATE.height) * 100),
-  "--glass-w": pct(((2 * GLASS.a) / PLATE.width) * 100),
-  "--glass-h": pct(((2 * GLASS.b) / PLATE.height) * 100),
-};
-
-export interface GlassCaptionProps {
-  /** The hovered or focused channel; nothing is written without one. */
-  page?: PageDef;
-}
-
-/**
- * The channel written across the glass: its number, its name large, its subtitle. Sized as the
- * set's plate and clipped to the glass superellipse, so the set (task 5.2) can host it inside
- * its shared mask unchanged. A dark band backs the text so phosphor clears 4.5:1 on any picture.
- */
-export function GlassCaption({ page }: GlassCaptionProps) {
-  if (!page) return null;
-  const name = page.title.toUpperCase();
-  return (
-    <div className={styles.plate} style={PLATE_VARS} data-glass-caption aria-hidden="true">
-      <div className={styles.glass} style={{ clipPath: GLASS_CLIP }}>
-        <div className={styles.caption} style={GLASS_BOX}>
-          {page.channel !== undefined && <p className={styles.kick}>{`Channel ${page.channel}`}</p>}
-          <svg className={styles.big} viewBox="0 0 480 96" focusable="false">
-            <text x="240" y="50" textAnchor="middle" dominantBaseline="central" fontSize="84">
-              {name}
-            </text>
-          </svg>
-          {page.subtitle && <p className={styles.sub}>{page.subtitle}</p>}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 const ARROW: Readonly<Record<string, string>> = { ArrowLeft: "←", ArrowRight: "→" };
 

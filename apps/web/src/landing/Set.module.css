@@ -1,0 +1,148 @@
+/* The set (Set.tsx). Ported from the reference's Round 4 rules (#tvwrap, #plate, #cabShadow,
+   #cabFoot, #shade, #knob) with plate px (1200x896) turned into percentages of the plate box.
+   The plate box itself comes from Set.tsx PLATE_VARS (World.tsx SET_PLATE). Black is surface-0,
+   the knob's pointer is the candle (ember to accent). */
+
+.plate {
+  position: absolute;
+  inset-block-start: var(--plate-l-y);
+  inset-inline-start: var(--plate-l-x);
+  inline-size: var(--plate-l-w);
+  block-size: var(--plate-l-h);
+  pointer-events: none;
+}
+
+:global([data-world="portrait"]) .plate {
+  inset-block-start: var(--plate-p-y);
+  inset-inline-start: var(--plate-p-x);
+  inline-size: var(--plate-p-w);
+  block-size: var(--plate-p-h);
+}
+
+/* The cabinet's own shadow on the wall and floor: plate (210, 120) 780x800, blurred 34 plate px. */
+.cabShadow {
+  position: absolute;
+  inset-block-start: 13.3929%;
+  inset-inline-start: 17.5%;
+  inline-size: 65%;
+  block-size: 89.2857%;
+  border-radius: var(--sr-radius-1);
+  background-color: var(--sr-surface-0);
+  opacity: 0.9;
+  filter: blur(2.3rem);
+}
+
+:global([data-world="portrait"]) .cabShadow {
+  filter: blur(1.1rem);
+}
+
+/* The cabinet's box in the photo, plate (249, 138) 700x758: everything outside is masked off
+   anyway, and clipping it keeps the plate's paint smaller than the cellar's (the LCP). */
+.cabinetBox {
+  position: absolute;
+  inset-block-start: 15.4018%;
+  inset-inline-start: 20.75%;
+  inline-size: 58.3333%;
+  block-size: 84.5982%;
+  overflow: hidden;
+}
+
+/* The photographed set, at plate size inside its box, cut out of its photo along the cabinet
+   (M251 140 L947 138 L949 900 L249 900, softened by 1.6 plate px) and graded down into the
+   cellar's light. */
+.cabinet {
+  position: absolute;
+  inset-block-start: -18.2058%;
+  inset-inline-start: -35.5714%;
+  inline-size: 171.4286%;
+  block-size: 118.2058%;
+  max-inline-size: none;
+  filter: brightness(0.8) contrast(1.12) saturate(0.8);
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 896' preserveAspectRatio='none'%3E%3Cfilter id='f'%3E%3CfeGaussianBlur stdDeviation='1.6'/%3E%3C/filter%3E%3Cpath filter='url(%23f)' d='M251 140 L947 138 L949 900 L249 900 Z'/%3E%3C/svg%3E");
+  mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+}
+
+/* The base fades into floor shadow where the photo ends: plate (249, 700) 700x196. */
+.foot {
+  position: absolute;
+  inset-block-start: 78.125%;
+  inset-inline-start: 20.75%;
+  inline-size: 58.3333%;
+  block-size: 21.875%;
+  background-image: linear-gradient(
+    transparent,
+    color-mix(in srgb, var(--sr-surface-0) 55%, transparent) 60%,
+    color-mix(in srgb, var(--sr-surface-0) 85%, transparent)
+  );
+}
+
+/* The cabinet sinks into the dark while the daemon is lost (the glass sits above it):
+   plate (250, 138) 698x760. */
+.shade {
+  position: absolute;
+  inset-block-start: 15.4018%;
+  inset-inline-start: 20.8333%;
+  inline-size: 58.1667%;
+  block-size: 84.8214%;
+  background-color: var(--sr-surface-0);
+  opacity: 0;
+  transition: opacity 0.9s ease;
+}
+
+.plate[data-daemon="folding"] .shade,
+.plate[data-daemon="dark"] .shade {
+  opacity: 0.8;
+  transition: opacity 2.2s ease 0.5s;
+}
+
+/* The channel knob over the photographed one: plate (756, 688) 68x68, its pointer turned to the
+   channel on the set. */
+.knob {
+  position: absolute;
+  inset-block-start: 76.7857%;
+  inset-inline-start: 63%;
+  inline-size: 5.6667%;
+  block-size: 7.5893%;
+  padding: 0;
+  border: 0;
+  border-radius: var(--sr-radius-pill);
+  background-color: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+  transform: rotate(var(--knob));
+}
+
+.knob::after {
+  position: absolute;
+  inset-block-start: 7.35%;
+  inset-inline-start: 45.6%;
+  inline-size: 8.8%;
+  block-size: 32.35%;
+  border-radius: var(--sr-radius-1);
+  background-image: linear-gradient(var(--sr-ember), var(--sr-accent));
+  content: "";
+  opacity: 0.9;
+}
+
+.knob:hover::after,
+.knob:focus-visible::after {
+  opacity: 1;
+  filter: drop-shadow(0 0 0.5rem var(--sr-ember));
+}
+
+/* Three classes, over the shell's `.shell button:focus-visible`. */
+.plate .knob:focus-visible {
+  outline: medium solid var(--sr-accent);
+  outline-offset: var(--sr-space-1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plate .shade {
+    transition: none;
+  }
+}
+
+:global([data-motion="reduced"]) .plate .shade {
+  transition: none;
+}

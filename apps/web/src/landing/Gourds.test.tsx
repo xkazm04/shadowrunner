@@ -2,16 +2,12 @@ import fc from "fast-check";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { channelPages, PAGES } from "../app/pages";
-import { GLASS, PLATE } from "./superellipse";
-import { SET_PLATE } from "./World";
 import {
   cropBackground,
-  GlassCaption,
   GOURD_CROPS,
   Gourds,
   lightOf,
   PILE,
-  plateBox,
   SKIN,
   SKIN_RADIUS,
   type Crop,
@@ -86,21 +82,6 @@ describe("lightOf", () => {
   });
 });
 
-describe("plateBox", () => {
-  it("is the set's plate (SET_PLATE) as percentages of each world", () => {
-    const sizes = { landscape: [1600, 900], portrait: [420, 910] } as const;
-    for (const layout of ["landscape", "portrait"] as const) {
-      const [w, h] = sizes[layout];
-      const p = SET_PLATE[layout];
-      const box = plateBox(layout);
-      expect((box.x / 100) * w).toBeCloseTo(p.x, 6);
-      expect((box.y / 100) * h).toBeCloseTo(p.y, 6);
-      expect((box.width / 100) * w).toBeCloseTo(PLATE.width * p.scale, 6);
-      expect((box.height / 100) * h).toBeCloseTo(PLATE.height * p.scale, 6);
-    }
-  });
-});
-
 describe("Gourds", () => {
   it("renders the five channels as real buttons, ascending, named 'Channel n, Title'", () => {
     const tags = buttons(row());
@@ -152,30 +133,5 @@ describe("Gourds", () => {
     expect(live).not.toContain("<kbd>D</kbd>");
     expect(live).toContain("<kbd>Esc</kbd>");
     expect(live).toContain("Stylised photos · live chat");
-  });
-});
-
-describe("GlassCaption", () => {
-  it("writes the hovered channel's number, name and subtitle on the glass", () => {
-    const forge = DIAL.find((p) => p.id === "creator");
-    expect(forge).toBeDefined();
-    if (!forge) return;
-    const html = renderToString(<GlassCaption page={forge} />);
-    expect(html).toContain("data-glass-caption");
-    expect(html).toContain("Channel 3");
-    expect(html).toContain(">FORGE</text>");
-    expect(html).toContain("behind the back panel");
-  });
-
-  it("clips to the glass superellipse in plate percentages", () => {
-    const html = renderToString(<GlassCaption page={DIAL[0]} />);
-    expect(html).toContain("clip-path:polygon(");
-    // The rightmost point of the curve, (cx + a, cy), as a percentage of the plate.
-    const right = `${(((GLASS.cx + GLASS.a) / PLATE.width) * 100).toFixed(4).replace(/\.?0+$/, "")}%`;
-    expect(html).toContain(right);
-  });
-
-  it("renders nothing without a channel", () => {
-    expect(renderToString(<GlassCaption />)).toBe("");
   });
 });
