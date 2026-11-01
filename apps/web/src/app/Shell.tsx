@@ -21,6 +21,8 @@ import { nextTheme, usePreferences, useTheme, type Motion, type ThemeName } from
 const AirPage = lazy(() => import("../air/AirPage"));
 /** CH 3, the creator (spec creator): its own chunk, so the set does not carry it. */
 const CreatorPage = lazy(() => import("../creator/CreatorPage").then((m) => ({ default: m.CreatorPage })));
+/** Forge new, the rite (costume 3.2): its own chunk too. */
+const RitePage = lazy(() => import("../creator/rite/RitePage").then((m) => ({ default: m.RitePage })));
 
 /** Built once at load: a manifest clash throws here, before anything renders. */
 const KEYMAP = buildKeymap(PAGES);
@@ -108,10 +110,12 @@ function ChannelBody({ page, plane, health, lost }: { page: PageDef; plane: Plan
   }
   if (page.id === "daemon") return <Daemon health={health} plane={plane} lost={lost} />;
   if (page.id === "forge-new") {
-    // COSTUME HOOK (creator lane, costume task 3.2): mount the rite page for /creator/new here,
-    // e.g. a lazy `../creator/rite/RitePage` in Suspense like CreatorPage above. Until then, the
-    // placeholder.
-    return <Placeholder page={page} />;
+    // Costume task 3.2: the rite page (creator lane).
+    return (
+      <Suspense fallback={<p data-page="forge-new">Opening the forge…</p>}>
+        <RitePage />
+      </Suspense>
+    );
   }
   return <Placeholder page={page} />;
 }

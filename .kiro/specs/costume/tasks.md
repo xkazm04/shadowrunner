@@ -18,9 +18,9 @@
   - Port `r2/landing-c.html` per design.md; remove the gourds and pumpkin art; re-baseline the landing visual test.
   - _Requirements: 3.1-3.5, 10.3, 10.4_
 
-- [ ] 3. Forge: anatomy under glass and the rite (creator lane)
-  - [ ] 3.1 `/creator` per `r1/creator-b.html`.
-  - [ ] 3.2 `/creator/new` per `r2/creator-a.html`, wired to `forgeClient`; handoff to `/creator`.
+- [x] 3. Forge: anatomy under glass and the rite (creator lane)
+  - [x] 3.1 `/creator` per `r1/creator-b.html`.
+  - [x] 3.2 `/creator/new` per `r2/creator-a.html`, wired to `forgeClient`; handoff to `/creator`.
   - _Requirements: 4.1-4.4_
 
 - [ ] 4. Characters: the wall of sets (characters lane)

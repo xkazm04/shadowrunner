@@ -1,0 +1,325 @@
+/* Forge new, the four marks (Marks, ForgeWake), after `r2/creator-a.html` `.rite`: wax seals dark,
+   lit or pressed; the fields, chips and drop keys; the refusal as a cold blue card (phosphor on
+   surface, not an alarm); Literal colours are roles: amber
+   accent and ember, pale face-glow on paper-ink, the red go key signal-onair. `--lamp` and
+   `--lamp-2` are palette data on the Bind swatches. */
+
+/* ---- the marks ---- */
+.rite {
+  display: grid;
+  gap: var(--sr-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mark {
+  border: thin solid color-mix(in srgb, var(--sr-line) 70%, transparent);
+  background-image: linear-gradient(var(--sr-surface-1), var(--sr-surface-0));
+  clip-path: inset(0 round 0.625rem);
+  transition: border-color 0.3s;
+}
+
+.mark[data-state="now"] {
+  border: thin solid color-mix(in srgb, var(--sr-accent) 55%, transparent);
+}
+
+.markHead {
+  display: grid;
+  grid-template-columns: 2.375rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--sr-space-3);
+  inline-size: 100%;
+  padding: var(--sr-space-2) var(--sr-space-3);
+  border: 0;
+  background-color: transparent;
+  color: var(--sr-text-strong);
+  text-align: start;
+  cursor: pointer;
+}
+
+.seal {
+  display: grid;
+  place-items: center;
+  inline-size: 2.25rem;
+  block-size: 2.25rem;
+  border: thin solid var(--sr-line);
+  border-radius: var(--sr-radius-pill);
+  background-image: radial-gradient(circle at 40% 32%, var(--sr-surface-3), var(--sr-surface-0));
+  color: var(--sr-text);
+  font-family: var(--sr-font-display);
+  font-size: var(--sr-size-text);
+  font-weight: 700;
+}
+
+.mark[data-state="done"] .seal {
+  border-color: var(--sr-ember);
+  background-image: radial-gradient(circle at 38% 30%, var(--sr-face-glow), color-mix(in srgb, var(--sr-ember) 85%, var(--sr-surface-0)) 70%);
+  color: var(--sr-paper-ink);
+}
+
+.mark[data-state="now"] .seal {
+  border-color: var(--sr-accent);
+  color: var(--sr-face-glow);
+  filter: drop-shadow(0 0 0.5rem color-mix(in srgb, var(--sr-accent) 60%, transparent));
+}
+
+.markName {
+  min-inline-size: 0;
+}
+
+.markName b {
+  display: block;
+  font-family: var(--sr-font-display);
+  font-size: var(--sr-size-text-lg);
+  line-height: 1.1;
+}
+
+.sum {
+  display: block;
+  overflow: hidden;
+  color: var(--sr-text-muted);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.markState {
+  color: var(--sr-text-muted);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.mark[data-state="now"] .markState {
+  color: var(--sr-signal-warn);
+}
+
+.mark[data-state="done"] .markState {
+  color: var(--sr-ember);
+}
+
+.markBody {
+  padding: 0 var(--sr-space-3) var(--sr-space-3);
+}
+
+.fields {
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.lbl {
+  display: flex;
+  justify-content: space-between;
+  margin: var(--sr-space-2) 0 var(--sr-space-1);
+  color: var(--sr-text);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+}
+
+.lbl small {
+  color: var(--sr-text-muted);
+  font-size: var(--sr-size-text-sm);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+}
+
+.prompt {
+  display: block;
+  box-sizing: border-box;
+  inline-size: 100%;
+  padding: var(--sr-space-2);
+  border: thin solid var(--sr-line);
+  border-radius: var(--sr-radius-1);
+  background-color: var(--sr-surface-0);
+  color: var(--sr-text-strong);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text);
+  line-height: 1.45;
+  resize: none;
+}
+
+.prompt:focus {
+  border-color: var(--sr-accent);
+  outline: none;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sr-space-1);
+}
+
+.chips button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sr-space-1);
+  padding: var(--sr-space-1) var(--sr-space-2);
+  border: thin solid var(--sr-line);
+  border-radius: var(--sr-radius-1);
+  background-color: var(--sr-surface-2);
+  color: var(--sr-text-strong);
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text-sm);
+  cursor: pointer;
+}
+
+.chips button:hover {
+  border-color: var(--sr-accent);
+}
+
+.chips button[aria-pressed="true"] {
+  border-color: var(--sr-face-glow);
+  background-color: var(--sr-face-glow);
+  color: var(--sr-paper-ink);
+  font-weight: 700;
+}
+
+.sw i {
+  inline-size: 0.75rem;
+  block-size: 0.75rem;
+  margin-inline-end: var(--sr-space-2);
+  border-radius: var(--sr-radius-pill);
+  background-image: radial-gradient(circle, var(--lamp) 55%, transparent 58%), radial-gradient(circle at 110% 50%, var(--lamp-2) 45%, transparent 48%);
+  filter: drop-shadow(0 0 0.25rem var(--lamp));
+}
+
+.drop {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sr-space-1);
+  margin-block-start: var(--sr-space-2);
+}
+
+.dropKey {
+  position: relative;
+  padding: var(--sr-space-2);
+  border: thin dashed var(--sr-line);
+  border-radius: var(--sr-radius-1);
+  background-color: transparent;
+  color: var(--sr-text-strong);
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text-sm);
+  line-height: 1.25;
+  text-align: start;
+  cursor: pointer;
+}
+
+.dropKey small {
+  display: block;
+  color: var(--sr-text-muted);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+}
+
+.dropKey:hover,
+.dropKey:focus-within {
+  border-color: var(--sr-accent);
+}
+
+.file {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* The refusal: a cold blue card, not an alarm. */
+.refuse {
+  display: grid;
+  gap: var(--sr-space-1);
+  margin-block-start: var(--sr-space-2);
+  padding: var(--sr-space-2) var(--sr-space-3);
+  border: thin solid color-mix(in srgb, var(--sr-phosphor-2) 45%, transparent);
+  border-radius: var(--sr-radius-1);
+  background-image: linear-gradient(color-mix(in srgb, var(--sr-phosphor-2) 7%, var(--sr-surface-0)), color-mix(in srgb, var(--sr-phosphor-2) 7%, var(--sr-surface-0)));
+  color: var(--sr-phosphor);
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text-sm);
+}
+
+.refuse b {
+  font-family: var(--sr-font-display);
+  font-size: var(--sr-size-text-lg);
+}
+
+.why {
+  color: var(--sr-phosphor-2);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+}
+
+.failKeys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sr-space-2);
+}
+
+.next,
+.go {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sr-space-2);
+  inline-size: 100%;
+  margin-block-start: var(--sr-space-2);
+  padding: var(--sr-space-2) var(--sr-space-3);
+  border: thin solid var(--sr-accent);
+  border-radius: var(--sr-radius-1);
+  background-color: transparent;
+  color: var(--sr-face-glow);
+  font-family: var(--sr-font-display);
+  font-size: var(--sr-size-text);
+  font-weight: 700;
+  text-align: start;
+  cursor: pointer;
+}
+
+.failKeys .next {
+  inline-size: auto;
+}
+
+.go {
+  border-color: var(--sr-signal-onair);
+  background-image: linear-gradient(color-mix(in srgb, var(--sr-signal-onair) 62%, var(--sr-surface-0)), color-mix(in srgb, var(--sr-signal-onair) 44%, var(--sr-surface-0)));
+  color: var(--sr-text-strong);
+}
+
+.next small,
+.go small {
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+  font-weight: 400;
+}
+
+.next:disabled,
+.go:disabled {
+  border-color: var(--sr-line);
+  background-image: none;
+  color: var(--sr-text-muted);
+  cursor: not-allowed;
+}
+
+.vdesc,
+.note {
+  margin: var(--sr-space-1) 0 0;
+  color: var(--sr-text);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+  line-height: 1.45;
+}
+
+.markHead:focus-visible,
+.chips button:focus-visible,
+.dropKey:focus-within,
+.next:focus-visible,
+.go:focus-visible {
+  outline: 0.1875rem solid var(--sr-accent);
+  outline-offset: 0.125rem;
+}

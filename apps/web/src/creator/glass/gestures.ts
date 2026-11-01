@@ -1,24 +1,11 @@
 // Six gestures (creator requirement 1.3). Gestures are events, not state (design.md): a press
-// calls `onGesture`, and the page pulses the `<AvatarCanvas gesture>` prop (useGesturePulse).
+// pulses the `<AvatarCanvas gesture>` prop through `useGesturePulse`.
 import type { Gesture } from "@sr/rig";
 import { useCallback, useEffect, useRef, useState } from "react";
-import styles from "./Customize.module.css";
 
 export const GESTURES: readonly Gesture[] = ["nod", "tilt", "lean_in", "recoil", "glare", "flare"];
 
 export const gestureLabel = (g: Gesture): string => g.replace("_", " ");
-
-export function GestureBar({ onGesture }: { onGesture: (gesture: Gesture) => void }) {
-  return (
-    <div className={`${styles.keys} ${styles.keys6}`} role="group" aria-label="Gesture">
-      {GESTURES.map((g) => (
-        <button key={g} type="button" className={styles.key} onClick={() => onGesture(g)}>
-          {gestureLabel(g)}
-        </button>
-      ))}
-    </div>
-  );
-}
 
 /** How long the gesture prop holds its value before it returns to undefined (so a repeat fires). */
 export const PULSE_MS = 120;

@@ -1,0 +1,274 @@
+/* Forge new, the glass of the rite (RiteGlass, RitePage), after `r2/creator-a.html` `.g-*` and
+   `.tape`: the static, the portrait developing, the scan line, the found boxes lifting off as they
+   are cut, the fill sweep, the recorded tape. The glass frame itself is the Forge's
+   (glass/Glass.module.css), the layout glass/Anatomy.module.css. Literal colours are roles: amber
+   is accent, pale face-glow, the live dot signal-onair. */
+
+/* ---- the developing glass ---- */
+.static,
+.portrait {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+.static {
+  opacity: 0;
+  image-rendering: pixelated;
+  transition: opacity 0.4s;
+}
+
+.static[data-on] {
+  opacity: 0.5;
+}
+
+.portrait {
+  object-fit: cover;
+  animation: develop 2.2s cubic-bezier(0.3, 0.6, 0.3, 1) both;
+  transition: opacity 0.6s, filter 0.6s;
+}
+
+@keyframes develop {
+  from {
+    clip-path: inset(0 0 100% 0);
+    filter: blur(0.875rem) brightness(0.35) sepia(0.8);
+  }
+
+  70% {
+    clip-path: inset(0);
+  }
+}
+
+.portrait[data-step="cutting"] {
+  opacity: 0.55;
+  filter: brightness(0.6) grayscale(0.4);
+}
+
+.portrait[data-step="filling"] {
+  opacity: 0.2;
+  filter: brightness(0.55) grayscale(0.4);
+}
+
+.portrait[data-step="done"] {
+  opacity: 0;
+}
+
+.scan {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-start: 0;
+  block-size: 0.125rem;
+  background-image: linear-gradient(90deg, transparent, var(--sr-face-glow) 20%, var(--sr-text-strong) 50%, var(--sr-face-glow) 80%, transparent);
+  filter: drop-shadow(0 0 0.5rem var(--sr-accent));
+  animation: scan 2.2s linear infinite;
+}
+
+.scan[data-step="segmenting"] {
+  animation-duration: 1s;
+}
+
+@keyframes scan {
+  to {
+    inset-block-start: 100%;
+  }
+}
+
+/* A found part: a dashed box with its name and size; it lifts away as it is cut. */
+.box {
+  position: absolute;
+  box-sizing: border-box;
+  border: 0.125rem dashed var(--sr-face-glow);
+  border-radius: var(--sr-radius-1);
+  background-image: linear-gradient(color-mix(in srgb, var(--sr-accent) 7%, transparent), color-mix(in srgb, var(--sr-accent) 7%, transparent));
+  animation: found 1.2s ease-in-out infinite alternate;
+  transition: opacity 0.5s, transform 0.5s;
+}
+
+@keyframes found {
+  to {
+    border: 0.125rem dashed color-mix(in srgb, var(--sr-face-glow) 35%, transparent);
+  }
+}
+
+.box[data-cut] {
+  opacity: 0;
+  transform: translateY(-6%) scale(1.04);
+}
+
+.boxTag {
+  position: absolute;
+  inset-block-end: 100%;
+  inset-inline-start: 0;
+  padding: 0 var(--sr-space-1);
+  background-image: linear-gradient(color-mix(in srgb, var(--sr-surface-0) 90%, transparent), color-mix(in srgb, var(--sr-surface-0) 90%, transparent));
+  color: var(--sr-face-glow);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.box[data-top] .boxTag {
+  inset-block: 0 auto;
+}
+
+.boxTag small {
+  color: var(--sr-text);
+  font-size: var(--sr-size-text-sm);
+  font-weight: 400;
+}
+
+.fill {
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(
+    100deg,
+    transparent 0 40%,
+    color-mix(in srgb, var(--sr-face-glow) 18%, transparent) 47%,
+    color-mix(in srgb, var(--sr-text-strong) 32%, transparent) 50%,
+    color-mix(in srgb, var(--sr-face-glow) 18%, transparent) 53%,
+    transparent 60%
+  );
+  background-repeat: no-repeat;
+  background-size: 250% 100%;
+  mix-blend-mode: screen;
+  animation: sweep 1.5s linear infinite;
+}
+
+@keyframes sweep {
+  from {
+    background-position: 100% 0;
+  }
+
+  to {
+    background-position: 0 0;
+  }
+}
+
+.wait {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  margin: 0;
+  color: var(--sr-text);
+  font-family: var(--sr-font-display);
+  font-size: var(--sr-size-text-lg);
+  font-weight: 700;
+  text-align: center;
+}
+
+.wait small {
+  display: block;
+  margin-block-start: var(--sr-space-1);
+  color: var(--sr-text-muted);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+  font-weight: 400;
+}
+
+.clock {
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+  white-space: nowrap;
+}
+
+.transcript {
+  inline-size: 100%;
+  min-block-size: 1.375rem;
+  margin: 0;
+  color: var(--sr-text-strong);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+  line-height: 1.4;
+}
+
+/* ---- the tape ---- */
+.tape {
+  display: flex;
+  gap: var(--sr-space-1);
+  inline-size: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cell {
+  position: relative;
+  flex: 1 1 0;
+  min-inline-size: 0;
+  overflow: hidden;
+  padding: var(--sr-space-1) var(--sr-space-2);
+  border: thin solid color-mix(in srgb, var(--sr-line) 60%, transparent);
+  border-radius: var(--sr-radius-1);
+  background-color: var(--sr-surface-1);
+}
+
+.cell::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  inline-size: var(--f, 0%);
+  background-image: linear-gradient(90deg, color-mix(in srgb, var(--sr-accent) 10%, transparent), color-mix(in srgb, var(--sr-accent) 26%, transparent));
+  transition: inline-size 0.1s linear;
+}
+
+.cell[data-state="now"] {
+  border: thin solid color-mix(in srgb, var(--sr-accent) 60%, transparent);
+}
+
+.cell b,
+.cell small {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cell b {
+  color: var(--sr-text);
+  font-family: var(--sr-font-display);
+  font-size: var(--sr-size-text-sm);
+  font-weight: 700;
+}
+
+.cell[data-state="now"] b,
+.cell[data-state="done"] b {
+  color: var(--sr-text-strong);
+}
+
+.cell[data-state="now"] b::after {
+  content: " ●";
+  color: var(--sr-signal-onair);
+}
+
+.cell small {
+  color: var(--sr-text-muted);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portrait,
+  .box,
+  .fill {
+    animation: none;
+  }
+
+  .scan {
+    display: none;
+  }
+}
+
+:global([data-motion="reduced"]) .portrait,
+:global([data-motion="reduced"]) .box,
+:global([data-motion="reduced"]) .fill {
+  animation: none;
+}
+
+:global([data-motion="reduced"]) .scan {
+  display: none;
+}

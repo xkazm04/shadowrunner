@@ -1,0 +1,132 @@
+/* Forge new, the last two marks and the foot (ForgeWake, RitePage): the stage list with its lit
+   dot, the wake card, the hand-off and foot keys. Literal colours are roles: amber accent, pale
+   face-glow, the red key signal-onair. */
+
+.stages {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stages li {
+  display: grid;
+  grid-template-columns: 1rem 1fr auto;
+  align-items: center;
+  gap: var(--sr-space-2);
+  padding: var(--sr-space-1);
+  border-block-end: thin solid color-mix(in srgb, var(--sr-line) 40%, transparent);
+}
+
+.stages li::before {
+  content: "";
+  inline-size: 0.625rem;
+  block-size: 0.625rem;
+  box-sizing: border-box;
+  border: thin solid var(--sr-text-muted);
+  border-radius: var(--sr-radius-pill);
+}
+
+.stages li[data-state="done"]::before {
+  border-color: var(--sr-accent);
+  background-color: var(--sr-accent);
+}
+
+.stages li[data-state="now"]::before {
+  border-color: var(--sr-signal-onair);
+  background-color: var(--sr-signal-onair);
+  animation: blink 0.8s steps(2) infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+.stages b {
+  color: var(--sr-text);
+  font-family: var(--sr-font-display);
+  font-size: var(--sr-size-text);
+  font-weight: 600;
+}
+
+.stages li[data-state="now"] b,
+.stages li[data-state="done"] b {
+  color: var(--sr-text-strong);
+}
+
+.stages span {
+  color: var(--sr-text-muted);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+  white-space: nowrap;
+}
+
+.wake p {
+  margin: var(--sr-space-1) 0 var(--sr-space-2);
+  color: var(--sr-text);
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text);
+}
+
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sr-space-2);
+  margin-block-start: var(--sr-space-2);
+  padding: var(--sr-space-2) var(--sr-space-3);
+  border: thin solid var(--sr-line);
+  border-radius: var(--sr-radius-1);
+  background-color: var(--sr-surface-1);
+  color: var(--sr-text-strong);
+  font-family: var(--sr-font-display);
+  font-size: var(--sr-size-text);
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.btn:disabled {
+  color: var(--sr-text-muted);
+  cursor: default;
+}
+
+.btn kbd {
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+}
+
+.amber {
+  border-color: var(--sr-accent);
+  color: var(--sr-face-glow);
+}
+
+.red {
+  border-color: var(--sr-signal-onair);
+  background-image: linear-gradient(color-mix(in srgb, var(--sr-signal-onair) 62%, var(--sr-surface-0)), color-mix(in srgb, var(--sr-signal-onair) 44%, var(--sr-surface-0)));
+}
+
+.foot {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sr-space-2);
+  margin-block-start: auto;
+}
+
+.btn:focus-visible {
+  outline: 0.1875rem solid var(--sr-accent);
+  outline-offset: 0.125rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stages li[data-state="now"]::before {
+    animation: none;
+  }
+}
+
+:global([data-motion="reduced"]) .stages li[data-state="now"]::before {
+  animation: none;
+}
