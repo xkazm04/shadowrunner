@@ -97,7 +97,7 @@ function rules(text: string): Rule[] {
   }));
 }
 
-const STAGE_CSS = [css("./air.module.css"), css("./Chat.module.css")].flatMap((text) => rules(text));
+const STAGE_CSS = ["./air.module.css", "./OnAirLamp.module.css", "./Captions.module.css", "./Chat.module.css"].map(css).flatMap((text) => rules(text));
 const FILL_PROPS = ["background-color", "background-image", "background"];
 /** Rules that are not on screen while on air (the dark lamp, the dead line). */
 const OFF_AIR = /data-lit="off"|dead_line/;
@@ -145,5 +145,35 @@ describe.each(["halloween", "baseline"])("the stage in the %s theme", (name) => 
     const text = hex(theme.get("text-strong") ?? "");
     expect(plate.length).toBeGreaterThan(0);
     for (const bg of plate) expect(text && contrast(text, bg)).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+describe("haunt bound to status in the stage CSS", () => {
+  const air = rules(css("./air.module.css"));
+  const moving = (r: Rule) => [...r.decls].some(([k, v]) => (k === "animation" || k === "transition") && v !== "none");
+
+  it("gives every animation and transition a reduced-motion twin that holds still", () => {
+    const twins = air.filter((r) => r.selector.includes(':global([data-motion="reduced"])'));
+    const still = (r: Rule) => r.decls.get("animation") === "none" && r.decls.get("transition") === "none";
+    const covered = new Set(
+      twins.filter(still).flatMap((r) => r.selector.split(",").map((s) => s.replace(':global([data-motion="reduced"])', "").trim())),
+    );
+    const animated = air.filter((r) => moving(r) && !r.selector.includes("data-motion"));
+    expect(animated.length).toBeGreaterThan(1);
+    for (const rule of animated) expect(covered.has(rule.selector), rule.selector).toBe(true);
+  });
+
+  it("drives the dead line from data-state: haunt glow to zero, the face dimmed", () => {
+    const dead = air.find((r) => r.selector === '.stage[data-state="dead_line"]');
+    expect(dead?.decls.get("--sr-haunt-glow")).toBe("0");
+    expect(air.find((r) => r.selector === '.stage[data-state="dead_line"] .face')?.decls.get("filter")).toMatch(/brightness\(0\.\d+\)/);
+    // The bulb's halo is haunt glow, and the fog's density is the fog var.
+    expect(air.find((r) => r.selector === ".bulb::before")?.decls.get("opacity")).toBe("var(--sr-haunt-glow)");
+    expect(air.find((r) => r.selector === ".fog" && r.decls.has("opacity"))?.decls.get("opacity")).toBe("var(--sr-haunt-fog)");
+  });
+
+  it("binds every haunt token to zero in the baseline theme", () => {
+    const baselineValues = themeValues("baseline");
+    for (const role of ["haunt-fog", "haunt-flicker", "haunt-glow"]) expect(Number(baselineValues.get(role))).toBe(0);
   });
 });

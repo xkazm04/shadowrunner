@@ -14,7 +14,9 @@
 //   browser has not allowed sound yet) holds its caption for BEAT_MS, the 9 s default beat.
 // - The simulated audience replays the show file's messages at their offsets, looping, with ids
 //   suffixed per loop so no id repeats.
-// - An engine error skips the beat and tries again one beat later.
+// - An engine error skips the beat and tries again one beat later; the second in a row kills
+//   the line (stage.ts). While the line is dead nothing airs: no beats, no audience; health is
+//   polled every 5 s and the show resumes where it stopped (the audience does not burst in).
 import {
   parseReply,
   pickMessage,
@@ -29,6 +31,7 @@ import {
   type ShowScript,
 } from "@sr/engine";
 import type { Fetcher } from "../app/plane";
+import { HEALTH_POLL_MS, INITIAL_STAGE, stageStep, type StageEvent, type StageState } from "./stage";
 
 /** The default beat, and how long a caption-only line stays up (requirement 4.3). */
 export const BEAT_MS = 9_000;
@@ -79,6 +82,8 @@ export interface ShowDeps {
   /** The character's chat name (`ctx.self`). */
   self: string;
   fetch: Fetcher;
+  /** One /api/health read: true when it answered and the engine is not offline. */
+  health(): Promise<boolean>;
   /** Monotonic milliseconds (performance.now in the browser). */
   now(): number;
   timers: Timers;
@@ -119,6 +124,8 @@ export function showPeriod(show: ShowScript): number {
 export interface Show {
   subscribe(listener: () => void): () => void;
   snapshot(): ShowSnapshot;
+  /** Now on the show clock (the clock chat stamps use). */
+  now(): number;
   start(): void;
   stop(): void;
   /** The visitor's message; false when empty after trimming. */
@@ -155,6 +162,7 @@ export function createShow(deps: ShowDeps): Show {
   const period = showPeriod(show);
   const listeners = new Set<() => void>();
   let snap: ShowSnapshot = { status: "booting", chat: [], sound: "on", beat: 0 };
+  let stage: StageState = INITIAL_STAGE;
   let pickState: PickState = initialPickState();
   let running = false;
   let generation = 0;
@@ -163,6 +171,9 @@ export function createShow(deps: ShowDeps): Show {
   let beatTimer: unknown;
   let audienceTimer: unknown;
   let currentUrl: string | undefined;
+  /** Time spent with the line dead: the audience's schedule moves on by it. */
+  let pausedMs = 0;
+  let deadSince: number | undefined;
 
   const set = (patch: Partial<ShowSnapshot>) => {
     snap = { ...snap, ...patch };
@@ -171,15 +182,20 @@ export function createShow(deps: ShowDeps): Show {
 
   const append = (msg: ChatMsg) => set({ chat: [...snap.chat, msg].slice(-CHAT_KEEP) });
 
+  const apply = (event: StageEvent) => {
+    stage = stageStep(stage, event);
+    if (stage.status !== snap.status) set({ status: stage.status });
+  };
+
   /** Posts every audience message due by now; schedules the next one. */
   const postAudience = () => {
-    if (!running || show.audience.length === 0) return;
+    if (!running || stage.status === "dead_line" || show.audience.length === 0) return;
     const n = show.audience.length;
     for (;;) {
       const loop = Math.floor(audienceAt / n);
       const msg = show.audience[audienceAt % n];
       if (msg === undefined) return;
-      const due = loop * period + msg.ts;
+      const due = loop * period + msg.ts + pausedMs;
       const wait = due - clock.read();
       if (wait > 0) {
         audienceTimer = timers.set(postAudience, wait);
@@ -202,6 +218,42 @@ export function createShow(deps: ShowDeps): Show {
     }, ms);
   };
 
+  /** Asks /api/health; on air again when it answers, else polls again in HEALTH_POLL_MS. */
+  const checkHealth = async (gen: number): Promise<void> => {
+    const ok = await deps.health().catch(() => false);
+    if (gen !== generation) return;
+    const was = stage.status;
+    apply({ kind: "health", ok });
+    if (stage.status === "dead_line") {
+      if (was !== "dead_line") goDark();
+      pollHealth(gen);
+      return;
+    }
+    if (was === "booting" || was === "dead_line") {
+      if (deadSince !== undefined) pausedMs += clock.read() - deadSince;
+      deadSince = undefined;
+      postAudience();
+      schedule(0, gen);
+    }
+  };
+
+  /** The next health read, HEALTH_POLL_MS from now (only while the line is dead). */
+  const pollHealth = (gen: number) => {
+    timers.clear(beatTimer);
+    beatTimer = timers.set(() => {
+      if (gen === generation) void checkHealth(gen);
+    }, HEALTH_POLL_MS);
+  };
+
+  /** The line died: stop the voice, the beats and the audience. */
+  const goDark = () => {
+    deadSince = clock.read();
+    timers.clear(beatTimer);
+    timers.clear(audienceTimer);
+    player.stop();
+    release();
+  };
+
   /** The voice for one line: one retry, then none (requirement 3.4). */
   const voiceFor = async (line: string): Promise<Blob | undefined> => {
     for (let attempt = 0; attempt < VOICE_ATTEMPTS; attempt += 1) {
@@ -214,7 +266,11 @@ export function createShow(deps: ShowDeps): Show {
     return undefined;
   };
 
+  /** The beat that `gen` started is still the current one and the line is up. */
+  const live = (gen: number) => gen === generation && stage.status !== "dead_line";
+
   const runBeat = async (gen: number): Promise<void> => {
+    apply({ kind: "line", speaking: false });
     const beat = snap.beat;
     const { picked, state } = pickMessage(snap.chat, pickState, { self, now: clock.read() });
     pickState = state;
@@ -229,33 +285,42 @@ export function createShow(deps: ShowDeps): Show {
     try {
       reply = await requestReply(deps.fetch, req);
     } catch {
-      if (gen !== generation) return;
-      set({ status: "on_air" });
-      schedule(BEAT_MS, gen);
+      if (!live(gen)) return;
+      apply({ kind: "engine", ok: false });
+      if (stage.status === "dead_line") {
+        // The engine failed twice: give it a poll interval before asking health.
+        goDark();
+        pollHealth(gen);
+      } else {
+        schedule(BEAT_MS, gen);
+      }
       return;
     }
-    if (gen !== generation) return;
+    if (!live(gen)) return;
+    apply({ kind: "engine", ok: true });
     const answered = reply.answeredId === undefined ? undefined : snap.chat.find((m) => m.id === reply.answeredId);
     append({ id: `r${beat}`, user: self, text: reply.line, ts: clock.stamp() });
     const caption = (voiced: boolean): Caption => ({ beat, line: reply.line, reply, voiced, ...(answered === undefined ? {} : { answered }) });
     set({ beat: beat + 1 });
 
     const blob = await voiceFor(reply.line);
-    if (gen !== generation) return;
+    if (!live(gen)) return;
     if (blob === undefined) {
-      set({ status: "speaking", caption: caption(false) });
+      set({ caption: caption(false) });
+      apply({ kind: "line", speaking: true });
       schedule(BEAT_MS, gen);
       return;
     }
     release();
     const url = deps.objectUrl(blob);
     currentUrl = url;
-    set({ status: "speaking", caption: caption(snap.sound === "on") });
+    set({ caption: caption(snap.sound === "on") });
+    apply({ kind: "line", speaking: true });
     const startedAt = deps.now();
     const result = snap.sound === "on" ? await player.play(url) : "blocked";
-    if (gen !== generation) return;
+    if (!live(gen)) return;
     if (result === "ended") {
-      set({ status: "on_air" });
+      apply({ kind: "line", speaking: false });
       schedule(0, gen);
       return;
     }
@@ -272,13 +337,14 @@ export function createShow(deps: ShowDeps): Show {
       };
     },
     snapshot: () => snap,
+    now: () => clock.read(),
     start() {
       if (running) return;
       running = true;
       generation += 1;
-      set({ status: "on_air" });
-      postAudience();
-      schedule(0, generation);
+      stage = INITIAL_STAGE;
+      set({ status: stage.status });
+      void checkHealth(generation);
     },
     stop() {
       running = false;

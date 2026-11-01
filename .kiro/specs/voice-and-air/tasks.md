@@ -25,6 +25,6 @@
   - [x] 5.3 `AirPage.tsx`, `Chat.tsx` (visitor input), `OnAirLamp.tsx`, `Captions.tsx`, `air.module.css` with role tokens only; register `air` in the page manifest as `live`.
   - _Requirements: 3.4, 4.1, 4.2, 4.3, 4.4, 4.5, 4.6_
 
-- [ ] 6. Haunt bound to status
+- [x] 6. Haunt bound to status
   - Stage state machine with `dead_line` (`DeadLine.tsx`), health polling, fog from chat velocity via `--sr-haunt-fog`, reduced-motion twins, baseline theme check; component tests for enter/recover and the lamp role.
   - _Requirements: 5.1, 5.2, 5.3, 5.4_

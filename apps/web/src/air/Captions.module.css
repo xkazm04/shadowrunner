@@ -1,0 +1,85 @@
+/* Captions and the dead line's words (voice-and-air 3.4, 4.6, 5.1). Role tokens only:
+   text-strong on a dark plate, at least 14 px, AA (air.tokens.test.ts). */
+
+/* Captions: a lower third under the face (never over the mouth), on a dark plate. The block
+   keeps its room while empty, so the face does not jump between lines. */
+.captions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: var(--sr-space-1);
+  min-block-size: 8.5rem;
+  margin-inline: auto;
+  inline-size: min(100%, 60rem);
+}
+
+.captions > p {
+  margin: 0;
+}
+
+.line,
+.deadLine {
+  padding: var(--sr-space-3) var(--sr-space-4);
+  border-radius: var(--sr-radius-1);
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--sr-surface-0) 86%, transparent),
+    color-mix(in srgb, var(--sr-surface-0) 86%, transparent)
+  );
+  color: var(--sr-text-strong);
+  font-size: var(--sr-size-text-lg);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.speaker {
+  color: var(--sr-accent);
+  font-family: var(--sr-font-display);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.answering,
+.captionOnly {
+  align-self: flex-start;
+  padding: var(--sr-space-1) var(--sr-space-3);
+  border-radius: var(--sr-radius-1);
+  background-color: var(--sr-surface-1);
+  color: var(--sr-text);
+  font-size: var(--sr-size-text-sm);
+}
+
+.answeringUser {
+  color: var(--sr-text-strong);
+  font-weight: 700;
+}
+
+.captionOnly {
+  color: var(--sr-text-muted);
+  font-family: var(--sr-font-mono);
+}
+
+.deadLine {
+  border-inline-start: medium solid var(--sr-signal-offline);
+  font-family: var(--sr-font-display);
+  letter-spacing: 0.12em;
+}
+
+/* A broadcast frame is wide: the caption reads from across a room. */
+@media (min-width: 75rem) {
+  .line {
+    zoom: 1.25;
+  }
+}
+
+@media (orientation: portrait) {
+  .captions {
+    min-block-size: 6rem;
+  }
+
+  .line {
+    font-size: var(--sr-size-text);
+  }
+}

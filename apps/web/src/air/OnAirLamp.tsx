@@ -1,7 +1,7 @@
 // The ON AIR lightbox (voice-and-air requirement 4.2): lit while the show is on air, the brightest
 // fill on the stage (air.test.tsx checks it against the role tokens). Beside it the VOICE tally,
 // lit only while the character's voice is actually sounding (the loudness meter, useLoudness).
-import styles from "./air.module.css";
+import styles from "./OnAirLamp.module.css";
 
 export interface OnAirLampProps {
   lit: boolean;

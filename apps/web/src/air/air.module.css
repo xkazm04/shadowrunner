@@ -63,7 +63,19 @@
     color-mix(in srgb, var(--sr-ember) 55%, var(--sr-surface-0)),
     color-mix(in srgb, var(--sr-ember) 30%, var(--sr-surface-0)) 70%
   );
-  filter: drop-shadow(0 0 1.2rem color-mix(in srgb, var(--sr-ember) 45%, transparent));
+  content: "";
+}
+
+/* The bulb's halo is haunt glow: gone in the baseline theme and on the dead line. */
+.bulb::before {
+  position: absolute;
+  inset-block-end: -4.5rem;
+  inset-inline-start: -4rem;
+  inline-size: 8rem;
+  block-size: 8rem;
+  border-radius: var(--sr-radius-pill);
+  background-image: radial-gradient(circle, color-mix(in srgb, var(--sr-ember) 30%, transparent), transparent 70%);
+  opacity: var(--sr-haunt-glow);
   content: "";
 }
 
@@ -92,70 +104,6 @@
   display: flex;
   align-items: center;
   gap: var(--sr-space-4);
-}
-
-.lampRow {
-  display: flex;
-  align-items: center;
-  gap: var(--sr-space-3);
-}
-
-/* The lightbox glass. Lit: the brightest fill on the stage, dark text at AA on it. */
-.lamp {
-  margin: 0;
-  padding: var(--sr-space-2) var(--sr-space-4);
-  border-radius: var(--sr-radius-1);
-  font-family: var(--sr-font-display);
-  font-size: var(--sr-size-text-lg);
-  font-weight: 800;
-  letter-spacing: 0.18em;
-  line-height: 1.2;
-  white-space: nowrap;
-}
-
-.lamp[data-lit="on"] {
-  background-color: var(--sr-signal-onair);
-  color: var(--sr-surface-0);
-  filter: drop-shadow(0 0 1rem color-mix(in srgb, var(--sr-signal-onair) 60%, transparent));
-}
-
-.lamp[data-lit="off"] {
-  background-color: var(--sr-surface-2);
-  color: var(--sr-text-muted);
-  outline: thin solid var(--sr-line);
-}
-
-/* The VOICE tally: a red dot like a studio mic tally, lit only while the voice sounds. */
-.tally {
-  display: flex;
-  align-items: center;
-  gap: var(--sr-space-2);
-  margin: 0;
-  color: var(--sr-text-muted);
-  font-family: var(--sr-font-mono);
-  font-size: var(--sr-size-text-sm);
-  letter-spacing: 0.12em;
-}
-
-.tallyDot {
-  inline-size: 0.7rem;
-  block-size: 0.7rem;
-  border-radius: var(--sr-radius-pill);
-  background-color: var(--sr-surface-3);
-  outline: thin solid var(--sr-line);
-}
-
-.tally[data-lit="on"] {
-  color: var(--sr-text);
-}
-
-.tally[data-lit="on"] .tallyDot {
-  background-image: radial-gradient(
-    circle,
-    color-mix(in srgb, var(--sr-signal-onair) 85%, var(--sr-surface-0)),
-    color-mix(in srgb, var(--sr-signal-onair) 60%, var(--sr-surface-0))
-  );
-  outline-color: var(--sr-signal-onair);
 }
 
 .slate {
@@ -214,66 +162,6 @@
   font-family: var(--sr-font-type);
 }
 
-/* Captions: a lower third under the face (never over the mouth), on a dark plate. The block
-   keeps its room while empty, so the face does not jump between lines. */
-.captions {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  gap: var(--sr-space-1);
-  min-block-size: 8.5rem;
-  margin-inline: auto;
-  inline-size: min(100%, 60rem);
-}
-
-.captions > p {
-  margin: 0;
-}
-
-.line,
-.notice {
-  padding: var(--sr-space-3) var(--sr-space-4);
-  border-radius: var(--sr-radius-1);
-  background-image: linear-gradient(
-    color-mix(in srgb, var(--sr-surface-0) 86%, transparent),
-    color-mix(in srgb, var(--sr-surface-0) 86%, transparent)
-  );
-  color: var(--sr-text-strong);
-  font-size: var(--sr-size-text-lg);
-  font-weight: 600;
-  line-height: 1.4;
-}
-
-.speaker {
-  color: var(--sr-accent);
-  font-family: var(--sr-font-display);
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.answering,
-.captionOnly {
-  align-self: flex-start;
-  padding: var(--sr-space-1) var(--sr-space-3);
-  border-radius: var(--sr-radius-1);
-  background-color: var(--sr-surface-1);
-  color: var(--sr-text);
-  font-size: var(--sr-size-text-sm);
-}
-
-.answeringUser {
-  color: var(--sr-text-strong);
-  font-weight: 700;
-}
-
-.captionOnly {
-  color: var(--sr-text-muted);
-  font-family: var(--sr-font-mono);
-}
-
 .soundOn {
   position: absolute;
   inset-block-start: 4.5rem;
@@ -293,10 +181,74 @@
   outline-offset: var(--sr-space-1);
 }
 
-/* A broadcast frame is wide: the caption reads from across a room. */
-@media (min-width: 75rem) {
-  .line {
-    zoom: 1.25;
+/* The dead line (requirement 5.1): haunt glow off, the bulb out, ON AIR dark (OnAirLamp), the
+   face dimmed down to its eye glow, and the words where the captions were. */
+.stage[data-state="dead_line"] {
+  --sr-haunt-glow: 0;
+}
+
+.stage[data-state="dead_line"] .bulb::after {
+  background-image: none;
+  background-color: var(--sr-surface-3);
+}
+
+/* The dead filament tries: the halo sputters at haunt-flicker strength (zero in baseline). */
+.stage[data-state="dead_line"] .bulb::before {
+  animation: sputter 3.2s steps(1, end) infinite;
+}
+
+.face {
+  transition: filter 0.8s ease-out;
+}
+
+.stage[data-state="dead_line"] .face {
+  filter: brightness(0.3) saturate(0.8);
+}
+
+/* Fog drifts along the floor. */
+.fog {
+  transition: opacity 1s linear;
+  animation: drift 24s ease-in-out infinite alternate;
+}
+
+@keyframes drift {
+  from {
+    translate: -3% 0;
+  }
+
+  to {
+    translate: 3% 0;
+  }
+}
+
+@keyframes sputter {
+  0%,
+  62%,
+  70%,
+  100% {
+    opacity: 0;
+  }
+
+  64%,
+  68% {
+    opacity: var(--sr-haunt-flicker);
+  }
+}
+
+/* Reduced-motion twins (requirement 5.3): the same states, held still. */
+:global([data-motion="reduced"]) .fog,
+:global([data-motion="reduced"]) .face,
+:global([data-motion="reduced"]) .stage[data-state="dead_line"] .bulb::before {
+  transition: none;
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fog,
+  .face,
+  .stage[data-state="dead_line"] .bulb::before {
+    transition: none;
+    animation: none;
   }
 }
 
@@ -331,14 +283,6 @@
     inset-block-start: 3rem;
     inset-inline-start: 91%;
     block-size: 5rem;
-  }
-
-  .captions {
-    min-block-size: 6rem;
-  }
-
-  .line {
-    font-size: var(--sr-size-text);
   }
 
   .soundOn {

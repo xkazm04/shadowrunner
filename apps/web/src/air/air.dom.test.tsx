@@ -61,11 +61,9 @@ describe("Captions", () => {
     expect(q("[data-captions]")?.textContent).toContain("captions only");
   });
 
-  it("is empty between lines and shows a notice instead of a line when given one", async () => {
+  it("is empty between lines", async () => {
     m = await mount(<Captions speaker="Malakor" />);
     expect(q("[data-captions]")?.textContent).toBe("");
-    await m.rerender(<Captions caption={CAPTION} speaker="Malakor" notice="LINE DEAD - reconnecting" />);
-    expect(q("[data-captions]")?.textContent).toBe("LINE DEAD - reconnecting");
   });
 });
 

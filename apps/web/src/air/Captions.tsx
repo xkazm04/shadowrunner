@@ -2,21 +2,17 @@
 // answers. Text roles on a dark plate: text-strong at the large size, at least 14 px equivalent
 // and AA contrast. A line without audio says so, so a silent mouth reads as intended.
 import type { Caption } from "./show";
-import styles from "./air.module.css";
+import styles from "./Captions.module.css";
 
 export interface CaptionsProps {
   caption?: Caption;
   speaker: string;
-  /** Shown instead of a line (the dead line). */
-  notice?: string;
 }
 
-export function Captions({ caption, speaker, notice }: CaptionsProps) {
+export function Captions({ caption, speaker }: CaptionsProps) {
   return (
     <div className={styles.captions} aria-live="polite" data-captions="">
-      {notice !== undefined ? (
-        <p className={styles.notice}>{notice}</p>
-      ) : caption === undefined ? null : (
+      {caption === undefined ? null : (
         <>
           {caption.answered && (
             <p className={styles.answering}>

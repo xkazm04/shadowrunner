@@ -1,85 +1,12 @@
 // The beat loop and the one clock (voice-and-air task 5.2 and the task 5 note). Fake fetch (the
 // replay engine answers from the recorded show, the voice is a blob or a 500), fake player, fake
 // timers; no network.
-import { ScriptedEngine, type ChatMsg, type EngineRequest, type ShowScript } from "@sr/engine";
+import type { ChatMsg } from "@sr/engine";
 import fc from "fast-check";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { MALAKOR_NAME, MALAKOR_PERSONA, malakorShow } from "./malakor";
-import { BEAT_MS, createShow, createShowClock, VISITOR_NAME, VOICE_ATTEMPTS, type PlayResult, type ShowDeps } from "./show";
-
-interface Rig {
-  engine: EngineRequest[];
-  voice: string[];
-  played: string[];
-}
-
-interface Options {
-  show?: ShowScript;
-  voiceStatus?: number;
-  play?: () => PlayResult | Promise<PlayResult>;
-  now?: () => number;
-  engineFails?: number;
-}
-
-/** The audio of every line lasts this long in the fake player. */
-const LINE_MS = 12_000;
-
-function setup(options: Options = {}) {
-  const show = options.show ?? malakorShow();
-  const engine = new ScriptedEngine(show);
-  const seen: Rig = { engine: [], voice: [], played: [] };
-  let engineFails = options.engineFails ?? 0;
-  const fetch: ShowDeps["fetch"] = async (url, init) => {
-    const body: unknown = JSON.parse(String(init?.body));
-    if (url === "/api/engine/reply") {
-      const req = body as EngineRequest;
-      seen.engine.push(req);
-      if (engineFails > 0) {
-        engineFails -= 1;
-        return Response.json({ error: { code: "upstream", message: "x" } }, { status: 502 });
-      }
-      return Response.json(await engine.reply(req));
-    }
-    seen.voice.push(String((body as { text: string }).text));
-    const status = options.voiceStatus ?? 200;
-    return status === 200 ? new Response(new Blob(["RIFF"], { type: "audio/wav" })) : new Response("no", { status });
-  };
-  const deps: ShowDeps = {
-    show,
-    persona: MALAKOR_PERSONA,
-    self: MALAKOR_NAME,
-    fetch,
-    now: options.now ?? (() => Date.now()),
-    timers: { set: (fn, ms) => setTimeout(fn, ms), clear: (h) => clearTimeout(h as ReturnType<typeof setTimeout>) },
-    player: {
-      play: (url) => {
-        seen.played.push(url);
-        if (options.play) return Promise.resolve(options.play());
-        return new Promise((resolve) => setTimeout(() => resolve("ended"), LINE_MS));
-      },
-      stop: () => undefined,
-    },
-    objectUrl: () => `blob:${seen.played.length}`,
-    revokeUrl: () => undefined,
-  };
-  return { show: createShow(deps), seen };
-}
-
-/**
- * Lets the loop's awaited responses settle without moving the clock. (A zero-delay timer set
- * while fake timers are ticking is due 1 ms later, so a test that crosses an audio end moves 1 ms.)
- */
-async function flush(): Promise<void> {
-  for (let i = 0; i < 20; i += 1) await vi.advanceTimersByTimeAsync(0);
-}
-
-/** Runs the show for `ms` in small steps, letting responses settle at each. */
-async function play(ms: number): Promise<void> {
-  for (let t = 0; t < ms; t += 250) {
-    await vi.advanceTimersByTimeAsync(Math.min(250, ms - t));
-    await flush();
-  }
-}
+import { MALAKOR_NAME, malakorShow } from "./malakor";
+import { BEAT_MS, createShowClock, VISITOR_NAME, VOICE_ATTEMPTS, type PlayResult } from "./show";
+import { flush, LINE_MS, play, setup } from "./showKit";
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -112,7 +39,9 @@ describe("the beat loop", () => {
   it("starts on air, posts the audience on the show clock, and stamps every message uniquely", async () => {
     const { show } = setup();
     show.start();
-    expect(show.snapshot().status).toBe("on_air");
+    expect(show.snapshot().status).toBe("booting");
+    await flush();
+    expect(show.snapshot().status).not.toBe("booting");
     await vi.advanceTimersByTimeAsync(60_000);
     const chat = show.snapshot().chat;
     const audience = chat.filter((m) => m.fictional);
