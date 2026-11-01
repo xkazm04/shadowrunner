@@ -8,3 +8,5 @@ export * from "./types.js";
 export * from "./prompts.js";
 export * from "./image.js";
 export * from "./parts.js";
+export * from "./mask.js";
+export * from "./cut.js";

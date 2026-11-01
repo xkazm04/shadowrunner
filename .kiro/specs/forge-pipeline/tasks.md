@@ -22,12 +22,13 @@
 
   - Director rulings from the task 2 review (2026-11-01): (a) `m8-parts.json` is recorded, not traced: add a `--parts-only <image>` mode to `scripts/forge-spike.mjs` and run it once on `assets/characters/malakor/rig/portrait.png` (owner key, one Gemini Flash call); the fixture is the recorded response, provenance in `docs/decisions/0003-forge-spike.md`. (b) `parseParts` stays strict on shape but is lenient on count: a repeated part name keeps the first and adds a warning, more than 10 parts keeps the first 10 with a warning; return `{ parts, warnings }`.
 
-- [ ] 3. Masks and cutting
-  - [ ] 3.1 `mask.ts`: `rasterizeMask`, `lumaKey`; properties: core inside polygon, feather bound, key monotonic.
-  - [ ] 3.2 `cut.ts`: `cutLayer`, `cutAll` in the design order with core subtraction; property: cores disjoint.
+- [x] 3. Masks and cutting
+  - [x] 3.1 `mask.ts`: `rasterizeMask`, `lumaKey`; properties: core inside polygon, feather bound, key monotonic.
+  - [x] 3.2 `cut.ts`: `cutLayer`, `cutAll` in the design order with core subtraction; property: cores disjoint.
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
 
 - [ ] 4. Fill fallback and palette
+  - From the task 3 review: (a) a real-image test - decode the committed `assets/characters/malakor/rig/portrait.png`, run `cornerKeyLo` and `cutAll` with `test/fixtures/m8-parts.json`, assert every part yields a non-empty layer and the crown keeps its dark facets (opaque pixel count above a floor); (b) seams - adjacent layers (head/torso, jaw/head) must composite back to the plate without a dark line: property that re-compositing all layers over the plate changes no pixel's luma by more than 8 along shared edges; fix by feathering outward into the layer behind if it fails.
   - `fill.ts` `blurExtend` (iterative masked blur outward from the hole edge); `palette.ts` `samplePalette`; tests on synthetic images.
   - _Requirements: 5.3, 6.3_
 
