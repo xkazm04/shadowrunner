@@ -16,10 +16,10 @@
   - [x] 3.3 `library/seed.ts` seeding Malakor from `assets/characters/malakor/`; tests with `fake-indexeddb` (seed, damaged record, delete refused for seeded, fallback notice).
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
 
-- [ ] 4. Customize panel and stage
-  - [ ] 4.1 `Stage.tsx` with `<AvatarCanvas>` and "speak a line" replay audio.
-  - [ ] 4.2 `PaletteField`, `PartToggles` (layers of kind accessory/crown/eye), `EmotionPicker` (10), `GestureBar` (6), reset; keyboard operable with accessible names.
-  - [ ] 4.3 Component tests: palette change re-renders the stage look, toggles write `hidden`, gesture prop fires once per press.
+- [x] 4. Customize panel and stage
+  - [x] 4.1 `Stage.tsx` with `<AvatarCanvas>` and "speak a line" replay audio.
+  - [x] 4.2 `PaletteField`, `PartToggles` (layers of kind accessory/crown/eye), `EmotionPicker` (10), `GestureBar` (6), reset; keyboard operable with accessible names.
+  - [x] 4.3 Component tests: palette change re-renders the stage look, toggles write `hidden`, gesture prop fires once per press.
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6_
 
 - [ ] 5. Forge panel

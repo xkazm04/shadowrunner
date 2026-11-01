@@ -1,0 +1,74 @@
+/* The creator's regions (requirement 5.1): stage left (at least 60% of the width), controls right;
+   at phone width they stack, stage first. */
+
+.creator {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+  gap: var(--sr-space-5);
+  inline-size: 100%;
+  block-size: calc(100dvh - 6rem);
+  min-block-size: 36rem;
+}
+
+.stageRegion {
+  min-inline-size: 0;
+  min-block-size: 0;
+}
+
+.controlsRegion {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+  min-block-size: 0;
+}
+
+.tabs {
+  display: flex;
+  gap: var(--sr-space-1);
+}
+
+.tab {
+  padding: var(--sr-space-3) var(--sr-space-4) var(--sr-space-2);
+  border: 0;
+  border-radius: var(--sr-radius-1) var(--sr-radius-1) 0 0;
+  background-color: var(--sr-paper);
+  color: var(--sr-paper-ink);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-lg);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  opacity: 0.72;
+  cursor: pointer;
+}
+
+.tab[aria-selected="true"] {
+  opacity: 1;
+}
+
+.sheet {
+  flex: 1 1 auto;
+  min-block-size: 0;
+  overflow: auto;
+  padding: var(--sr-space-5);
+  background-color: var(--sr-paper);
+  color: var(--sr-paper-ink);
+}
+
+.state {
+  margin: 0;
+  color: var(--sr-text);
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text-lg);
+  text-align: center;
+}
+
+@media (width <= 52rem) {
+  .creator {
+    grid-template-columns: minmax(0, 1fr);
+    block-size: auto;
+  }
+
+  .stageRegion {
+    block-size: min(100vw, 30rem);
+  }
+}

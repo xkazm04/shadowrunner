@@ -1,8 +1,8 @@
 // App shell: everything outside a page. The router, the keymap and the navigation all derive
 // from the page manifest (pages.ts). Channels behind the set open in the ChannelFrame (spec
-// landing task 9): CH 4 the listings, CH 6 the daemon, a "sealed" page the sealed door; a page
-// whose spec has not landed yet (CH 3 until creator task 8) is a placeholder in the same frame.
-import { useCallback, useEffect, useRef, useState } from "react";
+// landing task 9): CH 3 the creator (lazy chunk), CH 4 the listings, CH 6 the daemon, a "sealed"
+// page the sealed door; a page whose spec has not landed yet is a placeholder in the same frame.
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { buildKeymap, GLOBAL_BINDINGS, stepChannel, useHotkeys, type KeyAction } from "./keys";
 import { ChannelFrame } from "../channels/ChannelFrame";
 import { Daemon } from "../channels/Daemon";
@@ -15,6 +15,9 @@ import { useHealth, usePlane, type Health, type Plane } from "./plane";
 import { handleLinkClick, navigate, useRoute } from "./router";
 import styles from "./Shell.module.css";
 import { nextTheme, usePreferences, useTheme, type Motion, type ThemeName } from "./theme";
+
+/** CH 3, the creator (spec creator): its own chunk, so the set does not carry it. */
+const CreatorPage = lazy(() => import("../creator/CreatorPage").then((m) => ({ default: m.CreatorPage })));
 
 /** Built once at load: a manifest clash throws here, before anything renders. */
 const KEYMAP = buildKeymap(PAGES);
@@ -93,6 +96,13 @@ function NoSignal({ path }: { path: string }) {
 function ChannelBody({ page, plane, health, lost }: { page: PageDef; plane: Plane; health?: Health; lost: boolean }) {
   if (page.status === "sealed") return <Sealed page={page} />;
   if (page.id === "characters") return <Listings />;
+  if (page.id === "creator") {
+    return (
+      <Suspense fallback={<p data-page="creator">Opening the forge…</p>}>
+        <CreatorPage />
+      </Suspense>
+    );
+  }
   if (page.id === "daemon") return <Daemon health={health} plane={plane} lost={lost} />;
   return <Placeholder page={page} />;
 }

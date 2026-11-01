@@ -17,7 +17,7 @@ import type { CharacterRecord, LibraryStore } from "./libraryStore";
 export const MALAKOR_ID = "malakor";
 export const MALAKOR_NAME = "Arch-Lich Malakor";
 
-const PNG_URLS = import.meta.glob<string>("../../../../../assets/characters/malakor/rig/*.png", {
+const PNG_URLS = import.meta.glob<string>(["../../../../../assets/characters/malakor/rig/*.png", "!**/depth.png"], {
   eager: true,
   query: "?url",
   import: "default",
