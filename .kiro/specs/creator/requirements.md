@@ -65,7 +65,7 @@ winner (spec `landing`); this spec fixes states, layout regions and role tokens.
 
 #### Acceptance criteria
 1. WHEN the `landing` spec records a verdict THEN the creator's regions SHALL be restyled to the winning direction using only role tokens added by that spec, without changing behaviour or tests.
-2. The verdict is The Harvest Floor. The creator is channel 3, "The Forge · behind the back panel" (reference: `assets/_incoming/landing-winner/screenshots/ch-forge-1600x900.png`):
+2. The verdict is The Harvest Floor. The creator is channel 3, titled "Forge" with subtitle "behind the back panel" (breadcrumb `CH 3 · Forge · behind the back panel`) (reference: `assets/_incoming/landing-winner/screenshots/ch-forge-1600x900.png`):
    - `ChannelFrame` header ("Back to the set · Esc" and the breadcrumb);
    - the stage on the left on near-black, with the caption "<name> · live rig, N layers" and the current motion state;
    - on the right, a bakelite-framed panel with parchment tabs `LOOKS | FACE | VOICE | FORGE NEW` (Customize = LOOKS and FACE);
