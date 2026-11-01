@@ -7,7 +7,7 @@
   - [x] 1.4 `driver/drive.ts`: `toDrive` folding gaze + drift + saccade into `headYaw`/`headPitch`.
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 4.2, 4.3, 5.1, 5.2_
 
-- [ ] 1.5 Follow-ups from the task 1 review (director, 2026-11-01)
+- [x] 1.5 Follow-ups from the task 1 review (director, 2026-11-01)
   - Import rig as `@sr/rig`: add `"@sr/rig": "workspace:*"` to `packages/avatar/package.json`, switch every `../../../rig/src/...` import, and add an eslint `no-restricted-imports` rule (in `eslint.config.js`) that bans relative imports reaching into another workspace package's `src/` from any package or app, with a gate fixture in `scripts/gate-fixtures/` so `pnpm test:gates` covers it.
   - Reduced-motion toggle: when `reducedMotion` flips mid-session, drift and saccade amplitude ease to the new level over 400 ms instead of jumping (property: no frame-to-frame yaw change above the full-motion maximum step at the toggle).
   - (`blinkDuration` is now in design.md "Contracts"; nothing to do.)

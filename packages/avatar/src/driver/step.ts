@@ -1,7 +1,7 @@
-// step (avatar-renderer req 3, 4.2, 5.1, 5.2): advances the driver by `dt` seconds. Pure: it
+// step (avatar-renderer req 3, 4.2, 5.1, 5.2; task 1.5): advances the driver by `dt` seconds. Pure: it
 // never mutates its arguments and draws randomness only from `state.rng`. Timing rules are in
 // the header of state.ts.
-import { GESTURE_DURATION_S } from "../../../rig/src/index.js";
+import { GESTURE_DURATION_S } from "@sr/rig";
 import { uniform } from "./rng.js";
 import {
   BLINK_GAP_MAX_S,
@@ -17,6 +17,7 @@ import {
   JAW_FLOOR,
   JAW_RELEASE_S,
   MAX_STEP_S,
+  MOTION_EASE_S,
   SACCADE_GAP_MAX_S,
   SACCADE_GAP_MIN_S,
   SACCADE_MAX_DEG,
@@ -57,40 +58,58 @@ function stepBlinks(s: DriverState, t: number, rng: number): Blinks {
   return blink === undefined ? { rng, nextBlinkAt: next } : { rng, nextBlinkAt: next, blink };
 }
 
+/** Motion amplitude after `elapsed` seconds: straight to the level on the first step, then a linear ramp. */
+function stepMotion(s: DriverState, elapsed: number, reduced: boolean): number {
+  const level = reduced ? 0 : 1;
+  if (s.motion === undefined) return level;
+  const ramp = elapsed / MOTION_EASE_S;
+  return level > s.motion ? Math.min(level, s.motion + ramp) : Math.max(level, s.motion - ramp);
+}
+
+/** `value` at amplitude `motion`; exactly 0 (never -0) at amplitude 0. */
+const scaled = (value: number, motion: number): number => (motion === 0 ? 0 : value * motion);
+
 /**
  * Jumps the saccade offset at every scheduled time up to `t`: toward a point drawn uniformly in the
  * disk of radius SACCADE_MAX_DEG, by at most SACCADE_MAX_DEG. Both ends lie in the disk, so the
- * offset stays in it. The schedule runs under reduced motion too; only the offset is zeroed.
+ * offset stays in it. The state holds the offset scaled by `motion`; jumps apply to the full-scale
+ * offset and only while `motion` stays 1, but the schedule and its draws always run.
  */
-function stepSaccade(s: DriverState, t: number, rng: number, reduced: boolean): { rng: number; saccade: DriverState["saccade"] } {
-  let { yaw, pitch, nextAt } = s.saccade;
+function stepSaccade(s: DriverState, t: number, rng: number, from: number, to: number): { rng: number; saccade: DriverState["saccade"] } {
+  let yaw = from === 0 ? 0 : s.saccade.yaw / from;
+  let pitch = from === 0 ? 0 : s.saccade.pitch / from;
+  let nextAt = s.saccade.nextAt;
+  const jumps = from === 1 && to === 1;
   while (nextAt <= t) {
     const [angle, r1] = uniform(rng, 0, 2 * Math.PI);
     const [u, r2] = uniform(r1, 0, 1);
     const [gap, r3] = uniform(r2, SACCADE_GAP_MIN_S, SACCADE_GAP_MAX_S);
-    const radius = SACCADE_MAX_DEG * Math.sqrt(u);
-    const dy = radius * Math.cos(angle) - yaw;
-    const dp = radius * Math.sin(angle) - pitch;
-    const reach = Math.min(1, SACCADE_MAX_DEG / (Math.hypot(dy, dp) || 1));
-    yaw += dy * reach;
-    pitch += dp * reach;
+    if (jumps) {
+      const radius = SACCADE_MAX_DEG * Math.sqrt(u);
+      const dy = radius * Math.cos(angle) - yaw;
+      const dp = radius * Math.sin(angle) - pitch;
+      const reach = Math.min(1, SACCADE_MAX_DEG / (Math.hypot(dy, dp) || 1));
+      yaw += dy * reach;
+      pitch += dp * reach;
+    }
     nextAt += gap;
     rng = r3;
   }
-  return { rng, saccade: reduced ? { yaw: 0, pitch: 0, nextAt } : { yaw, pitch, nextAt } };
+  return { rng, saccade: { yaw: scaled(yaw, to), pitch: scaled(pitch, to), nextAt } };
 }
 
 /** The driver `dt` seconds later under `inputs`. */
 export function step(s: DriverState, dt: number, inputs: DriverInputs): DriverState {
   const t = s.t + clampDt(dt);
   const elapsed = t - s.t;
-  const reduced = inputs.reducedMotion;
+  const motion = stepMotion(s, elapsed, inputs.reducedMotion);
 
   const blinks = stepBlinks(s, t, s.rng);
-  const { rng, saccade } = stepSaccade(s, t, blinks.rng, reduced);
+  const { rng, saccade } = stepSaccade(s, t, blinks.rng, s.motion ?? motion, motion);
 
   const phase = s.drift.phase + DRIFT_RATE * elapsed;
-  const drift = reduced ? { yaw: 0, pitch: 0, phase } : { ...driftAt(phase), phase };
+  const full = driftAt(phase);
+  const drift = { yaw: scaled(full.yaw, motion), pitch: scaled(full.pitch, motion), phase };
 
   const gazeTarget = GAZE_TARGET_DEG[inputs.gaze] ?? GAZE_TARGET_DEG.host;
   const gazeYaw = s.gazeYaw + (gazeTarget - s.gazeYaw) * easeShare(elapsed, GAZE_EASE_S);
@@ -99,7 +118,7 @@ export function step(s: DriverState, dt: number, inputs: DriverInputs): DriverSt
   const jawEase = target > s.jaw ? JAW_ATTACK_S : JAW_RELEASE_S;
   const jaw = s.jaw + (target - s.jaw) * easeShare(elapsed, jawEase);
 
-  const next: DriverState = { t, rng, nextBlinkAt: blinks.nextBlinkAt, drift, saccade, gazeYaw, jaw };
+  const next: DriverState = { t, rng, nextBlinkAt: blinks.nextBlinkAt, drift, saccade, gazeYaw, jaw, motion };
   if (blinks.blink !== undefined) {
     next.blinkStart = blinks.blink.start;
     next.blinkDuration = blinks.blink.duration;

@@ -4,7 +4,7 @@
 // motion has its own file (driver.reduced.props.test.ts).
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { GESTURE_DURATION_S, PITCH_LIMIT_DEG, YAW_LIMIT_DEG, type Drive } from "../../../rig/src/index.js";
+import { GESTURE_DURATION_S, PITCH_LIMIT_DEG, YAW_LIMIT_DEG, type Drive } from "@sr/rig";
 import { toDrive } from "../driver/drive.js";
 import {
   BLINK_GAP_MAX_S,

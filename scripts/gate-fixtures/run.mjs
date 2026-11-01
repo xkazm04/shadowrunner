@@ -24,6 +24,8 @@ const CASES = [
   { tool: "eslint", fixture: "eslint/clean.ts", rules: [] },
   { tool: "eslint", fixture: "boundary/packages/rig/src/breach.ts", root: "boundary", rules: ["boundaries/dependencies"] },
   { tool: "eslint", fixture: "boundary/packages/avatar/src/index.ts", root: "boundary", rules: [] },
+  { tool: "eslint", fixture: "src-reach/reach.ts", rules: ["no-restricted-imports"], count: 4 },
+  { tool: "eslint", fixture: "src-reach/clean.ts", rules: [] },
   { tool: "stylelint", fixture: "stylelint/hex.module.css", rules: ["color-no-hex", "scale-unlimited/declaration-strict-value"] },
   { tool: "stylelint", fixture: "stylelint/rgb.module.css", rules: ["function-disallowed-list"] },
   { tool: "stylelint", fixture: "stylelint/named.module.css", rules: ["color-named"] },
@@ -86,6 +88,9 @@ function check(c) {
   if (r.status !== wantExit || !same(got, want)) {
     return `expected exit ${wantExit} with [${want.join(", ")}], got exit ${r.status} with [${got.join(", ")}]`;
   }
+  // `count`: the fixture seeds several forms of one violation, and every one must be reported.
+  const reported = reportedRules(c.tool, report).length;
+  if (c.count !== undefined && reported !== c.count) return `expected ${c.count} reports, got ${reported}`;
   return undefined;
 }
 

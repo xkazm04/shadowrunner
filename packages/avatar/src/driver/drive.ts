@@ -1,7 +1,7 @@
 // toDrive (avatar-renderer req 3.1, 3.6): maps driver state to rig-core's `Drive`. `Drive` has no
 // gaze field, so gaze, drift and micro-saccades fold into `headYaw`/`headPitch`, clamped to
 // rig-core's limits; jaw and blink are clamped to [0, 1]. Pure.
-import { PITCH_LIMIT_DEG, YAW_LIMIT_DEG, type Drive } from "../../../rig/src/index.js";
+import { PITCH_LIMIT_DEG, YAW_LIMIT_DEG, type Drive } from "@sr/rig";
 import type { DriverState } from "./state.js";
 
 /** `value` limited to [lo, hi]; NaN becomes 0. */

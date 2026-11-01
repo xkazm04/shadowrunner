@@ -8,7 +8,7 @@
 // gestures runs for an explicit number of seconds (`simulate`/`walk` cycle the frames) instead of
 // relying on array length.
 import fc from "fast-check";
-import type { Gesture } from "../../../rig/src/index.js";
+import type { Gesture } from "@sr/rig";
 import { BLINK_GAP_MAX_S, initialState, type DriverInputs, type DriverState, type Gaze } from "../driver/state.js";
 import { step } from "../driver/step.js";
 

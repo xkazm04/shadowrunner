@@ -1,22 +1,25 @@
-// Reduced-motion properties (avatar-renderer req 5.1, 5.2; task 1.2): drift and micro-saccade
-// components are exactly 0 on every reduced frame, while blinks, the mouth, gaze and gestures run
-// exactly as they would with full motion.
+// Reduced-motion properties (avatar-renderer req 5.1, 5.2; tasks 1.2, 1.5): drift and
+// micro-saccade components are exactly 0 on every frame of a session that starts reduced, and on
+// every reduced frame once a mid-session toggle has eased out (MOTION_EASE_S; the ease itself is
+// in driver.toggle.props.test.ts), while blinks, the mouth, gaze and gestures run exactly as they
+// would with full motion.
 //
 // Generator: random frames rarely reach a saccade (the first comes 0.4-1.2 s in, more than a
 // default-size array of frames covers), so a fault that leaks the saccade offset into reduced
 // frames went unseen. Each script is therefore built to contain the risky cases:
 //   1. full motion for at least SACCADE_GAP_MAX_S (+0-6 s): the saccade offset is non-zero;
 //   2. 0-3 s of frames whose reducedMotion flips per frame: toggles both ways;
-//   3. reduced motion for at least 2 x SACCADE_GAP_MAX_S: saccade jumps happen while reduced.
+//   3. reduced motion for at least 2 x SACCADE_GAP_MAX_S: the ease ends and saccade jumps happen
+//      while reduced.
 // The first reduced frame therefore always enters with a non-zero drift and saccade, and the
 // property asserts those cases were seen, so the generator cannot quietly go weak again.
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { YAW_LIMIT_DEG } from "../../../rig/src/index.js";
+import { YAW_LIMIT_DEG } from "@sr/rig";
 import { toDrive } from "../driver/drive.js";
-import { BLINK_GAP_MAX_S, initialState, SACCADE_GAP_MAX_S, type DriverState } from "../driver/state.js";
+import { BLINK_GAP_MAX_S, initialState, MOTION_EASE_S, SACCADE_GAP_MAX_S, type DriverState } from "../driver/state.js";
 import { step } from "../driver/step.js";
-import { arbSeed, arbSteps, between, fillFor, simulate, type Step } from "./driverArb.js";
+import { arbSeed, arbSteps, between, fillFor, simulate, walk, type Step } from "./driverArb.js";
 
 interface Script {
   seed: number;
@@ -44,39 +47,67 @@ const arbScript: fc.Arbitrary<Script> = fc
 
 const moving = (s: DriverState): boolean => s.saccade.yaw !== 0 || s.saccade.pitch !== 0;
 
+const within01 = (v: number | undefined): boolean => v !== undefined && v >= 0 && v <= 1;
+
+/** Drift and saccade exactly 0 (not -0), so the head turns by gaze alone. */
+function expectStill(s: DriverState): void {
+  expect(s.motion).toBe(0);
+  expect(s.drift.yaw).toBe(0);
+  expect(s.drift.pitch).toBe(0);
+  expect(s.saccade.yaw).toBe(0);
+  expect(s.saccade.pitch).toBe(0);
+  const d = toDrive(s);
+  expect(d.headYaw).toBe(Math.min(YAW_LIMIT_DEG, Math.max(-YAW_LIMIT_DEG, s.gazeYaw)));
+  expect(d.headPitch).toBe(0);
+}
+
 describe("driver under reduced motion", () => {
-  it("drift and saccade components are exactly 0 on every reduced frame, so the head turns by gaze alone", () => {
+  it("drift and saccade components are exactly 0 on every frame of a session that starts reduced, so the head turns by gaze alone", () => {
+    fc.assert(
+      fc.property(arbSeed, arbSteps({ reducedMotion: fc.constant(true) }), (seed, steps) => {
+        let jumps = 0;
+        walk(initialState(seed), steps, 2 * SACCADE_GAP_MAX_S, (prev, s) => {
+          if (s.saccade.nextAt !== prev.saccade.nextAt) jumps += 1;
+          expectStill(s);
+        });
+        expect(jumps).toBeGreaterThan(0);
+      }),
+    );
+  });
+
+  it("after a mid-session toggle, drift and saccade components are exactly 0 on every reduced frame once MOTION_EASE_S of reduced frames have run", () => {
     fc.assert(
       fc.property(arbScript, ({ seed, steps }) => {
         let enteredMoving = 0;
         let enteredDrifting = 0;
-        let jumpedWhileReduced = 0;
+        let jumpedWhileStill = 0;
+        let stillFrames = 0;
+        let streak = 0;
         let prev = initialState(seed);
         for (const [dt, inputs] of steps) {
           const s = step(prev, dt, inputs);
-          if (inputs.reducedMotion) {
+          streak = inputs.reducedMotion ? streak + (s.t - prev.t) : 0;
+          if (inputs.reducedMotion && streak === s.t - prev.t) {
             if (moving(prev)) enteredMoving += 1;
             if (prev.drift.yaw !== 0 || prev.drift.pitch !== 0) enteredDrifting += 1;
-            if (s.saccade.nextAt !== prev.saccade.nextAt) jumpedWhileReduced += 1;
-            expect(s.drift.yaw).toBe(0);
-            expect(s.drift.pitch).toBe(0);
-            expect(s.saccade.yaw).toBe(0);
-            expect(s.saccade.pitch).toBe(0);
-            const d = toDrive(s);
-            expect(d.headYaw).toBe(Math.min(YAW_LIMIT_DEG, Math.max(-YAW_LIMIT_DEG, s.gazeYaw)));
-            expect(d.headPitch).toBe(0);
+          }
+          if (streak >= MOTION_EASE_S + 1e-9) {
+            if (s.saccade.nextAt !== prev.saccade.nextAt) jumpedWhileStill += 1;
+            stillFrames += 1;
+            expectStill(s);
           }
           prev = s;
         }
         // Vacuity guards: the script reached the cases that matter (see the header).
         expect(enteredMoving).toBeGreaterThan(0);
         expect(enteredDrifting).toBeGreaterThan(0);
-        expect(jumpedWhileReduced).toBeGreaterThan(0);
+        expect(stillFrames).toBeGreaterThan(0);
+        expect(jumpedWhileStill).toBeGreaterThan(0);
       }),
     );
   });
 
-  it("reduced motion changes nothing but drift and saccade offsets: blinks, mouth, gaze, gestures and schedules match full motion", () => {
+  it("reduced motion changes nothing but the motion amplitude and the drift and saccade offsets: blinks, mouth, gaze, gestures and schedules match full motion", () => {
     fc.assert(
       fc.property(arbScript, ({ seed, steps }) => {
         const asFull = steps.map(([dt, inputs]): Step => [dt, { ...inputs, reducedMotion: false }]);
@@ -86,9 +117,11 @@ describe("driver under reduced motion", () => {
         reduced.forEach((r, i) => {
           const f = full[i];
           if (f === undefined) throw new Error("runs differ in length");
-          const { drift: rd, saccade: rs, ...rRest } = r;
-          const { drift: fd, saccade: fs, ...fRest } = f;
+          const { drift: rd, saccade: rs, motion: rm, ...rRest } = r;
+          const { drift: fd, saccade: fs, motion: fm, ...fRest } = f;
           expect(rRest).toEqual(fRest);
+          expect(fm).toBe(1);
+          expect(within01(rm)).toBe(true);
           expect(rd.phase).toBe(fd.phase);
           expect(rs.nextAt).toBe(fs.nextAt);
           const rDrive = toDrive(r);

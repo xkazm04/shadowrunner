@@ -2,7 +2,7 @@
 // state, toDrive's folding of gaze + drift + saccade, the blink curve, and dt clamping.
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { PITCH_LIMIT_DEG, YAW_LIMIT_DEG } from "../../../rig/src/index.js";
+import { PITCH_LIMIT_DEG, YAW_LIMIT_DEG } from "@sr/rig";
 import { toDrive } from "../driver/drive.js";
 import { nextRandom, seedRng, uniform } from "../driver/rng.js";
 import * as constants from "../driver/state.js";
@@ -76,6 +76,7 @@ describe("constants", () => {
       JAW_FLOOR: 0.04,
       JAW_ATTACK_S: 0.04,
       JAW_RELEASE_S: 0.12,
+      MOTION_EASE_S: 0.4,
     });
     // Low frequency: a drift period of several seconds.
     expect((2 * Math.PI) / constants.DRIFT_RATE).toBeGreaterThan(5);
