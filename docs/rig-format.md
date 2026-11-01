@@ -54,7 +54,7 @@ Four colours, each `#rrggbb`:
 | `file` | string | yes | PNG path relative to the rig folder, or a PNG `data:` URL produced by the forge (see "Layer files"). |
 | `bbox` | `[x, y, w, h]` | yes | Where the PNG sits on the canvas, in px. `w` and `h` are > 0. Must lie inside `[0, width] x [0, height]`; the right and bottom edges may overshoot by at most 1e-6 px (float bboxes from the forge), the left and top edges not at all. |
 | `anchor` | `[x, y]` | yes | Pivot point in canvas px; rotation and followers turn about it. |
-| `follow` | string | no | Name of a parent layer. The layer inherits the parent's translation and rotation about the parent's anchor. Must name an existing layer, with no cycles. |
+| `follow` | string | no | Name of a parent layer. The layer inherits the parent's gesture translation, rotation and scale about the parent's anchor, but not its parallax or jaw drop (see "Pose"). Must name an existing layer, with no cycles. |
 | `depth` | number | no | Parallax depth in `[0, 1]`, from 0 (background) to 1 (nearest). When omitted, the default for the kind applies. |
 | `visible` | `false` | no | Present only when the layer is hidden by default. Never written as `true`. |
 
@@ -128,6 +128,61 @@ a valid Rig. It returns `{ rig, warnings }`, where each warning is `{ layer, mes
 `"delighted"`, `"bored"`, `"suspicious"`, `"grim"`, `"theatrical"`.
 
 **Gesture** is one of `"nod"`, `"tilt"`, `"lean_in"`, `"recoil"`, `"glare"`, `"flare"`.
+
+## Pose
+
+`poseLayers(rig, look, drive)` (`packages/rig/src/pose.ts`) computes each frame's layer
+transforms without WebGL. It is pure: the same inputs always give the same output, and the inputs
+are never modified.
+
+### Drive
+
+The per-frame input from the avatar driver.
+
+| field | type | required | meaning |
+|---|---|---|---|
+| `t` | number | yes | Clock in seconds. |
+| `headYaw` | number | yes | Degrees, clamped to ±22. Positive moves near layers right. |
+| `headPitch` | number | yes | Degrees, clamped to ±12 (after a nod's pitch is added). Positive moves near layers down. |
+| `jawOpen` | number | yes | 0..1, clamped. |
+| `blink` | number | yes | 0..1, clamped; 1 = eyes shut. |
+| `gesture` | `{ name: Gesture, startedAt: number }` | no | The running gesture; `startedAt` is in seconds on the same clock as `t`. |
+
+`GESTURE_DURATION_S` is `0.4`: every gesture curve runs for 0.4 s from `startedAt`, shaped as a
+half-sine `sin(pi * elapsed / 0.4)` that peaks halfway at the design value. Outside that window the
+gesture has no effect.
+
+### LayerPose
+
+One per drawn layer, in `z` order. A layer is drawn unless it is named in `look.hidden` or carries
+`visible: false`.
+
+| field | type | meaning |
+|---|---|---|
+| `name` | string | The layer's name. |
+| `x`, `y` | number | Posed bbox top-left, canvas px: the bbox moved by the layer's translation. |
+| `scale` | `[x, y]` | Scale about the posed anchor, `anchor + (x - bbox[0], y - bbox[1])`. Uniform except for an eye's blink squash on y. |
+| `rotation` | number | Radians, clockwise on the y-down canvas, about the posed anchor. |
+| `opacity` | number | 0..1. Currently always 1. |
+| `tint` | number | Light gain multiplied into the layer colour; 1 = as drawn. |
+
+### Rules
+
+- **Parallax.** A layer shifts by `yaw/22 * 0.04 * width * depth` in x and
+  `pitch/12 * 0.03 * height * depth` in y, using its own `depth` (or the kind default). Followers
+  do not add their parent's parallax, so the shift is monotonic in depth across every layer.
+- **Follow.** A follower inherits its parent's gesture translation, rotation and scale about the
+  parent's anchor. Parallax and the jaw drop are not inherited.
+- **Jaw.** Each `jaw` layer drops by `jawOpen * 0.06 * height` canvas px along the head's down axis
+  (it turns with a tilt). The length is not scaled by gestures, so it never exceeds `0.06 * height`.
+  Followers of a jaw do not move with the drop; a jaw that follows a jaw drops by its own amount
+  only. No other kind moves with `jawOpen`.
+- **Blink.** `eye` layers scale y by `1 - 0.9 * blink`.
+- **Gestures**, at their peak: `nod` adds 6° of pitch; `tilt` rotates the head 5°; `lean_in`
+  scales the head by 1.04; `recoil` scales it by 0.96 and lifts it by 1% of height; `glare` sets
+  the eye tint to 1.6; `flare` sets the tint of the emissive kinds (`eye`, `crown`, `accessory`)
+  to 2.0. `tilt`, `lean_in` and `recoil` act about the anchor of each `head` layer that has no
+  `head` ancestor, and reach its followers through the follow rule.
 
 ## Example
 

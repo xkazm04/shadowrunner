@@ -18,9 +18,10 @@
   - [x] 3.3 Golden test: imports with 0 errors, 18 layers, palette from `m8.spec.json`.
   - _Requirements: 3.1, 3.2, 3.3_
 
-- [ ] 4. Pose math
-  - [ ] 4.1 `pose.ts` per design.md (parallax, follow, jaw, blink, gesture curves, clamps).
-  - [ ] 4.2 Properties: purity under deep-freeze; parallax monotonic in depth; jaw moves only jaw layers; hidden layers absent; followers keep relative offset at yaw 0.
+- [x] 4. Pose math
+  - [x] 4.1 `pose.ts` per design.md (parallax, follow, jaw, blink, gesture curves, clamps).
+  - [x] 4.3 (from the task 4 review) Apply the 2026-11-01 rulings in requirements 4.3/4.4 and design.md "Pose": jaw drop capped in canvas px under gestures, not inherited by jaw followers; follower parallax from own depth only. Strengthen the properties: jaw bound under any gesture, non-jaw followers of a jaw unchanged by `jawOpen`, cross-layer parallax monotonicity over all layers including followers. Re-export `pose.ts` from `index.ts`; document `Drive`, `LayerPose` and `GESTURE_DURATION_S` in `docs/rig-format.md`.
+  - [x] 4.2 Properties: purity under deep-freeze; parallax monotonic in depth; jaw moves only jaw layers; hidden layers absent; followers keep relative offset at yaw 0.
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6_
 
 - [ ] 5. Looks
