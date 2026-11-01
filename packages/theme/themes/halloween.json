@@ -38,5 +38,6 @@
   "size-text-sm": "type.sm",
   "size-text": "type.md",
   "size-text-lg": "type.lg",
-  "size-display": "type.xl"
+  "size-display": "type.xl",
+  "size-headline": "type.xxl"
 }

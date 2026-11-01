@@ -21,7 +21,7 @@
   margin: var(--sr-space-1) 0 0;
   color: var(--sr-phosphor);
   font-family: var(--sr-font-display);
-  font-size: var(--sr-size-display);
+  font-size: var(--sr-size-headline);
   font-weight: 700;
   line-height: 0.95;
   letter-spacing: 0.02em;

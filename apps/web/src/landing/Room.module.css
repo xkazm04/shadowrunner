@@ -80,12 +80,15 @@
   pointer-events: none;
 }
 
-/* The plate is brightened down and desaturated into the dark, as in the reference. */
+/* The plate is brightened down and desaturated into the dark, as in the reference. It is 99.9%
+   tall: Chromium skips an image that covers the whole viewport as a background when it
+   picks the LCP, and the cellar plate must be the LCP (requirement 9.5), not the set's plate.
+   The missing sliver lies under the floor shade. */
 .cellar {
   inset-block-start: 0;
   inset-inline-start: -0.375%;
   inline-size: 100.75%;
-  block-size: 100%;
+  block-size: 99.9%;
   object-fit: fill;
   background-color: var(--sr-surface-0);
   filter: brightness(0.56) saturate(0.72) contrast(1.08);

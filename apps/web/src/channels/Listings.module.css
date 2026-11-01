@@ -67,7 +67,7 @@
 }
 
 .mast h1 {
-  font-size: var(--sr-size-display);
+  font-size: var(--sr-size-headline);
   letter-spacing: -0.01em;
 }
 

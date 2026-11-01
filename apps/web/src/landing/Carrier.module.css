@@ -1,40 +1,36 @@
-/* The carrier on the glass (Carrier.tsx). Geometry: the set's plate box (Gourds.tsx PLATE_VARS),
-   the glass centre at plate (597, 427) = 49.75% 47.66%. The raster is the tube's light, phosphor;
-   the dead glass is surface; the lower third is the reference's `.lt.dead` on role tokens.
-   --fold and --unfold come inline from daemon.ts. */
+/* The carrier on the glass (Carrier.tsx), inside the glass's shared clip; the box is the set's
+   plate, the glass centre at plate (597, 427) = 49.75% 47.66%. The raster is the tube's light,
+   phosphor; the dead glass is the cold tube with the room's last red caught in it (the
+   reference's dead-glass gradient and reflection). --fold and --unfold come inline from daemon.ts. */
 
-.plate {
+.carrier {
   position: absolute;
-  inset-block-start: var(--plate-l-y);
-  inset-inline-start: var(--plate-l-x);
-  inline-size: var(--plate-l-w);
-  block-size: var(--plate-l-h);
+  inset: 0;
   pointer-events: none;
 }
 
-:global([data-world="portrait"]) .plate {
-  inset-block-start: var(--plate-p-y);
-  inset-inline-start: var(--plate-p-x);
-  inline-size: var(--plate-p-w);
-  block-size: var(--plate-p-h);
-}
-
 /* Dead glass: the tube with nothing on it, faintly lit from the room. */
-.glass {
+.dead {
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(
-    ellipse 24% 26% at 46% 43%,
-    color-mix(in srgb, var(--sr-surface-2) 92%, transparent),
-    color-mix(in srgb, var(--sr-surface-0) 96%, transparent)
-  );
+  background-image:
+    radial-gradient(
+      ellipse 13% 17% at 66% 31%,
+      color-mix(in srgb, var(--sr-signal-onair) 14%, transparent),
+      transparent
+    ),
+    radial-gradient(
+      ellipse 30% 36% at 46% 43%,
+      color-mix(in srgb, var(--sr-surface-2) 88%, var(--sr-phosphor-spill)),
+      var(--sr-surface-0)
+    );
 }
 
-.plate[data-carrier="folding"] .glass {
+.carrier[data-carrier="folding"] .dead {
   animation: dead var(--fold) ease-in both;
 }
 
-.plate[data-carrier="relighting"] .glass {
+.carrier[data-carrier="relighting"] .dead {
   animation: dead var(--unfold) ease-out reverse both;
 }
 
@@ -61,11 +57,11 @@
   mix-blend-mode: screen;
 }
 
-.plate[data-carrier="folding"] .raster {
+.carrier[data-carrier="folding"] .raster {
   animation: fold var(--fold) ease-in both;
 }
 
-.plate[data-carrier="relighting"] .raster {
+.carrier[data-carrier="relighting"] .raster {
   animation: unfold var(--unfold) ease-out both;
 }
 
@@ -139,58 +135,10 @@
   }
 }
 
-/* NO CARRIER: the lower third at plate (402, bottom 587), 400 wide at most. */
-.third {
-  position: absolute;
-  inset-block-end: 34.49%;
-  inset-inline-start: 33.5%;
-  max-inline-size: 33.33%;
-  margin: 0;
-  padding: var(--sr-space-1) var(--sr-space-3);
-  border-inline-start: 0.3125rem solid;
-  border-inline-start-color: var(--sr-signal-warn);
-  background-image: linear-gradient(
-    color-mix(in srgb, var(--sr-surface-0) 86%, transparent),
-    color-mix(in srgb, var(--sr-surface-0) 86%, transparent)
-  );
-  color: var(--sr-text-strong);
-  font-family: var(--sr-font-display);
-  line-height: 1.15;
-  white-space: nowrap;
-  animation: dead 0.4s ease both;
-}
-
-.title,
-.line {
-  display: block;
-  font-size: var(--sr-size-text-lg);
-}
-
-.title {
-  font-weight: 700;
-  letter-spacing: 0.04em;
-}
-
-.line {
-  color: var(--sr-text);
-}
-
-:global([data-world="portrait"]) .third {
-  inset-inline-start: 31%;
-  max-inline-size: none;
-  padding: var(--sr-space-1) var(--sr-space-2);
-}
-
-:global([data-world="portrait"]) .title,
-:global([data-world="portrait"]) .line {
-  font-size: var(--sr-size-text);
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .plate[data-carrier] .glass,
-  .plate[data-carrier] .raster,
-  .afterglow,
-  .third {
+  .carrier[data-carrier] .dead,
+  .carrier[data-carrier] .raster,
+  .afterglow {
     animation: none;
   }
 
@@ -199,10 +147,9 @@
   }
 }
 
-:global([data-motion="reduced"]) .plate[data-carrier] .glass,
-:global([data-motion="reduced"]) .plate[data-carrier] .raster,
-:global([data-motion="reduced"]) .afterglow,
-:global([data-motion="reduced"]) .third {
+:global([data-motion="reduced"]) .carrier[data-carrier] .dead,
+:global([data-motion="reduced"]) .carrier[data-carrier] .raster,
+:global([data-motion="reduced"]) .afterglow {
   animation: none;
 }
 

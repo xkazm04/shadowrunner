@@ -1,7 +1,7 @@
-/* The gourd row, the legend and the channel written on the glass. Ported from the reference
+/* The gourd row and the legend. Ported from the reference
    (Round 4 "the menu" rules). World lengths are percentages of the 1600x900 world (420x910 in
    portrait) or of the element; 1rem is 16 world px. The reference's literal colours are roles:
-   the candle is ember, the cut and the shadows surface-0, the glass text phosphor.
+   the candle is ember, the cut and the shadows surface-0.
    Landscape: 150x166 buttons centred 185 apart on x 800, top 724. Portrait: 80x104, 80 apart on
    x 210, top 532. --offset (slot minus the middle slot) comes from Gourds.tsx. */
 
@@ -309,92 +309,5 @@
 /* 16 world px is 14.8 px on a 390 px screen; 14 would fall under the 14 px floor. */
 :global([data-world="portrait"]) .credit {
   color: var(--sr-text);
-  font-size: var(--sr-size-text);
-}
-
-/* ---------- the channel on the glass ---------- */
-
-/* The set's plate box (Gourds.tsx plateBox, from World.tsx SET_PLATE). */
-.plate {
-  position: absolute;
-  inset-block-start: var(--plate-l-y);
-  inset-inline-start: var(--plate-l-x);
-  inline-size: var(--plate-l-w);
-  block-size: var(--plate-l-h);
-  pointer-events: none;
-}
-
-:global([data-world="portrait"]) .plate {
-  inset-block-start: var(--plate-p-y);
-  inset-inline-start: var(--plate-p-x);
-  inline-size: var(--plate-p-w);
-  block-size: var(--plate-p-h);
-}
-
-/* The band behind the writing: the tube between channels, dark enough for 4.5:1 phosphor. */
-.glass {
-  position: absolute;
-  inset: 0;
-  background-image: radial-gradient(
-    ellipse 22% 24% at 49.75% 47.66%,
-    color-mix(in srgb, var(--sr-surface-0) 88%, transparent),
-    color-mix(in srgb, var(--sr-surface-0) 94%, transparent)
-  );
-}
-
-.caption {
-  position: absolute;
-  inset-block-start: var(--glass-y);
-  inset-inline-start: var(--glass-x);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  inline-size: var(--glass-w);
-  block-size: var(--glass-h);
-  padding: var(--sr-space-6);
-  color: var(--sr-phosphor);
-  font-family: var(--sr-font-display);
-  text-align: center;
-  filter: drop-shadow(0 0 0.6rem color-mix(in srgb, var(--sr-phosphor-spill) 35%, transparent));
-}
-
-.caption p {
-  margin: 0;
-}
-
-.kick {
-  color: var(--sr-phosphor-2);
-  font-size: var(--sr-size-text-lg);
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-}
-
-.big {
-  inline-size: 100%;
-  block-size: auto;
-  margin-block: var(--sr-space-2);
-  overflow: visible;
-}
-
-.big text {
-  fill: var(--sr-phosphor);
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-
-.sub {
-  color: var(--sr-phosphor);
-  font-size: var(--sr-size-text-lg);
-  line-height: 1.25;
-}
-
-:global([data-world="portrait"]) .caption {
-  padding: var(--sr-space-4);
-}
-
-:global([data-world="portrait"]) .kick,
-:global([data-world="portrait"]) .sub {
   font-size: var(--sr-size-text);
 }

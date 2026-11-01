@@ -29,10 +29,10 @@
   - `StatusBar.tsx` bound to `usePlane()` and health: ON AIR lamp, viewers, channel, live-since clock or dead-air timer, daemon pill. Component test for both health states.
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
 
-- [ ] 5. The set and the glass
+- [x] 5. The set and the glass
   - [x] 5.0 (from the task 4 review, director decisions 2026-11-01) Add a `radius-pill` role (`roles.json`, both themes) and use it for the ON AIR lamp and the daemon pill. Token font steps (20/16/14) are accepted over the reference's 21/18/19. Portrait header compacts to two rows like `R4-1-390x844-load.png` (at most 96 world px): row 1 wordmark + pill, row 2 lamp, viewers, channel, `since 03:00`; the RECORDED badge becomes a small tag after the wordmark and the theme toggle an icon button with an accessible name. Place the set directly below the header (the constants now; the set itself renders in 5.2). Director decision 2026-11-01 from the 5.0 build: baseline binds `font-display` to Barlow Semi Condensed too, so both themes share one layout and the 96 px header holds in both; the Shell edits for the badge/toggle split are approved.
   - [x] 5.1 `superellipse.ts` with its property test.
-  - [ ] 5.2 (Contrast: the glass has no role. Back the lower third with a translucent `surface-0` band so `phosphor` text reaches 4.5:1 there, and measure it in the visual test, not only against surface tokens.) `Set.tsx` and `Glass.tsx`: CRT plate, superellipse clip, `<AvatarCanvas>` inside, phosphor grade, glare, rim shadow, lower third, hover caption. Requires `avatar-renderer`.
+  - [x] 5.2 (Contrast: the glass has no role. Back the lower third with a translucent `surface-0` band so `phosphor` text reaches 4.5:1 there, and measure it in the visual test, not only against surface tokens.) `Set.tsx` and `Glass.tsx`: CRT plate, superellipse clip, `<AvatarCanvas>` inside, phosphor grade, glare, rim shadow, lower third, hover caption. Requires `avatar-renderer`.
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
 
 - [x] 6. Gourds and legend
@@ -61,7 +61,7 @@
   - [ ] 10.2 Lighthouse accessibility of 90 or more and a first load of 2 MB or less on the deployed URL, recorded in `docs/kiro-log.md`.
   - _Requirements: 9.4, 9.5, 10.1, 10.2_
 
-- [ ] 11. Follow-ups from the lane D build (director, 2026-11-01)
+- [x] 11. Follow-ups from the lane D build (director, 2026-11-01)
   - After 5.2: re-baseline `pnpm test:visual`; decide whether CH 6 and CH 9 tune on the set's own glass like the reference (index.html:916-926) instead of framed pages (requirement 8.1 currently says framed pages, which ships).
   - Add a `size-headline` role (about 4rem) so channel headlines reach the reference's 64-72 px; the creator restyle (creator task 8) uses it too.
   - Add the carved-number AA check to the visual test (design.md "Fixes"), and the phosphor-on-glass check once 5.2 lands.
