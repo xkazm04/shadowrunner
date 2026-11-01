@@ -129,6 +129,36 @@ describe("the shipped manifest", () => {
     for (const p of dial) expect(p.hotkey).toBe(String(p.channel));
   });
 
+  it("matches the channel table in landing design.md", () => {
+    const table = PAGES.map(({ channel, id, path, hotkey, status }) => ({ channel, id, path, hotkey, status }));
+    expect(table).toEqual(
+      expect.arrayContaining([
+        { channel: 2, id: "landing", path: "/", hotkey: "2", status: "live" },
+        { channel: 3, id: "creator", path: "/creator", hotkey: "3", status: "live" },
+        { channel: 4, id: "characters", path: "/characters", hotkey: "4", status: "live" },
+        { channel: 6, id: "daemon", path: "/daemon", hotkey: "6", status: "live" },
+        { channel: 9, id: "sealed", path: "/sealed", hotkey: "9", status: "sealed" },
+        { channel: undefined, id: "air", path: "/air", hotkey: "O", status: "live" },
+      ]),
+    );
+    expect(table).toHaveLength(6);
+  });
+
+  it("binds the dial keys of landing 5.3: 2 3 4 6 9, arrows, Esc and D", () => {
+    const map = buildKeymap(PAGES);
+    for (const [key, pageId] of [["2", "landing"], ["3", "creator"], ["4", "characters"], ["6", "daemon"], ["9", "sealed"]]) {
+      expect(map.get(normalizeHotkey(key ?? ""))).toEqual({ kind: "go", pageId });
+    }
+    expect(map.get(normalizeHotkey("ArrowLeft"))).toEqual({ kind: "channel", step: -1 });
+    expect(map.get(normalizeHotkey("ArrowRight"))).toEqual({ kind: "channel", step: 1 });
+    expect(map.get(normalizeHotkey("Esc"))).toEqual({ kind: "back" });
+    expect(map.get(normalizeHotkey("d"))).toEqual({ kind: "daemon-sample" });
+  });
+
+  it("gives every channel other than 2 a subtitle for its breadcrumb (landing 8.1)", () => {
+    for (const p of channelPages(PAGES).filter((page) => page.channel !== 2)) expect(p.subtitle).toBeTruthy();
+  });
+
   it("gives every sealed page a line of lore", () => {
     for (const p of PAGES.filter((page) => page.status === "sealed")) expect(p.lore).toBeTruthy();
   });

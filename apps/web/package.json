@@ -9,6 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fontsource/barlow-semi-condensed": "^5.3.0",
+    "@fontsource/courier-prime": "^5.3.0",
+    "@fontsource/inter": "^5.3.0",
     "@sr/engine": "workspace:*",
     "@sr/theme": "workspace:*",
     "react": "^19.3.1",

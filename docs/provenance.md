@@ -18,7 +18,7 @@ From it we reuse **assets and ideas only**:
 ## Generated during the submission period
 | Item | Tool | Date |
 |---|---|---|
-| Photoreal cellar plates (`assets/plates/`, once promoted) | Gemini 3 Pro Image | 2026-10-31 |
+| Photoreal cellar plates promoted to `assets/plates/*.webp` (`cellar-wide`, `crt-frontal`, `root-pile`, `root-eye`, `paper`; WebP conversions by Kiro landing task 1 on 2026-11-01). `paper` comes from the round-1 contest plates (see `PROMPTS.md`). | Gemini 3 Pro Image | 2026-10-31 |
 | Landing stills: `crt-frontal`, `root-cellar-wide`, `root-pile`, `root-eye` (`assets/_incoming/landing-winner/stills-source/`; prompts in `assets/_incoming/landing-winner/PROMPTS.md`) | Gemini 3 Pro Image | 2026-10-31 |
 | Landing prototype The Harvest Floor (`assets/_incoming/landing-winner/`, reference only) | Claude Opus 5.5 via the contest skill, 4 rounds | 2026-10-31 |
 | Forge probe overlays (`docs/decisions/0002-*.png`) | Gemini 3.8 Flash / 3.1 Pro | 2026-10-31 |

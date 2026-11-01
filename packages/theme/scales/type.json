@@ -8,6 +8,9 @@
   "font": {
     "serif": "ui-serif, Georgia, serif",
     "sans": "system-ui, sans-serif",
-    "mono": "ui-monospace, monospace"
+    "mono": "ui-monospace, monospace",
+    "display": "\"Barlow Semi Condensed\", \"Arial Narrow\", sans-serif",
+    "body": "\"Inter\", system-ui, sans-serif",
+    "type": "\"Courier Prime\", \"Courier New\", monospace"
   }
 }
