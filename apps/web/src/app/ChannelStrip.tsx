@@ -58,9 +58,14 @@ export function litFrame(current: PageId | undefined, pages: readonly PageDef[] 
   return frames[0]?.id;
 }
 
-/** Pure: what a frame shows on its tab: the channel number, or the hotkey off the dial ("O"). */
+/**
+ * Pure: what a frame shows on its tab: the channel number, or off the dial the page's path name
+ * ("/air" -> "AIR"). A bare "O" hotkey read as a zero beside the digits (costume integration).
+ */
 export function frameTab(page: PageDef): string {
-  return page.channel === undefined ? page.hotkey : String(page.channel);
+  if (page.channel !== undefined) return String(page.channel);
+  const name = page.path.split("/").filter(Boolean).pop();
+  return name === undefined ? page.hotkey : name.slice(0, 3).toUpperCase();
 }
 
 /** Pure: a frame's accessible name, e.g. "Channel 4, Characters: tonight's listings" or "O, The stage: …". */

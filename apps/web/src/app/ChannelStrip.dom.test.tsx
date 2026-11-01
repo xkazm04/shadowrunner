@@ -24,7 +24,7 @@ describe("<ChannelStrip>", () => {
     expect(nav?.getAttribute("aria-label")).toBe("Switch channel");
     expect(nav?.dataset.lamp).toBe("warm");
     const links = frames(mounted);
-    expect(links.map((a) => a.textContent)).toEqual(["2", "3", "4", "6", "9", "O"]);
+    expect(links.map((a) => a.textContent)).toEqual(["2", "3", "4", "6", "9", "AIR"]);
     expect(links.map((a) => a.getAttribute("href"))).toEqual(["/", "/creator", "/characters", "/daemon", "/sealed", "/air"]);
     for (const a of links) expect(a.getAttribute("aria-label")).toMatch(/^(Channel \d|O), /);
     const lit = links.filter((a) => a.getAttribute("aria-current") === "page");
