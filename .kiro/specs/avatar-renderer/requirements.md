@@ -50,7 +50,7 @@ brightest, sharpest thing on screen. It never redefines rig types; it consumes `
 **User story:** As a visitor who prefers reduced motion, I want a calm face, so that the app is comfortable to use.
 
 #### Acceptance criteria
-1. WHEN `inputs.reducedMotion` is true THEN drift and micro-saccades SHALL be zero.
+1. WHEN `inputs.reducedMotion` is true THEN drift and micro-saccades SHALL be zero. When `reducedMotion` changes mid-session, the amplitude ramps linearly to the new level over `MOTION_EASE_S` (0.4 s) instead of jumping (director amendment 2026-11-01); a session that starts reduced never drifts.
 2. Blinks and the audio-driven mouth SHALL remain active under reduced motion.
 3. Gestures under reduced motion SHALL be applied as instantaneous pose changes held for the gesture's duration (cuts, no easing curves), and the glow pass SHALL not pulse.
 

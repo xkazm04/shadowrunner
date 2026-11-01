@@ -1,5 +1,6 @@
 // ESLint flat config. Gates from .kiro/steering/tech.md and structure.md:
-// no `any`, no `as unknown as`, and the package layering enforced by eslint-plugin-boundaries.
+// no `any`, no `as unknown as`, the package layering enforced by eslint-plugin-boundaries, and no
+// relative imports into another member's src/ (members import each other as `@sr/<name>`).
 // scripts/gate-fixtures/ holds seeded violations; it is ignored here and linted only by
 // `pnpm test:gates` (with --no-ignore), which asserts every fixture fails.
 import js from "@eslint/js";
@@ -35,6 +36,17 @@ const LAYERING = [
   { from: "forge", to: ["rig"] },
   { from: "engine", to: ["rig"] },
 ];
+
+/**
+ * A relative specifier that climbs out of the current folder and then descends into some
+ * `<member>/src`, e.g. `../../../rig/src/index.js` or `../../packages/rig/src/x`. Imports inside one
+ * member (`./x`, `../driver/state.js`, `../src/index.js`) never name a folder followed by `src`.
+ * Members import each other by package name (`@sr/rig`), so the edge is declared in package.json.
+ */
+const NO_REACH_INTO_SRC = {
+  regex: "^(?:\\./)?(?:\\.\\./)+(?:[^./][^/]*/)+src(?:/|$)",
+  message: "Import another workspace package by its name (e.g. `@sr/rig`) and declare it in package.json, not by a relative path into its src/.",
+};
 
 const NO_UNKNOWN_AS = {
   selector: "TSAsExpression > TSAsExpression.expression > TSUnknownKeyword.typeAnnotation",
@@ -72,6 +84,17 @@ export default tseslint.config(
     rules: {
       "@typescript-eslint/no-explicit-any": "error",
       "no-restricted-syntax": ["error", NO_UNKNOWN_AS, NO_UNKNOWN_ASSERTION],
+    },
+  },
+  {
+    // Every workspace member (packages, apps, api), plus the gate fixture that proves the rule red.
+    files: [
+      "{apps,packages}/*/**/*.{ts,tsx,mts,cts,js,mjs}",
+      "api/**/*.{ts,tsx,mts,cts,js,mjs}",
+      "scripts/gate-fixtures/src-reach/**/*.ts",
+    ],
+    rules: {
+      "no-restricted-imports": ["error", { patterns: [NO_REACH_INTO_SRC] }],
     },
   },
   {

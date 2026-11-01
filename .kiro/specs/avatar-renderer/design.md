@@ -37,12 +37,13 @@ export interface DriverInputs {
 export interface DriverState {
   t: number;                // seconds since start
   rng: number;              // RNG state
-  nextBlinkAt: number; blinkStart?: number;
+  nextBlinkAt: number; blinkStart?: number; blinkDuration?: number; // 120-180 ms, drawn at blink start
   drift: { yaw: number; pitch: number; phase: number };
   saccade: { yaw: number; pitch: number; nextAt: number };
   gazeYaw: number;          // eased toward the gaze target
   jaw: number;              // smoothed 0..1
   gesture?: { name: Gesture; startedAt: number };
+  motion?: number;          // 0..1 drift/saccade amplitude, ramps over MOTION_EASE_S = 0.4 s
 }
 export function initialState(seed: number): DriverState;
 export function step(s: DriverState, dt: number, i: DriverInputs): DriverState;

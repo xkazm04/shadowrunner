@@ -1,2 +1,6 @@
-// @sr/avatar: WebGL2 2.5D renderer and driver. Stub until spec avatar-renderer.
+// @sr/avatar: WebGL2 2.5D renderer and procedural driver (spec avatar-renderer). Public surface.
 export const PACKAGE = "@sr/avatar";
+
+export * from "./driver/state.js";
+export * from "./driver/step.js";
+export * from "./driver/drive.js";
