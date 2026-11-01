@@ -12,10 +12,10 @@
   - _Requirements: 1.2, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8_
 
 - [ ] 3. Legacy import and Malakor golden
-  - [ ] 3.1 Copy Malakor's rig into `assets/characters/malakor/rig/` from `assets/_incoming/malakor-rig/` (the orchestrator stages it there; record provenance in `docs/provenance.md`).
+  - [x] 3.1 Copy Malakor's rig into `assets/characters/malakor/rig/` from `assets/_incoming/malakor-rig/` (the orchestrator stages it there; record provenance in `docs/provenance.md`).
   - [ ] 3.0 Hardening from the task 2 review (in `validate.ts`, with a fault property each): `parseRigJson(text: string): Result<Rig, RigError[]>`, the only `JSON.parse` of rig text, reporting malformed JSON as `bad_shape` at path `$`; `bad_shape` when `width`/`height` are not positive integers; `bad_shape` when a layer `file` is not a relative POSIX path inside the rig folder (no leading `/`, no `..` segment, no `:` scheme, no backslash); `bbox_out_of_bounds` uses a 1e-6 tolerance on the right and bottom edges.
-  - [ ] 3.2 `legacy.ts` per the mapping table; warnings for unknown kinds.
-  - [ ] 3.3 Golden test: imports with 0 errors, 18 layers, palette from `m8.spec.json`.
+  - [x] 3.2 `legacy.ts` per the mapping table; warnings for unknown kinds.
+  - [x] 3.3 Golden test: imports with 0 errors, 18 layers, palette from `m8.spec.json`.
   - _Requirements: 3.1, 3.2, 3.3_
 
 - [ ] 4. Pose math
