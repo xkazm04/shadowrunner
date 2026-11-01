@@ -17,12 +17,12 @@
   - `audio/level.ts`: `attachAudio` with an AnalyserNode, RMS per frame clamped to [0, 1], `detach()`; unit test with a fake AudioContext.
   - _Requirements: 4.1_
 
-- [ ] 3. WebGL2 renderer
-  - [ ] 3.1 Counting WebGL2 stub for tests (`src/__tests__/glStub.ts`).
-  - [ ] 3.2 `gl/context.ts`, `gl/programs.ts` (base + glow shaders).
-  - [ ] 3.3 `gl/layers.ts`: one texture per layer uploaded in `setRig`, one quad per `LayerPose`, premultiplied alpha, rim and eye-gain uniforms.
-  - [ ] 3.4 `gl/glow.ts`: half-res extract, separable blur, additive composite tinted by `palette.glow`.
-  - [ ] 3.5 `gl/renderer.ts`: `createRenderer`, `setLook` without context recreation, `dispose` frees everything; exact-count test (draws = visible layers + 4 per frame, uploads once).
+- [x] 3. WebGL2 renderer
+  - [x] 3.1 Counting WebGL2 stub for tests (`src/__tests__/glStub.ts`).
+  - [x] 3.2 `gl/context.ts`, `gl/programs.ts` (base + glow shaders).
+  - [x] 3.3 `gl/layers.ts`: one texture per layer uploaded in `setRig`, one quad per `LayerPose`, premultiplied alpha, rim and eye-gain uniforms.
+  - [x] 3.4 `gl/glow.ts`: half-res extract, separable blur, additive composite tinted by `palette.glow`.
+  - [x] 3.5 `gl/renderer.ts`: `createRenderer`, `setLook` without context recreation, `dispose` frees everything; exact-count test (draws = visible layers + 4 per frame, uploads once).
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 7.1, 7.2_
 
 - [ ] 4. Canvas2D fallback and context loss
