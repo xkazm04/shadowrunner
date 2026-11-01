@@ -48,10 +48,17 @@ importers:
         specifier: ^5.0.5
         version: 5.0.5(@types/node@22.20.5)(vite@8.3.5(@types/node@22.20.5))
 
-  api: {}
+  api:
+    dependencies:
+      '@sr/engine':
+        specifier: workspace:*
+        version: link:../packages/engine
 
   apps/web:
     dependencies:
+      '@sr/engine':
+        specifier: workspace:*
+        version: link:../../packages/engine
       '@sr/theme':
         specifier: workspace:*
         version: link:../../packages/theme

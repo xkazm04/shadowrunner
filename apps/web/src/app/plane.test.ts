@@ -1,3 +1,4 @@
+import { PLANE_HEADER } from "@sr/engine";
 import fc from "fast-check";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -5,9 +6,10 @@ import {
   DEFAULT_PLANE,
   fetchHealth,
   HEALTH_URL,
-  parseHealth,
+  isApiPath,
   planeOverride,
   resolvePlane,
+  withPlaneHeader,
   type Fetcher,
   type Health,
 } from "./plane";
@@ -54,25 +56,69 @@ describe("resolvePlane", () => {
   });
 });
 
-describe("parseHealth", () => {
-  it("accepts every well-formed body and keeps only the three fields", () => {
-    fc.assert(
-      fc.property(healthArb, fc.dictionary(fc.string(), fc.jsonValue()), (health, extra) => {
-        expect(parseHealth({ ...extra, ...health })).toEqual(health);
+// parseHealth moved to its owner, @sr/engine (packages/engine/src/validate.test.ts).
+
+describe("withPlaneHeader", () => {
+  const apiPath = fc.webPath().map((p) => `/api/${p.replace(/^\/+/, "")}`);
+  const otherUrl = fc.oneof(
+    fc.constantFrom("/", "/air", "/apix", "/api", "https://sr.test/api/health", "//cdn.test/api/x"),
+    fc.webUrl(),
+  );
+  const callerHeaders = fc.dictionary(
+    fc.constantFrom("accept", "content-type", PLANE_HEADER, "x-trace"),
+    fc.constantFrom("application/json", "live", "replay", "1"),
+  );
+
+  /** A fetcher that records the headers it was handed. */
+  function recording() {
+    const seen: Headers[] = [];
+    const fetcher: Fetcher = async (_url, init) => {
+      seen.push(new Headers(init?.headers));
+      return new Response(null, { status: 204 });
+    };
+    return { seen, fetcher };
+  }
+
+  it("tags every /api/* request with x-sr-plane: replay while ?plane=replay is active", async () => {
+    await fc.assert(
+      fc.asyncProperty(apiPath, callerHeaders, async (url, headers) => {
+        const { seen, fetcher } = recording();
+        await withPlaneHeader(fetcher, () => "?theme=baseline&plane=Replay")(url, { headers });
+        expect(seen[0]?.get(PLANE_HEADER)).toBe("replay");
+        for (const [name, value] of Object.entries(headers)) {
+          if (name !== PLANE_HEADER) expect(seen[0]?.get(name)).toBe(value);
+        }
       }),
     );
   });
 
-  it("rejects a body with any field missing or of the wrong kind", () => {
-    const field = fc.constantFrom("plane", "engine", "version");
-    const bad = fc.oneof(fc.constant(undefined), fc.integer(), fc.constant("unknown"), fc.constant(null));
-    fc.assert(
-      fc.property(healthArb, field, bad, (health, key, value) => {
-        if (key === "version" && typeof value === "string") return;
-        expect(parseHealth({ ...health, [key]: value })).toBeUndefined();
+  it("leaves requests alone without the override, and non-API URLs alone with it", async () => {
+    await fc.assert(
+      fc.asyncProperty(fc.oneof(apiPath, otherUrl), callerHeaders, fc.boolean(), async (url, headers, active) => {
+        if (active && isApiPath(url)) return;
+        const { seen, fetcher } = recording();
+        const search = active ? "?plane=replay" : "?plane=live";
+        await withPlaneHeader(fetcher, () => search)(url, { headers });
+        expect(seen[0]?.get(PLANE_HEADER) ?? undefined).toBe(headers[PLANE_HEADER]);
       }),
     );
-    for (const body of [null, "ok", 3, [], { ok: true }]) expect(parseHealth(body)).toBeUndefined();
+  });
+
+  it("reads the URL per request, so the header follows the override", async () => {
+    let search = "?plane=replay";
+    const { seen, fetcher } = recording();
+    const tagged = withPlaneHeader(fetcher, () => search);
+    await tagged(HEALTH_URL);
+    search = "";
+    await tagged(HEALTH_URL);
+    expect(seen.map((h) => h.get(PLANE_HEADER))).toEqual(["replay", null]);
+  });
+
+  it("is what the health read goes through", async () => {
+    const { seen, fetcher } = recording();
+    await fetchHealth(withPlaneHeader(fetcher, () => "?plane=replay"));
+    expect(seen[0]?.get(PLANE_HEADER)).toBe("replay");
+    expect(seen[0]?.get("accept")).toBe("application/json");
   });
 });
 

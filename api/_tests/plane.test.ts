@@ -1,7 +1,8 @@
 // Lives under an underscore folder so Vercel does not deploy it as a function.
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { engineState, plane } from "../_lib/plane.js";
+import { PLANE_HEADER } from "@sr/engine";
+import { engineState, plane, planeFromRequest } from "../_lib/plane.js";
 
 /** "live" in any letter case, padded with any whitespace. */
 const liveSpelling = fc
@@ -28,6 +29,47 @@ describe("plane", () => {
 
   it("is replay for every other value, so a typo never turns on paid calls", () => {
     fc.assert(fc.property(notLive, (value) => plane({ SR_PLANE: value }) === "replay"));
+  });
+});
+
+describe("planeFromRequest", () => {
+  // A raw header bag rather than `Headers`, so values reach planeFromRequest unnormalised.
+  const request = (header: string | undefined) => ({
+    headers: { get: (name: string) => (name.toLowerCase() === PLANE_HEADER ? (header ?? null) : null) },
+  });
+  const replaySpelling = fc
+    .tuple(fc.array(fc.boolean(), { minLength: 6, maxLength: 6 }), fc.constantFrom("", " ", "\t"), fc.constantFrom("", " ", "\t"))
+    .map(([upper, before, after]) => `${before}${[..."replay"].map((ch, i) => (upper[i] ? ch.toUpperCase() : ch)).join("")}${after}`);
+  // Draws "live" spellings on purpose: fc.string() alone would almost never try to force live.
+  const anyHeader = fc.option(fc.oneof(fc.string(), liveSpelling, replaySpelling), { nil: undefined });
+  const anyEnvPlane = fc.option(fc.oneof(fc.string(), liveSpelling), { nil: undefined });
+
+  it("never serves live unless SR_PLANE is live: the header can only force replay", () => {
+    fc.assert(
+      fc.property(anyHeader, anyEnvPlane, (header, srPlane) => {
+        const env = { SR_PLANE: srPlane };
+        const served = planeFromRequest(request(header), env);
+        if (served === "live") expect(plane(env)).toBe("live");
+        return served === "replay" || plane(env) === "live";
+      }),
+    );
+  });
+
+  it("serves replay on a live deploy for any spelling of x-sr-plane: replay", () => {
+    fc.assert(fc.property(replaySpelling, (header) => planeFromRequest(request(header), { SR_PLANE: "live" }) === "replay"));
+    expect(planeFromRequest(request("live, replay"), { SR_PLANE: "live" })).toBe("replay");
+  });
+
+  it("follows SR_PLANE when the header is absent or is anything but replay", () => {
+    const notReplay = fc.option(fc.oneof(fc.string(), liveSpelling), { nil: undefined }).filter(
+      (h) => h === undefined || !h.split(",").some((v) => v.trim().toLowerCase() === "replay"),
+    );
+    fc.assert(
+      fc.property(notReplay, anyEnvPlane, (header, srPlane) => {
+        const env = { SR_PLANE: srPlane };
+        return planeFromRequest(request(header), env) === plane(env);
+      }),
+    );
   });
 });
 

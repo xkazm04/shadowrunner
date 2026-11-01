@@ -20,6 +20,9 @@ inclusion: always
   `/api/*` request carries `x-sr-plane: replay`. Every endpoint that can spend money (engine, forge,
   voice) SHALL serve replay when that header is present, even on a live deploy. The header can only
   force replay, never live. The badge must never say RECORDED while a paid call runs.
+  Client code calls `/api/*` only through `apiFetch` (`apps/web/src/app/plane.ts`), never bare `fetch`;
+  every paid endpoint resolves its plane with `planeFromRequest(req, env)` (`api/_lib/plane.ts`) and has
+  a test that the header forces replay.
 
 ## Gates (run before you report a task done)
 ```

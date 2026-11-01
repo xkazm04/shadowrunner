@@ -33,7 +33,7 @@
   - `vercel.json` (static build of apps/web, Node functions for api/), `.env.example` (SR_PLANE, SR_DAILY_USD_CAP, GEMINI_API_KEY, ANTHROPIC_API_KEY, model ids - comments, no values), README quickstart (3 commands). Verify `pnpm build` produces `apps/web/dist`.
   - _Requirements: 5.1, 5.2, 5.3_
 
-- [ ] 7. One owner for the health contract (director follow-up from task 5 review)
+- [x] 7. One owner for the health contract (director follow-up from task 5 review)
   - Move `Plane`, `EngineState`, `Health` and `parseHealth` into `packages/engine/src/health.ts` (types) and `packages/engine/src/validate.ts` (the only parse). Export them from `@sr/engine`. `api/_lib/plane.ts`, `api/health.ts` and `apps/web/src/app/plane.ts` import them instead of declaring their own copies. Add `@sr/engine` as a `workspace:*` dependency where needed.
   - The client sends `x-sr-plane: replay` on every `/api/*` request while the `?plane=replay` override is active (steering tech.md, "Plane override reaches the server"). Add `planeFromRequest(req, env)` to `api/_lib/plane.ts`: the header can force replay, never live. Property test proven red once.
   - Gates green; existing health and plane tests keep passing after the move.

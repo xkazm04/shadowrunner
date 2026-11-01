@@ -1,32 +1,16 @@
 // Planes on the client (m0-spine requirement 4). The server names its plane in GET /api/health;
 // `?plane=replay` forces replay for the visit. Until health answers, and whenever it cannot be
 // read (no functions under `vite dev`, a network error), the client is on replay: the default
-// plane needs no key and makes no paid call.
+// plane needs no key and makes no paid call. While the override is active, every /api/* request
+// carries `x-sr-plane: replay` so paid endpoints serve replay too (steering tech.md).
+// The wire types and their validator live in @sr/engine; the re-export is for the shell.
+import { PLANE_HEADER, parseHealth, type Health, type Plane } from "@sr/engine";
 import { useSyncExternalStore } from "react";
 
-export type Plane = "replay" | "live";
-export type EngineState = "scripted" | "anthropic" | "offline";
-
-/** Wire shape of GET /api/health. Mirrors `Health` in api/health.ts (the app may not import api/). */
-export interface Health {
-  plane: Plane;
-  engine: EngineState;
-  version: string;
-}
+export type { EngineState, Health, Plane } from "@sr/engine";
 
 export const HEALTH_URL = "/api/health";
 export const DEFAULT_PLANE: Plane = "replay";
-
-const PLANES: readonly string[] = ["replay", "live"] satisfies Plane[];
-const ENGINES: readonly string[] = ["scripted", "anthropic", "offline"] satisfies EngineState[];
-
-function isPlane(value: unknown): value is Plane {
-  return typeof value === "string" && PLANES.includes(value);
-}
-
-function isEngineState(value: unknown): value is EngineState {
-  return typeof value === "string" && ENGINES.includes(value);
-}
 
 /** `?plane=replay` (any case, any padding) forces replay. Nothing in the URL can force live. */
 export function planeOverride(search: string): Plane | undefined {
@@ -34,20 +18,36 @@ export function planeOverride(search: string): Plane | undefined {
   return values.some((v) => v.trim().toLowerCase() === "replay") ? "replay" : undefined;
 }
 
-/** Validates a health body from the network; extra fields are dropped. */
-export function parseHealth(value: unknown): Health | undefined {
-  if (typeof value !== "object" || value === null) return undefined;
-  const body: Partial<Record<keyof Health, unknown>> = value;
-  const { plane, engine, version } = body;
-  if (!isPlane(plane) || !isEngineState(engine) || typeof version !== "string") return undefined;
-  return { plane, engine, version };
-}
-
 export function resolvePlane(override: Plane | undefined, health: Health | undefined): Plane {
   return override ?? health?.plane ?? DEFAULT_PLANE;
 }
 
 export type Fetcher = (url: string, init?: RequestInit) => Promise<Response>;
+
+/** Same-origin API paths (`/api/...`). Absolute and protocol-relative URLs are not ours to tag. */
+export function isApiPath(url: string): boolean {
+  return url.startsWith("/api/");
+}
+
+/**
+ * Wraps a fetcher so every /api/* request carries `x-sr-plane: replay` while the `?plane=replay`
+ * override is active. `search` is read per request, so the header follows the current URL.
+ * The header is set over any value the caller passed; other requests pass through untouched.
+ */
+export function withPlaneHeader(fetcher: Fetcher, search: () => string): Fetcher {
+  return (url, init) => {
+    if (!isApiPath(url) || planeOverride(search()) !== "replay") return fetcher(url, init);
+    const headers = new Headers(init?.headers);
+    headers.set(PLANE_HEADER, "replay");
+    return fetcher(url, { ...init, headers });
+  };
+}
+
+/** The browser's fetch for /api/*: every client call to a function goes through this. */
+export const apiFetch: Fetcher = withPlaneHeader(
+  (url, init) => fetch(url, init),
+  () => window.location.search,
+);
 
 /** One health read. Never throws: any failure is "no health", which means replay. */
 export async function fetchHealth(fetcher: Fetcher): Promise<Health | undefined> {
@@ -91,7 +91,7 @@ export function createPlaneStore(load: () => Promise<Health | undefined>): Plane
   };
 }
 
-const browserStore = createPlaneStore(() => fetchHealth((url, init) => fetch(url, init)));
+const browserStore = createPlaneStore(() => fetchHealth(apiFetch));
 
 function browserPlane(): Plane {
   return resolvePlane(planeOverride(window.location.search), browserStore.health());

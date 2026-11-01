@@ -28,6 +28,21 @@ describe("GET /api/health", () => {
   });
 });
 
+describe("GET /api/health with x-sr-plane", () => {
+  it("answers replay to a client that sends x-sr-plane: replay, even on a live deploy with a key", async () => {
+    vi.stubEnv("SR_PLANE", "live");
+    vi.stubEnv("ANTHROPIC_API_KEY", "sk-test-not-a-real-key");
+    const req = new Request("https://sr.test/api/health", { headers: { "x-sr-plane": "replay" } });
+    expect(await GET(req).json()).toMatchObject({ plane: "replay", engine: "scripted" });
+  });
+
+  it("cannot be talked into live by the header", async () => {
+    vi.stubEnv("SR_PLANE", undefined);
+    const req = new Request("https://sr.test/api/health", { headers: { "x-sr-plane": "live" } });
+    expect(await GET(req).json()).toMatchObject({ plane: "replay", engine: "scripted" });
+  });
+});
+
 describe("health", () => {
   it("has exactly plane, engine and version, and never echoes a secret", () => {
     // The prefix keeps a random key from colliding with a legitimate value such as "scripted".
