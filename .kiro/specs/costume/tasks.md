@@ -34,6 +34,6 @@
 - [x] 6. The stage: candles of the catacomb (air lane)
   - _Requirements: 8.1-8.4_
 
-- [ ] 7. Integration
+- [x] 7. Integration
   - Merge lanes, resolve role appends, gates, contrast, landing visual baseline, full-site walk at 1440x900 and 390x844; kiro-log rows and writeup paragraph.
   - _Requirements: 10.5_

@@ -21,6 +21,11 @@
   from Gemini 3 Pro Image. The winning prototype is kept as a reference
   (`assets/_incoming/landing-winner/`). The `landing` spec turns it into acceptance criteria, and
   Kiro writes the React port.
+- **The costume pass (disclosed).** For the Costume Contest the owner ran two more design rounds
+  on 2026-11-01: Claude Opus 5.5 subagents built three static HTML variants per page per round, and
+  the owner picked winners on an artifact triage board (`assets/_incoming/costume/`). The `costume`
+  spec turns the winners into acceptance criteria; Kiro was still out of credits, so Claude Code lanes
+  ported them under the same steering, hooks and gates (log rows "costume / 0-7").
 
 ## Spec-driven development
 (spec structure, how specs prevented drift, spec vs vibe comparison - TODO with evidence)
