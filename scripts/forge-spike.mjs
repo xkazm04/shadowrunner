@@ -1,6 +1,7 @@
 // Forge spike (forge-pipeline task 1, requirement 1). Owner-only, paid, never run by tests.
 //   GEMINI_API_KEY=... node scripts/forge-spike.mjs [--force]
 //   GEMINI_API_KEY=... node scripts/forge-spike.mjs --parts-only <image> [--force]
+//   GEMINI_API_KEY=... node scripts/forge-spike.mjs --presets 2,4 --out var/forge-presets [--force]
 // End to end (task 1.2): for 3 preset prompts (assets/characters/presets/PROMPTS.md, characters 1,
 // 3 and 5) it runs the SERVER pipeline itself (api/_lib/forge-steps.ts with the real Gemini client
 // from api/_lib/gemini.ts, the server's timeouts, a memory job store and no quota): portrait ->
@@ -9,6 +10,7 @@
 // rig, every layer PNG, and composite.png (portrait | layers composited | jaw opened), and a
 // summary.json with step timings, part count, the validateRig result and the fill mode.
 // --parts-only (task 2.2, ruling (a)): one PARTS_PROMPT call on an existing PNG/JPEG, raw reply kept.
+// --presets / --out (task 9): forge only the named presets of PROMPTS.md, into another folder.
 //
 // Paid-call discipline: no call is retried (the server does not retry either; the parts step's one
 // re-ask is part of the pipeline), and the script refuses to run again over an existing
@@ -19,7 +21,12 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, extname, join } from "node:path";
 import { runnerImport } from "vite";
 
-const OUT = join("var", "forge-spike");
+const argOf = (flag) => (process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : undefined);
+const OUT = argOf("--out") ?? join("var", "forge-spike");
+if (!/^var[\\/][\w.-]+$/.test(OUT)) {
+  console.error("forge-spike: --out must be a folder directly under var/.");
+  process.exit(2);
+}
 const load = async (id) => (await runnerImport(id)).module;
 const forge = await load("/packages/forge/src/index.ts");
 const { validateRig } = await load("/packages/rig/src/index.ts");
@@ -34,11 +41,19 @@ function presetText(n) {
   if (!match) throw new Error(`forge-spike: no Character text for preset ${n}`);
   return match[1].split("\n").map((l) => l.replace(/^>\s?/, "").trim()).filter(Boolean).join(" ");
 }
-const CHARACTERS = [
+const PRESETS = [
   { slug: "lantern-warden", preset: 1, expected: ["head", "jaw", "eye_l", "eye_r", "hat", "torso"] },
+  { slug: "sister-vesper", preset: 2, expected: ["head", "jaw", "eye_l", "eye_r", "hair", "torso"] },
   { slug: "understudy", preset: 3, expected: ["head", "jaw", "eye_l", "eye_r", "accessory", "torso"] },
+  { slug: "moth-widow", preset: 4, expected: ["head", "jaw", "eye_l", "eye_r", "crown", "torso"] },
   { slug: "announcer-of-dead-air", preset: 5, expected: ["head", "jaw", "eye_l", "eye_r", "hat", "crown", "torso"] },
-].map((c) => ({ ...c, text: presetText(c.preset) }));
+];
+const chosen = (argOf("--presets") ?? "1,3,5").split(",").map(Number);
+const CHARACTERS = PRESETS.filter((c) => chosen.includes(c.preset)).map((c) => ({ ...c, text: presetText(c.preset) }));
+if (CHARACTERS.length !== chosen.length) {
+  console.error("forge-spike: --presets takes preset numbers 1-5, comma separated.");
+  process.exit(2);
+}
 
 const KEY = process.env.GEMINI_API_KEY;
 if (!KEY) {
@@ -114,27 +129,10 @@ function isInterior(mask, i, r) {
   return true;
 }
 
-/** The rig's layers composited back to front over black; `jawPx` moves the jaw layer down. */
+/** The rig through the reference compositor (task 9); `jawPx` moves the jaw layer down. */
 function composite(rig, assets, jawPx) {
-  const { width, height } = rig;
-  const data = new Uint8ClampedArray(width * height * 4);
-  for (let i = 3; i < data.length; i += 4) data[i] = 255;
-  for (const layer of [...rig.layers].sort((a, b) => a.z - b.z)) {
-    const img = decode(fromDataUrl(assets[layer.file]));
-    const [bx, by] = layer.bbox;
-    const dy = layer.kind === "jaw" ? jawPx : 0;
-    for (let y = 0; y < img.height; y++) {
-      const ty = Math.round(by) + y + dy;
-      if (ty < 0 || ty >= height) continue;
-      for (let x = 0; x < img.width; x++) {
-        const tx = Math.round(bx) + x;
-        if (tx < 0 || tx >= width) continue;
-        const s = (y * img.width + x) * 4, t = (ty * width + tx) * 4, a = img.data[s + 3] / 255;
-        for (let c = 0; c < 3; c++) data[t + c] = img.data[s + c] * a + data[t + c] * (1 - a);
-      }
-    }
-  }
-  return { width, height, data };
+  const images = Object.fromEntries(Object.entries(assets).map(([file, url]) => [file, decode(fromDataUrl(url))]));
+  return forge.compositeRig(rig, images, { jaw: jawPx });
 }
 function sideBySide(images) {
   const { height } = images[0];
@@ -223,7 +221,7 @@ for (const c of CHARACTERS) {
       result.layers = job.rig.layers.map((l) => l.name);
       writeFileSync(join(dir, "rig.json"), `${JSON.stringify(job.rig, null, 2)}\n`);
       for (const [file, url] of Object.entries(job.assets)) writeFileSync(join(dir, `layer-${file}`), fromDataUrl(url));
-      const jawPx = Math.round(job.rig.height * 0.03);
+      const jawPx = Math.round(job.rig.height * 0.06); // the renderer's full drop (JAW_DROP)
       writeFileSync(join(dir, "composite.png"), forge.encodePng(sideBySide([img, composite(job.rig, job.assets, 0), composite(job.rig, job.assets, jawPx)])));
       result.composite = join(dir, "composite.png");
       result.jawOpenPx = jawPx;

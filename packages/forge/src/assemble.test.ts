@@ -121,16 +121,18 @@ describe("assembleRig", () => {
     }
   });
 
-  it("paints the background in the plate's ground colour and surfaces palette_fallback", () => {
+  it("draws the whole plate as the background (task 9) and surfaces palette_fallback", () => {
     const portrait: Rgba = { width: 64, height: 64, data: new Uint8ClampedArray(64 * 64 * 4).fill(255) };
     const plate: Rgba = { width: 64, height: 64, data: new Uint8ClampedArray(64 * 64 * 4) };
     for (let i = 0; i < 64 * 64; i++) plate.data.set([6, 5, 9, 255], i * 4);
+    plate.data.set([200, 40, 90, 255], (30 * 64 + 31) * 4);
     const parts = partsOf([{ name: "head", box_2d: [200, 200, 800, 800], poly: [[200, 200], [200, 800], [800, 800], [800, 200]] }]);
     const result = assembleRig(parts, cutAll(portrait, parts, { plate }).layers, { id: "white", name: "White", portrait, plate });
     if (!result.ok) throw new Error(JSON.stringify(result.errors));
     const background = decoded(result.value.files["background.png"]);
     expect(Array.from(background.data.subarray(0, 4))).toEqual([6, 5, 9, 255]);
     expect(Array.from(background.data.subarray(-4))).toEqual([6, 5, 9, 255]);
+    expect(background.data.join(",")).toBe(plate.data.join(","));
     expect(result.value.warnings.map((w) => w.code)).toEqual(["palette_fallback"]);
     expect(() => assembleRig(parts, [], { id: "x", name: "X", portrait, plate: { ...plate, width: 32 } })).toThrow(RangeError);
   });
@@ -203,8 +205,8 @@ describe("golden: Malakor portrait + m8 parts -> a valid rig (task 5)", () => {
             "bbox": [
               332,
               152,
-              371,
-              470,
+              386,
+              491,
             ],
             "follow": undefined,
             "kind": "head",
@@ -217,10 +219,10 @@ describe("golden: Malakor portrait + m8 parts -> a valid rig (task 5)", () => {
               454,
             ],
             "bbox": [
-              376,
-              454,
-              272,
-              168,
+              367,
+              445,
+              290,
+              186,
             ],
             "follow": "head",
             "kind": "jaw",
@@ -249,10 +251,10 @@ describe("golden: Malakor portrait + m8 parts -> a valid rig (task 5)", () => {
               348,
             ],
             "bbox": [
-              559,
-              276,
-              144,
-              145,
+              556,
+              273,
+              150,
+              151,
             ],
             "follow": "head",
             "kind": "accessory",
@@ -265,10 +267,10 @@ describe("golden: Malakor portrait + m8 parts -> a valid rig (task 5)", () => {
               340,
             ],
             "bbox": [
-              350,
-              286,
-              126,
-              107,
+              347,
+              283,
+              132,
+              113,
             ],
             "follow": "head",
             "kind": "eye",
@@ -281,10 +283,10 @@ describe("golden: Malakor portrait + m8 parts -> a valid rig (task 5)", () => {
               343,
             ],
             "bbox": [
-              564,
-              290,
-              114,
-              107,
+              561,
+              287,
+              120,
+              113,
             ],
             "follow": "head",
             "kind": "eye",

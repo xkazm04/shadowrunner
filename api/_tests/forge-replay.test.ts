@@ -1,14 +1,26 @@
 // Replay plane (task 8, requirement 7.5): recorded jobs, prompt-hash pick, 1.5-3 s per status,
 // zero fetches, and the real endpoints honour `x-sr-plane: replay` with the bundled jobs.
+// Task 9: images are static files at /replay/forge/<slug>/<file> (vercel-output.mjs publishes
+// assets/replay/** there); the tests serve those URLs from disk to check every one resolves.
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { decodeImage } from "@sr/forge";
 import fc from "fast-check";
 import type { JobView } from "@sr/forge";
 import { validateRig } from "@sr/rig";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { defaultForgeDeps, handleForgeGet, handleForgePost } from "../_lib/forge-api.js";
-import { bundledReplay, createForgeReplay, pickIndex, replayJobId, replayJobOf, statusAt, type ReplayJob } from "../_lib/forge-replay.js";
+import { REPLAY_BASE, bundledReplay, createForgeReplay, pickIndex, replayJobId, replayJobOf, replayView, statusAt, type ReplayJob } from "../_lib/forge-replay.js";
 
 const manifests = import.meta.glob("../../assets/replay/forge/*/job.json", { eager: true, import: "default" });
-const SLUGS = ["announcer-of-dead-air", "lantern-warden", "malakor", "understudy"];
+const SLUGS = ["announcer-of-dead-air", "lantern-warden", "malakor", "moth-widow", "sister-vesper", "understudy"];
+
+/** The static file behind a /replay/** URL, read from assets/replay/** (what the deploy serves). */
+function serveStatic(url: string): Uint8Array | undefined {
+  if (!url.startsWith("/replay/") || url.includes("..")) return undefined;
+  const path = join("assets", ...url.split("/").filter(Boolean));
+  return existsSync(path) ? new Uint8Array(readFileSync(path)) : undefined;
+}
 const ORDER = ["queued", "portrait", "segmenting", "cutting", "filling", "done"];
 
 let fetches = 0;
@@ -30,7 +42,7 @@ async function view(res: Response): Promise<JobView> {
 }
 
 describe("recorded jobs", () => {
-  it("there are 4, each fictional, with a valid rig of 7+ layers and holds of 1.5-3 s", () => {
+  it("there are 6, each fictional, with a valid rig of 7+ layers and holds of 1.5-3 s", () => {
     const slugs = Object.keys(manifests).map((p) => p.split("/").at(-2));
     expect(slugs.sort()).toEqual(SLUGS);
     for (const manifest of Object.values(manifests)) {
@@ -44,11 +56,33 @@ describe("recorded jobs", () => {
     }
   });
 
-  it("a manifest that is not fictional, or misses a layer file, is refused", () => {
-    const [manifest] = Object.values(manifests);
-    const files = { "portrait.png": "data:image/png;base64,AA==" };
-    expect(replayJobOf({ ...(manifest as object), fictional: false }, files)).toBeUndefined();
-    expect(replayJobOf(manifest, files)).toBeUndefined();
+  it("a manifest that is not fictional, or names a file outside its folder, is refused", () => {
+    const [manifest] = Object.values(manifests) as { rig: { layers: { file: string }[] } }[];
+    if (manifest === undefined) throw new Error("no manifests");
+    expect(replayJobOf(manifest)).toBeDefined();
+    expect(replayJobOf({ ...manifest, fictional: false })).toBeUndefined();
+    expect(replayJobOf({ ...manifest, portrait: "../portrait.jpg" })).toBeUndefined();
+    const layers = manifest.rig.layers.map((l, i) => (i === 0 ? { ...l, file: "data:image/png;base64,AA==" } : l));
+    expect(replayJobOf({ ...manifest, rig: { ...manifest.rig, layers } })).toBeUndefined();
+  });
+
+  it("every job's done view is under 100 KB and every URL in it is a static file that decodes at its layer's size", () => {
+    for (const manifest of Object.values(manifests)) {
+      const job = replayJobOf(manifest);
+      if (job === undefined) throw new Error("a committed job does not load");
+      const view = replayView(job, replayJobId(job.slug, 0), "done");
+      expect(JSON.stringify(view).length, job.slug).toBeLessThan(100 * 1024);
+      expect(view.portraitUrl).toBe(`${REPLAY_BASE}/${job.slug}/${(manifest as { portrait: string }).portrait}`);
+      expect(serveStatic(view.portraitUrl ?? ""), `${job.slug} portrait`).toBeDefined();
+      for (const layer of job.rig.layers) {
+        const url = view.assets?.[layer.file] ?? "";
+        expect(url).toBe(`${REPLAY_BASE}/${job.slug}/${layer.file}`);
+        const bytes = serveStatic(url);
+        expect(bytes, url).toBeDefined();
+        const image = decodeImage(bytes ?? new Uint8Array());
+        expect(image.ok && [image.value.width, image.value.height], url).toEqual([layer.bbox[2], layer.bbox[3]]);
+      }
+    }
   });
 });
 
@@ -56,6 +90,7 @@ describe("replay plane", () => {
   const job: ReplayJob = {
     slug: "x",
     name: "X",
+    fill: "edit",
     steps: [
       { status: "queued", holdMs: 1500 },
       { status: "portrait", holdMs: 3000 },
@@ -64,7 +99,7 @@ describe("replay plane", () => {
       { status: "filling", holdMs: 1500 },
       { status: "done", holdMs: 0 },
     ],
-    portraitUrl: "data:image/png;base64,AA==",
+    portraitUrl: "/replay/forge/x/portrait.jpg",
     rig: { version: 1, id: "x", name: "X", width: 4, height: 4, source: "forge", fictional: true, palette: { eye: "#ff0000", glow: "#ff0000", rim: "#ff0000", mouth: "#ff0000" }, layers: [] },
     assets: {},
   };
@@ -100,10 +135,10 @@ describe("replay plane", () => {
       expect("portraitUrl" in last).toBe(ORDER.indexOf(last.status) >= 2);
     }
     expect(seen).toEqual(ORDER);
-    expect(last?.fill).toBe("fallback");
+    expect(["edit", "fallback"]).toContain(last?.fill);
     const rig = validateRig(last?.rig);
     expect(rig.ok).toBe(true);
-    if (rig.ok) for (const layer of rig.value.layers) expect(last?.assets?.[layer.file]).toMatch(/^data:image\/png;base64,/);
+    if (rig.ok) for (const layer of rig.value.layers) expect(serveStatic(last?.assets?.[layer.file] ?? "")).toBeDefined();
     expect(fetches).toBe(0);
   });
 

@@ -3,7 +3,7 @@
 // part in front is fully opaque, so no two layers share an opaque core, and it reaches a few px
 // under its neighbours in front, so their soft edges sit over it instead of over the ground.
 // Pure: plain arrays in, fresh images out.
-import { KEY_HI, type Mask, cornerKeyLo, dilateMask, featherMask, lumaKey, rasterizeMask } from "./mask.js";
+import { KEY_HI, type Mask, cornerKeyLo, dilateMask, emptyMask, featherMask, luma, lumaKey, rasterizeMask } from "./mask.js";
 import { toCanvas } from "./parts.js";
 import type { Part, PartName, Polygon, Rgba } from "./types.js";
 
@@ -37,6 +37,21 @@ export const PLATE_PARTS: readonly PartName[] = ["head", "torso"];
  */
 export const FILL_PARTS: readonly PartName[] = ["eye_l", "eye_r", "monocle", "accessory", "jaw"];
 
+/**
+ * Task 9: the jaw's lifted region is its polygon grown by this many px, so the edge of the hole an
+ * open jaw leaves lies on painted surface, past the jaw's own outline (polygons run tight).
+ */
+export const JAW_GROW = 6;
+
+/** Task 9: the head's surface under the jaw is darkened to this share of its light, deep inside. */
+export const MOUTH_SHADE = 0.25;
+
+/** Px over which the mouth shade ramps in from the edge of the jaw's lifted region. */
+export const MOUTH_SHADE_RAMP = 28;
+
+/** Task 9: the plate takes the fill within this many px of the lifted region (see plate.ts). */
+export const PLATE_DILATE = 12;
+
 /** Ruling 4: a hat holding more than this share of the head's area is a hood. */
 export const HOOD_SHARE = 0.6;
 
@@ -69,8 +84,8 @@ export interface CutResult {
 
 export interface CutOptions {
   /**
-   * The filled portrait (fill step, FILL_PARTS removed); head and torso are cut from it and keep
-   * the filled surface under FILL_PARTS (ruling (a)). Without it head and torso come from the
+   * The filled plate (`composePlate`: FILL_PARTS painted out); head and torso keep its painted
+   * surface under the lifted region (ruling (a), task 9). Without it head and torso come from the
    * portrait and lose those parts' cores like any other.
    */
   plate?: Rgba;
@@ -139,6 +154,48 @@ export function hoodShare(head: Polygon, hat: Polygon, width: number, height: nu
   return area === 0 ? 0 : shared / area;
 }
 
+/** The canvas polygons of `parts`, first of each name (parseParts already drops repeats). */
+function polygonsOf(parts: readonly Part[], width: number, height: number): Map<PartName, Polygon> {
+  const polys = new Map<PartName, Polygon>();
+  for (const part of parts) if (!polys.has(part.name)) polys.set(part.name, toCanvas(part.poly, width, height));
+  return polys;
+}
+
+/** One FILL_PARTS part's lifted region: its hard polygon, the jaw's grown by JAW_GROW. */
+function liftedOf(name: PartName, poly: Polygon, width: number, height: number): Mask {
+  const hard = rasterizeMask(poly, width, height, 0);
+  return name === "jaw" ? dilateMask(hard, JAW_GROW) : hard;
+}
+
+/**
+ * Task 9: the region the fill paints and the head carries under the moving parts: the hard union
+ * of the FILL_PARTS polygons (or of `names` among them), the jaw's grown by JAW_GROW. 255 inside.
+ */
+export function liftedRegion(parts: readonly Part[], width: number, height: number, names: readonly PartName[] = FILL_PARTS): Mask {
+  const polys = polygonsOf(parts, width, height);
+  const out: Mask = { width, height, data: new Uint8ClampedArray(width * height) };
+  for (const name of FILL_PARTS) {
+    if (!names.includes(name)) continue;
+    const poly = polys.get(name);
+    if (poly === undefined) continue;
+    liftedOf(name, poly, width, height).data.forEach((a, i) => {
+      if (a !== 0) out.data[i] = 255;
+    });
+  }
+  return out;
+}
+
+/** `under` where `weight` is 0 (bit for bit), `over` where it is 255, linear between; all four channels. */
+export function blendBy(under: Rgba, over: Rgba, weight: Mask): Rgba {
+  const data = under.data.slice();
+  for (let i = 0; i < weight.data.length; i++) {
+    const w = weight.data[i] ?? 0;
+    if (w === 0) continue;
+    for (let c = i * 4; c < i * 4 + 4; c++) data[c] = Math.round((under.data[c] ?? 0) + (((over.data[c] ?? 0) - (under.data[c] ?? 0)) * w) / 255);
+  }
+  return { width: under.width, height: under.height, data };
+}
+
 /**
  * How far a part grows under the parts in front of it (task 4 seams): far enough that its own
  * feather band ends inside their opaque cores, so it is opaque under their whole feather band.
@@ -169,11 +226,16 @@ function underFront(own: Mask, front: Mask, reach: number): Mask {
  * take the head, eye and jaw masks out of the hat; then drop every pixel where a part in front is
  * fully opaque. So opaque cores never overlap, and where a front part's edge is partly transparent
  * the part behind it is opaque: the stack composites back to the source with no dark seam.
- * With `options.plate` (ruling (a)), head and torso are cut from the plate, are not reduced by the
- * cores of FILL_PARTS, and the head also takes in the FILL_PARTS polygons, so an open jaw or a
- * hidden monocle shows filled surface, never a hole. Without a plate no two cores overlap at all;
- * with one, only a FILL_PARTS core may overlap a head or torso core. A part name that repeats
- * keeps its first polygon (parseParts already drops repeats).
+ *
+ * With `options.plate` (ruling (a), task 9) the parts that move are lifted off a filled surface:
+ * - each FILL_PARTS layer is opaque over its whole lifted region (the jaw's grown by JAW_GROW) and
+ *   feathers outward over `feather` px, so at rest it hides everything the fill painted under it;
+ * - head and torso are cut from the plate inside the lifted region (blended to the portrait over
+ *   its inner `feather` px) and from the portrait outside it, are not reduced by the cores of
+ *   FILL_PARTS, and the head also covers the lifted region grown by PLATE_DILATE. So an open jaw
+ *   or a shut eye shows painted surface, never a hole, and at rest no fill pixel shows at all.
+ * Without a plate no two cores overlap at all; with one, only a FILL_PARTS core may overlap a head
+ * or torso core. A part name that repeats keeps its first polygon (parseParts already drops repeats).
  */
 export function cutAll(portrait: Rgba, parts: readonly Part[], options: CutOptions = {}): CutResult {
   const { width, height } = portrait;
@@ -181,21 +243,11 @@ export function cutAll(portrait: Rgba, parts: readonly Part[], options: CutOptio
   const plate = options.plate ?? portrait;
   sameSize(portrait, plate, "cutAll plate");
   const feather = options.feather ?? CUT_FEATHER;
+  const polys = polygonsOf(parts, width, height);
 
-  const polys = new Map<PartName, Polygon>();
-  for (const part of parts) if (!polys.has(part.name)) polys.set(part.name, toCanvas(part.poly, width, height));
-
-  /** Ruling (a): hard union of the FILL_PARTS polygons, which the head covers on a filled plate. */
-  const lifted: Mask = { width, height, data: new Uint8ClampedArray(width * height) };
-  if (filled) {
-    for (const name of FILL_PARTS) {
-      const poly = polys.get(name);
-      if (poly === undefined) continue;
-      rasterizeMask(poly, width, height, 0).data.forEach((a, i) => {
-        if (a !== 0) lifted.data[i] = 255;
-      });
-    }
-  }
+  /** Task 9: what the head carries under the moving parts, and the surface head and torso are cut from. */
+  const lifted = filled ? liftedRegion(parts, width, height) : emptyMask(width, height);
+  const surface = filled ? shadeMouth(blendBy(portrait, plate, featherMask(lifted, feather)), parts) : portrait;
 
   const keyLo = Math.min(cornerKeyLo(portrait), KEY_HI - 1);
   let key: Mask | undefined;
@@ -215,12 +267,14 @@ export function cutAll(portrait: Rgba, parts: readonly Part[], options: CutOptio
   for (const name of CUT_ORDER) {
     const poly = polys.get(name);
     if (poly === undefined) continue;
-    const own = rasterizeMask(poly, width, height, 0);
+    const isLifted = FILL_PARTS.includes(name);
+    const own = filled && isLifted ? liftedOf(name, poly, width, height) : rasterizeMask(poly, width, height, 0);
     const shape = underFront(own, front, reach);
-    if (filled && name === "head") for (let i = 0; i < shape.data.length; i++) if (lifted.data[i] === 255) shape.data[i] = 255;
+    if (filled && isLifted) addTo(shape, dilateMask(own, feather));
+    if (filled && name === "head") addTo(shape, dilateMask(lifted, PLATE_DILATE + feather));
     const m = featherMask(shape, feather).data;
     if (KEYED_PARTS.includes(name)) {
-      key ??= lumaKey(portrait, keyLo, KEY_HI);
+      key ??= keyOf(portrait, keyLo, filled ? plate : undefined);
       for (let i = 0; i < m.length; i++) m[i] = Math.round(((m[i] ?? 0) * (key.data[i] ?? 0)) / 255);
     }
     if (name === "hat" && hood) {
@@ -233,18 +287,67 @@ export function cutAll(portrait: Rgba, parts: readonly Part[], options: CutOptio
     }
     const onPlate = PLATE_PARTS.includes(name);
     const blocked = filled && onPlate ? kept : core;
-    const isKept = !FILL_PARTS.includes(name);
     for (let i = 0; i < m.length; i++) {
       if (blocked[i] === 1) m[i] = 0;
       else if (m[i] === 255) {
         core[i] = 1;
-        if (isKept) kept[i] = 1;
+        if (!isLifted) kept[i] = 1;
       }
       if (own.data[i] !== 0) front.data[i] = 255;
     }
-    const cut = cutLayer(onPlate ? plate : portrait, { width, height, data: m });
+    const cut = cutLayer(onPlate ? surface : portrait, { width, height, data: m });
     if (cut === undefined) empty.push(name);
     else layers.push({ name, ...cut });
   }
   return { layers, empty, keyLo, hood };
+}
+
+/**
+ * Task 9: what an open jaw uncovers is a mouth, so the head's surface under the jaw's lifted region
+ * is shaded toward MOUTH_SHADE over MOUTH_SHADE_RAMP px from the region's edge. Whatever the fill
+ * painted there (skin, teeth, rind, or the fallback's blur) reads as the inside of a mouth in shadow.
+ * Hidden at rest: the jaw layer is opaque over the whole region. Modifies and returns `image`.
+ */
+function shadeMouth(image: Rgba, parts: readonly Part[]): Rgba {
+  const { width, height } = image;
+  const region = liftedRegion(parts, width, height, ["jaw"]);
+  const box = bboxOfMask(region);
+  if (box === undefined) return image;
+  const [bx, , bw] = box;
+  const ramp = featherMask(region, MOUTH_SHADE_RAMP).data;
+  for (let i = 0; i < ramp.length; i++) {
+    const r = ramp[i] ?? 0;
+    if (r === 0) continue;
+    // Deepest at the middle of the jaw's width, so the opening reads as a mouth, not a band.
+    const across = Math.sin((Math.PI * ((i % width) - bx + 0.5)) / bw) ** 1.5;
+    const shade = 1 - ((1 - MOUTH_SHADE) * r * across) / 255;
+    for (let c = i * 4; c < i * 4 + 3; c++) image.data[c] = Math.round((image.data[c] ?? 0) * shade);
+  }
+  return image;
+}
+
+/** Task 9: a keyed pixel stays opaque once portrait and plate differ by this much luma. */
+export const KEY_KEEP = 8;
+
+/**
+ * The luma key for crown, hair and accessory. With a plate, a pixel only keys out as far as the
+ * plate behind it looks the same: alpha is at least |luma(portrait) - luma(plate)| / KEY_KEEP, so
+ * a dark ribbon over a filled brow or a glow over a painted-out ground stays (task 9, rest = portrait).
+ */
+function keyOf(portrait: Rgba, lo: number, plate?: Rgba): Mask {
+  const key = lumaKey(portrait, lo, KEY_HI);
+  if (plate === undefined) return key;
+  const p = portrait.data;
+  const q = plate.data;
+  for (let i = 0; i < key.data.length; i++) {
+    const at = i * 4;
+    const diff = Math.abs(luma(p[at] ?? 0, p[at + 1] ?? 0, p[at + 2] ?? 0) - luma(q[at] ?? 0, q[at + 1] ?? 0, q[at + 2] ?? 0));
+    key.data[i] = Math.max(key.data[i] ?? 0, Math.min(255, Math.ceil((diff * 255) / KEY_KEEP)));
+  }
+  return key;
+}
+
+/** Sets `shape` to 255 wherever `extra` is non-zero. */
+function addTo(shape: Mask, extra: Mask): void {
+  for (let i = 0; i < shape.data.length; i++) if ((extra.data[i] ?? 0) !== 0) shape.data[i] = 255;
 }

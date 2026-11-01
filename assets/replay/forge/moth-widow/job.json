@@ -1,0 +1,182 @@
+{
+  "slug": "moth-widow",
+  "name": "The Moth Widow",
+  "fictional": true,
+  "source": "forge run 2026-11-01 16:25 UTC: gemini-3-pro-image portrait (preset 4) and fill edit + recorded gemini-3.8-flash parts",
+  "prompt": "A moth-woman of the night garden: a soft face of pale dusty fur, two large dark compound eyes with a moonlit gold sheen, a small closed mouth with a delicate lower jaw. Two tall feathered antennae rise from the brow like a crown. Folded speckled wings wrap her shoulders like a mourning cloak, dusted with silver scales. A string of tiny lunar pearls at the throat.",
+  "promptSha256": "3fef936e8193570f53238e0941021fad49de4eb2cdf0c7b396ba4101b9ea0669",
+  "portrait": "portrait.jpg",
+  "fill": "edit",
+  "timings": {
+    "portraitMs": 15154,
+    "partsMs": 21532,
+    "fillMs": 15238,
+    "cutMs": 3033
+  },
+  "steps": [
+    {
+      "status": "queued",
+      "holdMs": 1500
+    },
+    {
+      "status": "portrait",
+      "holdMs": 1894
+    },
+    {
+      "status": "segmenting",
+      "holdMs": 2692
+    },
+    {
+      "status": "cutting",
+      "holdMs": 1905
+    },
+    {
+      "status": "filling",
+      "holdMs": 1500
+    },
+    {
+      "status": "done"
+    }
+  ],
+  "warnings": [],
+  "rig": {
+    "version": 1,
+    "id": "replay-moth-widow",
+    "name": "The Moth Widow",
+    "width": 1024,
+    "height": 1024,
+    "source": "forge",
+    "fictional": true,
+    "palette": {
+      "glow": "#a18543",
+      "eye": "#bda876",
+      "rim": "#bda876",
+      "mouth": "#262113"
+    },
+    "layers": [
+      {
+        "name": "background",
+        "z": 1,
+        "kind": "static",
+        "file": "background.png",
+        "bbox": [
+          0,
+          0,
+          1024,
+          1024
+        ],
+        "anchor": [
+          512,
+          512
+        ],
+        "depth": 0
+      },
+      {
+        "name": "torso",
+        "z": 2,
+        "kind": "body",
+        "file": "torso.png",
+        "bbox": [
+          108,
+          482,
+          806,
+          522
+        ],
+        "anchor": [
+          510.976,
+          744.448
+        ],
+        "depth": 0.3
+      },
+      {
+        "name": "head",
+        "z": 3,
+        "kind": "head",
+        "file": "head.png",
+        "bbox": [
+          370,
+          290,
+          283,
+          412
+        ],
+        "anchor": [
+          512,
+          635.904
+        ],
+        "depth": 0.6
+      },
+      {
+        "name": "jaw",
+        "z": 4,
+        "kind": "jaw",
+        "file": "jaw.png",
+        "bbox": [
+          432,
+          598,
+          155,
+          92
+        ],
+        "anchor": [
+          509.43999999999994,
+          607.232
+        ],
+        "follow": "head",
+        "depth": 0.62
+      },
+      {
+        "name": "hair",
+        "z": 5,
+        "kind": "crown",
+        "file": "hair.png",
+        "bbox": [
+          121,
+          24,
+          777,
+          929
+        ],
+        "anchor": [
+          507.904,
+          492.032
+        ],
+        "follow": "head",
+        "depth": 0.65
+      },
+      {
+        "name": "eye_r",
+        "z": 6,
+        "kind": "eye",
+        "file": "eye_r.png",
+        "bbox": [
+          382,
+          443,
+          95,
+          76
+        ],
+        "anchor": [
+          427.4818527115425,
+          481.07332770626715
+        ],
+        "follow": "head",
+        "depth": 0.7
+      },
+      {
+        "name": "eye_l",
+        "z": 7,
+        "kind": "eye",
+        "file": "eye_l.png",
+        "bbox": [
+          542,
+          442,
+          99,
+          79
+        ],
+        "anchor": [
+          590.6865626874625,
+          482.07228554289145
+        ],
+        "follow": "head",
+        "depth": 0.7
+      }
+    ]
+  }
+}

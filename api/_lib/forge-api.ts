@@ -2,7 +2,7 @@
 // job lease, shared by POST /api/forge and GET /api/forge/:jobId. Everything that can spend money
 // or reach the network is in `ForgeDeps`, so tests inject fakes. `x-sr-plane: replay` (or a replay
 // deploy) sends both routes to the recorded forges, which make no paid call and no fetch.
-import { parseForgeJob, parseForgeRequest, toJobView, MAX_UPLOAD_BASE64, MAX_UPLOAD_BYTES, type ForgeJob } from "@sr/forge";
+import { parseForgeJob, parseForgeRequest, toJobView, MAX_UPLOAD_BASE64, MAX_UPLOAD_BYTES, UPLOAD_LIMIT_MESSAGE, type ForgeJob } from "@sr/forge";
 import { COST_USD } from "./costs.js";
 import { ApiError, errorBody, errorResponse } from "./errors.js";
 import { geminiFromEnv, type GeminiClient } from "./gemini.js";
@@ -40,7 +40,7 @@ export function jobResponse(job: ForgeJob): Response {
 
 function decodeUpload(base64: string): Uint8Array {
   const bytes = new Uint8Array(Buffer.from(base64, "base64"));
-  if (bytes.length === 0 || bytes.length > MAX_UPLOAD_BYTES) throw badInput("The image must be a PNG, JPEG or WebP of at most 8 MB.");
+  if (bytes.length === 0 || bytes.length > MAX_UPLOAD_BYTES) throw badInput(UPLOAD_LIMIT_MESSAGE);
   return bytes;
 }
 
@@ -50,7 +50,7 @@ export async function handleForgePost(req: Request, deps: ForgeDeps): Promise<Re
     const now = deps.now();
     const text = await req.text();
     if (planeFromRequest(req, deps.env) === "replay") return await deps.replay.post(text, now);
-    if (text.length > MAX_UPLOAD_BASE64 + 4096) throw badInput("The image must be a PNG, JPEG or WebP of at most 8 MB.");
+    if (text.length > MAX_UPLOAD_BASE64 + 4096) throw badInput(UPLOAD_LIMIT_MESSAGE);
     const parsed = parseForgeRequest(text);
     if (!parsed.ok) throw badInput(parsed.errors.message);
     const request = parsed.value;
@@ -58,7 +58,7 @@ export async function handleForgePost(req: Request, deps: ForgeDeps): Promise<Re
     if (request.mode === "image") {
       const bytes = decodeUpload(request.imageBase64 ?? "");
       const mime = uploadMime(bytes);
-      if (mime === undefined) throw badInput("The image must be a PNG, JPEG or WebP of at most 8 MB.");
+      if (mime === undefined) throw badInput(UPLOAD_LIMIT_MESSAGE);
       upload = { bytes, mime };
     }
     const store = deps.store();

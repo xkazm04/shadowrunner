@@ -2,15 +2,16 @@
   "slug": "announcer-of-dead-air",
   "name": "Announcer of Dead Air",
   "fictional": true,
-  "source": "forge spike 2026-11-01: gemini-3-pro-image portrait (preset 5) + recorded gemini-3.8-flash parts",
+  "source": "forge run 2026-11-01 15:58 UTC: gemini-3-pro-image portrait (preset 5) and fill edit + recorded gemini-3.8-flash parts",
   "prompt": "A tall hooded announcer whose face is a void of soft darkness: only two round eyes of violet phosphor and a wide mouth of flickering static-white teeth on a separate lower jaw. A deep hood of heavy black felt, frayed at the edge. Above the hood floats a broken ring of rusted antenna rods crackling with violet sparks. A collar of old microphone mesh.",
   "promptSha256": "ef53e901c96c20c4597f18af09cb01dad6d1239029bb1e827cfc2b53c3f3efa2",
   "portrait": "portrait.jpg",
-  "fill": "fallback",
+  "fill": "edit",
   "timings": {
-    "portraitMs": 15949,
-    "partsMs": 19648,
-    "cutMs": 2181
+    "portraitMs": 16279,
+    "partsMs": 11914,
+    "fillMs": 15831,
+    "cutMs": 3284
   },
   "steps": [
     {
@@ -19,15 +20,15 @@
     },
     {
       "status": "portrait",
-      "holdMs": 1994
+      "holdMs": 2035
     },
     {
       "status": "segmenting",
-      "holdMs": 2456
+      "holdMs": 1500
     },
     {
       "status": "cutting",
-      "holdMs": 1500
+      "holdMs": 1979
     },
     {
       "status": "filling",
@@ -47,10 +48,10 @@
     "source": "forge",
     "fictional": true,
     "palette": {
-      "glow": "#7f53cc",
-      "eye": "#b593f0",
-      "rim": "#b593f0",
-      "mouth": "#1a1326"
+      "glow": "#8a4fd4",
+      "eye": "#bc8bfa",
+      "rim": "#bc8bfa",
+      "mouth": "#1c1326"
     },
     "layers": [
       {
@@ -76,14 +77,14 @@
         "kind": "body",
         "file": "torso.png",
         "bbox": [
-          35,
-          678,
-          978,
-          338
+          77,
+          737,
+          860,
+          279
         ],
         "anchor": [
-          523.776,
-          837.12
+          506.88,
+          876.0319999999999
         ],
         "depth": 0.3
       },
@@ -93,14 +94,14 @@
         "kind": "head",
         "file": "head.png",
         "bbox": [
-          342,
-          327,
-          347,
-          448
+          305,
+          33,
+          415,
+          673
         ],
         "anchor": [
           515.5840000000001,
-          615.424
+          581.632
         ],
         "depth": 0.6
       },
@@ -110,50 +111,50 @@
         "kind": "jaw",
         "file": "jaw.png",
         "bbox": [
-          378,
-          590,
-          288,
-          185
+          421,
+          599,
+          178,
+          107
         ],
         "anchor": [
-          522.24,
-          595.968
+          509.952,
+          599.04
         ],
         "follow": "head",
         "depth": 0.62
       },
       {
-        "name": "crown",
-        "z": 5,
-        "kind": "crown",
-        "file": "crown.png",
-        "bbox": [
-          166,
-          26,
-          679,
-          251
-        ],
-        "anchor": [
-          504.832,
-          151.55200000000002
-        ],
-        "follow": "head",
-        "depth": 0.65
-      },
-      {
         "name": "hat",
-        "z": 6,
+        "z": 5,
         "kind": "accessory",
         "file": "hat.png",
         "bbox": [
-          146,
-          143,
-          741,
-          705
+          230,
+          134,
+          543,
+          648
         ],
         "anchor": [
-          529.9123606314138,
-          512.9803685968543
+          497.9118543593199,
+          513.4019723031291
+        ],
+        "follow": "head",
+        "depth": 0.75
+      },
+      {
+        "name": "accessory",
+        "z": 6,
+        "kind": "accessory",
+        "file": "accessory.png",
+        "bbox": [
+          317,
+          45,
+          391,
+          144
+        ],
+        "anchor": [
+          514.4878134052542,
+          119.9220857057237
         ],
         "follow": "head",
         "depth": 0.75
@@ -164,14 +165,14 @@
         "kind": "eye",
         "file": "eye_r.png",
         "bbox": [
-          391,
-          421,
-          82,
-          84
+          412,
+          380,
+          63,
+          60
         ],
         "anchor": [
-          433.11235834936923,
-          463.5761171691255
+          445.3076753418615,
+          410.30326422584915
         ],
         "follow": "head",
         "depth": 0.7
@@ -182,14 +183,14 @@
         "kind": "eye",
         "file": "eye_l.png",
         "bbox": [
-          563,
-          420,
-          80,
-          85
+          545,
+          377,
+          65,
+          63
         ],
         "anchor": [
-          602.575982888572,
-          463.079140354451
+          578.5089321965083,
+          408.7411693057247
         ],
         "follow": "head",
         "depth": 0.7

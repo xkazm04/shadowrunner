@@ -1,6 +1,8 @@
 // The forge's replay plane (forge-pipeline requirement 7.5, task 8): pre-forged jobs from
 // assets/replay/forge/<slug>/ (built offline by scripts/forge-replay.mjs). No key, no quota, no
-// network: the job files are bundled into the function as data: URLs at build time.
+// network. Task 9: only each job.json is bundled into the function; the portrait and layer images
+// are static files, published from assets/replay/** at /replay/** (scripts/vercel-output.mjs), and
+// the job view names them by that URL, so a `done` response stays small (well under 100 KB).
 // Stateless on purpose: replay instances share nothing, so the job id carries the slug and the start
 // time, and every GET derives the status from the elapsed time and the recorded per-status holds
 // (1.5-3 s each). POST picks a job by hashing the prompt (or the upload), so the same text always
@@ -13,9 +15,14 @@ import type { ForgeReplay } from "./forge-api.js";
 
 const NO_STORE = { "cache-control": "no-store" };
 
+/** Where assets/replay/forge/<slug>/<file> is served. */
+export const REPLAY_BASE = "/replay/forge";
+
 export interface ReplayJob {
   slug: string;
   name: string;
+  /** How the recorded job's plate was filled (task 9 jobs record it; older ones were all fallback). */
+  fill: "edit" | "fallback";
   /** Holds per status in order, ending with "done". */
   steps: { status: ForgeStatus; holdMs: number }[];
   portraitUrl: string;
@@ -25,19 +32,22 @@ export interface ReplayJob {
 
 const STATUS_ORDER: readonly ForgeStatus[] = ["queued", "portrait", "segmenting", "cutting", "filling", "done"];
 const SLUG = /^[a-z0-9-]{1,48}$/;
+/** A file in the job's own folder: no path, no scheme. */
+const FILE = /^[a-z0-9_-]{1,48}\.(png|jpg)$/;
 
 type Fields = Record<string, unknown>;
 const isRecord = (v: unknown): v is Fields => typeof v === "object" && v !== null && !Array.isArray(v);
 const isStatus = (v: unknown): v is ForgeStatus => typeof v === "string" && (STATUS_ORDER as readonly string[]).includes(v);
 
 /**
- * One committed job.json plus its files (published path -> data: URL). Undefined, and a warning,
- * when anything is off: a recorded job must be fictional, its rig must validate, its holds must be
- * 1.5-3 s in status order, and every layer file must exist.
+ * One committed job.json -> a replay job whose images are static URLs under REPLAY_BASE/<slug>/.
+ * Undefined when anything is off: a recorded job must be fictional, its rig must validate, its
+ * holds must be 1.5-3 s in status order, and its portrait and every layer file must be a plain
+ * .png/.jpg name in its folder (that the files exist is checked by the build and by the tests).
  */
-export function replayJobOf(value: unknown, files: Readonly<Record<string, string>>): ReplayJob | undefined {
+export function replayJobOf(value: unknown): ReplayJob | undefined {
   if (!isRecord(value) || typeof value.slug !== "string" || !SLUG.test(value.slug) || typeof value.name !== "string") return undefined;
-  if (value.fictional !== true || typeof value.portrait !== "string" || !Array.isArray(value.steps)) return undefined;
+  if (value.fictional !== true || typeof value.portrait !== "string" || !FILE.test(value.portrait) || !Array.isArray(value.steps)) return undefined;
   const rig = validateRig(value.rig);
   if (!rig.ok || !rig.value.fictional) return undefined;
   const steps: ReplayJob["steps"] = [];
@@ -49,29 +59,24 @@ export function replayJobOf(value: unknown, files: Readonly<Record<string, strin
   }
   const order = steps.map((s) => STATUS_ORDER.indexOf(s.status));
   if (steps.at(-1)?.status !== "done" || order.some((r, i) => i > 0 && r <= (order[i - 1] ?? -1))) return undefined;
-  const portraitUrl = files[value.portrait];
-  if (portraitUrl === undefined) return undefined;
+  const base = `${REPLAY_BASE}/${value.slug}/`;
   const assets: Record<string, string> = {};
   for (const layer of rig.value.layers) {
-    const url = files[layer.file];
-    if (url === undefined || !url.startsWith("data:image/png;base64,")) return undefined;
-    assets[layer.file] = url;
+    if (!FILE.test(layer.file)) return undefined;
+    assets[layer.file] = base + layer.file;
   }
-  return { slug: value.slug, name: value.name, steps, portraitUrl, rig: rig.value, assets };
+  const fill = value.fill === "edit" ? "edit" : "fallback";
+  return { slug: value.slug, name: value.name, fill, steps, portraitUrl: base + value.portrait, rig: rig.value, assets };
 }
 
-/** The committed jobs, bundled at build time (Vite glob imports; vitest resolves them the same way). */
+/** The committed job manifests, bundled at build time (Vite glob import; vitest resolves it the same way). */
 function bundledJobs(): ReplayJob[] {
   const manifests = import.meta.glob("../../assets/replay/forge/*/job.json", { eager: true, import: "default" });
-  const files = import.meta.glob<string>("../../assets/replay/forge/*/*.{png,jpg}", { eager: true, query: "?inline", import: "default" });
   const jobs: ReplayJob[] = [];
   for (const [path, manifest] of Object.entries(manifests)) {
-    const dir = path.slice(0, path.lastIndexOf("/") + 1);
-    const own: Record<string, string> = {};
-    for (const [file, url] of Object.entries(files)) if (file.startsWith(dir)) own[file.slice(dir.length)] = url;
-    const job = replayJobOf(manifest, own);
+    const job = replayJobOf(manifest);
     if (job) jobs.push(job);
-    else console.warn(`forge replay: skipped an invalid recorded job (${dir})`);
+    else console.warn(`forge replay: skipped an invalid recorded job (${path})`);
   }
   return jobs.sort((a, b) => a.slug.localeCompare(b.slug));
 }
@@ -101,7 +106,7 @@ export function replayView(job: ReplayJob, jobId: string, status: ForgeStatus): 
   if (status === "done") {
     view.rig = job.rig;
     view.assets = job.assets;
-    view.fill = "fallback";
+    view.fill = job.fill;
   }
   return view;
 }

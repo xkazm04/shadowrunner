@@ -10,8 +10,13 @@ import type { ForgeErrorCode, ForgeRequest, ForgeStatus } from "./wire.js";
 
 /** Upper bound of the user's text in a request (the prompt uses at most MAX_CHARACTER_TEXT of it). */
 export const MAX_REQUEST_PROMPT = 2000;
-/** Requirement 2.4: uploads up to 8 MB; base64 needs 4 characters per 3 bytes. */
-export const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
+/**
+ * Requirement 2.4 as amended (2026-11-01): uploads up to 3 MB after the client's downscale, so the
+ * base64 body stays under Vercel's 4.5 MB request cap; base64 needs 4 characters per 3 bytes.
+ */
+export const MAX_UPLOAD_BYTES = 3 * 1024 * 1024;
+/** The bad_input message for an upload that is too large or not an image. */
+export const UPLOAD_LIMIT_MESSAGE = "The image must be a PNG, JPEG or WebP of at most 3 MB.";
 export const MAX_UPLOAD_BASE64 = Math.ceil(MAX_UPLOAD_BYTES / 3) * 4;
 
 type Fields = Record<string, unknown>;
@@ -51,7 +56,7 @@ export function parseForgeRequest(text: string): Result<ForgeRequest, RequestErr
     if (typeof body.imageBase64 !== "string") return badInput("Choose an image.");
     const data = body.imageBase64.replace(/^data:image\/[a-z]+;base64,/, "");
     if (data.length === 0 || data.length > MAX_UPLOAD_BASE64 || !/^[A-Za-z0-9+/]+={0,2}$/.test(data)) {
-      return badInput("The image must be a PNG, JPEG or WebP of at most 8 MB.");
+      return badInput(UPLOAD_LIMIT_MESSAGE);
     }
     return { ok: true, value: { mode: "image", imageBase64: data } };
   }

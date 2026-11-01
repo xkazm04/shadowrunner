@@ -2,14 +2,14 @@
   "slug": "malakor",
   "name": "Arch-Lich Malakor",
   "fictional": true,
-  "source": "committed Malakor portrait (pre-existing art) + recorded gemini-3.8-flash parts, 2026-11-01",
+  "source": "committed Malakor portrait (pre-existing art) + recorded gemini-3.8-flash parts, 2026-11-01; pure fill fallback",
   "prompt": "Arch-Lich Malakor",
   "promptSha256": "494d718ba270348a76019ee42402d3be7ededb6118b30dae3498936d49a4c637",
   "portrait": "portrait.png",
   "fill": "fallback",
   "timings": {
     "partsMs": 17312,
-    "cutMs": 1744
+    "cutMs": 1579
   },
   "steps": [
     {
@@ -94,8 +94,8 @@
         "bbox": [
           332,
           152,
-          371,
-          470
+          386,
+          491
         ],
         "anchor": [
           514.048,
@@ -109,10 +109,10 @@
         "kind": "jaw",
         "file": "jaw.png",
         "bbox": [
-          376,
-          454,
-          272,
-          168
+          367,
+          445,
+          290,
+          186
         ],
         "anchor": [
           512,
@@ -145,10 +145,10 @@
         "kind": "accessory",
         "file": "monocle.png",
         "bbox": [
-          559,
-          276,
-          144,
-          145
+          556,
+          273,
+          150,
+          151
         ],
         "anchor": [
           632.2228230726566,
@@ -163,10 +163,10 @@
         "kind": "eye",
         "file": "eye_r.png",
         "bbox": [
-          350,
-          286,
-          126,
-          107
+          347,
+          283,
+          132,
+          113
         ],
         "anchor": [
           411.3168445042992,
@@ -181,10 +181,10 @@
         "kind": "eye",
         "file": "eye_l.png",
         "bbox": [
-          564,
-          290,
-          114,
-          107
+          561,
+          287,
+          120,
+          113
         ],
         "anchor": [
           621.9086711711711,

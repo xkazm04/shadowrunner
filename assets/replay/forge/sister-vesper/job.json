@@ -1,0 +1,182 @@
+{
+  "slug": "sister-vesper",
+  "name": "Sister Vesper",
+  "fictional": true,
+  "source": "forge run 2026-11-01 16:25 UTC: gemini-3-pro-image portrait (preset 2) and fill edit + recorded gemini-3.8-flash parts",
+  "prompt": "A drowned choir sister, pale grey-blue skin smooth as river stone, eyes clouded milk-white with a faint cold blue glow. Long black hair floats upward and outward as if underwater, framing the face in slow strands. Her mouth is closed and solemn, the jaw clearly defined. A high collar of wet white lace over a dark habit. Tiny silver bubbles drift around her hair.",
+  "promptSha256": "cc6a79c574b7a615a921dd0c2638871a4d3afcbc1a13419f669777bfff07b7fa",
+  "portrait": "portrait.jpg",
+  "fill": "edit",
+  "timings": {
+    "portraitMs": 15106,
+    "partsMs": 19759,
+    "fillMs": 17846,
+    "cutMs": 2711
+  },
+  "steps": [
+    {
+      "status": "queued",
+      "holdMs": 1500
+    },
+    {
+      "status": "portrait",
+      "holdMs": 1888
+    },
+    {
+      "status": "segmenting",
+      "holdMs": 2470
+    },
+    {
+      "status": "cutting",
+      "holdMs": 2231
+    },
+    {
+      "status": "filling",
+      "holdMs": 1500
+    },
+    {
+      "status": "done"
+    }
+  ],
+  "warnings": [],
+  "rig": {
+    "version": 1,
+    "id": "replay-sister-vesper",
+    "name": "Sister Vesper",
+    "width": 1024,
+    "height": 1024,
+    "source": "forge",
+    "fictional": true,
+    "palette": {
+      "glow": "#438bae",
+      "eye": "#77b1cd",
+      "rim": "#77b1cd",
+      "mouth": "#132026"
+    },
+    "layers": [
+      {
+        "name": "background",
+        "z": 1,
+        "kind": "static",
+        "file": "background.png",
+        "bbox": [
+          0,
+          0,
+          1024,
+          1024
+        ],
+        "anchor": [
+          512,
+          512
+        ],
+        "depth": 0
+      },
+      {
+        "name": "torso",
+        "z": 2,
+        "kind": "body",
+        "file": "torso.png",
+        "bbox": [
+          65,
+          570,
+          893,
+          452
+        ],
+        "anchor": [
+          511.48800000000006,
+          796.1600000000001
+        ],
+        "depth": 0.3
+      },
+      {
+        "name": "head",
+        "z": 3,
+        "kind": "head",
+        "file": "head.png",
+        "bbox": [
+          354,
+          163,
+          311,
+          452
+        ],
+        "anchor": [
+          509.44,
+          491.52
+        ],
+        "depth": 0.6
+      },
+      {
+        "name": "jaw",
+        "z": 4,
+        "kind": "jaw",
+        "file": "jaw.png",
+        "bbox": [
+          413,
+          476,
+          184,
+          127
+        ],
+        "anchor": [
+          504.832,
+          485.376
+        ],
+        "follow": "head",
+        "depth": 0.62
+      },
+      {
+        "name": "hair",
+        "z": 5,
+        "kind": "crown",
+        "file": "hair.png",
+        "bbox": [
+          41,
+          70,
+          960,
+          524
+        ],
+        "anchor": [
+          515.584,
+          331.77599999999995
+        ],
+        "follow": "head",
+        "depth": 0.65
+      },
+      {
+        "name": "eye_r",
+        "z": 6,
+        "kind": "eye",
+        "file": "eye_r.png",
+        "bbox": [
+          397,
+          320,
+          86,
+          55
+        ],
+        "anchor": [
+          438.44375907111754,
+          347.4071117561684
+        ],
+        "follow": "head",
+        "depth": 0.7
+      },
+      {
+        "name": "eye_l",
+        "z": 7,
+        "kind": "eye",
+        "file": "eye_l.png",
+        "bbox": [
+          538,
+          320,
+          93,
+          59
+        ],
+        "anchor": [
+          583.8466463414634,
+          348.844512195122
+        ],
+        "follow": "head",
+        "depth": 0.7
+      }
+    ]
+  }
+}

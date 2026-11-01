@@ -43,10 +43,10 @@
   - [x] 6.3 `api/_lib/jobstore.ts`: `MemoryJobStore`, `RedisBlobJobStore` (Upstash KV + Vercel Blob), selection by plane/env; `api/cron/forge-gc.ts`.
   - _Requirements: 7.2, 7.3, 7.6_
 
-- [ ] 7. Forge endpoints and steps
+- [x] 7. Forge endpoints and steps
   - From the task 5 review: take the fill list for `fillPrompt` and the `blurExtend` hole from `FILL_PARTS` (one owner); map `assembleRig`'s `RangeError` on a plate/portrait size mismatch to `upstream` (never a raw error to the client); when the spike is re-run for 1.2, inspect each composite for a box edge around the jaw on the plate-sourced head and record it in 0003.
   - Malformed parts JSON (seen live 2026-11-01: Gemini added a stray `]`): `packages/forge/src/validate.ts` `parsePartsJson(text)` is the only `JSON.parse` of the reply; when it fails, the parts step re-asks the model once (counts against quota), then fails the job with `upstream`. No text repair in production. Test with the recorded raw reply.
-  - [ ] 7.1 `api/forge/index.ts` (validation, likeness/content check for images, quota, portrait step) and `api/forge/[jobId].ts` (advance one step via `forge-steps.ts`: parts -> fill (edit, fallback on failure/30 s) -> cut -> assemble).
+  - [x] 7.1 `api/forge/index.ts` (validation, likeness/content check for images, quota, portrait step) and `api/forge/[jobId].ts` (advance one step via `forge-steps.ts`: parts -> fill (edit, fallback on failure/30 s) -> cut -> assemble).
   - [x] 7.2 Tests with a fake Gemini client: happy path reaches `done` with a valid rig; `refused_likeness`; `quota` before any call; upstream garbage -> `upstream`; no secret or raw upstream text in responses.
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 5.1, 5.2, 7.1, 7.4, 7.6_
 
@@ -54,7 +54,7 @@
   - Record 4 pre-forged jobs into `assets/replay/forge/<slug>/` (from the spike outputs, marked `fictional: true`, provenance in `docs/provenance.md`); replay `POST` picks by prompt hash, `GET` steps statuses with 1.5-3 s latency; test that replay makes zero fetches.
   - _Requirements: 7.5_
 
-- [ ] 9. Rig quality and static replay (director rulings from the 1.2 composites, 2026-11-01)
+- [x] 9. Rig quality and static replay (director rulings from the 1.2 composites, 2026-11-01)
   - Plate composition: the plate equals the original portrait everywhere except inside the `FILL_PARTS` regions dilated by 12 px, where the fill-edit pixels (or `blurExtend`) are blended in with a 6 px feather. This removes fill drift by construction (the Announcer must keep his void face). Property: outside the dilated regions the plate equals the portrait exactly.
   - The `background` layer is that full plate (not a flat ground colour), so no region the parts do not cover can ever render black. Golden on m8: the composite at rest equals the portrait within luma 8 everywhere.
   - Jaw: dilate the jaw's lifted region so its edge lands on painted interior; feather the jaw layer's top edge 3 px. Golden: an open jaw (0.06 * height) shows no near-black pixels outside the mouth interior that the plate painted.

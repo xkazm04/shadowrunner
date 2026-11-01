@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import m8Raw from "../test/fixtures/m8-parts.raw.txt?raw";
 import m8 from "../test/fixtures/m8-parts.json";
 import { toJobView, type ForgeJob } from "./job.js";
-import { MAX_REQUEST_PROMPT, MAX_UPLOAD_BASE64, parseForgeJob, parseForgeRequest, parseLikenessJson, parsePartsJson } from "./validate.js";
+import { MAX_REQUEST_PROMPT, MAX_UPLOAD_BASE64, MAX_UPLOAD_BYTES, UPLOAD_LIMIT_MESSAGE, parseForgeJob, parseForgeRequest, parseLikenessJson, parsePartsJson } from "./validate.js";
 
 describe("parsePartsJson", () => {
   it("rejects the recorded Malakor reply (a stray `]`) as a syntax error, without repairing it", () => {
@@ -65,6 +65,14 @@ describe("parseForgeRequest", () => {
     const parsed = parseForgeRequest(text);
     expect(parsed.ok).toBe(false);
     expect(!parsed.ok && parsed.errors.code).toBe("bad_input");
+  });
+
+  it("requirement 2.4 as amended: an upload of 3 MB passes, one more base64 quantum does not", () => {
+    expect(MAX_UPLOAD_BYTES).toBe(3 * 1024 * 1024);
+    const exact = parseForgeRequest(JSON.stringify({ mode: "image", imageBase64: "A".repeat(MAX_UPLOAD_BASE64) }));
+    expect(exact.ok).toBe(true);
+    const over = parseForgeRequest(JSON.stringify({ mode: "image", imageBase64: "A".repeat(MAX_UPLOAD_BASE64 + 4) }));
+    expect(!over.ok && over.errors.message).toBe(UPLOAD_LIMIT_MESSAGE);
   });
 
   it("anything accepted is a well-formed ForgeRequest with no stray fields", () => {

@@ -29,8 +29,8 @@ function fakeGemini(script: FakeScript = {}) {
   const parts = [...(script.partsReplies ?? [M8_PARTS])];
   const client: GeminiClient = {
     models: { image: "fake-image", imageDraft: "fake-draft", segment: "fake-segment" },
-    generateImage: async () => {
-      calls.push("generateImage");
+    generateImage: async (_prompt, options) => {
+      calls.push(options?.draft === true ? "generateImage:draft" : "generateImage"); // requirement 2.1: final model only
       return script.portrait ? script.portrait() : PORTRAIT;
     },
     editImage: async (_image, prompt) => {

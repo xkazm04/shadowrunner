@@ -11,6 +11,8 @@ export * from "./parts.js";
 export * from "./mask.js";
 export * from "./cut.js";
 export * from "./fill.js";
+export * from "./plate.js";
+export * from "./composite.js";
 export * from "./palette.js";
 export * from "./assemble.js";
 export * from "./job.js";

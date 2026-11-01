@@ -7,27 +7,24 @@
 //   GET  portrait       restyle the upload into the house style           -> segmenting
 //   GET  segmenting     parts (a malformed reply is re-asked once, on the next GET) -> cutting
 //   GET  cutting        fill edit, 30 s; on failure the job records fill "fallback" -> filling
-//   GET  filling        blurExtend fallback if needed, cut, assemble, upload layers -> done
+//   GET  filling        compose the plate (edit or blurExtend fallback), cut, assemble, upload -> done
 // Every failure becomes `failed` with a spec code and our own message; nothing upstream is copied.
 import {
-  CUT_FEATHER,
   FILL_PARTS,
   LIKENESS_PROMPT,
   PARTS_PROMPT,
   assembleRig,
-  blurExtend,
+  composePlate,
   cutAll,
   decodeImage,
-  dilateMask,
-  emptyMask,
+  fallbackFill,
   fillPrompt,
+  liftedRegion,
   parseLikenessJson,
   parsePartsJson,
   portraitPrompt,
-  rasterizeMask,
   restylePrompt,
   sniffImage,
-  toCanvas,
   type ForgeErrorCode,
   type ForgeJob,
   type ForgeStep,
@@ -213,16 +210,13 @@ async function fillEdit(job: ForgeJob, ctx: StepContext): Promise<void> {
   }
 }
 
-/** The pure fallback plate: the FILL_PARTS polygons, grown past their feather, painted by blurExtend. */
-export function fallbackPlate(portrait: Rgba, lifted: readonly Part[]): Rgba {
-  const { width, height } = portrait;
-  const hole = emptyMask(width, height);
-  for (const part of lifted) {
-    rasterizeMask(toCanvas(part.poly, width, height), width, height, 0).data.forEach((a, i) => {
-      if (a !== 0) hole.data[i] = 255;
-    });
-  }
-  return blurExtend(portrait, dilateMask(hole, CUT_FEATHER + 1));
+/**
+ * The plate (task 9): the portrait with the fill blended in only around the lifted parts
+ * (`composePlate`). The fill is the edit when there is one, else the pure `fallbackFill`.
+ */
+export function plateFor(portrait: Rgba, parts: readonly Part[], edit?: Rgba): Rgba {
+  const lifted = liftedRegion(parts, portrait.width, portrait.height);
+  return composePlate(portrait, edit ?? fallbackFill(portrait, lifted), lifted);
 }
 
 async function cutAndAssemble(job: ForgeJob, ctx: StepContext): Promise<void> {
@@ -231,13 +225,10 @@ async function cutAndAssemble(job: ForgeJob, ctx: StepContext): Promise<void> {
   const portraitImage = await readJobImage(ctx, job.portraitUrl, job.portraitMime);
   const portrait = decodePortrait(portraitImage.data);
   const assembled = await timed(job, "cut", ctx.now, async () => {
-    let plate: Rgba;
-    if (job.fill === "edit" && job.plateUrl !== undefined) {
-      plate = decodePortrait(await ctx.store.readImage(job.plateUrl));
-    } else {
-      plate = fallbackPlate(portrait, liftedParts(job));
-      job.fill = "fallback";
-    }
+    let edit: Rgba | undefined;
+    if (job.fill === "edit" && job.plateUrl !== undefined) edit = decodePortrait(await ctx.store.readImage(job.plateUrl));
+    else job.fill = "fallback";
+    const plate = plateFor(portrait, parts, edit);
     // A plate/portrait size mismatch throws RangeError in cutAll/assembleRig; `guarded` maps it to upstream.
     const cut = cutAll(portrait, parts, { plate });
     return assembleRig(parts, cut.layers, { id: `forge-${job.jobId.slice(0, 12)}`, name: "Forged character", portrait, plate });

@@ -170,12 +170,16 @@ describe("cutAll", () => {
     expect(cutAll(flat(16, 16, 200), [rect("head", 16, 2, 2, 8, 8)]).keyLo).toBe(27);
   });
 
-  it("cuts head and torso from the plate, the rest from the portrait", () => {
-    const parts = [rect("head", 32, 0, 0, 16, 16), rect("torso", 32, 0, 16, 32, 32), rect("jaw", 32, 16, 0, 32, 16)];
+  it("cuts head and torso from the plate under the lifted parts and from the portrait elsewhere (task 9)", () => {
+    const parts = [rect("head", 32, 0, 0, 16, 16), rect("torso", 32, 0, 16, 32, 32), rect("eye_l", 32, 4, 4, 12, 12), rect("jaw", 32, 16, 0, 32, 16)];
     const { layers } = cutAll(flat(32, 32, 50), parts, { plate: flat(32, 32, 90) });
-    expect(must(layers, "head").image.data[0]).toBe(90);
-    expect(must(layers, "torso").image.data[0]).toBe(90);
-    expect(must(layers, "jaw").image.data[0]).toBe(50);
+    const pixel = (layer: CutPart, x: number, y: number): number => layer.image.data[((y - layer.bbox[1]) * layer.bbox[2] + x - layer.bbox[0]) * 4] ?? -1;
+    expect(pixel(must(layers, "head"), 8, 8)).toBe(90); // deep under the eye
+    expect(pixel(must(layers, "head"), 1, 1)).toBe(50); // outside every lifted region
+    expect(pixel(must(layers, "torso"), 2, 30)).toBe(50);
+    expect(pixel(must(layers, "jaw"), 24, 8)).toBe(50);
+    expect(alphaAt(must(layers, "eye_l"), 4, 4)).toBe(255); // opaque over its whole polygon
+    expect(alphaAt(must(layers, "eye_l"), 3, 8)).toBeGreaterThan(0); // and feathered outward
     expect(() => cutAll(flat(32, 32, 50), parts, { plate: flat(16, 32, 90) })).toThrow(RangeError);
   });
 

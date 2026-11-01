@@ -131,6 +131,58 @@ these counter-proposals:
    the drift is too large. Another option: cut only the lifted region from the plate and the rest of
    the head from the portrait.
 
+## Task 9: rig quality and the two new presets (2026-11-01)
+Director rulings on the run 2 composites (forge-pipeline task 9). What changed in `@sr/forge`:
+- **Plate** (`plate.ts` `composePlate`): the portrait everywhere except inside the lifted region
+  (`liftedRegion`: the FILL_PARTS polygons, the jaw's grown by `JAW_GROW` = 6 px) dilated by 12 px,
+  where the fill (the edit, or `fallbackFill` = `blurExtend` with 24 blur passes) is blended in over
+  6 px. Property: outside that region the plate equals the portrait bit for bit.
+- **Background** = the whole plate (`assembleRig`), so nothing the parts leave uncovered is black.
+- **Rest equals the portrait.** The moving parts (FILL_PARTS) are opaque over their whole lifted
+  region and feather 3 px outward; the head carries the plate only inside the lifted region and
+  the portrait elsewhere, and covers the plate's whole blend zone; crown/hair/accessory key out a
+  pixel only as far as the plate behind it looks the same (`KEY_KEEP` = 8 luma). So no fill pixel
+  shows at rest, and the Announcer keeps his void face by construction. Property: for any parts,
+  portrait and fill, the rig at rest gives back the portrait within luma 8 at every pixel.
+- **Jaw.** The lifted region is grown 6 px so its edge lies past the jaw's outline (the jaw layer is
+  grown with it, feathered 3 px outward, top edge included). What an open jaw uncovers is shaded
+  as a mouth (`MOUTH_SHADE` 0.25, ramping in over 28 px, deepest mid-width), whatever the fill
+  painted there; the fallback's smear of teeth on Malakor now reads as a mouth in shadow.
+- `composite.ts` `compositeRig`: a reference compositor (whole-pixel moves) for tests and review.
+
+**Paid run (presets 2 and 4).** 2026-11-01 16:25 UTC, `node scripts/forge-spike.mjs --presets 2,4
+--out var/forge-presets`, the server pipeline as in run 2. 6 paid calls (2 portraits, 2 parts, 2
+fill edits), all first attempt, no parts re-ask.
+
+| Preset | Portrait | Parts | Fill edit | Parts returned | Expected found | validateRig |
+|---|---|---|---|---|---|---|
+| Sister Vesper (2) | 15.1 s | 19.8 s | 17.8 s | 6: head, jaw, eye_l, eye_r, hair, torso | 6 of 6 | ok |
+| The Moth Widow (4) | 15.2 s | 21.5 s | 15.2 s | 6: head, jaw, eye_l, eye_r, hair, torso | 5 of 6 (antennae came back as `hair`, not `crown`; same layer kind) | ok |
+
+Both fill edits drifted again (Vesper's lower face became a skull, the Moth Widow's face was
+removed entirely); with the new plate none of it shows at rest.
+
+**Replay jobs rebuilt offline** (`node scripts/forge-replay.mjs`, no paid call): Malakor (fallback)
+and presets 1-5 with their recorded fill edits (run 2 for 1, 3, 5; the run above for 2, 4). The
+inputs are committed in `assets/characters/presets/<slug>/` (`portrait.jpg`, `parts.json`,
+`fill.jpg`); the jobs replace the task 8 jobs, which were built from run 1 portraits without a fill
+edit. Rest composites measured against the portrait: max luma difference 0.0 (Malakor, Lantern,
+Vesper, Moth), 1.0 (Understudy), 2.5 (Announcer). Every composite (rest, jaw open 6%, head turned
+10 degrees with the jaw half open) was inspected by eye: `var/forge-replay/<slug>.png`.
+Before/after grid: `docs/decisions/0003-forge-task9-composites.jpg` (251 KB; "before" is run 2's
+composite with the jaw open 3%, "after" the replay job with the jaw open 6%).
+
+**Seen and not fixed:**
+- **Ghost edges when the head turns.** The background is the whole plate, so it still holds the
+  head and crown where they were at rest. With the head turned 10 degrees (gaze "chat"), the head
+  moves about 11 px and the crown about 12 px, and their edges show a doubled copy (clearest on
+  Malakor's crown shards). Idle drift (4 degrees, about 4 px) shows little. Counter-proposal: paint
+  the background under the opaque cores of the moving layers (eroded 2 px, so the rest view is
+  unchanged) with `blurExtend` from the uncovered surroundings; the regions the parts leave
+  uncovered still keep their plate pixels.
+- At the full drop (0.06 x height) a small jaw, such as the Moth Widow's chin, travels far and the
+  fur the edit painted shows as a dark band a little wider than the mouth.
+
 ## Malakor parts-only run (fixture `m8-parts.json`)
 Director ruling (a) of the task 2 review: the parts fixture for the Malakor golden test is a
 recorded response, not a tracing. On 2026-11-01 14:18 UTC the spike ran once as
