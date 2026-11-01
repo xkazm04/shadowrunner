@@ -22,10 +22,10 @@ no keys.
 **User story:** As a streamer, I want my description or image turned into a portrait in the house style, so that every character belongs in the cellar.
 
 #### Acceptance criteria
-1. WHEN `mode: "prompt"` THEN the server SHALL generate a portrait from the house-style template in design.md with the user's text inserted, using the draft model first and the final model on reveal.
+1. WHEN `mode: "prompt"` THEN the server SHALL generate a portrait from the house-style template in design.md with the user's text inserted (final image model only; the draft-first clause was dropped by the director on 2026-11-01 because the job view carries one portrait).
 2. WHEN `mode: "image"` THEN the server SHALL first classify the upload; IF it shows a real, identifiable person THEN the job SHALL fail with `refused_likeness`; IF it shows sexual, gore or hateful content THEN with `refused_content`.
 3. WHEN an upload passes THEN the server SHALL restyle it into the house style (image edit) rather than cut the upload itself.
-4. Uploads SHALL be at most 8 MB, PNG/JPEG/WebP, otherwise `bad_input`; uploads SHALL NOT be persisted beyond the job's lifetime (24 h).
+4. Uploads SHALL be at most 3 MB after the client's downscale (Vercel caps request bodies at 4.5 MB; director amendment 2026-11-01), PNG/JPEG/WebP, otherwise `bad_input`; uploads SHALL NOT be persisted beyond the job's lifetime (24 h).
 5. Every generated portrait SHALL be 1024x1024 on a near-black ground.
 
 ## Requirement 3: Parts

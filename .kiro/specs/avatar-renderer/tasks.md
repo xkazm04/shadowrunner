@@ -36,3 +36,8 @@
 - [x] 6. Bench page
   - `apps/web/bench/avatar.html` + `avatar.ts`: Malakor idle 10 s, prints median/p95 frame time and `info()`; excluded from the app bundle. Record the measurement in `docs/kiro-log.md`.
   - _Requirements: 7.3_
+
+- [ ] 7. Speech gain and palette check (director ruling, 2026-11-01)
+  - `level` = clamp((rms - 0.02) * 4, 0, 1) (named constants) so normal speech (RMS 0.05-0.3) opens the jaw through its range; property and a test on a recorded WAV from `assets/replay/shows/malakor-night/`.
+  - After rig-core 7, re-shoot the bench (WebGL2 and 2D, idle and speaking) and confirm teal eyes in both.
+  - _Requirements: 4.1, 4.2_

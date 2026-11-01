@@ -53,3 +53,12 @@
 - [x] 8. Replay plane
   - Record 4 pre-forged jobs into `assets/replay/forge/<slug>/` (from the spike outputs, marked `fictional: true`, provenance in `docs/provenance.md`); replay `POST` picks by prompt hash, `GET` steps statuses with 1.5-3 s latency; test that replay makes zero fetches.
   - _Requirements: 7.5_
+
+- [ ] 9. Rig quality and static replay (director rulings from the 1.2 composites, 2026-11-01)
+  - Plate composition: the plate equals the original portrait everywhere except inside the `FILL_PARTS` regions dilated by 12 px, where the fill-edit pixels (or `blurExtend`) are blended in with a 6 px feather. This removes fill drift by construction (the Announcer must keep his void face). Property: outside the dilated regions the plate equals the portrait exactly.
+  - The `background` layer is that full plate (not a flat ground colour), so no region the parts do not cover can ever render black. Golden on m8: the composite at rest equals the portrait within luma 8 everywhere.
+  - Jaw: dilate the jaw's lifted region so its edge lands on painted interior; feather the jaw layer's top edge 3 px. Golden: an open jaw (0.06 * height) shows no near-black pixels outside the mouth interior that the plate painted.
+  - Static replay: replay jobs reference layer PNGs and portraits by static URL (`/replay/forge/<slug>/...`) instead of data URLs; `vercel-output.mjs` copies `assets/replay/**` to static `/replay/**` (the deploy lane adds the copy; this task changes `forge-replay.ts` and the job files). Replay `done` responses stay under 100 KB.
+  - Rebuild every replay job offline with the new pipeline (no paid call) from the recorded portraits, parts and fill edits of the 1.2 run (`var/forge-spike*`), plus Malakor. Then forge the two presets not yet generated, Sister Vesper and the Moth Widow (`assets/characters/presets/PROMPTS.md`), in ONE paid run (2 portraits, 2 parts, 2 fills), and add them as replay jobs. Inspect every composite by eye; record provenance.
+  - Tick 7.1 once 2.1 and 2.4 as amended hold.
+  - _Requirements: 2.1, 2.4, 5.1, 6.1, 7.5_

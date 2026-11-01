@@ -33,3 +33,7 @@
   - Document `EmotionDrive`, `applyLook` (returns a new `Rig`: the look's palette, `visible: false` on hidden layers) and the brow unit (signed table steps; the renderer maps one step to 0.004 * height px) in `docs/rig-format.md`.
   - Gesture precedence: add `resolveGesture(look): Gesture | undefined`, which returns `look.gesture` when set, otherwise the emotion's default from `lookToEmotionDrive`. Table test plus one property.
   - _Requirements: 5.1, 5.2, 5.3_
+
+- [ ] 7. Malakor's palette (director ruling from the avatar lane, 2026-11-01)
+  - `importLegacyLayers` maps the m8 spec colours so the renderer reproduces the art: `eye` and `glow` from the eye light (`colors.mouth`, teal; measured `#a8ebd0` on the portrait), `rim` from `colors.line_core` (the orange monocle line). Update the golden; the WebGL2 bench must show teal eyes (avatar-renderer 7 re-shoots).
+  - _Requirements: 3.3_
