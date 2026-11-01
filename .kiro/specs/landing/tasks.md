@@ -35,7 +35,7 @@
   - [ ] 5.2 (Contrast: the glass has no role. Back the lower third with a translucent `surface-0` band so `phosphor` text reaches 4.5:1 there, and measure it in the visual test, not only against surface tokens.) `Set.tsx` and `Glass.tsx`: CRT plate, superellipse clip, `<AvatarCanvas>` inside, phosphor grade, glare, rim shadow, lower third, hover caption. Requires `avatar-renderer`.
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
 
-- [ ] 6. Gourds and legend
+- [x] 6. Gourds and legend
   - Naming (director decision 2026-11-01): channel 3's manifest `title` becomes `Forge` (was `The Forge`) with `subtitle` `behind the back panel`; gourd labels and breadcrumbs use `title` as is. Update `pages.ts` and its tests.
   - `Gourds.tsx`: five channel buttons cut from `root-pile` with carved numbers (AA contrast) and labels, burn and ember states, hover and focus writing on the glass, legend box.
   - _Requirements: 5.1, 5.2, 5.4, 5.5_

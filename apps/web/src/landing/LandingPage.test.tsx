@@ -28,4 +28,18 @@ describe("LandingPage (static)", () => {
     expect(html.indexOf(">Theme</button>")).toBeGreaterThan(status);
     expect(html.indexOf(">RECORDED</p>")).toBeGreaterThan(status);
   });
+
+  it("puts the gourd row and its legend in the world over the room's shading, with channel 2 burning", () => {
+    const html = renderToString(<LandingPage />);
+    const shade = html.indexOf("_floorShade");
+    const nav = html.indexOf('aria-label="Channels: five carved gourds in front of the set"');
+    const legend = html.indexOf("data-legend");
+    expect(shade).toBeGreaterThan(-1);
+    expect(nav).toBeGreaterThan(shade);
+    expect(legend).toBeGreaterThan(nav);
+    expect(html.indexOf("data-status-bar")).toBeGreaterThan(legend);
+    expect(html).toMatch(/<button[^>]*data-channel="2"[^>]*data-light="burn"/);
+    // Nothing is written on the glass until a gourd is hovered or focused.
+    expect(html).not.toContain("data-glass-caption");
+  });
 });

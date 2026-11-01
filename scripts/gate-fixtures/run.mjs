@@ -1,5 +1,6 @@
 // `pnpm test:gates`: proves every lint gate red on a seeded violation (requirements 1.3, 1.5).
-// Each case runs the real tool (eslint / stylelint CLI, scripts/line-cap.mjs) on one fixture and
+// Each case runs the real tool (eslint / stylelint CLI, scripts/line-cap.mjs,
+// scripts/check-tokens.mjs) on one fixture and
 // checks the exit code and the exact set of rules reported. Controls must pass, so a broken
 // config (which also exits non-zero) cannot pass as a "failure".
 import { spawnSync } from "node:child_process";
@@ -33,7 +34,19 @@ const CASES = [
   { tool: "line-cap", fixture: "line-cap/over", exit: 1, says: "too-long.ts has 401 lines" },
   { tool: "line-cap", fixture: "line-cap/at-cap", exit: 0 },
   { tool: "line-cap", fixture: "line-cap/no-sources", exit: 2, says: "scanned 0 files" },
+  {
+    tool: "tokens",
+    fixture: "tokens/unknown",
+    exit: 1,
+    says: "unknown-role.module.css:7 uses --sr-radius-2, which is not a role",
+    absent: "--sr-not-a-role",
+  },
+  { tool: "tokens", fixture: "tokens/clean", exit: 0 },
+  { tool: "tokens", fixture: "tokens/no-modules", exit: 2, says: "scanned 0 CSS Modules" },
 ];
+
+// Plain node scripts judged by exit code and output, not by a JSON report.
+const SCRIPTS = { "line-cap": "line-cap.mjs", tokens: "check-tokens.mjs" };
 
 function run(args, env = {}) {
   const r = spawnSync(process.execPath, args, { cwd: ROOT, encoding: "utf8", env: { ...process.env, ...env } });
@@ -68,10 +81,11 @@ const uniqueSorted = (xs) => [...new Set(xs)].sort();
 
 function check(c) {
   const target = join(HERE, c.fixture);
-  if (c.tool === "line-cap") {
-    const r = run([join(ROOT, "scripts", "line-cap.mjs"), target]);
+  if (c.tool in SCRIPTS) {
+    const r = run([join(ROOT, "scripts", SCRIPTS[c.tool]), target]);
     if (r.status !== c.exit) return `expected exit ${c.exit}, got ${r.status}\n${r.out}`;
     if (c.says && !r.out.includes(c.says)) return `expected output to mention "${c.says}"\n${r.out}`;
+    if (c.absent && r.out.includes(c.absent)) return `expected output not to mention "${c.absent}"\n${r.out}`;
     return undefined;
   }
   const r =
@@ -97,7 +111,7 @@ for (const c of CASES) {
     failures += 1;
     console.error(`FAIL ${label}\n     ${problem.replaceAll("\n", "\n     ")}`);
   } else {
-    const verdict = c.tool === "line-cap" ? `exit ${c.exit}` : c.rules.length ? `red: ${c.rules.join(", ")}` : "clean";
+    const verdict = c.tool in SCRIPTS ? `exit ${c.exit}` : c.rules.length ? `red: ${c.rules.join(", ")}` : "clean";
     console.log(`ok   ${label} (${verdict})`);
   }
 }

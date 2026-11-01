@@ -155,6 +155,11 @@ describe("the shipped manifest", () => {
     expect(map.get(normalizeHotkey("d"))).toEqual({ kind: "daemon-sample" });
   });
 
+  it("names the dial as the gourd labels of landing 5.1 (director decision 2026-11-01: Forge)", () => {
+    expect(channelPages(PAGES).map((p) => p.title)).toEqual(["On air", "Forge", "Characters", "Daemon", "Sealed"]);
+    expect(PAGES.find((p) => p.id === "creator")?.subtitle).toBe("behind the back panel");
+  });
+
   it("gives every channel other than 2 a subtitle for its breadcrumb (landing 8.1)", () => {
     for (const p of channelPages(PAGES).filter((page) => page.channel !== 2)) expect(p.subtitle).toBeTruthy();
   });
