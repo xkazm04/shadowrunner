@@ -42,7 +42,7 @@ and `pnpm typecheck && pnpm lint && pnpm test` is green on a fresh clone.
    - `air` (`/air`, no channel, key `O`).
    `PageDef` SHALL carry the optional `channel` and `subtitle` fields. The page set and the keys follow the landing verdict, The Harvest Floor (spec `landing`, design.md "Channels and the manifest").
 4. WHEN a page has `status: "sealed"` THEN the shell SHALL render a sealed door with one line of lore instead of the page.
-5. The shell SHALL switch theme via `data-theme` on `<html>`, persisted in localStorage, defaulting to `halloween` until 2026-12-31 and `baseline` after, and SHALL honour `prefers-reduced-motion` and `prefers-color-scheme` as inputs.
+5. The shell SHALL switch theme via `data-theme` on `<html>`, persisted in localStorage, defaulting to `halloween` until 2026-12-31 and `baseline` after, and SHALL honour `prefers-reduced-motion` (as `data-motion`). Both shipped themes are dark by design, so `prefers-color-scheme` SHALL only be exposed as `data-scheme` on `<html>` for future themes and SHALL NOT pick between `halloween` and `baseline` (director decision 2026-11-01, m0-spine task 4 review).
 
 ## Requirement 4: Planes
 **User story:** As a judge, I want the app to work on first visit with no credentials, so that I can evaluate it at once.

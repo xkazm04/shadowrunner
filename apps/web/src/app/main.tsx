@@ -1,3 +1,5 @@
+import "@sr/theme/halloween.css";
+import "@sr/theme/baseline.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { Shell } from "./Shell";

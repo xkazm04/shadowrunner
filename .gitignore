@@ -11,3 +11,5 @@ target/
 .spark/
 .contest/
 # NOTE: .kiro/ must stay tracked (Kiroween rule 4) - never ignore it
+# browser-tool scratch (Playwright MCP)
+.playwright-mcp/

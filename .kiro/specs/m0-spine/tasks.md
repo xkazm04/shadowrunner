@@ -19,10 +19,10 @@
   - [x] 3.3 Tests: every role bound in every theme (failing message names the role); WCAG AA contrast for text/surface pairs; baseline sets `haunt-*` to zero.
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
 
-- [ ] 4. App shell from one manifest
-  - [ ] 4.1 `pages.ts` (landing 2, creator 3, characters 4, daemon 6, sealed 9, air O - see requirements 3.3), `router.ts` (history router), `keys.ts` (hotkeys from manifest + Ctrl+K + T).
-  - [ ] 4.2 Property test (fast-check): uniqueness check rejects any manifest with duplicate hotkey or path and accepts unique ones.
-  - [ ] 4.3 `Shell.tsx`: renders the active page placeholder or the sealed door (`status: "sealed"` + `lore`), the theme toggle (localStorage, halloween default until 2026-12-31), and reduced-motion handling via a `data-motion` attribute.
+- [x] 4. App shell from one manifest
+  - [x] 4.1 `pages.ts` (landing 2, creator 3, characters 4, daemon 6, sealed 9, air O - see requirements 3.3), `router.ts` (history router), `keys.ts` (hotkeys from manifest + Ctrl+K + T).
+  - [x] 4.2 Property test (fast-check): uniqueness check rejects any manifest with duplicate hotkey or path and accepts unique ones.
+  - [x] 4.3 `Shell.tsx`: renders the active page placeholder or the sealed door (`status: "sealed"` + `lore`), the theme toggle (localStorage, halloween default until 2026-12-31), and reduced-motion handling via a `data-motion` attribute.
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
 
 - [ ] 5. Planes and health

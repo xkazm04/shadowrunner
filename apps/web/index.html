@@ -4,6 +4,22 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Shadowrunner</title>
+    <!-- Sets data-theme before first paint. An inline copy of resolveTheme in src/app/theme.ts
+         (same storage key, theme names and date rule); theme.test.ts runs it to keep them in step. -->
+    <script id="sr-theme-boot">
+      (function () {
+        var theme = null;
+        try {
+          theme = localStorage.getItem("sr-theme");
+        } catch (e) {
+          theme = null;
+        }
+        if (theme !== "baseline" && theme !== "halloween") {
+          theme = Date.now() < new Date(2027, 0, 1).getTime() ? "halloween" : "baseline";
+        }
+        document.documentElement.dataset.theme = theme;
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

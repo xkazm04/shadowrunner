@@ -1,0 +1,86 @@
+/* Shell chrome. Role tokens only: the theme CSS rebinds every value under [data-theme]. */
+
+:global(body) {
+  margin: 0;
+  background-color: var(--sr-surface-0);
+}
+
+.shell {
+  min-height: 100vh;
+  background-color: var(--sr-surface-0);
+  color: var(--sr-text);
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text);
+  line-height: 1.5;
+}
+
+.shell a {
+  color: var(--sr-text-strong);
+}
+
+.shell a:focus-visible,
+.shell button:focus-visible {
+  outline: medium solid var(--sr-accent);
+  outline-offset: var(--sr-space-1);
+}
+
+.shell kbd {
+  font-family: var(--sr-font-mono);
+  font-size: var(--sr-size-text-sm);
+  color: var(--sr-text-muted);
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sr-space-4);
+  padding: var(--sr-space-3) var(--sr-space-5);
+  background-color: var(--sr-surface-1);
+  border-bottom: thin solid var(--sr-line);
+}
+
+.brand {
+  font-family: var(--sr-font-display);
+  font-size: var(--sr-size-text-lg);
+}
+
+.nav ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sr-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nav a[aria-current="page"] {
+  text-decoration-thickness: medium;
+}
+
+.toggle {
+  padding: var(--sr-space-1) var(--sr-space-3);
+  background-color: var(--sr-surface-2);
+  color: var(--sr-text-strong);
+  border: thin solid var(--sr-line);
+  border-radius: var(--sr-radius-1);
+  font: inherit;
+  cursor: pointer;
+}
+
+.main {
+  padding: var(--sr-space-6) var(--sr-space-5);
+}
+
+.main h1 {
+  margin: 0 0 var(--sr-space-4);
+  font-family: var(--sr-font-display);
+  font-size: var(--sr-size-display);
+  color: var(--sr-text-strong);
+}
+
+.goto {
+  padding: var(--sr-space-4) var(--sr-space-5);
+  background-color: var(--sr-surface-2);
+  border-bottom: thin solid var(--sr-line);
+}
