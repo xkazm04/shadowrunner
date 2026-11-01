@@ -13,7 +13,7 @@
   - (`blinkDuration` is now in design.md "Contracts"; nothing to do.)
   - _Requirements: 3.3, 5.1_
 
-- [ ] 2. Audio level tap
+- [x] 2. Audio level tap
   - `audio/level.ts`: `attachAudio` with an AnalyserNode, RMS per frame clamped to [0, 1], `detach()`; unit test with a fake AudioContext.
   - _Requirements: 4.1_
 
