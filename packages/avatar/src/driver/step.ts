@@ -2,6 +2,7 @@
 // never mutates its arguments and draws randomness only from `state.rng`. Timing rules are in
 // the header of state.ts.
 import { GESTURE_DURATION_S } from "@sr/rig";
+import { lookAtOffset } from "./lookAt.js";
 import { uniform } from "./rng.js";
 import {
   BLINK_GAP_MAX_S,
@@ -111,14 +112,21 @@ export function step(s: DriverState, dt: number, inputs: DriverInputs): DriverSt
   const full = driftAt(phase);
   const drift = { yaw: scaled(full.yaw, motion), pitch: scaled(full.pitch, motion), phase };
 
-  const gazeTarget = GAZE_TARGET_DEG[inputs.gaze] ?? GAZE_TARGET_DEG.host;
-  const gazeYaw = s.gazeYaw + (gazeTarget - s.gazeYaw) * easeShare(elapsed, GAZE_EASE_S);
+  // Look-at (costume 9) biases the gaze targets; without it the targets are the gaze's own.
+  const look = inputs.lookAt === undefined ? undefined : lookAtOffset(inputs.lookAt);
+  const gazeEase = easeShare(elapsed, GAZE_EASE_S);
+  const gazeTarget = (GAZE_TARGET_DEG[inputs.gaze] ?? GAZE_TARGET_DEG.host) + (look?.yaw ?? 0);
+  const gazeYaw = s.gazeYaw + (gazeTarget - s.gazeYaw) * gazeEase;
 
   const target = jawTarget(inputs.level);
   const jawEase = target > s.jaw ? JAW_ATTACK_S : JAW_RELEASE_S;
   const jaw = s.jaw + (target - s.jaw) * easeShare(elapsed, jawEase);
 
   const next: DriverState = { t, rng, nextBlinkAt: blinks.nextBlinkAt, drift, saccade, gazeYaw, jaw, motion };
+  if (look !== undefined || s.gazePitch !== undefined) {
+    const from = s.gazePitch ?? 0;
+    next.gazePitch = from + ((look?.pitch ?? 0) - from) * gazeEase;
+  }
   if (blinks.blink !== undefined) {
     next.blinkStart = blinks.blink.start;
     next.blinkDuration = blinks.blink.duration;

@@ -115,15 +115,25 @@ describe("Shell: Esc and the dial (landing task 9)", () => {
     expect(m.container.querySelector('[data-page="landing"]')).not.toBeNull();
   });
 
-  it("the back control in the frame returns to the set too", async () => {
+  it("CH 2 on the frame's channel strip returns to the set too (costume 1.3)", async () => {
     mounted = await shellAt("/daemon");
     const m = mounted;
-    const back = m.container.querySelector<HTMLAnchorElement>("[data-back]");
-    expect(back?.textContent).toBe("◂ Back to the set Esc");
+    const back = m.container.querySelector<HTMLAnchorElement>('[data-strip="frame"] a[data-frame="landing"]');
+    expect(back?.getAttribute("aria-label")).toBe("Channel 2, On air: the cellar set");
     await act(async () => {
       back?.click();
     });
     expect(window.location.pathname).toBe("/");
+    expect(m.container.querySelector('[data-page="landing"]')).not.toBeNull();
+  });
+
+  it("N opens Forge new, off the dial: arrows do nothing there (costume 1.2)", async () => {
+    mounted = await shellAt("/");
+    expect(await press("n")).toBe(true);
+    expect(window.location.pathname).toBe("/creator/new");
+    expect(mounted.container.querySelector('[data-channel-frame="forge-new"]')).not.toBeNull();
+    expect(await press("ArrowRight")).toBe(false);
+    expect(window.location.pathname).toBe("/creator/new");
   });
 
   it("← and → turn the dial and wrap around it", async () => {

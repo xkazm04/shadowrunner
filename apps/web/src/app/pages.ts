@@ -3,7 +3,7 @@
 // subtitles follow the landing verdict, The Harvest Floor (spec landing, design.md).
 export type PageStatus = "live" | "sealed";
 
-export type PageId = "landing" | "creator" | "air" | "characters" | "daemon" | "sealed";
+export type PageId = "landing" | "creator" | "forge-new" | "air" | "characters" | "daemon" | "sealed";
 
 export interface PageDef {
   id: PageId;
@@ -14,7 +14,7 @@ export interface PageDef {
   status: PageStatus;
   /** The one line shown on the sealed door. Every `sealed` page carries one. */
   lore?: string;
-  /** Channel on the set's dial. Pages without one (air) are not on the dial. */
+  /** Channel on the set's dial. Pages without one (air, forge-new) are not on the dial. */
   channel?: number;
   subtitle?: string;
 }
@@ -30,6 +30,8 @@ export const PAGES: readonly PageDef[] = [
     channel: 3,
     subtitle: "behind the back panel",
   },
+  // costume design.md "Route": the new-character rite, off the dial like the stage.
+  { id: "forge-new", title: "Forge new", path: "/creator/new", subtitle: "a new character", hotkey: "N", status: "live" },
   {
     id: "characters",
     title: "Characters",

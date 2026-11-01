@@ -37,17 +37,28 @@ describe("ChannelFrame", () => {
     }
   });
 
-  it("renders the back control to the set with its Esc key, the breadcrumb, then the shell's controls", () => {
+  it("renders the channel strip (costume 1.3), the breadcrumb, then the shell's controls", () => {
     const html = renderToString(
       <ChannelFrame page={page("characters")} badge={<i data-badge />} controls={<i data-toggle />}>
         <p data-child />
       </ChannelFrame>,
     );
-    expect(html).toMatch(/<a href="\/"[^>]*data-back="true"><span aria-hidden="true">◂<\/span> Back to the set <kbd>Esc<\/kbd><\/a>/);
+    expect(html).not.toContain("Back to the set");
+    expect(html).toMatch(/<a href="\/"[^>]*data-frame="landing"[^>]*aria-label="Channel 2, On air: the cellar set"/);
+    expect(html).toContain('data-lamp="warm"');
     expect(html).toContain('<nav aria-label="Breadcrumb"');
     expect(html).toContain("<b>CH 4 · Characters</b>");
-    const order = ["data-back", "Breadcrumb", "data-badge", "data-toggle", "</header>", "data-child"].map((s) => html.indexOf(s));
+    const order = ['data-strip="frame"', "Breadcrumb", "data-badge", "data-toggle", "</header>", "data-child"].map((s) => html.indexOf(s));
     expect(order.every((at, i) => at > -1 && (i === 0 || at > (order[i - 1] ?? -1)))).toBe(true);
+  });
+
+  it("hands the daemon-lost state to the strip's lamp", () => {
+    const html = renderToString(
+      <ChannelFrame page={page("daemon")} daemonLost>
+        <p />
+      </ChannelFrame>,
+    );
+    expect(html).toContain('data-lamp="cold"');
   });
 });
 

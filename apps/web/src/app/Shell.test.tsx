@@ -43,8 +43,8 @@ describe("Shell", () => {
       } else if (page?.id === "air") {
         // The stage is full screen (no shell header): the badge is on the stage itself.
         expect(badge).toBeGreaterThan(recorded.indexOf('data-page="air"'));
-      } else if (page?.channel !== undefined) {
-        // Behind the set the channel frame is the header: the badge sits in its bar.
+      } else if (page !== undefined) {
+        // Behind the set (the channels and Forge new) the frame is the header: the badge sits in its bar.
         expect(badge).toBeGreaterThan(recorded.indexOf("data-channel-frame"));
         expect(badge).toBeLessThan(recorded.indexOf("</header>"));
       } else {
@@ -74,7 +74,25 @@ describe("Shell", () => {
       }
       expect(other).toContain(`data-channel-frame="${page.id}"`);
       expect(other.match(/<header/g)).toHaveLength(1);
+      // costume 1.3: the frame's bar carries the channel strip in place of "Back to the set".
+      expect(other).toContain('data-strip="frame"');
+      expect(other).not.toContain("Back to the set");
     }
+  });
+
+  it("frames Forge new (/creator/new) with a placeholder and CH 3 lit on the strip (costume 1.2)", () => {
+    const forgeNew = PAGES.find((p) => p.id === "forge-new");
+    const html = view(forgeNew);
+    expect(html).toContain('data-channel-frame="forge-new"');
+    expect(html).toContain('data-page="forge-new"');
+    expect(html).toMatch(/<a href="\/creator"[^>]*aria-current="page"/);
+  });
+
+  it("cools the strip's lamp when the daemon is lost (health offline, or the D sample on replay)", () => {
+    const characters = PAGES.find((p) => p.id === "characters");
+    expect(view(characters)).toContain('data-lamp="warm"');
+    expect(view(characters, { health: { plane: "live", engine: "offline", version: "t" } })).toContain('data-lamp="cold"');
+    expect(view(characters, { daemonSample: true })).toContain('data-lamp="cold"');
   });
 
   it("renders a placeholder for every live page and the sealed door for sealed ones", () => {

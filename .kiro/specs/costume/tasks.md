@@ -7,11 +7,11 @@
   - Owner notes, round 2 (verbatim): characters "no pick, baseline is better". Owner instruction: "proceed with migration into app. We will not start next round".
   - _Requirements: 1.1, 1.2_
 
-- [ ] 1. Shared seams
-  - [ ] 1.1 Fonts and roles: `@fontsource` packages and `font-condensed`, `font-hand`, `font-old`; any roles the channel strip needs; both themes; theme and contrast tests green.
-  - [ ] 1.2 `forge-new` page in `PAGES`; keymap and router tests; Shell renders a placeholder for it until task 3.
-  - [ ] 1.3 `ChannelStrip` (frame and stage variants) and `ChannelFrame` using it; component test (current frame lit, daemon-lost lamp, keyboard).
-  - [ ] 1.4 `lookAt` in `@sr/avatar` with its pure mapping and property test (seeded fault proven red once).
+- [x] 1. Shared seams
+  - [x] 1.1 Fonts and roles: `@fontsource` packages and `font-condensed`, `font-hand`, `font-old`; any roles the channel strip needs; both themes; theme and contrast tests green.
+  - [x] 1.2 `forge-new` page in `PAGES`; keymap and router tests; Shell renders a placeholder for it until task 3.
+  - [x] 1.3 `ChannelStrip` (frame and stage variants) and `ChannelFrame` using it; component test (current frame lit, daemon-lost lamp, keyboard).
+  - [x] 1.4 `lookAt` in `@sr/avatar` with its pure mapping and property test (seeded fault proven red once).
   - _Requirements: 2.1-2.4, 9.1, 9.2, 10.1, 10.2_
 
 - [ ] 2. On air: the lantern slides (landing lane)

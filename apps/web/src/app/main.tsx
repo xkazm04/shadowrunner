@@ -8,6 +8,14 @@ import "@fontsource/inter/700.css";
 import "@fontsource/courier-prime/400.css";
 import "@fontsource/courier-prime/400-italic.css";
 import "@fontsource/courier-prime/700.css";
+// costume 1.1: the prototypes' faces behind --sr-font-condensed / -hand / -old, at their weights.
+import "@fontsource/barlow-condensed/300.css";
+import "@fontsource/barlow-condensed/400.css";
+import "@fontsource/barlow-condensed/600.css";
+import "@fontsource/caveat/500.css";
+import "@fontsource/caveat/700.css";
+import "@fontsource/im-fell-english/400.css";
+import "@fontsource/im-fell-english/400-italic.css";
 import "@sr/theme/halloween.css";
 import "@sr/theme/baseline.css";
 import { StrictMode } from "react";

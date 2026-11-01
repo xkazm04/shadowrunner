@@ -139,9 +139,11 @@ describe("the shipped manifest", () => {
         { channel: 6, id: "daemon", path: "/daemon", hotkey: "6", status: "live" },
         { channel: 9, id: "sealed", path: "/sealed", hotkey: "9", status: "sealed" },
         { channel: undefined, id: "air", path: "/air", hotkey: "O", status: "live" },
+        // costume design.md "Route": Forge new, off the dial like the stage.
+        { channel: undefined, id: "forge-new", path: "/creator/new", hotkey: "N", status: "live" },
       ]),
     );
-    expect(table).toHaveLength(6);
+    expect(table).toHaveLength(7);
   });
 
   it("binds the dial keys of landing 5.3: 2 3 4 6 9, arrows, Esc and D", () => {
@@ -153,6 +155,18 @@ describe("the shipped manifest", () => {
     expect(map.get(normalizeHotkey("ArrowRight"))).toEqual({ kind: "channel", step: 1 });
     expect(map.get(normalizeHotkey("Esc"))).toEqual({ kind: "back" });
     expect(map.get(normalizeHotkey("d"))).toEqual({ kind: "daemon-sample" });
+  });
+
+  it("binds N to Forge new (costume 1.2)", () => {
+    expect(buildKeymap(PAGES).get(normalizeHotkey("n"))).toEqual({ kind: "go", pageId: "forge-new" });
+    expect(PAGES.find((p) => p.id === "forge-new")).toEqual({
+      id: "forge-new",
+      title: "Forge new",
+      path: "/creator/new",
+      subtitle: "a new character",
+      hotkey: "N",
+      status: "live",
+    });
   });
 
   it("names the dial as the gourd labels of landing 5.1 (director decision 2026-11-01: Forge)", () => {
@@ -211,8 +225,9 @@ describe("stepChannel", () => {
     );
   });
 
-  it("does nothing off the dial (the stage has no channel)", () => {
+  it("does nothing off the dial (the stage and Forge new have no channel)", () => {
     expect(stepChannel(PAGES, "air", 1)).toBeUndefined();
+    expect(stepChannel(PAGES, "forge-new", -1)).toBeUndefined();
     expect(stepChannel(PAGES, undefined, -1)).toBeUndefined();
   });
 });

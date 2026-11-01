@@ -1,0 +1,177 @@
+/* The channel strip (ChannelStrip.tsx), ported from the prototype's `.mini.strip` and `.strip .fr`
+   (assets/_incoming/costume/r2/landing-c.html): a short length of film, sprocket holes along both
+   edges, one sepia frame per channel. Literal colours are roles: the film base is surface-0, the
+   sprockets are paper, the frame number is text-strong, the lamp's glow is ember. Shadows are
+   drop-shadow filters (box-shadow and text-shadow take tokens only). */
+
+.strip {
+  flex: none;
+}
+
+.film {
+  display: flex;
+  gap: var(--sr-space-1);
+  margin: 0;
+  padding: var(--sr-space-2) var(--sr-space-1);
+  list-style: none;
+  border: thin solid color-mix(in srgb, var(--sr-paper) 12%, transparent);
+  border-radius: var(--sr-radius-1);
+  background-color: var(--sr-surface-0);
+  background-image:
+    repeating-linear-gradient(90deg, color-mix(in srgb, var(--sr-paper) 42%, transparent) 0 0.25rem, transparent 0.25rem 0.5rem),
+    repeating-linear-gradient(90deg, color-mix(in srgb, var(--sr-paper) 42%, transparent) 0 0.25rem, transparent 0.25rem 0.5rem);
+  background-position:
+    left 0.1875rem top 0.125rem,
+    left 0.1875rem bottom 0.125rem;
+  background-repeat: no-repeat;
+  background-size:
+    100% 0.25rem,
+    100% 0.25rem;
+}
+
+.film li {
+  display: flex;
+}
+
+/* --b is the lamp on this frame: dim at rest, full when it is the page you are on, hovered or focused. */
+.fr {
+  --b: 0.18;
+
+  position: relative;
+  display: block;
+  box-sizing: border-box;
+  inline-size: 2.25rem;
+  block-size: 1.875rem;
+  overflow: hidden;
+  border: thin solid transparent;
+  border-radius: var(--sr-radius-1);
+  background-color: var(--sr-surface-0);
+  text-decoration: none;
+  transition: filter 0.25s ease-out;
+}
+
+.fr::before {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background-position: center 30%;
+  background-size: cover;
+  filter: sepia(0.6) brightness(calc(0.15 + 0.95 * var(--b)));
+  transition: filter 0.25s ease-out;
+}
+
+.fr span {
+  position: absolute;
+  inset-block-end: 0;
+  inset-inline-end: var(--sr-space-1);
+  color: var(--sr-text-strong);
+  font-family: var(--sr-font-display);
+  font-size: var(--sr-size-text-sm);
+  font-weight: 700;
+  line-height: 1;
+  filter: drop-shadow(0 0 0.1875rem var(--sr-surface-0)) drop-shadow(0 0 0.1875rem var(--sr-surface-0));
+}
+
+/* The stills each frame carries: the cellar's face, the forge's lantern, a listed character, the
+   carrier's bulb, the sealed eye, the stage's set. */
+.fr[data-frame="landing"]::before {
+  background-image: url("../../../../assets/replay/thumbs/malakor.webp");
+}
+
+.fr[data-frame="creator"]::before {
+  background-image: url("../../../../assets/replay/thumbs/lantern-warden.webp");
+}
+
+.fr[data-frame="characters"]::before {
+  background-image: url("../../../../assets/replay/thumbs/moth-widow.webp");
+  background-position: center 28%;
+}
+
+.fr[data-frame="daemon"]::before {
+  background-image: radial-gradient(
+    circle at 50% 42%,
+    var(--sr-ember) 0 14%,
+    color-mix(in srgb, var(--sr-ember) 45%, transparent) 26%,
+    transparent 58%
+  );
+}
+
+.fr[data-frame="sealed"]::before {
+  background-image: url("../../../../assets/plates/root-eye.webp");
+  background-position: center;
+}
+
+.fr[data-frame="air"]::before {
+  background-image: url("../../../../assets/plates/crt-frontal.webp");
+  background-position: center 40%;
+}
+
+/* The lit frame, and the one under the pointer or the focus. */
+.fr[aria-current="page"],
+.fr:hover,
+.fr:focus-visible {
+  --b: 1;
+
+  filter: drop-shadow(0 0 0.5rem color-mix(in srgb, var(--sr-ember) 55%, transparent));
+}
+
+.fr[aria-current="page"] {
+  border-color: var(--sr-ember);
+}
+
+/* Two classes, over the shell's `.shell a:focus-visible`. */
+.strip .fr:focus-visible {
+  outline: medium solid var(--sr-accent);
+  outline-offset: var(--sr-space-1);
+}
+
+/* Daemon lost: the lamp goes cold. Every frame dims and none glows; the numbers stay readable and
+   the page you are on keeps its rim, in the cold ink. */
+.strip[data-lamp="cold"] .fr {
+  --b: 0.12;
+
+  filter: none;
+}
+
+.strip[data-lamp="cold"] .fr[aria-current="page"] {
+  border-color: var(--sr-text-muted);
+}
+
+/* Stage (/air): hidden for stream capture. A clear band along the top edge catches the pointer;
+   hover, focus inside, or `data-open` (the C key) lowers the strip into view. */
+.stage {
+  position: fixed;
+  inset-block-start: 0;
+  inset-inline: 0;
+  z-index: 20;
+  display: flex;
+  justify-content: center;
+  padding-block: var(--sr-space-3) var(--sr-space-5);
+  opacity: 0;
+  transform: translateY(calc(-100% + var(--sr-space-5)));
+  transition:
+    transform 0.25s ease-out,
+    opacity 0.25s ease-out;
+}
+
+.stage:hover,
+.stage:focus-within,
+.stage[data-open] {
+  opacity: 1;
+  transform: none;
+}
+
+/* Reduced-motion twins: the same states, switched without travel or fades. */
+:global([data-motion="reduced"]) .fr,
+:global([data-motion="reduced"]) .fr::before,
+:global([data-motion="reduced"]) .stage {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fr,
+  .fr::before,
+  .stage {
+    transition: none;
+  }
+}

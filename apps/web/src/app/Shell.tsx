@@ -2,6 +2,7 @@
 // from the page manifest (pages.ts). Channels behind the set open in the ChannelFrame (spec
 // landing task 9): CH 3 the creator (lazy chunk), CH 4 the listings, CH 6 the daemon, a "sealed"
 // page the sealed door; a page whose spec has not landed yet is a placeholder in the same frame.
+// The frame's bar carries the channel strip (costume 1.3); Forge new (/creator/new) is framed too.
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { buildKeymap, GLOBAL_BINDINGS, stepChannel, useHotkeys, type KeyAction } from "./keys";
 import { ChannelFrame } from "../channels/ChannelFrame";
@@ -106,6 +107,12 @@ function ChannelBody({ page, plane, health, lost }: { page: PageDef; plane: Plan
     );
   }
   if (page.id === "daemon") return <Daemon health={health} plane={plane} lost={lost} />;
+  if (page.id === "forge-new") {
+    // COSTUME HOOK (creator lane, costume task 3.2): mount the rite page for /creator/new here,
+    // e.g. a lazy `../creator/rite/RitePage` in Suspense like CreatorPage above. Until then, the
+    // placeholder.
+    return <Placeholder page={page} />;
+  }
   return <Placeholder page={page} />;
 }
 
@@ -180,9 +187,11 @@ export function ShellView({
   const onSet = page?.id === "landing";
   // The stage is full screen like the set (a stream's browser source): no shell header.
   const onStage = page?.id === "air";
-  // A channel behind the set: its frame is the header (back control, breadcrumb, badge, toggle).
-  const framed = !onSet && page?.channel !== undefined;
+  // Every page behind the set (the channels and Forge new, costume 1.2): its frame is the header
+  // (channel strip, breadcrumb, badge, toggle).
+  const framed = !onSet && !onStage && page !== undefined;
   const sample = plane === "replay" && daemonSample;
+  const lost = daemonOf(health) === "lost" || sample;
   const badge = plane === "replay" && <RecordedBadge />;
   // On the set the toggle is an icon button in the status bar (spec landing task 5.0).
   const toggle = <ThemeToggle theme={theme} onToggle={onToggleTheme} icon={onSet || onStage} />;
@@ -222,17 +231,18 @@ export function ShellView({
         {page === undefined ? (
           <NoSignal path={path} />
         ) : onStage ? (
+          // COSTUME HOOK (air lane, costume task 6): the stage carries the strip as
+          // <ChannelStrip variant="stage" current={page.id} daemonLost={lost} open={…} /> (./ChannelStrip),
+          // hidden for capture; hand it to AirPage here (e.g. a `strip` prop) and bind C / Esc to `open`.
           <Suspense fallback={<section data-page="air" aria-label={page.title}>{badge}</section>}>
             <AirPage plane={plane} badge={badge} controls={toggle} />
           </Suspense>
         ) : onSet ? (
           <LandingPage plane={plane} badge={badge} controls={toggle} daemonSample={sample} />
-        ) : framed ? (
-          <ChannelFrame page={page} badge={badge} controls={toggle}>
-            <ChannelBody page={page} plane={plane} health={health} lost={daemonOf(health) === "lost" || sample} />
-          </ChannelFrame>
         ) : (
-          <ChannelBody page={page} plane={plane} health={health} lost={daemonOf(health) === "lost" || sample} />
+          <ChannelFrame page={page} badge={badge} controls={toggle} daemonLost={lost}>
+            <ChannelBody page={page} plane={plane} health={health} lost={lost} />
+          </ChannelFrame>
         )}
       </main>
     </div>

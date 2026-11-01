@@ -11,13 +11,29 @@
 // - `gesture` triggers on every change to a defined value (including the first render); playing
 //   the same gesture again needs the prop to change (e.g. through undefined).
 // - The driver is seeded with `seed` (default 1), so two mounts with one seed move alike.
+// - `lookAt` (costume 9) is read every frame, like the other props. It takes a point or a ref
+//   holding one, so a page can steer the gaze from a pointer handler without a React render per
+//   move (the landing's torch); a ref holding null or undefined means no point.
 import { applyLook, poseLayers, type Drive, type Gesture, type Look, type Rig } from "@sr/rig";
 import { useEffect, useRef, type ReactElement } from "react";
 import { attachAudio, type AudioLevelTap } from "../audio/level.js";
+import type { LookAtPoint } from "../driver/lookAt.js";
 import { initialState, type Gaze } from "../driver/state.js";
 import { createRenderer } from "../gl/renderer.js";
 import type { RigAssets } from "../render/types.js";
 import { advanceFrame, isReducedMotion } from "./loop.js";
+
+/** A mutable holder of the look-at point, e.g. React's `useRef<LookAtPoint | null>(null)`. */
+export interface LookAtRef {
+  readonly current: LookAtPoint | null | undefined;
+}
+
+/** Pure: the point a `lookAt` prop names this frame (a ref is read now), or undefined. */
+export function resolveLookAt(lookAt: LookAtPoint | LookAtRef | undefined): LookAtPoint | undefined {
+  if (lookAt === undefined) return undefined;
+  if ("current" in lookAt) return lookAt.current ?? undefined;
+  return lookAt;
+}
 
 export interface AvatarCanvasProps {
   rig: Rig;
@@ -34,6 +50,11 @@ export interface AvatarCanvasProps {
   className?: string;
   /** Driver RNG seed; default 1. */
   seed?: number;
+  /**
+   * Look toward this point, normalised view space ([-1, 1] per axis, centre 0, y down; see
+   * driver/lookAt.ts), or a ref holding it. Absent: behaviour is unchanged (costume 9).
+   */
+  lookAt?: LookAtPoint | LookAtRef;
 }
 
 const REDUCED_QUERY = "(prefers-reduced-motion: reduce)";
@@ -96,6 +117,7 @@ export function AvatarCanvas(props: AvatarCanvasProps): ReactElement {
       const reducedMotion = isReducedMotion(media?.matches ?? false, host.closest("[data-motion]")?.getAttribute("data-motion"));
       const gesture = pendingGesture.current;
       pendingGesture.current = undefined;
+      const lookAt = resolveLookAt(p.lookAt);
       const dt = lastNow === undefined ? 0 : (now - lastNow) / 1000;
       lastNow = now;
       const next = advanceFrame(state, {
@@ -104,6 +126,7 @@ export function AvatarCanvas(props: AvatarCanvasProps): ReactElement {
         gaze: p.gaze ?? "host",
         reducedMotion,
         ...(gesture === undefined ? {} : { gesture }),
+        ...(lookAt === undefined ? {} : { lookAt }),
         ...(p.drive === undefined ? {} : { drive: p.drive }),
       });
       state = next.state;

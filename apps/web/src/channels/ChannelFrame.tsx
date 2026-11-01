@@ -1,10 +1,11 @@
 // The frame every channel behind the set opens in (landing requirement 8.1; design.md "Files"):
-// a "Back to the set · Esc" control and a breadcrumb `SHADOWRUNNER ▸ CH n · Name · subtitle`,
-// as the reference's `.backbar`. Off the set it is the header: the shell hands it the RECORDED
-// badge and the theme toggle, so no channel can lose them. Esc itself is the shell's key (keys.ts).
+// the channel strip (costume requirement 2: it replaced the "Back to the set" pill; CH 2 on the
+// strip is the way back) and a breadcrumb `SHADOWRUNNER ▸ CH n · Name · subtitle`, as the
+// reference's `.backbar`. Off the set it is the header: the shell hands it the RECORDED badge and
+// the theme toggle, so no channel can lose them. Esc itself is the shell's key (keys.ts).
 import type { ReactNode } from "react";
+import { ChannelStrip } from "../app/ChannelStrip";
 import type { PageDef } from "../app/pages";
-import { handleLinkClick } from "../app/router";
 import styles from "./ChannelFrame.module.css";
 
 /** Pure: the breadcrumb's parts. `here` is "CH n · Name" (or the bare name off the dial). */
@@ -25,18 +26,18 @@ export interface ChannelFrameProps {
   badge?: ReactNode;
   /** The shell's theme toggle. */
   controls?: ReactNode;
+  /** The daemon is lost: the strip's lamp goes cold. */
+  daemonLost?: boolean;
   /** The channel itself, on the frame's dark room. */
   children: ReactNode;
 }
 
-export function ChannelFrame({ page, badge, controls, children }: ChannelFrameProps) {
+export function ChannelFrame({ page, badge, controls, daemonLost = false, children }: ChannelFrameProps) {
   const { root, here, subtitle } = breadcrumb(page);
   return (
     <div className={styles.frame} data-channel-frame={page.id}>
       <header className={styles.bar}>
-        <a href="/" className={styles.back} onClick={(event) => handleLinkClick(event, "/")} data-back>
-          <span aria-hidden="true">◂</span> Back to the set <kbd>Esc</kbd>
-        </a>
+        <ChannelStrip variant="frame" current={page.id} daemonLost={daemonLost} />
         <nav aria-label="Breadcrumb" className={styles.where}>
           <ol>
             <li>{root}</li>

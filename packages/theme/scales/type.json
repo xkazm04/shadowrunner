@@ -12,6 +12,9 @@
     "mono": "ui-monospace, monospace",
     "display": "\"Barlow Semi Condensed\", \"Arial Narrow\", sans-serif",
     "body": "\"Inter\", system-ui, sans-serif",
-    "type": "\"Courier Prime\", \"Courier New\", monospace"
+    "type": "\"Courier Prime\", \"Courier New\", monospace",
+    "condensed": "\"Barlow Condensed\", \"Arial Narrow\", sans-serif",
+    "hand": "\"Caveat\", \"Segoe Print\", cursive",
+    "old": "\"IM Fell English\", Georgia, serif"
   }
 }

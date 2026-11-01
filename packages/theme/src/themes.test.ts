@@ -32,6 +32,9 @@ const LANDING_ROLES = [
   "size-headline",
 ];
 
+/** costume design.md "Fonts": the prototypes' condensed, hand and old-face roles (costume 1.1). */
+const COSTUME_ROLES = ["font-condensed", "font-hand", "font-old"];
+
 /** landing design.md: halloween values taken from the reference :root. */
 const HALLOWEEN_LANDING: Record<string, string> = {
   "text-strong": "#efe6d0",
@@ -54,9 +57,18 @@ const HALLOWEEN_LANDING: Record<string, string> = {
  * landing 5.0 (director decision 2026-11-01): baseline shares Barlow Semi Condensed for display,
  * so both themes share one layout and the 96 px portrait header holds in both.
  */
+const SHARED_FAMILIES: Record<string, string> = {
+  "font-display": "Barlow Semi Condensed",
+  "font-body": "Inter",
+  "font-type": "Courier Prime",
+  // costume 1.1: both themes share the prototypes' faces, so a page lays out the same in both.
+  "font-condensed": "Barlow Condensed",
+  "font-hand": "Caveat",
+  "font-old": "IM Fell English",
+};
 const FONT_FAMILIES: Record<string, Record<string, string>> = {
-  halloween: { "font-display": "Barlow Semi Condensed", "font-body": "Inter", "font-type": "Courier Prime" },
-  baseline: { "font-display": "Barlow Semi Condensed", "font-body": "Inter", "font-type": "Courier Prime" },
+  halloween: SHARED_FAMILIES,
+  baseline: SHARED_FAMILIES,
 };
 
 /** product.md: working text >= 14px equivalent (0.875rem at the 16px root). */
@@ -80,6 +92,11 @@ describe("token files", () => {
 
   it("carry the landing roles", () => {
     const missing = LANDING_ROLES.filter((role) => !tokens.roles.includes(role));
+    expect(missing, `roles.json lacks: ${missing.join(", ")}`).toEqual([]);
+  });
+
+  it("carry the costume font roles", () => {
+    const missing = COSTUME_ROLES.filter((role) => !tokens.roles.includes(role));
     expect(missing, `roles.json lacks: ${missing.join(", ")}`).toEqual([]);
   });
 

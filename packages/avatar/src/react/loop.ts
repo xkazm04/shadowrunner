@@ -12,6 +12,7 @@
 //   attribute (the shell's) says "reduced".
 import { GESTURE_DURATION_S, type Drive, type Gesture } from "@sr/rig";
 import { toDrive } from "../driver/drive.js";
+import type { LookAtPoint } from "../driver/lookAt.js";
 import type { DriverState, Gaze } from "../driver/state.js";
 import { step } from "../driver/step.js";
 
@@ -23,6 +24,8 @@ export interface FrameInputs {
   /** Present only on the frame a gesture starts. */
   gesture?: Gesture;
   reducedMotion: boolean;
+  /** A point to look toward, normalised view space (costume 9). */
+  lookAt?: LookAtPoint;
   /** Overrides the driver's Drive (tests, screenshots). */
   drive?: Drive;
 }
@@ -54,6 +57,7 @@ export function advanceFrame(state: DriverState, inputs: FrameInputs): Frame {
     gaze: inputs.gaze,
     reducedMotion: inputs.reducedMotion,
     ...(inputs.gesture === undefined ? {} : { gesture: inputs.gesture }),
+    ...(inputs.lookAt === undefined ? {} : { lookAt: inputs.lookAt }),
   });
   const drive = inputs.drive ?? toDrive(next);
   return { state: next, drive: cutGesture(drive, inputs.reducedMotion) };

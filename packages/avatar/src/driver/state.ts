@@ -22,6 +22,7 @@
 //   Saccade jumps wait while `motion` is below 1 (their schedule and draws still run, so the rng
 //   stays in step with full motion); a jump on a ramp frame could exceed that bound.
 import type { Gesture } from "@sr/rig";
+import type { LookAtPoint } from "./lookAt.js";
 import { seedRng, uniform } from "./rng.js";
 
 export type Gaze = "host" | "content" | "chat";
@@ -33,6 +34,11 @@ export interface DriverInputs {
   /** Edge-triggered: present only on the frame it starts. */
   gesture?: Gesture;
   reducedMotion: boolean;
+  /**
+   * A point to look toward, in normalised view space (driver/lookAt.ts). Biases the gaze yaw and
+   * pitch targets by `lookAtOffset`; absent, the driver behaves exactly as without it (costume 9).
+   */
+  lookAt?: LookAtPoint;
 }
 
 export interface DriverState {
@@ -52,6 +58,11 @@ export interface DriverState {
   saccade: { yaw: number; pitch: number; nextAt: number };
   /** Degrees, eased toward the gaze target. */
   gazeYaw: number;
+  /**
+   * Degrees, eased toward the look-at pitch (0 without one). Absent until a step has a `lookAt`,
+   * so a driver that never looks at a point keeps the state it always had.
+   */
+  gazePitch?: number;
   /** Smoothed 0..1. */
   jaw: number;
   gesture?: { name: Gesture; startedAt: number };

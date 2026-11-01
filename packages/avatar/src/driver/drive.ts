@@ -1,6 +1,6 @@
 // toDrive (avatar-renderer req 3.1, 3.6): maps driver state to rig-core's `Drive`. `Drive` has no
-// gaze field, so gaze, drift and micro-saccades fold into `headYaw`/`headPitch`, clamped to
-// rig-core's limits; jaw and blink are clamped to [0, 1]. Pure.
+// gaze field, so gaze (and the look-at pitch, costume 9), drift and micro-saccades fold into
+// `headYaw`/`headPitch`, clamped to rig-core's limits; jaw and blink are clamped to [0, 1]. Pure.
 import { PITCH_LIMIT_DEG, YAW_LIMIT_DEG, type Drive } from "@sr/rig";
 import type { DriverState } from "./state.js";
 
@@ -20,7 +20,7 @@ export function toDrive(s: DriverState): Drive {
   const drive: Drive = {
     t: s.t,
     headYaw: clamp(s.gazeYaw + s.drift.yaw + s.saccade.yaw, -YAW_LIMIT_DEG, YAW_LIMIT_DEG),
-    headPitch: clamp(s.drift.pitch + s.saccade.pitch, -PITCH_LIMIT_DEG, PITCH_LIMIT_DEG),
+    headPitch: clamp((s.gazePitch ?? 0) + s.drift.pitch + s.saccade.pitch, -PITCH_LIMIT_DEG, PITCH_LIMIT_DEG),
     jawOpen: clamp(s.jaw, 0, 1),
     blink: blinkAt(s),
   };

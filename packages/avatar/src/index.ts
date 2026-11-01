@@ -4,6 +4,7 @@ export const PACKAGE = "@sr/avatar";
 export * from "./driver/state.js";
 export * from "./driver/step.js";
 export * from "./driver/drive.js";
+export * from "./driver/lookAt.js";
 export * from "./audio/level.js";
 export * from "./render/types.js";
 export * from "./render/frame.js";
