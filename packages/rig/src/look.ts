@@ -6,15 +6,16 @@
 //   default stays hidden; names in `look.hidden` that match no layer are ignored. Emotion and
 //   gesture are not rig fields, so they do not appear in the result. The result shares no objects
 //   or arrays with either input.
-// - `brow` is in the table's own units (signed steps, + raises the brow); the renderer and driver
-//   choose the pixel scale.
+// - `brow` is in the table's own units (signed steps, + raises the brow); the renderer maps one
+//   step to `0.004 * rig.height` canvas px.
 // - An emotion with no default gesture ("-" in the table) has no `gesture` key (omitted, never null).
+// - Gesture precedence (`resolveGesture`): `look.gesture` when set, otherwise the emotion's default.
 import type { Emotion, Gesture, Layer, Look, Palette, Rig } from "./types.js";
 
 export interface EmotionDrive {
   /** Multiplier on the eye light; 1 = as drawn. */
   eyeGain: number;
-  /** Signed brow offset in table steps; positive raises. */
+  /** Signed brow offset in table steps; positive raises. One step = `0.004 * rig.height` px. */
   brow: number;
   /** Gesture played when the emotion is chosen; absent when there is none. */
   gesture?: Gesture;
@@ -47,6 +48,11 @@ const copyLayer = (layer: Layer): Layer => ({ ...layer, bbox: [...layer.bbox], a
 export function lookToEmotionDrive(emotion: Emotion): EmotionDrive {
   const row = EMOTION_TABLE[emotion];
   return row.gesture === undefined ? { eyeGain: row.eyeGain, brow: row.brow } : { eyeGain: row.eyeGain, brow: row.brow, gesture: row.gesture };
+}
+
+/** The gesture to play for `look`: `look.gesture` when set, otherwise the emotion's default (or none). */
+export function resolveGesture(look: Look): Gesture | undefined {
+  return look.gesture ?? EMOTION_TABLE[look.emotion].gesture;
 }
 
 /** The rig's own palette, nothing hidden, neutral, no gesture. */

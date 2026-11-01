@@ -129,6 +129,45 @@ a valid Rig. It returns `{ rig, warnings }`, where each warning is `{ layer, mes
 
 **Gesture** is one of `"nod"`, `"tilt"`, `"lean_in"`, `"recoil"`, `"glare"`, `"flare"`.
 
+### Look functions
+
+`packages/rig/src/look.ts` holds the pure functions over a Look. None of them modifies its inputs.
+
+- `defaultLook(rig)` returns the rig's palette (a copy), `hidden: []`, `emotion: "neutral"` and
+  no `gesture`.
+- `applyLook(rig, look)` returns a **new `Rig`** dressed by the look: its `palette` is the look's
+  palette, and every layer named in `look.hidden` carries `visible: false`. Layers already hidden
+  by default stay hidden; names in `look.hidden` that match no layer are ignored. All other fields
+  are unchanged. Emotion and gesture are not Rig fields, so they do not appear in the result. The
+  result shares no objects or arrays with either input, and a valid rig stays valid.
+- `lookToEmotionDrive(emotion)` returns a fresh `EmotionDrive` for the emotion, from the table
+  below.
+- `resolveGesture(look)` returns the gesture to play: `look.gesture` when it is set, otherwise the
+  emotion's default gesture from `lookToEmotionDrive`, otherwise `undefined`.
+
+### EmotionDrive
+
+| field | type | required | meaning |
+|---|---|---|---|
+| `eyeGain` | number | yes | Multiplier on the eye light; 1 = as drawn. |
+| `brow` | number | yes | Signed brow offset in table steps; positive raises the brow. The renderer maps one step to `0.004 * height` canvas px (`height` is the rig's). |
+| `gesture` | Gesture | no | The emotion's default gesture. Omitted when it has none. |
+
+| emotion | `eyeGain` | `brow` | `gesture` |
+|---|---|---|---|
+| `neutral` | 1.0 | 0 | - |
+| `amused` | 1.2 | +1 | `tilt` |
+| `smug` | 1.1 | +2 | `tilt` |
+| `irritated` | 1.3 | -2 | `glare` |
+| `furious` | 2.0 | -3 | `flare` |
+| `delighted` | 1.5 | +2 | `nod` |
+| `bored` | 0.7 | -1 | - |
+| `suspicious` | 1.2 | -1 | `lean_in` |
+| `grim` | 0.9 | -2 | - |
+| `theatrical` | 1.6 | +3 | `flare` |
+
+The same table is exported as `EMOTION_TABLE` (frozen).
+
 ## Pose
 
 `poseLayers(rig, look, drive)` (`packages/rig/src/pose.ts`) computes each frame's layer

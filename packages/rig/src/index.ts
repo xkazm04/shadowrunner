@@ -5,3 +5,4 @@ export * from "./serialize.js";
 export * from "./validate.js";
 export * from "./legacy.js";
 export * from "./pose.js";
+export * from "./look.js";

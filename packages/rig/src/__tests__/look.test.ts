@@ -1,8 +1,10 @@
 // Looks (rig-core task 5, req 5): defaultLook, applyLook non-mutation under deep-freeze (property),
-// and the emotion table for all 10 emotions (design.md "Emotion table").
+// and the emotion table for all 10 emotions (design.md "Emotion table"). Task 6: resolveGesture
+// precedence and the @sr/rig re-export of look.ts.
+import * as surface from "@sr/rig";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { applyLook, defaultLook, EMOTION_TABLE, lookToEmotionDrive } from "../look.js";
+import { applyLook, defaultLook, EMOTION_TABLE, lookToEmotionDrive, resolveGesture } from "../look.js";
 import { poseLayers, type Drive } from "../pose.js";
 import type { Emotion, Gesture, Look, Rig } from "../types.js";
 import { validateRig } from "../validate.js";
@@ -169,5 +171,60 @@ describe("lookToEmotionDrive (req 5.3, design.md emotion table)", () => {
       first.eyeGain = 99;
       expect(lookToEmotionDrive(emotion).eyeGain).toBe(EMOTION_TABLE[emotion].eyeGain);
     }
+  });
+});
+
+describe("resolveGesture (task 6: look.gesture wins, else the emotion's default)", () => {
+  const PALETTE = { glow: "#000000", eye: "#000000", rim: "#000000", mouth: "#000000" };
+  const look = (emotion: Emotion, gesture?: Gesture): Look =>
+    gesture === undefined ? { palette: PALETTE, hidden: [], emotion } : { palette: PALETTE, hidden: [], emotion, gesture };
+
+  const TABLE: readonly [Emotion, Gesture | undefined, Gesture | undefined][] = [
+    // No look.gesture: the emotion table's default, or none.
+    ["neutral", undefined, undefined],
+    ["amused", undefined, "tilt"],
+    ["smug", undefined, "tilt"],
+    ["irritated", undefined, "glare"],
+    ["furious", undefined, "flare"],
+    ["delighted", undefined, "nod"],
+    ["bored", undefined, undefined],
+    ["suspicious", undefined, "lean_in"],
+    ["grim", undefined, undefined],
+    ["theatrical", undefined, "flare"],
+    // look.gesture set: it wins over the default, and over "no default".
+    ["neutral", "recoil", "recoil"],
+    ["furious", "nod", "nod"],
+    ["delighted", "glare", "glare"],
+    ["grim", "lean_in", "lean_in"],
+    ["amused", "tilt", "tilt"],
+  ];
+
+  it.each(TABLE)("%s with look.gesture %s -> %s", (emotion, gesture, expected) => {
+    expect(resolveGesture(deepFreeze(look(emotion, gesture)))).toBe(expected);
+  });
+
+  it("is look.gesture when set, otherwise lookToEmotionDrive(emotion).gesture (property)", () => {
+    fc.assert(
+      fc.property(
+        fc.record(
+          { palette: arbPalette, hidden: fc.array(arbLayerName, { maxLength: 3 }), emotion: fc.constantFrom(...EMOTIONS), gesture: fc.constantFrom(...GESTURES) },
+          { requiredKeys: ["palette", "hidden", "emotion"] },
+        ),
+        (arbLook: Look) => {
+          const expected = "gesture" in arbLook ? arbLook.gesture : lookToEmotionDrive(arbLook.emotion).gesture;
+          expect(resolveGesture(deepFreeze(clone(arbLook)))).toBe(expected);
+        },
+      ),
+    );
+  });
+});
+
+describe("public surface", () => {
+  it("@sr/rig re-exports look.ts", () => {
+    expect(surface.defaultLook).toBe(defaultLook);
+    expect(surface.applyLook).toBe(applyLook);
+    expect(surface.lookToEmotionDrive).toBe(lookToEmotionDrive);
+    expect(surface.resolveGesture).toBe(resolveGesture);
+    expect(surface.EMOTION_TABLE).toBe(EMOTION_TABLE);
   });
 });
