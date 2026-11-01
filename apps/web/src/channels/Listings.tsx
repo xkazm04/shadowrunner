@@ -1,71 +1,52 @@
-// CH 4 Cellar Listings (landing requirement 8.2): tonight's programme on a parchment page, after
-// the reference's `#guide`. Who is on now (Malakor, from his bible), the rest of the cast in the
-// later hours (landing task 12), the vacant hours, and the sealed channel. Every call to action is
-// a channel: links derive their paths from the manifest; "Open in the Forge" opens that character
-// in CH 3 (`/creator?character=<slug>`).
+// CH 4 Cellar Listings as the wall of sets (costume requirement 5, after `r1/characters-c.html`
+// "The Wall of Sets"): a junk-shop wall of stacked televisions on shelves, one face per hour.
+// The sets power on in schedule order (dot, line, picture), Malakor's big set last, then the
+// ON AIR sign lights. Hovering or focusing a set warms its tube and throws that character's colour
+// across the brick; clicking it pins its listing to the newspaper clipping, with its Forge and
+// Watch actions. The vacant hour hisses with static; channel 9 is taped over.
 //
-// The later hours are the creator's cast (the recorded forge jobs + the preset notes), loaded as
-// their own chunk after the page, so the set's first load does not carry them. Their portraits are
-// small stills, loaded lazily.
-import { useEffect, useState, type MouseEvent } from "react";
-import portrait from "../../../../assets/plates/portrait.webp";
-import { PAGES, type PageId } from "../app/pages";
-import { handleLinkClick } from "../app/router";
+// The cast is the creator's (the recorded forge jobs + the preset notes), loaded as its own chunk
+// after the page; the live hour's tube is the renderer, also its own chunk (WallLive). Pointer
+// effects (the colour spill, where Malakor looks) write CSS variables and a ref, never a render.
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import type { LookAtPoint, LookAtRef } from "@sr/avatar";
+import castStill from "../../../../assets/replay/thumbs/malakor.webp";
 import type { GalleryEntry } from "../creator/gallery/entries";
 import styles from "./Listings.module.css";
+import { bootTimeline, wallSets, type WallSet as WallSetData } from "./ListingsWall";
+import { channelOf, WallClipping, type HouseListing } from "./WallClipping";
+import { WallSet } from "./WallSet";
+
+export { forgePathFor } from "./WallClipping";
+export { hourAfter } from "./ListingsWall";
 
 /** What the listings show of a cast member. */
 export type ListedCharacter = Pick<GalleryEntry, "id" | "slug" | "name" | "portraitUrl" | "hook" | "teaches" | "showsOff" | "origin">;
 
+/** The live tube, given where to look and whether the set is speaking yet. */
+export type LiveTube = (props: { lookAt: LookAtRef; speaking: boolean }) => ReactNode;
+
 export interface ListingsProps {
   /** The cast, house character included. Default: the creator's cast, as a lazy chunk. */
   loadCast?: () => Promise<readonly ListedCharacter[]>;
+  /** The big set's live tube. Default: <AvatarCanvas> in its own chunk. */
+  liveTube?: LiveTube;
 }
 
 const loadCommittedCast = (): Promise<readonly ListedCharacter[]> => import("../creator/gallery/entries").then((m) => m.loadCast());
 
+const WallLive = lazy(() => import("./WallLive"));
+const lazyLiveTube: LiveTube = (props) => (
+  <Suspense fallback={null}>
+    <WallLive {...props} />
+  </Suspense>
+);
+
 /** The house character's id: he is on now, written from his bible below. */
 export const ON_NOW_ID = "malakor";
-/** The hour Malakor is on; the cast follows on the hour. */
-const ON_NOW_HOUR = 3;
 
-function pathOf(id: PageId): string {
-  return PAGES.find((p) => p.id === id)?.path ?? "/";
-}
-
-function channelOf(id: PageId): number | undefined {
-  return PAGES.find((p) => p.id === id)?.channel;
-}
-
-/** `HH:00`, `n` hours after Malakor's. */
-export const hourAfter = (n: number): string => `${String((ON_NOW_HOUR + n) % 24).padStart(2, "0")}:00`;
-
-/** The Forge with this character on its stage. */
-export const forgePathFor = (slug: string): string => `${pathOf("creator")}?character=${encodeURIComponent(slug)}`;
-
-/**
- * A click on a link carrying its own query: keep the visitor's other parameters (`?plane=replay`),
- * which the router only carries over for a target without one.
- */
-function withCurrentQuery(to: string): string {
-  if (typeof window === "undefined") return to;
-  const url = new URL(to, window.location.href);
-  for (const [key, value] of new URLSearchParams(window.location.search)) if (!url.searchParams.has(key)) url.searchParams.set(key, value);
-  return `${url.pathname}${url.search}`;
-}
-
-function ChannelLink({ to, alt = false, path, children }: { to: PageId; alt?: boolean; path?: string; children: string }) {
-  const href = path ?? pathOf(to);
-  return (
-    <a
-      href={href}
-      className={alt ? `${styles.button} ${styles.alt}` : styles.button}
-      onClick={(event: MouseEvent<HTMLAnchorElement>) => handleLinkClick(event, path === undefined ? href : withCurrentQuery(href))}
-    >
-      {`${children} · CH ${channelOf(to) ?? "?"}`}
-    </a>
-  );
-}
+/** Him, when the cast does not come through: his set stays on the wall. */
+const HOUSE: ListedCharacter = { id: ON_NOW_ID, slug: ON_NOW_ID, name: "Arch-Lich Malakor", origin: "hand-rigged" };
 
 /** The listing card's facts, as the reference's definition list. */
 export const MALAKOR_FACTS: readonly (readonly [string, string])[] = [
@@ -75,38 +56,34 @@ export const MALAKOR_FACTS: readonly (readonly [string, string])[] = [
   ["Segments", "Audience Chamber · The Investigation · Table Read"],
 ];
 
-/** "hat and a lit jaw. ..." -> "Hat and a lit jaw. ..." */
-const sentence = (text: string): string => text.charAt(0).toUpperCase() + text.slice(1);
+const HOUSE_LISTING: Omit<HouseListing, "facts"> = {
+  epithet: "High Auditor of the Obsidian Spire, a lich of the Ninth Dark",
+  blurb:
+    "Eleven centuries dead and still under-budgeted, he streams because the Ninth Dark now conquers by audience. He holds court, audits rival schemers from public records, and keeps a ledger of every regular.",
+};
 
-function LaterHour({ member, hour }: { member: ListedCharacter; hour: number }) {
-  const shows = member.teaches ?? member.showsOff;
-  return (
-    <li className={styles.entry} data-character={member.slug}>
-      {member.portraitUrl !== undefined && (
-        <img className={styles.still} src={member.portraitUrl} width={112} height={112} loading="lazy" decoding="async" alt={`Portrait of ${member.name} (${member.origin})`} />
-      )}
-      <div className={styles.entryHead}>
-        <p className={styles.slotTime}>{`${hourAfter(hour)} · LATER · CH ${channelOf("creator") ?? 3}`}</p>
-        <h3>{member.name}</h3>
-      </div>
-      <div className={styles.entryText}>
-        {member.hook !== undefined && <p className={styles.hook}>{sentence(member.hook)}</p>}
-        {shows !== undefined && (
-          <p className={styles.shows}>
-            <b>Shows off</b> {sentence(shows)}
-          </p>
-        )}
-        <ChannelLink to="creator" alt path={forgePathFor(member.slug)}>
-          Open in the Forge
-        </ChannelLink>
-      </div>
-    </li>
-  );
-}
+const CHANNELS = { live: channelOf("landing") ?? 2, later: channelOf("creator") ?? 3, sealed: channelOf("sealed") ?? 9 };
 
-export function Listings({ loadCast = loadCommittedCast }: ListingsProps) {
+/** dark: the cast is still tuning in; boot: the tubes power on; lit: ON AIR; idle: the wall is awake. */
+type Phase = "dark" | "boot" | "lit" | "idle";
+
+const SWAP_MS = 220;
+
+const reducedMotion = (): boolean => typeof window === "undefined" || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
+
+type Slot = WallSetData<ListedCharacter>;
+
+export function Listings({ loadCast = loadCommittedCast, liveTube = lazyLiveTube }: ListingsProps) {
   const [cast, setCast] = useState<readonly ListedCharacter[] | undefined>(undefined);
   const [failed, setFailed] = useState(false);
+  const [phase, setPhase] = useState<Phase>("dark");
+  const [chosen, setChosen] = useState<string | undefined>(undefined);
+  const [shown, setShown] = useState<string | undefined>(undefined);
+  const [changing, setChanging] = useState(false);
+  const pageRef = useRef<HTMLElement>(null);
+  const wallRef = useRef<HTMLElement>(null);
+  const lookAt = useRef<LookAtPoint | null>(null);
+
   useEffect(() => {
     let live = true;
     loadCast().then(
@@ -118,92 +95,113 @@ export function Listings({ loadCast = loadCommittedCast }: ListingsProps) {
     };
   }, [loadCast]);
 
-  const house = cast?.find((m) => m.id === ON_NOW_ID);
-  const later = cast?.filter((m) => m.id !== ON_NOW_ID) ?? [];
-  const facts = house?.showsOff === undefined ? MALAKOR_FACTS : [...MALAKOR_FACTS, ["Shows off", house.showsOff] as const];
-  const vacantAt = later.length + 1;
+  const sets = useMemo(() => wallSets(cast ?? [], ON_NOW_ID, CHANNELS, HOUSE), [cast]);
+  const ready = cast !== undefined || failed;
+  const house = sets.find((s) => s.kind === "live");
+  const chosenKey = chosen ?? house?.key;
+  const shownSet = sets.find((s) => s.key === (shown ?? chosenKey)) ?? house;
+  const facts = useMemo(() => {
+    const showsOff = house?.member?.showsOff;
+    return showsOff === undefined ? MALAKOR_FACTS : [...MALAKOR_FACTS, ["Shows off", showsOff] as const];
+  }, [house]);
+
+  // The boot: once the cast is in, the tubes wake in schedule order, then ON AIR, then idle.
+  useEffect(() => {
+    if (!ready) return undefined;
+    if (reducedMotion()) {
+      setPhase("idle");
+      return undefined;
+    }
+    const { litMs, idleMs } = bootTimeline(sets);
+    setPhase("boot");
+    const lit = window.setTimeout(() => setPhase("lit"), litMs);
+    const idle = window.setTimeout(() => setPhase("idle"), idleMs);
+    return () => {
+      window.clearTimeout(lit);
+      window.clearTimeout(idle);
+    };
+  }, [ready, sets]);
+
+  /** Throw `set`'s colour across the brick from where it hangs, and turn Malakor toward it. */
+  const spillTo = useCallback((el: Element | null | undefined, set: Slot | undefined) => {
+    const page = pageRef.current;
+    if (page === null || el === null || el === undefined || set === undefined) return;
+    const r = el.getBoundingClientRect();
+    const cx = r.left + r.width / 2;
+    const cy = r.top + r.height / 2;
+    page.style.setProperty("--wall-sx", `${((cx / window.innerWidth) * 100).toFixed(1)}%`);
+    page.style.setProperty("--wall-sy", `${((cy / window.innerHeight) * 100).toFixed(1)}%`);
+    page.style.setProperty("--wall-sc", `var(--sr-${set.accent})`);
+    page.style.setProperty("--wall-sa", `${Math.round(set.spill * 100)}%`);
+    const tube = wallRef.current?.querySelector('[data-kind="live"]')?.getBoundingClientRect();
+    lookAt.current =
+      set.kind === "live" || tube === undefined || tube.width === 0
+        ? null
+        : { x: (2 * (cx - tube.left)) / tube.width - 1, y: (2 * (cy - tube.top)) / tube.height - 1 };
+  }, []);
+
+  const setEl = useCallback((key: string | undefined) => (key === undefined ? null : wallRef.current?.querySelector(`[data-set="${CSS.escape(key)}"]`)), []);
+
+  const lit = phase === "lit" || phase === "idle";
+  // The chosen set's colour holds the room once ON AIR is lit (and whenever the choice moves).
+  useEffect(() => {
+    if (!lit) return undefined;
+    const settle = (): void => spillTo(setEl(chosenKey), sets.find((s) => s.key === chosenKey));
+    settle();
+    window.addEventListener("resize", settle);
+    return () => window.removeEventListener("resize", settle);
+  }, [lit, chosenKey, sets, spillTo, setEl]);
+
+  const timer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+  const choose = useCallback((set: Slot) => {
+    setChosen(set.key);
+    window.clearTimeout(timer.current);
+    if (reducedMotion()) {
+      setShown(set.key);
+      return;
+    }
+    setChanging(true);
+    timer.current = window.setTimeout(() => {
+      setShown(set.key);
+      setChanging(false);
+    }, SWAP_MS);
+  }, []);
+
+  const warm = useCallback((el: HTMLElement, set: Slot) => spillTo(el, set), [spillTo]);
+  const cool = useCallback(() => {
+    if (lit) spillTo(setEl(chosenKey), sets.find((s) => s.key === chosenKey));
+  }, [lit, chosenKey, sets, spillTo, setEl]);
+
+  const rows = Math.max(3, Math.ceil((sets.length - 1 + 1 + 4) / 4));
 
   return (
-    <article className={styles.page} data-page="characters" aria-labelledby="page-title">
-      <div className={styles.mast}>
-        <h1 id="page-title">Cellar Listings</h1>
-        <p>
-          ALL NIGHT · CHANNELS 2 TO 9
-          <br />
-          CHARACTERS WHO STREAM
-        </p>
-      </div>
-      <section className={styles.listing} aria-label="On air now">
-        <figure>
-          <img src={portrait} width={250} height={250} alt="Portrait of Arch-Lich Malakor (stylised)" />
-          <figcaption>Source portrait, stylised. His rig was cut from it.</figcaption>
-        </figure>
-        <div>
-          <p className={styles.time}>{`${hourAfter(0)} · ON AIR NOW · CH ${channelOf("landing") ?? 2}`}</p>
-          <h2>Arch-Lich Malakor</h2>
-          <p className={styles.role}>High Auditor of the Obsidian Spire, a lich of the Ninth Dark</p>
-          <p className={styles.blurb}>
-            Eleven centuries dead and still under-budgeted, he streams because the Ninth Dark now conquers by
-            audience. He holds court, audits rival schemers from public records, and keeps a ledger of every
-            regular.
-          </p>
-          <dl>
-            {facts.map(([term, value]) => (
-              <div key={term}>
-                <dt>{term}</dt>
-                <dd>{value}</dd>
-              </div>
-            ))}
-          </dl>
-          <div className={styles.actions}>
-            <ChannelLink to="creator" path={forgePathFor(house?.slug ?? ON_NOW_ID)}>
-              Open in the Forge
-            </ChannelLink>
-            <ChannelLink to="landing" alt>
-              Watch
-            </ChannelLink>
-          </div>
-        </div>
+    <article ref={pageRef} className={styles.page} data-page="characters" data-phase={phase} aria-labelledby="page-title">
+      <div className={styles.room} aria-hidden="true" />
+      <div className={styles.spill} aria-hidden="true" />
+      <div className={styles.vignette} aria-hidden="true" />
+      <h1 id="page-title" className={styles.title}>
+        <span>Cellar Listings</span> · all night · channels {CHANNELS.live} to {CHANNELS.sealed} · characters who stream
+      </h1>
+      <section ref={wallRef} className={styles.wall} aria-label="Tonight's sets, one face per hour" aria-busy={!ready}>
+        {Array.from({ length: rows - 1 }, (_, i) => (
+          <span key={i} className={styles.shelf} style={{ gridRow: `${i + 1} / span 1` }} aria-hidden="true" />
+        ))}
+        {(ready ? sets : sets.filter((s) => s.kind === "live")).map((set) => (
+          <WallSet
+            key={set.key}
+            set={set}
+            pressed={set.key === chosenKey}
+            liveChannel={CHANNELS.live}
+            liveStill={house?.member?.portraitUrl ?? castStill}
+            liveTube={set.kind === "live" ? liveTube({ lookAt, speaking: lit }) : undefined}
+            onChoose={choose}
+            onWarm={warm}
+            onCool={cool}
+          />
+        ))}
       </section>
-      <section className={styles.later} aria-labelledby="later-title">
-        <h2 id="later-title" className={styles.laterTitle}>
-          Later tonight
-        </h2>
-        {cast === undefined && !failed && <p className={styles.tuning}>Tuning in the later hours…</p>}
-        {failed && <p className={styles.tuning}>The later hours did not come through. The Forge still has every character.</p>}
-        {later.length > 0 && (
-          <ol className={styles.entries}>
-            {later.map((member, i) => (
-              <LaterHour key={member.id} member={member} hour={i + 1} />
-            ))}
-          </ol>
-        )}
-      </section>
-      <section className={styles.slots} aria-label="Unclaimed hours">
-        <div className={styles.vacant}>
-          <p className={styles.slotTime}>{`${hourAfter(vacantAt)} · VACANT`}</p>
-          <h3>An empty slot</h3>
-          <p>Describe a face or bring a picture. The forge cuts it into a rig and gives it this hour.</p>
-          <ChannelLink to="creator">Forge a character</ChannelLink>
-        </div>
-        <div className={styles.vacant}>
-          <p className={styles.slotTime}>{`${hourAfter(vacantAt + 1)} · VACANT`}</p>
-          <h3>Before the boiler wakes</h3>
-          <p>The last hour of the night is unclaimed.</p>
-        </div>
-        <div className={`${styles.vacant} ${styles.sealed}`}>
-          <p className={styles.slotTime}>{`CH ${channelOf("sealed") ?? 9} · SEALED`}</p>
-          <h3>Not built yet</h3>
-          <p>Nothing is broadcast on nine. The set still tunes to it.</p>
-          <a
-            href={pathOf("sealed")}
-            className={`${styles.button} ${styles.alt}`}
-            onClick={(event) => handleLinkClick(event, pathOf("sealed"))}
-          >
-            {`Tune to ${channelOf("sealed") ?? 9}`}
-          </a>
-        </div>
-      </section>
+      <WallClipping set={shownSet} house={{ ...HOUSE_LISTING, facts }} changing={changing} failed={failed} />
     </article>
   );
 }

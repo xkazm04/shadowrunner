@@ -23,7 +23,7 @@
   - [ ] 3.2 `/creator/new` per `r2/creator-a.html`, wired to `forgeClient`; handoff to `/creator`.
   - _Requirements: 4.1-4.4_
 
-- [ ] 4. Characters: the wall of sets (characters lane)
+- [x] 4. Characters: the wall of sets (characters lane)
   - _Requirements: 5.1, 5.2_
 
 - [ ] 5. Daemon and Sealed (channels lane)

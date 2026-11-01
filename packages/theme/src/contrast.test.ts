@@ -26,6 +26,23 @@ const PAPER_PAIRS: [string, string, number][] = [
 const PHOSPHOR_TEXT = ["phosphor", "phosphor-2"];
 const GLASS_PAIRS = SURFACES.flatMap((bg) => PHOSPHOR_TEXT.map((fg): [string, string, number] => [fg, bg, AA_BODY]));
 
+// costume 4 (the wall of sets): the cabinet plates (14 px hour, name in text-strong) sit on the
+// darkened lower band of each cabinet skin, so both inks clear 4.5:1 on every skin's low stop; the
+// tube's on-screen text, the ON AIR sign, the CH 9 tape and the clipping's inks likewise.
+const SKINS = ["wood", "black", "cream", "teal"];
+const WALL_PAIRS: [string, string, number][] = [
+  ...SKINS.flatMap((skin): [string, string, number][] => [
+    ["wall-plate-ink", `wall-${skin}-lo`, AA_BODY],
+    ["text-strong", `wall-${skin}-lo`, AA_BODY],
+  ]),
+  ["wall-osd", "wall-tube", AA_BODY],
+  ["text-strong", "wall-tube", AA_BODY],
+  ["wall-onair-lit-ink", "wall-onair-lit-bg", AA_BODY],
+  ["wall-tape-ink", "wall-tape", AA_BODY],
+  ["wall-clip-ink", "wall-clip-lo", AA_BODY],
+  ["wall-clip-signal", "wall-clip-lo", AA_BODY],
+];
+
 const PAIRS: [fg: string, bg: string, min: number][] = [
   ...SURFACES.flatMap((bg) => [
     ...BODY_TEXT.map((fg): [string, string, number] => [fg, bg, AA_BODY]),
@@ -33,6 +50,7 @@ const PAIRS: [fg: string, bg: string, min: number][] = [
   ]),
   ...PAPER_PAIRS,
   ...GLASS_PAIRS,
+  ...WALL_PAIRS,
 ];
 
 it("finds surfaces and text roles to pair", () => {
