@@ -8,6 +8,10 @@ submission write-up is impossible to reconstruct in week 5.
 |---|---|---|---|---|---|---|
 
 ## Setup notes
+- 2026-11-01: Kiro plan upgraded; kiro-cli 2.37.0. `claude-opus-5.5` (2.0x credits) verified headless
+  (`--v3 --no-interactive --model claude-opus-5.5` answered as Opus 5.5). sr-builder moved to Opus 5.5 at
+  xhigh effort (`--effort` per run plus `.kiro/settings/cli.json` defaults), sr-reviewer to Sonnet 5.5 at high.
+  `scripts/kiro-task.sh` refuses `claude-sonnet-4.5` as builder.
 - 2026-10-31: landing design decided outside Kiro (contest skill, 4 rounds, Claude Opus 5.5 seats); spec `landing` rewritten by the director, so Kiro builds the port. Disclosed in docs/kiro-writeup.md.
 - 2026-10-31: kiro-cli 2.34.0. Headless `chat --v3 --agent sr-builder --no-interactive --trust-all-tools`
   verified: allow-listed writes go through; the agent profile's deny rules block `git commit` and
