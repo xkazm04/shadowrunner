@@ -24,6 +24,12 @@
   - [x] 4.2 Properties: purity under deep-freeze; parallax monotonic in depth; jaw moves only jaw layers; hidden layers absent; followers keep relative offset at yaw 0.
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6_
 
-- [ ] 5. Looks
+- [x] 5. Looks
   - `look.ts`: `defaultLook`, `applyLook`, `lookToEmotionDrive` (table in design.md); non-mutation property; table test covers all 10 emotions.
+  - _Requirements: 5.1, 5.2, 5.3_
+
+- [ ] 6. Public surface for looks (director follow-up from the task 5 review)
+  - Re-export `look.ts` from `packages/rig/src/index.ts` and extend the "public surface" test.
+  - Document `EmotionDrive`, `applyLook` (returns a new `Rig`: the look's palette, `visible: false` on hidden layers) and the brow unit (signed table steps; the renderer maps one step to 0.004 * height px) in `docs/rig-format.md`.
+  - Gesture precedence: add `resolveGesture(look): Gesture | undefined`, which returns `look.gesture` when set, otherwise the emotion's default from `lookToEmotionDrive`. Table test plus one property.
   - _Requirements: 5.1, 5.2, 5.3_

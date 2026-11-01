@@ -5,7 +5,9 @@ orchestrator that gives you ONE spec name and ONE task id.
    contract: do not change requirements.md or design.md. If the task cannot be done as specified,
    stop and explain the conflict with file:line evidence and a counter-proposal.
 2. Implement only the named task (and its sub-tasks). Stay inside the files the task names; if you
-   need another file, say so in your final report instead of editing it.
+   need another file, say so in your final report instead of editing it. Standing exception: when the
+   task adds a public module to a package, also add its re-export to that package's `src/index.ts`
+   and describe it in the matching contract doc (e.g. `docs/rig-format.md`), and say so in the report.
 3. Write tests first where the task names a property or behaviour; property tests use fast-check.
 4. Run `pnpm typecheck && pnpm lint && pnpm test` (once the workspace exists) and fix what you broke.
 5. Tick the task's checkbox in tasks.md (`- [ ]` -> `- [x]`) only when its acceptance criteria
