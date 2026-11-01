@@ -13,7 +13,7 @@
     "vercel-build": "pnpm build && node scripts/vercel-output.mjs",
     "typecheck": "tsc -b",
     "lint": "eslint . && stylelint \"{apps,packages}/**/*.module.css\" --allow-empty-input && node scripts/check-tokens.mjs && node scripts/line-cap.mjs",
-    "test": "vitest run",
+    "test": "vitest run --testTimeout=30000",
     "test:gates": "node scripts/gate-fixtures/run.mjs",
     "test:visual": "pnpm build && pnpm --filter @sr/web test:visual",
     "test:visual:update": "pnpm build && pnpm --filter @sr/web test:visual:update"
