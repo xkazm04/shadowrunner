@@ -51,6 +51,7 @@ export default tseslint.config(
       "**/node_modules/**",
       "**/dist/**",
       "var/**",
+      ".vercel/**",
       "assets/**",
       "scripts/gate-fixtures/**/*", // `/*` (not `/**`) so the runner below can be un-ignored
       "!scripts/gate-fixtures/run.mjs",
