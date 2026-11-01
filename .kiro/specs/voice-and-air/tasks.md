@@ -18,13 +18,13 @@
   - [x] 4.2 `scripts/render-show.mjs` (owner key, not in tests) renders the show's lines to `assets/replay/shows/malakor-night/*.wav`; replay `/api/voice` returns recorded WAVs; provenance noted in `docs/provenance.md`.
   - _Requirements: 3.1, 3.2, 3.3_
 
-- [ ] 5. Stage page
+- [x] 5. Stage page
   - One clock (from the 1.1 review): the stage stamps every chat message, audience and visitor alike, with the same monotonic show clock before it reaches `pickMessage`, and passes `ctx.self` equal to the name the character's replies are posted under. Test: a visitor message typed in the same millisecond as a pick is still answered on the next beat.
-  - [ ] 5.1 `useLoudness.ts` (AnalyserNode RMS -> jawOpen with attack/release) with a unit test on synthetic buffers.
-  - [ ] 5.2 `useShow.ts` beat loop (pick -> reply -> voice -> play -> captions), TTS failure -> caption only, one retry.
-  - [ ] 5.3 `AirPage.tsx`, `Chat.tsx` (visitor input), `OnAirLamp.tsx`, `Captions.tsx`, `air.module.css` with role tokens only; register `air` in the page manifest as `live`.
+  - [x] 5.1 `useLoudness.ts` (AnalyserNode RMS -> jawOpen with attack/release) with a unit test on synthetic buffers.
+  - [x] 5.2 `useShow.ts` beat loop (pick -> reply -> voice -> play -> captions), TTS failure -> caption only, one retry.
+  - [x] 5.3 `AirPage.tsx`, `Chat.tsx` (visitor input), `OnAirLamp.tsx`, `Captions.tsx`, `air.module.css` with role tokens only; register `air` in the page manifest as `live`.
   - _Requirements: 3.4, 4.1, 4.2, 4.3, 4.4, 4.5, 4.6_
 
-- [ ] 6. Haunt bound to status
+- [x] 6. Haunt bound to status
   - Stage state machine with `dead_line` (`DeadLine.tsx`), health polling, fog from chat velocity via `--sr-haunt-fog`, reduced-motion twins, baseline theme check; component tests for enter/recover and the lamp role.
   - _Requirements: 5.1, 5.2, 5.3, 5.4_

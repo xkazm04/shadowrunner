@@ -1,4 +1,5 @@
 // POST /api/voice and the TTS helpers (voice-and-air requirement 3), fake fetch only.
+import { readFile } from "node:fs/promises";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { VOICE_IDS, VOICES } from "@sr/engine";
@@ -6,7 +7,7 @@ import { createQuota, DEFAULT_LIMITS, MemoryQuotaStore, type QuotaKind } from ".
 import { replayShow } from "../_lib/show.js";
 import { audioPart, DEFAULT_SAMPLE_RATE, isWav, pcmRate, pcmToWav, synthesize, toWav, ttsModel, ttsPrompt, WAV_HEADER_BYTES } from "../_lib/tts.js";
 import type { FetchLike } from "../_lib/kv.js";
-import { handleVoice, readShowAsset, recordedWav, type VoiceDeps } from "../voice.js";
+import { handleVoice, recordedWav, recordingUrl, REPLAY_SHOWS_URL, type VoiceDeps } from "../voice.js";
 
 const LIVE = { SR_PLANE: "live", GEMINI_API_KEY: "g-test-not-real" };
 const PCM = new Uint8Array([1, 0, 2, 0, 3, 0, 4, 0]);
@@ -47,11 +48,13 @@ function memoryQuota(perIp: Partial<Record<QuotaKind, number>> = {}) {
   };
 }
 
-/** Fake recordings: the bytes spell the file name, so a test can see which one was served. */
-const readAsset = (path: string) => Promise.resolve(new TextEncoder().encode(`RIFF:${path}`));
-
 function deps(env: Record<string, string>, fetch: FetchLike, quota = memoryQuota().quota): VoiceDeps {
-  return { env, fetch, quota, readAsset };
+  return { env, fetch, quota };
+}
+
+/** A recording as the deploy serves it: assets/replay/shows/<wav> is static /replay/shows/<wav>. */
+function readRecording(wav: string): Promise<Uint8Array> {
+  return readFile(new URL(`../../assets/replay/shows/${wav}`, import.meta.url)).then((b) => new Uint8Array(b));
 }
 
 function post(payload: unknown, headers: Record<string, string> = {}): Request {
@@ -140,27 +143,36 @@ describe("synthesize", () => {
 });
 
 describe("POST /api/voice on replay", () => {
-  it("returns the recorded WAV of a known show line, with zero fetches and no charge", async () => {
+  it("redirects (303) to the static recording of a known show line, with zero fetches and no charge", async () => {
     const q = memoryQuota();
-    const beat = replayShow().beats[5];
-    const res = await handleVoice(post({ text: beat?.reply.line, voice: "clerk" }), deps({}, throwingFetch, q.quota));
-    expect(res.status).toBe(200);
-    expect(res.headers.get("content-type")).toBe("audio/wav");
-    expect(res.headers.get("x-sr-recorded")).toBe("line");
-    expect(await res.text()).toBe(`RIFF:${beat?.wav}`);
+    for (const beat of replayShow().beats) {
+      const res = await handleVoice(post({ text: beat.reply.line, voice: "clerk" }), deps({}, throwingFetch, q.quota));
+      expect(res.status).toBe(303);
+      expect(res.headers.get("location")).toBe(`/replay/shows/${beat.wav}`);
+      expect(res.headers.get("x-sr-recorded")).toBe("line");
+      expect(await res.text()).toBe("");
+    }
     expect(q.charges).toEqual([]);
   });
 
-  it("returns the recorded fallback phrase for any other text", async () => {
+  it("redirects to the recorded fallback phrase for any other text", async () => {
     const res = await handleVoice(post({ text: "Something never recorded.", voice: "crypt" }), deps({}, throwingFetch));
+    expect(res.status).toBe(303);
     expect(res.headers.get("x-sr-recorded")).toBe("fallback");
-    expect(await res.text()).toBe(`RIFF:${recordedWav(replayShow(), "-").wav}`);
+    expect(res.headers.get("location")).toBe(`${REPLAY_SHOWS_URL}${recordedWav(replayShow(), "-").wav}`);
+  });
+
+  it("builds recording URLs under /replay/shows/ only", () => {
+    expect(recordingUrl("malakor-night/b05.wav")).toBe("/replay/shows/malakor-night/b05.wav");
+    for (const bad of ["../secret.wav", "malakor-night/../../x.wav", "/etc/x.wav", "a//b.wav", "a\\..\\b.wav", "./b.wav"]) {
+      expect(() => recordingUrl(bad)).toThrow();
+    }
   });
 
   it("serves replay when x-sr-plane: replay is sent, even on a live deploy with a key", async () => {
     const q = memoryQuota();
     const res = await handleVoice(post({ text: "Hail.", voice: "clerk" }, { "x-sr-plane": "replay" }), deps(LIVE, throwingFetch, q.quota));
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(303);
     expect(res.headers.get("x-sr-recorded")).toBe("fallback");
     expect(q.charges).toEqual([]);
   });
@@ -199,7 +211,7 @@ describe("recorded show WAVs (assets/replay/shows/malakor-night/)", () => {
   it("exist for every line as 16-bit mono 24 kHz WAV within the 15 MB budget", async () => {
     let total = 0;
     for (const beat of replayShow().beats) {
-      const wav = await readShowAsset(beat.wav);
+      const wav = await readRecording(beat.wav);
       const view = new DataView(wav.buffer, wav.byteOffset, wav.byteLength);
       expect(isWav(wav)).toBe(true);
       expect([view.getUint16(22, true), view.getUint32(24, true), view.getUint16(34, true)]).toEqual([1, 24_000, 16]);
@@ -210,7 +222,7 @@ describe("recorded show WAVs (assets/replay/shows/malakor-night/)", () => {
     expect(total).toBeLessThanOrEqual(15 * 1024 * 1024);
   });
 
-  it("refuses an asset path that climbs out of the shows folder", async () => {
-    await expect(readShowAsset("../../package.json")).rejects.toThrow();
+  it("are named by paths the redirect accepts", () => {
+    for (const beat of replayShow().beats) expect(recordingUrl(beat.wav)).toBe(`/replay/shows/${beat.wav}`);
   });
 });

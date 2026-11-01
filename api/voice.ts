@@ -1,10 +1,9 @@
 // POST /api/voice { text, voice } -> audio/wav (voice-and-air requirement 3). Vercel Node function.
-// - replay plane (default, or `x-sr-plane: replay`): the recorded WAV of the show line with that
-//   text, or the recorded fallback phrase; no network call, no quota;
+// - replay plane (default, or `x-sr-plane: replay`): a 303 redirect to the static recording of the
+//   show line with that text, or of the recorded fallback phrase, under /replay/shows/ (the deploy
+//   copies assets/replay/** to static /replay/**); no file read, no network call, no quota;
 // - live plane: `checkAndCharge(ip, "voice", usd)` first, then one Gemini TTS call.
 // `voice` must be one of VOICES and `text` at most 300 characters, else `bad_input`.
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
 import { decodeJson, parseVoiceRequest, type ShowScript } from "@sr/engine";
 import { COST_USD } from "./_lib/costs.js";
 import { ApiError, errorResponse } from "./_lib/errors.js";
@@ -14,24 +13,26 @@ import { checkAndCharge, clientIp, type Quota } from "./_lib/quota.js";
 import { replayShow } from "./_lib/show.js";
 import { synthesize, ttsModel } from "./_lib/tts.js";
 
-/** Reads a recorded file by its path relative to `assets/replay/shows/`. */
-export type ReadAsset = (relativePath: string) => Promise<Uint8Array>;
-
 export interface VoiceDeps {
   env: Env;
   fetch: FetchLike;
   quota: Pick<Quota, "checkAndCharge">;
-  readAsset: ReadAsset;
 }
 
-const SHOWS_DIR = join("assets", "replay", "shows");
 const MAX_BODY_BYTES = 8 * 1024;
 
-/** Default asset reader: the repository's assets/ folder, resolved from the working directory. */
-export const readShowAsset: ReadAsset = async (relativePath) => {
-  if (relativePath.includes("..") || /^[/\\]/.test(relativePath)) throw new Error("bad asset path");
-  return new Uint8Array(await readFile(join(process.cwd(), SHOWS_DIR, relativePath)));
-};
+/** Where the deploy serves assets/replay/shows/** as static files (not through this function). */
+export const REPLAY_SHOWS_URL = "/replay/shows/";
+
+/**
+ * The static URL of a recording named relative to `assets/replay/shows/`. Throws on an absolute
+ * path, an empty segment or `..`, so a show file can never point the redirect elsewhere.
+ */
+export function recordingUrl(wav: string): string {
+  const parts = wav.split(/[/\\]/);
+  if (parts.some((part) => part === "" || part === "." || part === "..")) throw new Error("bad recording path");
+  return `${REPLAY_SHOWS_URL}${parts.map(encodeURIComponent).join("/")}`;
+}
 
 /**
  * The WAV for `text` on replay: the beat whose line is exactly the text, else the recorded
@@ -47,7 +48,7 @@ export function recordedWav(show: ShowScript, text: string): { wav: string; fall
 }
 
 function defaultDeps(): VoiceDeps {
-  return { env: process.env, fetch: (url, init) => fetch(url, init), quota: { checkAndCharge }, readAsset: readShowAsset };
+  return { env: process.env, fetch: (url, init) => fetch(url, init), quota: { checkAndCharge } };
 }
 
 function wavResponse(bytes: Uint8Array, extra: Record<string, string> = {}): Response {
@@ -64,14 +65,12 @@ export async function handleVoice(request: Request, deps: VoiceDeps): Promise<Re
     if (body === undefined) throw new ApiError("bad_input", "Send { text, voice } with a known voice and at most 300 characters.");
 
     if (planeFromRequest(request, deps.env) === "replay") {
+      // 303: the client's fetch follows with a GET and receives the static WAV itself.
       const { wav, fallback } = recordedWav(replayShow(), body.text);
-      let bytes: Uint8Array;
-      try {
-        bytes = await deps.readAsset(wav);
-      } catch {
-        throw new ApiError("upstream", "The recording is missing.");
-      }
-      return wavResponse(bytes, { "x-sr-recorded": fallback ? "fallback" : "line" });
+      return new Response(null, {
+        status: 303,
+        headers: { location: recordingUrl(wav), "cache-control": "no-store", "x-sr-recorded": fallback ? "fallback" : "line" },
+      });
     }
 
     const apiKey = deps.env.GEMINI_API_KEY?.trim();

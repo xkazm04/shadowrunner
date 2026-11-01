@@ -1,0 +1,67 @@
+/* The ON AIR lightbox and the VOICE tally (voice-and-air 4.2). Role tokens only. Lit, the lamp's
+   glass is the brightest fill on the stage (air.tokens.test.ts); dark, it is surface on surface,
+   which is how the dead line shows it. */
+
+.lampRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sr-space-3);
+}
+
+/* The lightbox glass. Lit: the brightest fill on the stage, dark text at AA on it. */
+.lamp {
+  margin: 0;
+  padding: var(--sr-space-2) var(--sr-space-4);
+  border-radius: var(--sr-radius-1);
+  font-family: var(--sr-font-display);
+  font-size: var(--sr-size-text-lg);
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.lamp[data-lit="on"] {
+  background-color: var(--sr-signal-onair);
+  color: var(--sr-surface-0);
+  filter: drop-shadow(0 0 1rem color-mix(in srgb, var(--sr-signal-onair) 60%, transparent));
+}
+
+.lamp[data-lit="off"] {
+  background-color: var(--sr-surface-2);
+  color: var(--sr-text-muted);
+  outline: thin solid var(--sr-line);
+}
+
+/* The VOICE tally: a red dot like a studio mic tally, lit only while the voice sounds. */
+.tally {
+  display: flex;
+  align-items: center;
+  gap: var(--sr-space-2);
+  margin: 0;
+  color: var(--sr-text-muted);
+  font-family: var(--sr-font-mono);
+  font-size: var(--sr-size-text-sm);
+  letter-spacing: 0.12em;
+}
+
+.tallyDot {
+  inline-size: 0.7rem;
+  block-size: 0.7rem;
+  border-radius: var(--sr-radius-pill);
+  background-color: var(--sr-surface-3);
+  outline: thin solid var(--sr-line);
+}
+
+.tally[data-lit="on"] {
+  color: var(--sr-text);
+}
+
+.tally[data-lit="on"] .tallyDot {
+  background-image: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--sr-signal-onair) 85%, var(--sr-surface-0)),
+    color-mix(in srgb, var(--sr-signal-onair) 60%, var(--sr-surface-0))
+  );
+  outline-color: var(--sr-signal-onair);
+}
