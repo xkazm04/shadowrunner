@@ -1,0 +1,324 @@
+/* CH 3 · Forge, the creator's regions (requirement 5.1) dressed as The Harvest Floor's back panel
+   (requirement 6, `ch-forge-1600x900.png`; the reference's `#forge`, `#panel`, `.tabs`, `.tab`,
+   `.sheet`, `.pfoot` and `.cta`). Stage left on near-black, at least 60% of the width; on the right
+   a bakelite panel with brass screws holding the parchment tabs and sheet, the two channel actions
+   at its foot, and the library strip under it. At phone width: stage, panel, library.
+   Literal colours in the reference are roles: bakelite is surface-*, brass is accent and ember,
+   parchment is paper with paper-ink, the red action is signal-onair. Corner radii beyond the two
+   role radii are drawn with clip-path, depth with drop-shadow filters (box-shadow takes tokens only). */
+
+.creator {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+  gap: var(--sr-space-5);
+  box-sizing: border-box;
+  inline-size: 100%;
+  block-size: calc(100dvh - 6.25rem);
+  min-block-size: 40rem;
+  max-block-size: 64rem;
+}
+
+.stageRegion {
+  min-inline-size: 0;
+  min-block-size: 0;
+}
+
+.controlsRegion {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sr-space-3);
+  min-inline-size: 0;
+  min-block-size: 0;
+}
+
+/* The bakelite panel: a dark moulded frame, two brass screws, the sheet inside. */
+.panelWrap {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-block-size: 0;
+  filter: drop-shadow(0 1.25rem 1.5rem color-mix(in srgb, var(--sr-surface-0) 85%, transparent));
+}
+
+.panel {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-block-size: 0;
+  padding: var(--sr-space-4) var(--sr-space-4) var(--sr-space-4);
+  border: thin solid color-mix(in srgb, var(--sr-line) 70%, var(--sr-surface-0));
+  background-color: var(--sr-surface-1);
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--sr-accent) 9%, transparent), transparent 0.125rem),
+    linear-gradient(var(--sr-surface-2), var(--sr-surface-0));
+  clip-path: inset(0 round 0.875rem);
+}
+
+.panel::before,
+.panel::after {
+  content: "";
+  position: absolute;
+  inset-block-start: 0.75rem;
+  inline-size: 0.875rem;
+  block-size: 0.875rem;
+  border-radius: var(--sr-radius-pill);
+  background-image: radial-gradient(
+    circle at 35% 35%,
+    var(--sr-ember),
+    color-mix(in srgb, var(--sr-accent) 55%, var(--sr-surface-0)) 60%,
+    var(--sr-surface-0)
+  );
+}
+
+.panel::before {
+  inset-inline-start: 0.75rem;
+}
+
+.panel::after {
+  inset-inline-end: 0.75rem;
+}
+
+/* Parchment tabs: the selected one is the sheet's own paper; the others sit a shade back. */
+.tabs {
+  display: flex;
+  gap: var(--sr-space-1);
+  margin: var(--sr-space-1) 0 0 var(--sr-space-4);
+}
+
+.tab {
+  padding: var(--sr-space-3) var(--sr-space-4) var(--sr-space-2);
+  border: 0;
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--sr-paper) 78%, var(--sr-surface-0)),
+    color-mix(in srgb, var(--sr-paper) 78%, var(--sr-surface-0))
+  );
+  color: var(--sr-paper-ink);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-lg);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  cursor: pointer;
+  clip-path: inset(0 round 0.5rem 0.5rem 0 0);
+}
+
+.tab:hover {
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--sr-paper) 90%, var(--sr-surface-0)),
+    color-mix(in srgb, var(--sr-paper) 90%, var(--sr-surface-0))
+  );
+}
+
+.tab[aria-selected="true"] {
+  background-color: var(--sr-paper);
+  background-image: none;
+}
+
+.tab:focus-visible {
+  outline: 0.1875rem solid var(--sr-paper-ink-signal);
+  outline-offset: -0.3125rem;
+}
+
+/* The sheet: opaque paper, the paper plate screened over it (it can only lighten, so the ink keeps
+   its contrast, as the listings page), square at the top-left where the open tab joins it. */
+.sheet {
+  position: relative;
+  flex: 1 1 auto;
+  min-block-size: 0;
+  overflow: auto;
+  padding: var(--sr-space-5);
+  background-color: var(--sr-paper);
+  color: var(--sr-paper-ink);
+  clip-path: inset(0 round 0 0.5rem 0.5rem 0.5rem);
+  scrollbar-color: var(--sr-paper-ink) transparent;
+  scrollbar-width: thin;
+}
+
+.sheet::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: url("../../../../assets/plates/paper.webp");
+  background-position: center;
+  background-size: cover;
+  mix-blend-mode: screen;
+  opacity: 0.22;
+}
+
+.sheet > * {
+  position: relative;
+}
+
+.sheet:focus-visible {
+  outline: 0.1875rem solid var(--sr-paper-ink-signal);
+  outline-offset: -0.1875rem;
+}
+
+.sheetNote {
+  margin: 0;
+  color: var(--sr-paper-ink);
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text);
+}
+
+/* The panel's foot: "Put on air" (the signal) and "Characters", each with its channel chip. */
+.pfoot {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sr-space-3);
+  margin-block-start: var(--sr-space-3);
+}
+
+/* Two classes, over the shell's `.shell a` colour. */
+.pfoot .cta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sr-space-3);
+  min-block-size: 3.25rem;
+  padding: 0 var(--sr-space-4);
+  border: thin solid var(--sr-line);
+  border-radius: var(--sr-radius-1);
+  background-image: linear-gradient(var(--sr-surface-3), var(--sr-surface-0));
+  color: var(--sr-text-strong);
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text-lg);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.pfoot .air {
+  border-color: var(--sr-signal-onair);
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--sr-signal-onair) 62%, var(--sr-surface-0)),
+    color-mix(in srgb, var(--sr-signal-onair) 32%, var(--sr-surface-0))
+  );
+}
+
+.pfoot .cta:hover {
+  filter: brightness(1.15);
+}
+
+.pfoot .cta:focus-visible {
+  outline: 0.1875rem solid var(--sr-accent);
+  outline-offset: 0.125rem;
+}
+
+.pfoot kbd {
+  padding: var(--sr-space-1) var(--sr-space-2);
+  border: thin solid currentcolor;
+  border-radius: var(--sr-radius-1);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+  line-height: 1;
+}
+
+.state {
+  margin: 0;
+  color: var(--sr-text);
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text-lg);
+  text-align: center;
+}
+
+/* While a forge runs: the new portrait (when painted) dimmed behind a dark progress card. */
+.forging {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  align-items: end;
+  justify-items: center;
+  padding: var(--sr-space-5);
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--sr-surface-0) 55%, transparent),
+    color-mix(in srgb, var(--sr-surface-0) 85%, transparent)
+  );
+}
+
+.portrait {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: contain;
+  opacity: 0.55;
+  filter: grayscale(0.5) contrast(1.1);
+}
+
+.forgingCard {
+  position: relative;
+  box-sizing: border-box;
+  inline-size: min(40rem, 100%);
+  padding: var(--sr-space-4) var(--sr-space-5);
+  border: thin solid var(--sr-line);
+  border-radius: var(--sr-radius-1);
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--sr-surface-1) 92%, transparent),
+    color-mix(in srgb, var(--sr-surface-0) 92%, transparent)
+  );
+  color: var(--sr-text-strong);
+}
+
+/* The stamp on a recorded character: typewriter caps on a dark label, signal-ruled. */
+.recorded {
+  display: inline-block;
+  padding: var(--sr-space-1) var(--sr-space-2);
+  border: thin solid var(--sr-signal-onair);
+  border-radius: var(--sr-radius-1);
+  background-color: var(--sr-surface-0);
+  color: var(--sr-text-strong);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+@media (width <= 52rem) {
+  .creator {
+    grid-template-columns: minmax(0, 1fr);
+    block-size: auto;
+    min-block-size: 0;
+    max-block-size: none;
+  }
+
+  .stageRegion {
+    block-size: min(108vw, 32rem);
+  }
+
+  .controlsRegion {
+    gap: var(--sr-space-4);
+  }
+
+  .panel {
+    padding: var(--sr-space-4) var(--sr-space-2) var(--sr-space-3);
+  }
+
+  .tabs {
+    margin: var(--sr-space-1) 0 0 var(--sr-space-2);
+  }
+
+  .tab {
+    padding: var(--sr-space-2) var(--sr-space-2) var(--sr-space-1);
+    font-size: var(--sr-size-text-sm);
+    letter-spacing: 0.02em;
+  }
+
+  .sheet {
+    padding: var(--sr-space-4) var(--sr-space-3);
+  }
+
+  .pfoot {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--sr-space-2);
+  }
+
+  .forging {
+    padding: var(--sr-space-3);
+  }
+
+  .forgingCard {
+    padding: var(--sr-space-3);
+  }
+}

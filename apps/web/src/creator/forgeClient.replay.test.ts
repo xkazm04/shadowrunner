@@ -1,0 +1,144 @@
+import type { ForgeErrorCode } from "@sr/forge/wire";
+import fc from "fast-check";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ForgeError } from "./forgeClient";
+import { createReplayForgeClient, failOf, parseReplayJobId, pickIndex, replayJobId } from "./forgeClient.replay";
+import { loadReplayJobs, replayJobOf, statusAt } from "./replayJobs";
+import { testJob } from "./testFixtures";
+
+const PROMPT = { mode: "prompt" as const, prompt: "a drowned lighthouse keeper with a lantern heart" };
+
+beforeEach(() => {
+  vi.useFakeTimers();
+  vi.setSystemTime(1_000_000);
+});
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+const jobs = async () => [testJob("ghost-a"), testJob("ghost-b")];
+
+describe("replay forge client", () => {
+  it("walks queued -> portrait -> segmenting -> cutting -> filling -> done on the recorded holds", async () => {
+    const client = createReplayForgeClient({ jobs });
+    const { jobId } = await client.start(PROMPT);
+    const seen: string[] = [];
+    for (let i = 0; i < 9; i++) {
+      seen.push((await client.poll(jobId)).status);
+      vi.advanceTimersByTime(1000);
+    }
+    expect(seen).toEqual(["queued", "queued", "portrait", "segmenting", "segmenting", "cutting", "filling", "filling", "done"]);
+  });
+
+  it("shows the portrait from segmenting on and returns the rig and every layer's asset when done", async () => {
+    const client = createReplayForgeClient({ jobs });
+    const { jobId } = await client.start(PROMPT);
+    vi.advanceTimersByTime(1600);
+    expect((await client.poll(jobId)).portraitUrl).toBeUndefined();
+    vi.advanceTimersByTime(1500);
+    expect((await client.poll(jobId)).portraitUrl).toBeDefined();
+    vi.advanceTimersByTime(10_000);
+    const done = await client.poll(jobId);
+    expect(done.plane).toBe("replay");
+    expect(done.rig?.fictional).toBe(true);
+    for (const layer of done.rig?.layers ?? []) expect(done.assets?.[layer.file]).toBeDefined();
+  });
+
+  it("picks the same character for the same text, whatever the case and padding", async () => {
+    const client = createReplayForgeClient({ jobs });
+    const a = await client.start(PROMPT);
+    const b = await client.start({ mode: "prompt", prompt: `  ${PROMPT.prompt.toUpperCase()} ` });
+    expect(parseReplayJobId(a.jobId)?.slug).toBe(parseReplayJobId(b.jobId)?.slug);
+  });
+
+  it("resumes from the job id alone (a fresh client, as after a reload)", async () => {
+    const { jobId } = await createReplayForgeClient({ jobs }).start(PROMPT);
+    vi.advanceTimersByTime(60_000);
+    expect((await createReplayForgeClient({ jobs }).poll(jobId)).status).toBe("done");
+  });
+
+  it("refuses an empty request as bad_input", async () => {
+    await expect(createReplayForgeClient({ jobs }).start({ mode: "prompt", prompt: "  " })).rejects.toMatchObject({ code: "bad_input" });
+  });
+
+  it.each<ForgeErrorCode>(["quota", "bad_input"])("?forge=fail:%s is refused at start", async (code) => {
+    const client = createReplayForgeClient({ jobs, fail: code });
+    const err = await client.start(PROMPT).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ForgeError);
+    expect(err).toMatchObject({ code });
+  });
+
+  it.each<ForgeErrorCode>(["refused_likeness", "refused_content", "upstream"])("?forge=fail:%s fails the running job", async (code) => {
+    const client = createReplayForgeClient({ jobs, fail: code });
+    const { jobId } = await client.start(PROMPT);
+    expect((await client.poll(jobId)).status).toBe("queued");
+    vi.advanceTimersByTime(60_000);
+    const view = await client.poll(jobId);
+    expect(view.status).toBe("failed");
+    expect(view.error?.code).toBe(code);
+    expect(view.rig).toBeUndefined();
+  });
+
+  it("answers an unknown job id with bad_input", async () => {
+    await expect(createReplayForgeClient({ jobs }).poll("replay_nobody_1")).rejects.toMatchObject({ code: "bad_input" });
+  });
+});
+
+describe("replay helpers", () => {
+  it("failOf reads ?forge=fail:<code> and nothing else", () => {
+    expect(failOf("?forge=fail:quota")).toBe("quota");
+    expect(failOf("?plane=replay&forge=FAIL:refused_likeness")).toBe("refused_likeness");
+    expect(failOf("?forge=fail:melted")).toBeUndefined();
+    expect(failOf("?forge=quota")).toBeUndefined();
+    expect(failOf("")).toBeUndefined();
+  });
+
+  it("job ids round-trip (property)", () => {
+    const code = fc.constantFrom<ForgeErrorCode | undefined>(undefined, "quota", "refused_likeness", "refused_content", "upstream", "bad_input");
+    fc.assert(
+      fc.property(fc.stringMatching(/^[a-z0-9-]{1,48}$/), fc.integer({ min: 0, max: 2 ** 45 }), code, (slug, t, fail) => {
+        const parsed = parseReplayJobId(replayJobId(slug, t, fail));
+        expect(parsed).toEqual(fail === undefined ? { slug, startedAt: t } : { slug, startedAt: t, fail });
+      }),
+    );
+  });
+
+  it("pickIndex stays in range (property)", () => {
+    fc.assert(fc.property(fc.string(), fc.integer({ min: 1, max: 50 }), (key, n) => pickIndex(key, n) >= 0 && pickIndex(key, n) < n));
+  });
+
+  it("statusAt never moves backwards as time passes (property)", () => {
+    const steps = testJob().steps;
+    const order = steps.map((s) => s.status);
+    fc.assert(
+      fc.property(fc.nat(20_000), fc.nat(20_000), (a, b) => {
+        const [lo, hi] = a <= b ? [a, b] : [b, a];
+        return order.indexOf(statusAt(steps, lo)) <= order.indexOf(statusAt(steps, hi));
+      }),
+    );
+  });
+});
+
+describe("recorded jobs", () => {
+  it("every committed job.json loads, is fictional and has every layer's file", async () => {
+    const manifests = Object.keys(import.meta.glob("../../../../assets/replay/forge/*/job.json"));
+    const loaded = await loadReplayJobs();
+    expect(manifests.length).toBeGreaterThan(0);
+    expect(loaded).toHaveLength(manifests.length);
+    for (const job of loaded) {
+      expect(job.rig.fictional).toBe(true);
+      expect(job.steps.at(-1)?.status).toBe("done");
+      for (const layer of job.rig.layers) expect(job.assets[layer.file]).toBeTypeOf("string");
+    }
+  });
+
+  it("replayJobOf refuses a non-fictional job, a missing file and steps out of order", () => {
+    const job = testJob();
+    const files = { "portrait.jpg": "u", ...job.assets };
+    const manifest = { slug: job.slug, name: job.name, fictional: true, portrait: "portrait.jpg", steps: job.steps, rig: job.rig };
+    expect(replayJobOf(manifest, files)?.slug).toBe(job.slug);
+    expect(replayJobOf({ ...manifest, fictional: false }, files)).toBeUndefined();
+    expect(replayJobOf(manifest, { "portrait.jpg": "u" })).toBeUndefined();
+    expect(replayJobOf({ ...manifest, steps: [...job.steps].reverse() }, files)).toBeUndefined();
+  });
+});
