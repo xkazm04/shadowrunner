@@ -31,18 +31,21 @@
   padding: var(--sr-space-3) var(--sr-space-4) var(--sr-space-2);
   border: 0;
   border-radius: var(--sr-radius-1) var(--sr-radius-1) 0 0;
-  background-color: var(--sr-paper);
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--sr-paper) 78%, var(--sr-surface-0)),
+    color-mix(in srgb, var(--sr-paper) 78%, var(--sr-surface-0))
+  );
   color: var(--sr-paper-ink);
   font-family: var(--sr-font-type);
   font-size: var(--sr-size-text-lg);
   font-weight: 700;
   letter-spacing: 0.06em;
-  opacity: 0.72;
   cursor: pointer;
 }
 
 .tab[aria-selected="true"] {
-  opacity: 1;
+  background-color: var(--sr-paper);
+  background-image: none;
 }
 
 .sheet {
@@ -70,6 +73,20 @@
 
   .stageRegion {
     block-size: min(100vw, 30rem);
+  }
+
+  .controlsRegion {
+    gap: var(--sr-space-4);
+  }
+
+  .tab {
+    padding: var(--sr-space-2) var(--sr-space-2) var(--sr-space-1);
+    font-size: var(--sr-size-text-sm);
+    letter-spacing: 0.02em;
+  }
+
+  .sheet {
+    padding: var(--sr-space-4);
   }
 }
 
@@ -129,4 +146,11 @@
   font-size: var(--sr-size-text-sm);
   font-weight: 700;
   letter-spacing: 0.12em;
+}
+
+.sheetNote {
+  margin: 0;
+  color: var(--sr-paper-ink);
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text);
 }

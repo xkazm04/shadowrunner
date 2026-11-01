@@ -32,7 +32,7 @@
   - `Gallery.tsx` listing `assets/replay/characters/*/rig.json` (all `fictional: true`, `source: "replay"`), adopt-into-library, reachable from quota state and empty library.
   - _Requirements: 4.1, 4.2, 4.3_
 
-- [ ] 7. Page layout and states
+- [x] 7. Page layout and states
   - `CreatorPage.tsx` regions (stage ≥ 60% desktop; stage-first stack at 390 px), designed loading/empty/failed states, role tokens only, stylelint and AA contrast checks green in both themes; mark the `creator` page `live` in the manifest.
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
 

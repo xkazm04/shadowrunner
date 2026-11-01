@@ -12,7 +12,9 @@ import { recordOf } from "./forge/keep";
 import { useForgeJob } from "./forge/useForgeJob";
 import { Gallery } from "./gallery/Gallery";
 import type { GalleryEntry } from "./gallery/entries";
+import { Library } from "./library/Library";
 import { useLibrary } from "./library/useLibrary";
+import { Stage } from "./Stage";
 import { Workbench, type Tab } from "./Workbench";
 import styles from "./CreatorPage.module.css";
 
@@ -94,11 +96,38 @@ export function CreatorPage() {
   };
 
   const active = library.active;
+  const shelf = (
+    <Library
+      entries={library.entries}
+      {...(active === undefined ? {} : { activeId: active.id })}
+      persistent={library.persistent}
+      status={library.status}
+      onSelect={(id) => {
+        setGalleryOpen(false);
+        library.select(id);
+      }}
+      onRemove={library.remove}
+      onOpenGallery={() => setGalleryOpen(true)}
+    />
+  );
+
+  // Loading, or nothing to put on the stage (an empty or unreadable library): the regions stay,
+  // each with its designed state, and the gallery is one press away.
   if (active === undefined) {
+    const loading = library.status === "loading";
     return (
-      <div className={styles.creator} data-page="creator">
-        <p className={styles.state}>{library.status === "loading" ? "Opening the library…" : "No character to show."}</p>
-        {library.status !== "loading" && <div className={styles.sheet}>{gallery}</div>}
+      <div className={styles.creator} data-page="creator" data-state={loading ? "loading" : "empty"}>
+        <div className={styles.stageRegion}>
+          <Stage motion={loading ? "Opening the library" : "Empty stage"}>
+            <p className={styles.state}>{loading ? "Opening the library…" : "No character on the stage yet. Adopt one from the gallery, or forge one."}</p>
+          </Stage>
+        </div>
+        <div className={styles.controlsRegion}>
+          <div className={styles.panel}>
+            <div className={styles.sheet}>{loading ? <p className={styles.sheetNote}>Opening the library…</p> : gallery}</div>
+          </div>
+          {shelf}
+        </div>
       </div>
     );
   }
@@ -112,6 +141,7 @@ export function CreatorPage() {
       onTab={onTab}
       forge={forge}
       {...(galleryOpen ? { sheet: gallery } : {})}
+      below={shelf}
       {...(stageOverlay === undefined ? {} : { stageOverlay })}
       {...(reveal === undefined ? {} : { revealKey: reveal.jobId })}
       {...(isRecorded(active.rig) ? { badge: <span className={styles.recorded}>RECORDED</span> } : {})}

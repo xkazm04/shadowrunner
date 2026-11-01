@@ -59,7 +59,8 @@ export function useLibrary({ open = () => openLibrary(), seed = seedIfEmpty }: U
     void (async () => {
       try {
         const s = await open();
-        await seed(s);
+        // A seed that cannot load (offline art) leaves an empty library, not a broken page.
+        await seed(s).catch(() => undefined);
         const list = await s.list();
         if (!live) return;
         store.current = s;

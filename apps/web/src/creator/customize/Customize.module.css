@@ -164,8 +164,8 @@
 .key[aria-pressed="true"] {
   border-color: var(--sr-signal-onair);
   background-image: linear-gradient(
-    color-mix(in srgb, var(--sr-signal-onair) 70%, var(--sr-surface-0)),
-    color-mix(in srgb, var(--sr-signal-onair) 35%, var(--sr-surface-0))
+    color-mix(in srgb, var(--sr-signal-onair) 62%, var(--sr-surface-0)),
+    color-mix(in srgb, var(--sr-signal-onair) 30%, var(--sr-surface-0))
   );
   filter: drop-shadow(0 0 0.375rem color-mix(in srgb, var(--sr-signal-onair) 45%, transparent));
 }
@@ -198,8 +198,8 @@
 .signal {
   border-color: var(--sr-signal-onair);
   background-image: linear-gradient(
-    color-mix(in srgb, var(--sr-signal-onair) 85%, var(--sr-surface-0)),
-    color-mix(in srgb, var(--sr-signal-onair) 45%, var(--sr-surface-0))
+    color-mix(in srgb, var(--sr-signal-onair) 62%, var(--sr-surface-0)),
+    color-mix(in srgb, var(--sr-signal-onair) 32%, var(--sr-surface-0))
   );
 }
 

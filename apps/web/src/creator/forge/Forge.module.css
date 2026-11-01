@@ -157,8 +157,8 @@
 .signal {
   border-color: var(--sr-signal-onair);
   background-image: linear-gradient(
-    color-mix(in srgb, var(--sr-signal-onair) 85%, var(--sr-surface-0)),
-    color-mix(in srgb, var(--sr-signal-onair) 45%, var(--sr-surface-0))
+    color-mix(in srgb, var(--sr-signal-onair) 62%, var(--sr-surface-0)),
+    color-mix(in srgb, var(--sr-signal-onair) 32%, var(--sr-surface-0))
   );
 }
 
