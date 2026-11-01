@@ -1,8 +1,8 @@
 # Implementation plan: creator
 
-- [ ] 1. Forge client contract and replay client
-  - [ ] 1.1 `forgeClient.ts`: types exactly per design.md and the HTTP `ForgeClient` (`POST /api/forge`, `GET /api/forge/:jobId`, `{ error: { code, message } }` parsing).
-  - [ ] 1.2 `forgeClient.replay.ts` with recorded timings from `assets/replay/forge-timings.json` and `?forge=fail:<code>`; unit tests with fake timers.
+- [x] 1. Forge client contract and replay client
+  - [x] 1.1 `forgeClient.ts`: types exactly per design.md and the HTTP `ForgeClient` (`POST /api/forge`, `GET /api/forge/:jobId`, `{ error: { code, message } }` parsing).
+  - [x] 1.2 `forgeClient.replay.ts` with recorded timings from `assets/replay/forge-timings.json` and `?forge=fail:<code>`; unit tests with fake timers.
   - _Requirements: 3.1, 3.2, 3.6_
 
 - [ ] 2. Pure reducers
