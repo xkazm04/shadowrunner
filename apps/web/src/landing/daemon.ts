@@ -18,7 +18,7 @@ export const DAEMON_STATES: readonly DaemonState[] = ["online", "folding", "dark
 
 /** The picture folds to a dot. */
 export const FOLD_MS = 600;
-/** Lights go out one by one, this far apart (the spiral first, then the gourds right to left). */
+/** Lights go out one by one, this far apart (the lantern first, then the slides right to left). */
 export const OUT_STEP_MS = 140;
 /** How long one light takes to die. */
 export const OUT_FADE_MS = 900;
@@ -45,7 +45,7 @@ export function isTimed(state: DaemonState): boolean {
   return state === "folding" || state === "relighting";
 }
 
-/** Pure: the broadcast is down (lamp OFF AIR, the clock counts dead air). */
+/** Pure: the broadcast is down (the lightbox reads OFF AIR, the clock counts dead air). */
 export function isLost(state: DaemonState): boolean {
   return state === "folding" || state === "dark";
 }
@@ -70,9 +70,10 @@ export function dwellMs(state: DaemonState, lights: number): number | undefined 
 }
 
 /**
- * Pure: when light `position` changes after `state` is entered, in ms. Position 0 is the spiral
- * pumpkin (leftmost), 1..lights-1 the gourds left to right. Going dark: the spiral, then the gourds
- * right to left. Relighting: a sweep left to right. Reduced motion, and the other states: at once.
+ * Pure: when light `position` changes after `state` is entered, in ms. Position 0 is the lantern
+ * (its beam and the face's spill; slides.ts LIGHTS), 1..lights-1 the slides left to right. Going
+ * dark: the lantern, then the slides right to left. Relighting: a sweep left to right. Reduced
+ * motion, and the other states: at once.
  */
 export function lightDelayMs(state: DaemonState, position: number, lights: number, motion: Motion = "full"): number {
   if (motion === "reduced" || position < 0 || position >= lights) return 0;
@@ -86,7 +87,7 @@ export function fadeMs(state: DaemonState): number {
   return state === "dark" ? OUT_FADE_MS : RELIGHT_FADE_MS;
 }
 
-/** Pure: when "IT IS STILL LOOKING" appears after `dark` is entered: once the last light is out. */
+/** Pure: when the ghost note ("he was right here") appears after `dark` is entered: once the last light is out. */
 export function stareDelayMs(lights: number, motion: Motion = "full"): number {
   return motion === "reduced" ? 0 : Math.max(0, lights - 1) * OUT_STEP_MS + OUT_FADE_MS;
 }

@@ -1,0 +1,333 @@
+/* The slide tray (SlideTray.tsx), ported from the prototype's `.tray`, `.slides` and `.sl`. World
+   lengths (1rem is 16 world px). The prototype's literal colours are roles: the tray's wood is
+   ember mixed deep into surface-0, the slide glass paper over surface-0, the tab paper with
+   paper-ink, the labels text (ember for the page you are on, text-strong when pulled, text-muted
+   once cold), the backlight ember. Glows and depth are drop-shadow filters (box-shadow takes tokens
+   only); the slide's rounded picture is a clip-path (radii take tokens only).
+
+   --b is the light in one slide: the lantern (--pow, 0 once the daemon is dark) times the
+   brightest of "the page you are on" (0.62), "pulled" (1) and "near the torch" (--lit, 0.85); a
+   cold lantern leaves only a little torchlight on the glass. */
+
+.tray {
+  --pow: 1;
+
+  position: absolute;
+  inset-block-end: 2.2%;
+  inset-inline-start: 50%;
+  z-index: 10;
+  transform: translateX(-50%);
+}
+
+.tray[data-lantern="cold"] {
+  --pow: 0;
+}
+
+.slides {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: var(--sr-space-4);
+  margin: 0;
+  padding: 0 var(--sr-space-5);
+  list-style: none;
+}
+
+/* The tray's wood, and its front lip over the slides' feet. */
+.slides::before,
+.slides::after {
+  position: absolute;
+  content: "";
+  pointer-events: none;
+}
+
+.slides::before {
+  inset-block-end: 0;
+  inset-inline: 0;
+  z-index: 0;
+  block-size: 3rem;
+  border-radius: var(--sr-radius-1);
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--sr-paper) 10%, transparent), transparent 24%),
+    repeating-linear-gradient(91deg, color-mix(in srgb, var(--sr-surface-0) 20%, transparent) 0 0.125rem, transparent 0.125rem 0.5rem),
+    linear-gradient(
+      color-mix(in srgb, var(--sr-ember) 20%, var(--sr-surface-0)),
+      color-mix(in srgb, var(--sr-ember) 12%, var(--sr-surface-0)) 55%,
+      var(--sr-surface-0)
+    );
+  filter: drop-shadow(0 1.375rem 1.25rem var(--sr-surface-0));
+}
+
+.slides::after {
+  inset-block-end: 2.125rem;
+  inset-inline: 0.375rem;
+  z-index: 2;
+  block-size: 0.8125rem;
+  border-radius: var(--sr-radius-1) var(--sr-radius-1) 0 0;
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--sr-ember) 24%, var(--sr-surface-0)),
+    color-mix(in srgb, var(--sr-ember) 14%, var(--sr-surface-0))
+  );
+}
+
+.slides li {
+  position: relative;
+  display: flex;
+}
+
+.slide {
+  --on: 0;
+  --hov: 0;
+  --lit: 0;
+  --w: 6.5rem;
+  --b: calc(var(--pow) * max(calc(var(--on) * 0.62), var(--hov), calc(var(--lit) * 0.85)) + (1 - var(--pow)) * var(--lit) * 0.22);
+
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 0 var(--sr-space-3);
+  border-radius: var(--sr-radius-1);
+  text-decoration: none;
+}
+
+.slide[aria-current="page"] {
+  --on: 1;
+}
+
+.slide:hover,
+.slide:focus-visible {
+  --hov: 1;
+}
+
+.frame {
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+  inline-size: var(--w);
+  block-size: calc(var(--w) * 0.86);
+  border-radius: var(--sr-radius-1);
+  background-color: var(--sr-surface-0);
+  background-image: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--sr-paper) 16%, transparent),
+    transparent 30%,
+    transparent 70%,
+    color-mix(in srgb, var(--sr-paper) 8%, transparent)
+  );
+  outline: thin solid color-mix(in srgb, var(--sr-paper) 14%, transparent);
+  filter: drop-shadow(0 0.625rem 0.6rem color-mix(in srgb, var(--sr-surface-0) 70%, transparent))
+    drop-shadow(0 0 calc(1.6rem * var(--b)) color-mix(in srgb, var(--sr-ember) calc(55% * var(--b)), transparent));
+  transform: rotate(var(--tilt));
+  transition:
+    transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1.2),
+    filter var(--fade, 0.25s) var(--delay, 0s);
+}
+
+.slide:hover .frame,
+.slide:focus-visible .frame {
+  transform: translateY(-1.375rem) rotate(0deg);
+}
+
+/* The picture in its rounded mask of glass; the lantern and the torch light it from behind.
+   Two classes, over Still's own box. */
+.frame .pic {
+  inset: 0.4375rem;
+  clip-path: inset(0 round 44% / 40%);
+  filter: sepia(0.55) saturate(0.85) contrast(1.08) brightness(calc(0.12 + 0.14 * var(--pow) + 0.9 * var(--b)));
+  transition: filter var(--fade, 0.25s) var(--delay, 0s);
+}
+
+.glint {
+  position: absolute;
+  inset: 0.4375rem;
+  clip-path: inset(0 round 44% / 40%);
+  pointer-events: none;
+  background-image:
+    radial-gradient(60% 50% at 30% 25%, color-mix(in srgb, var(--sr-text-strong) 12%, transparent), transparent 60%),
+    radial-gradient(closest-side, transparent 70%, color-mix(in srgb, var(--sr-surface-0) 85%, transparent));
+}
+
+/* The hand-written tab, stuck on the slide's corner. */
+.tab {
+  position: absolute;
+  inset-block-start: -0.4375rem;
+  inset-inline-start: -0.3125rem;
+  z-index: 2;
+  min-inline-size: 1.625rem;
+  padding: 0 var(--sr-space-1);
+  border-radius: var(--sr-radius-1);
+  background-image: linear-gradient(var(--sr-paper), color-mix(in srgb, var(--sr-paper) 86%, var(--sr-surface-0)));
+  color: var(--sr-paper-ink);
+  font-family: var(--sr-font-hand);
+  font-size: var(--sr-size-text-lg);
+  font-weight: 700;
+  line-height: 1.1;
+  text-align: center;
+  filter: drop-shadow(0 0.125rem 0.125rem color-mix(in srgb, var(--sr-surface-0) 60%, transparent));
+  transform: rotate(-6deg);
+}
+
+.label {
+  position: relative;
+  z-index: 3;
+  margin-block-start: var(--sr-space-2);
+  color: var(--sr-text);
+  font-family: var(--sr-font-display);
+  font-size: var(--sr-size-text);
+  font-weight: 700;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+/* Two classes, over the shell's `.shell a` colours. */
+.tray .slide[aria-current="page"] .label {
+  color: var(--sr-ember);
+}
+
+.tray .slide:hover .label,
+.tray .slide:focus-visible .label {
+  color: var(--sr-text-strong);
+}
+
+.tray[data-lantern="cold"] .slide .label {
+  color: var(--sr-text-muted);
+}
+
+.tray .slide:focus-visible {
+  outline: medium solid var(--sr-accent);
+  outline-offset: var(--sr-space-1);
+}
+
+/* The intro: the slides warm up one after another once the face is there. */
+:global([data-intro]) .pic {
+  animation: warm 0.7s ease-out calc(2.6s + var(--i) * 0.12s) both;
+}
+
+@keyframes warm {
+  0% {
+    filter: sepia(0.55) brightness(0.04);
+  }
+
+  40% {
+    filter: sepia(0.55) brightness(1.5);
+  }
+}
+
+/* ---------- the hint above the tray, and the legend ---------- */
+
+.hint {
+  position: absolute;
+  inset-block-end: 20%;
+  inset-inline-start: 50%;
+  z-index: 14;
+  margin: 0;
+  padding: var(--sr-space-2) var(--sr-space-6);
+  /* A soft pool of dark under the chalk, so it reads through the beam and the ghost. */
+  background-image: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--sr-surface-0) 88%, transparent) 60%,
+    transparent
+  );
+  color: var(--sr-text-strong);
+  font-family: var(--sr-font-hand);
+  font-size: var(--sr-slide-chalk);
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+  filter: drop-shadow(0 0.125rem 0.6rem var(--sr-surface-0)) drop-shadow(0 0 1rem var(--sr-surface-0));
+  transform: translateX(-50%);
+}
+
+.sub {
+  color: var(--sr-text);
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text);
+  font-weight: 400;
+}
+
+.legend {
+  position: absolute;
+  inset-block-end: 2.4%;
+  inset-inline-start: 3.4%;
+  z-index: 10;
+  color: var(--sr-text-muted);
+  font-size: var(--sr-size-text);
+  line-height: 1.7;
+}
+
+.keys,
+.credit {
+  margin: 0;
+}
+
+.legend kbd {
+  padding: 0 var(--sr-space-1);
+  border: thin solid var(--sr-line);
+  border-radius: var(--sr-radius-1);
+  color: var(--sr-text);
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text);
+  font-weight: 600;
+}
+
+.legend kbd + kbd {
+  margin-inline-start: var(--sr-space-1);
+}
+
+/* ---------- portrait: one row of six across the narrow world; no keys on the phone ---------- */
+
+:global([data-world="portrait"]) .tray {
+  inset-block-end: 0.8%;
+}
+
+:global([data-world="portrait"]) .slides {
+  gap: var(--sr-space-2);
+  padding: 0 var(--sr-space-2);
+}
+
+:global([data-world="portrait"]) .slide {
+  --w: 3.625rem;
+}
+
+:global([data-world="portrait"]) .label {
+  margin-block-start: var(--sr-space-1);
+  font-family: var(--sr-font-condensed);
+}
+
+:global([data-world="portrait"]) .tab {
+  min-inline-size: 1.25rem;
+  font-size: var(--sr-size-text);
+}
+
+:global([data-world="portrait"]) .legend {
+  display: none;
+}
+
+:global([data-world="portrait"]) .hint {
+  inset-block-end: 15%;
+  font-size: var(--sr-size-text-lg);
+}
+
+:global([data-world="portrait"]) .sub {
+  display: none;
+}
+
+/* ---------- reduced-motion twins: the same states, switched without travel or fades ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .frame,
+  .pic {
+    transition: none;
+  }
+
+  .pic {
+    animation: none;
+  }
+}
+
+:global([data-motion="reduced"]) .frame,
+:global([data-motion="reduced"]) .pic {
+  transition: none;
+  animation: none;
+}

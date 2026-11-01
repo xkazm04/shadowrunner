@@ -1,166 +1,119 @@
-/* The chat strip, ported from the reference (Round 4 "chat" rules: #ticker, .head, .paper, .tack,
-   #lines). World lengths: percentages of the 1600x900 world (420x910 portrait) or rem (1rem is
-   16 world px). Landscape: 346x510 at (1228, 80), under the rafter, clear of the 66 px status
-   bar. Portrait: 392x220 at (14, 676), last in the stack. Literal colours are roles: the head's
-   wood is ember mixed into surface-0, the paper is `paper`, the inks `paper-ink(-signal)`.
-   Contrast (landing task 7): the paper is opaque `paper`; the texture only lightens it (below),
-   and the reference's darkening `.paper::after` gradient is not ported. */
+/* The chalk chat on the right wall (ChatStrip.tsx), ported from the prototype's `.chat` and `.ln`.
+   World lengths. The prototype's literal colours are roles: the chalk is text-strong, the host's
+   chalk ember, the names text-muted (the host's in ember), PAUSED signal-warn. The wall behind the
+   lines is darkened by a soft surface-0 shadow of the chat's own, so the chalk keeps AA wherever the
+   torch is (measured on the rendered page in e2e/landing.visual.spec.ts). While the daemon is lost
+   the chalk is greyed by colour, not by opacity, so it stays readable. */
 
-.strip {
+.chat {
   position: absolute;
-  inset-block-start: 8.889%;
-  inset-inline-start: 76.75%;
-  z-index: 1;
-  inline-size: 21.625%;
-  block-size: 56.667%;
-  /* The paper's shadow on the wall (the reference's box-shadow, as a filter). */
-  filter: drop-shadow(0 1.125rem 2.5rem color-mix(in srgb, var(--sr-surface-0) 60%, transparent));
-}
-
-/* The board the paper hangs from. */
-.head {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  box-sizing: border-box;
-  block-size: 3.25rem;
-  padding: 0 var(--sr-space-4);
-  border-radius: var(--sr-radius-1);
-  background-image:
-    linear-gradient(
-      color-mix(in srgb, var(--sr-surface-0) 15%, transparent),
-      color-mix(in srgb, var(--sr-surface-0) 45%, transparent)
-    ),
-    repeating-linear-gradient(
-      91deg,
-      color-mix(in srgb, var(--sr-ember) 20%, var(--sr-surface-0)) 0 0.4375rem,
-      color-mix(in srgb, var(--sr-ember) 16%, var(--sr-surface-0)) 0.4375rem 0.6875rem,
-      color-mix(in srgb, var(--sr-ember) 23%, var(--sr-surface-0)) 0.6875rem 1.1875rem
-    );
-  border-block-start: thin solid color-mix(in srgb, var(--sr-text-strong) 12%, transparent);
-  filter: drop-shadow(0 0.625rem 1.5rem color-mix(in srgb, var(--sr-surface-0) 80%, transparent));
-  color: var(--sr-text-strong);
-  font-family: var(--sr-font-type);
-  font-size: var(--sr-size-text);
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  line-height: 1;
-  white-space: nowrap;
-}
-
-.dot {
-  color: var(--sr-signal-onair);
-}
-
-/* Brass tacks holding the paper to the board. */
-.tack {
-  position: absolute;
-  inset-block-start: 3.375rem;
-  z-index: 3;
-  inline-size: 0.75rem;
-  block-size: 0.75rem;
-  border-radius: var(--sr-radius-pill);
-  background-image: radial-gradient(
-    circle at 35% 35%,
-    color-mix(in srgb, var(--sr-ember) 60%, var(--sr-text-strong)),
-    color-mix(in srgb, var(--sr-ember) 45%, var(--sr-surface-0)) 60%,
-    color-mix(in srgb, var(--sr-ember) 20%, var(--sr-surface-0))
-  );
-  filter: drop-shadow(0 0.125rem 0.1875rem color-mix(in srgb, var(--sr-surface-0) 60%, transparent));
-}
-
-.tackStart {
-  inset-inline-start: 6.936%;
-}
-
-.tackEnd {
-  inset-inline-end: 6.936%;
-}
-
-/* The paper: opaque `paper`, tucked 6 px under the board. Nothing on it is translucent but the
-   texture, which sits under the text box. The texture is a screen, not the reference's multiply:
-   a screen can only lighten, so no pixel of paper falls below `paper` and both inks keep their
-   token contrast (signal 4.79:1) at every pixel. Measured in landing task 7 on the rendered
-   strip: a multiply at 0.12 put signal ink at 3.72:1 (min) / 3.99:1 (p05), at 0.05 at 4.31:1. */
-.paper {
-  position: absolute;
-  inset-block: 2.875rem 0;
-  inset-inline: 3.468%;
-  overflow: hidden;
-  background-color: var(--sr-paper);
-  transform: rotate(-0.6deg);
-  transform-origin: 50% 0;
-}
-
-.paper::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background-image: url("../../../../assets/plates/paper.webp");
-  background-position: 0 0;
-  background-size: 23.75rem;
-  filter: contrast(1.4);
-  mix-blend-mode: screen;
-  opacity: 0.24;
-}
-
-/* The text box: its own clip inside the paper, bottom-anchored, so the newest lines stay in view
-   and the oldest leave through the top fade, never under the board or the status bar. */
-.lines {
-  position: absolute;
-  inset-block: var(--sr-space-4) var(--sr-space-3);
-  inset-inline: var(--sr-space-4) var(--sr-space-3);
-  z-index: 1;
+  inset-block-start: 16%;
+  inset-inline-end: 3%;
+  z-index: 8;
   display: flex;
   flex-direction: column;
+  inline-size: 20.6%;
+  block-size: 50%;
+  margin: 0;
+  background-image: radial-gradient(
+    70% 60% at 50% 60%,
+    color-mix(in srgb, var(--sr-surface-0) 72%, transparent),
+    transparent
+  );
+}
+
+.lines {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
   justify-content: flex-end;
-  gap: var(--sr-space-3);
+  min-block-size: 0;
   overflow: hidden;
-  color: var(--sr-paper-ink);
-  font-family: var(--sr-font-type);
-  font-size: var(--sr-size-text);
-  line-height: 1.38;
-  overflow-wrap: break-word;
-  mask-image: linear-gradient(transparent, var(--sr-surface-0) 22%);
+  mask-image: linear-gradient(transparent, var(--sr-surface-0) 30%);
 }
 
 .line {
-  flex: none;
-  margin: 0;
+  margin: 0 0 var(--sr-space-3);
+  color: var(--sr-text-strong);
+  font-family: var(--sr-font-hand);
+  font-size: var(--sr-slide-chalk);
+  font-weight: 500;
+  line-height: 1.15;
+  transform: rotate(-0.6deg);
+  filter: drop-shadow(0 0.0625rem 0.4rem var(--sr-surface-0));
 }
 
-.line b {
-  font-weight: 700;
-}
-
-.rank {
-  font-style: italic;
+.user {
+  display: block;
+  color: var(--sr-text-muted);
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text);
+  font-weight: 600;
 }
 
 .host {
-  color: var(--sr-paper-ink-signal);
+  color: var(--sr-ember);
 }
 
-.host b {
-  letter-spacing: 0.06em;
+.host .user {
+  color: var(--sr-ember);
+  letter-spacing: 0.08em;
 }
 
 .caret {
   display: inline-block;
-  inline-size: 0.6em;
+  inline-size: 0.125rem;
   block-size: 1em;
+  margin-inline-start: var(--sr-space-1);
   vertical-align: -0.125em;
-  background-color: var(--sr-paper-ink-signal);
-  animation: blink 1s steps(2) infinite;
+  background-color: currentcolor;
+  animation: caret 1s steps(1) infinite;
 }
 
-@keyframes blink {
-  to {
-    visibility: hidden;
+@keyframes caret {
+  50% {
+    opacity: 0;
   }
+}
+
+.paused {
+  margin: var(--sr-space-2) 0 0;
+  color: var(--sr-signal-warn);
+  font-family: var(--sr-font-display);
+  font-size: var(--sr-size-text);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.chat[data-paused] .line,
+.chat[data-paused] .user {
+  color: var(--sr-text-muted);
+}
+
+/* ---------- portrait: a band of the latest lines between the pitch and the tray ---------- */
+
+:global([data-world="portrait"]) .chat {
+  inset-block-start: 76.5%;
+  inset-inline: 4%;
+  inline-size: auto;
+  block-size: 10.5%;
+}
+
+:global([data-world="portrait"]) .line {
+  font-size: var(--sr-size-text-lg);
+}
+
+:global([data-world="portrait"]) .line {
+  margin-block-end: var(--sr-space-2);
+}
+
+:global([data-world="portrait"]) .user {
+  display: inline;
+  margin-inline-end: var(--sr-space-2);
+}
+
+:global([data-world="portrait"]) .paused {
+  margin-block-start: var(--sr-space-1);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -171,28 +124,4 @@
 
 :global([data-motion="reduced"]) .caret {
   animation: none;
-}
-
-/* ---------- portrait: 392x220 at (14, 676), below the gourds and the imagery label ---------- */
-
-:global([data-world="portrait"]) .strip {
-  inset-block-start: 74.286%;
-  inset-inline-start: 3.333%;
-  inline-size: 93.333%;
-  block-size: 24.176%;
-}
-
-/* The short paper starts 12 px under the board; a shorter shadow keeps it off the text box. */
-:global([data-world="portrait"]) .head {
-  block-size: 2.5rem;
-  filter: drop-shadow(0 0.25rem 0.5rem color-mix(in srgb, var(--sr-surface-0) 80%, transparent));
-}
-
-:global([data-world="portrait"]) .paper {
-  inset-block-start: 2.25rem;
-  inset-inline: 3.061%;
-}
-
-:global([data-world="portrait"]) .tack {
-  display: none;
 }

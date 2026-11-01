@@ -14,7 +14,7 @@
   - [x] 1.4 `lookAt` in `@sr/avatar` with its pure mapping and property test (seeded fault proven red once).
   - _Requirements: 2.1-2.4, 9.1, 9.2, 10.1, 10.2_
 
-- [ ] 2. On air: the lantern slides (landing lane)
+- [x] 2. On air: the lantern slides (landing lane)
   - Port `r2/landing-c.html` per design.md; remove the gourds and pumpkin art; re-baseline the landing visual test.
   - _Requirements: 3.1-3.5, 10.3, 10.4_
 

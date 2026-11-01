@@ -107,5 +107,7 @@
   "vault-word-size": "vault.word",
   "vault-reading-size": "vault.reading",
   "catacomb-tunnel": "tube.200",
-  "catacomb-flame": "paper.50"
+  "catacomb-flame": "paper.50",
+  "slide-title": "type.slide",
+  "slide-chalk": "type.chalk"
 }

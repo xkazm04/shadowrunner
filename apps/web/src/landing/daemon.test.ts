@@ -20,8 +20,8 @@ import {
   type DaemonState,
   type Timers,
 } from "./daemon";
+import { LIGHTS } from "./slides";
 
-const LIGHTS = 6;
 
 /** The global (fake) timers behind the driver's numeric ids. */
 function fakeTimers(): Timers {
@@ -92,10 +92,11 @@ describe("daemon table (pure)", () => {
 });
 
 describe("light schedule (pure)", () => {
-  it("goes dark spiral first, then the gourds right to left, OUT_STEP_MS apart", () => {
+  it("goes dark lantern first, then the slides right to left, OUT_STEP_MS apart", () => {
     const out = Array.from({ length: LIGHTS }, (_, p) => lightDelayMs("dark", p, LIGHTS));
-    // Positions: 0 spiral, 1..5 gourds left to right (channels 2 3 4 6 9).
-    expect(out).toEqual([0, 5, 4, 3, 2, 1].map((n) => n * OUT_STEP_MS));
+    // Positions: 0 the lantern, then the slides left to right.
+    expect(LIGHTS).toBe(7);
+    expect(out).toEqual([0, 6, 5, 4, 3, 2, 1].map((n) => n * OUT_STEP_MS));
     expect(new Set(out).size).toBe(LIGHTS);
     expect(stareDelayMs(LIGHTS)).toBe(Math.max(...out) + OUT_FADE_MS);
   });

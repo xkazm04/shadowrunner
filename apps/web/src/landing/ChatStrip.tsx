@@ -1,11 +1,10 @@
-// The live chat (landing requirement 6): a paper strip tacked under the rafter on the right
-// (stacked last in the portrait world). Real HTML text on opaque `paper`, the host's lines in
-// `paper-ink-signal`. The lines sit in their own clipped box inside the paper, bottom-anchored,
-// with the older ones fading under a top mask, so no text can run under the strip's head or the
-// status bar (the reference's defect).
+// The live chat, chalked on the right wall (costume requirement 3.1; prototype `.chat`): real
+// HTML text in hand-written chalk, straight on the dark wall under a soft shadow of its own, the
+// host's lines in ember. The lines sit in a clipped box, bottom-anchored, the older ones fading under
+// a top mask. While the daemon is lost the chalk greys and PAUSED · NO CARRIER is written under it.
 // On replay the reference's script plays: viewer lines land whole and the host's are typed in.
-// With reduced motion the strip is static (chatScript staticChat). On live the lines come from
-// the engine (spec voice-and-air) through `feed`; until that lands the paper waits, empty.
+// With reduced motion the chat is static (chatScript staticChat). On live the lines come from the
+// engine (spec voice-and-air) through `feed`; until that lands the wall waits, empty.
 import { useEffect, useRef, useState } from "react";
 import type { Plane } from "../app/plane";
 import type { Motion } from "../app/theme";
@@ -66,8 +65,7 @@ function Line({ shown, host }: { shown: ShownLine; host: string }) {
   if (line.kind === "viewer") {
     return (
       <p className={styles.line} data-chat-line="viewer">
-        <b>{line.user}</b> <span className={styles.rank}>{`· ${line.rank}`}</span>
-        <br />
+        <span className={styles.user}>{`${line.user} · ${line.rank}`}</span>
         {line.text}
       </p>
     );
@@ -75,8 +73,7 @@ function Line({ shown, host }: { shown: ShownLine; host: string }) {
   const typing = isTyping(shown);
   return (
     <p className={`${styles.line} ${styles.host}`} data-chat-line="host" data-typing={typing || undefined}>
-      <b>{host}</b>
-      <br />
+      <span className={styles.user}>{host}</span>
       {line.text.slice(0, typed)}
       {typing && <span className={styles.caret} aria-hidden="true" />}
     </p>
@@ -101,29 +98,22 @@ export function ChatStrip({ plane, motion, host = HOST_TAG, feed, paused = false
     ? scripted.lines
     : (feed ?? []).map((line, id) => ({ id, line, typed: line.text.length }));
   return (
-    <section className={styles.strip} aria-label={replay ? "Live chat (simulated)" : "Live chat"} data-chat>
-      <div className={styles.head}>
-        <span>
-          <span className={styles.dot} aria-hidden="true">
-            ●
-          </span>{" "}
-          LIVE CHAT
-        </span>
-        <span>{host}</span>
+    <section
+      className={styles.chat}
+      aria-label={replay ? "Live chat (simulated)" : "Live chat"}
+      data-chat
+      data-paused={paused || undefined}
+    >
+      <div className={styles.lines} data-chat-lines aria-live="off">
+        {lines.length === 0 ? (
+          <p className={styles.line} data-chat-line="empty">
+            Waiting for the first message.
+          </p>
+        ) : (
+          lines.map((shown) => <Line key={shown.id} shown={shown} host={host} />)
+        )}
       </div>
-      <span className={`${styles.tack} ${styles.tackStart}`} aria-hidden="true" />
-      <span className={`${styles.tack} ${styles.tackEnd}`} aria-hidden="true" />
-      <div className={styles.paper} data-chat-paper>
-        <div className={styles.lines} data-chat-lines aria-live="off">
-          {lines.length === 0 ? (
-            <p className={styles.line} data-chat-line="empty">
-              Waiting for the first message.
-            </p>
-          ) : (
-            lines.map((shown) => <Line key={shown.id} shown={shown} host={host} />)
-          )}
-        </div>
-      </div>
+      {paused && <p className={styles.paused}>PAUSED · NO CARRIER</p>}
     </section>
   );
 }

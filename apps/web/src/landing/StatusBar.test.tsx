@@ -4,10 +4,8 @@ import { describe, expect, it } from "vitest";
 import { ENGINE_STATES, PLANES, type Health } from "@sr/engine";
 import { daemonOf, hms, StatusBar, UP_AT_OPEN, type StatusBarProps } from "./StatusBar";
 
-const CHANNEL = { number: 2, title: "On air" };
-
 function bar(over: Partial<StatusBarProps> = {}): string {
-  return renderToString(<StatusBar plane="replay" daemon="online" channel={CHANNEL} {...over} />);
+  return renderToString(<StatusBar plane="replay" daemon="online" {...over} />);
 }
 
 /** Index of `needle` in `html`, failing the test when it is missing. */
@@ -53,14 +51,13 @@ describe("daemonOf", () => {
 });
 
 describe("StatusBar", () => {
-  it("online: ON AIR, viewers, channel, live-since clock and the daemon pill, left to right", () => {
+  it("online: viewers, live-since clock and the daemon pill, left to right (the lamp hangs from the beam now)", () => {
     const html = bar();
     expect(html).toContain('data-daemon="online"');
+    expect(html).not.toContain("data-lamp");
     const order = [
       at(html, ">Shadowrunner</a>"),
-      at(html, ">ON AIR</span>"),
       at(html, "Viewers"),
-      at(html, "2 · On air"),
       at(html, "since"),
       at(html, ">03:00</b>"),
       at(html, ">03:12:40</b>"),
@@ -71,10 +68,10 @@ describe("StatusBar", () => {
     for (const absent of ["OFF AIR", "Dead air", "DAEMON LOST", "re-seat"]) expect(html).not.toContain(absent);
   });
 
-  it("daemon lost: OFF AIR, dead-air timer from zero, and the re-seat pill", () => {
-    const html = bar({ daemon: "lost" });
+  it("daemon lost: dead-air timer from the clock it is given, and the re-seat pill", () => {
+    const html = bar({ daemon: "lost", clock: { up: UP_AT_OPEN + 20, dead: 12 } });
     expect(html).toContain('data-daemon="lost"');
-    const order = [at(html, ">OFF AIR</span>"), at(html, "Dead air for"), at(html, ">00:00:00</b>"), at(html, "DAEMON LOST")];
+    const order = [at(html, "Dead air for"), at(html, ">00:00:12</b>"), at(html, "DAEMON LOST")];
     expect(order).toEqual([...order].sort((a, b) => a - b));
     expect(html).toContain("re-seat");
     expect(html).toContain("still you");
@@ -95,14 +92,15 @@ describe("StatusBar", () => {
     expect(bar({ plane: "live" })).not.toContain("<kbd>D</kbd>");
   });
 
-  it("names the channel it is given", () => {
-    expect(bar({ channel: { number: 6, title: "Daemon" } })).toContain("6 · Daemon");
+  it("shows the uptime it is given, and opens on the reference's uptime without one", () => {
+    expect(bar({ clock: { up: UP_AT_OPEN + 5, dead: 0 } })).toContain(">03:12:45</b>");
+    expect(bar()).toContain(">03:12:40</b>");
   });
 
-  it("tags the wordmark with the shell's badge, before the lamp", () => {
+  it("tags the wordmark with the shell's badge, before the stats", () => {
     const html = bar({ badge: <p data-badge="recorded">RECORDED</p> });
     expect(at(html, ">Shadowrunner</a>")).toBeLessThan(at(html, ">RECORDED</p>"));
-    expect(at(html, ">RECORDED</p>")).toBeLessThan(at(html, ">ON AIR</span>"));
+    expect(at(html, ">RECORDED</p>")).toBeLessThan(at(html, "Viewers"));
     expect(bar()).not.toContain("RECORDED");
   });
 

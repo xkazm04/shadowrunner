@@ -1,0 +1,117 @@
+/* The ON AIR lightbox (Lightbox.tsx), ported from the prototype's `.sign` and `.box`. World
+   lengths. The red glass is signal-onair mixed into the dark, its letters text-strong (bold, large:
+   3:1 at least on the glass's brightest stop); the glow is a drop-shadow (box-shadow takes tokens
+   only). Off air it is a dead box: surface-2 with text-muted. */
+
+.sign {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-end: 23.9%;
+  z-index: 7;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform-origin: 50% 0;
+  animation: sway 7s ease-in-out infinite;
+}
+
+:global([data-world="portrait"]) .sign {
+  inset-inline-end: 5%;
+}
+
+.wire {
+  inline-size: 0.125rem;
+  block-size: 6.2rem;
+  background-image: linear-gradient(var(--sr-surface-0), var(--sr-line));
+}
+
+:global([data-world="portrait"]) .wire {
+  block-size: 7.25rem;
+}
+
+.box {
+  padding: var(--sr-space-2) var(--sr-space-4);
+  border: 0.1875rem solid var(--sr-surface-1);
+  border-radius: var(--sr-radius-1);
+  font-family: var(--sr-font-display);
+  font-size: var(--sr-size-text-lg);
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  line-height: 1.2;
+  transition:
+    color 0.4s,
+    filter 0.4s;
+}
+
+.box[data-lamp="on"] {
+  color: var(--sr-text-strong);
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--sr-signal-onair) 82%, var(--sr-surface-0)),
+    color-mix(in srgb, var(--sr-signal-onair) 52%, var(--sr-surface-0))
+  );
+  filter: drop-shadow(0 0 1.1rem color-mix(in srgb, var(--sr-signal-onair) 70%, transparent))
+    drop-shadow(0 0 3rem color-mix(in srgb, var(--sr-signal-onair) 35%, transparent));
+}
+
+.box[data-lamp="off"] {
+  color: var(--sr-text-muted);
+  background-image: linear-gradient(var(--sr-surface-2), var(--sr-surface-2));
+  filter: none;
+}
+
+:global([data-world="portrait"]) .box {
+  padding: var(--sr-space-1) var(--sr-space-3);
+  font-size: var(--sr-size-text);
+}
+
+/* The intro: the tube buzzes on. */
+:global([data-intro]) .box {
+  animation: buzz 0.9s steps(1) 1.9s both;
+}
+
+@keyframes sway {
+  50% {
+    transform: rotate(1.2deg);
+  }
+}
+
+@keyframes buzz {
+  0% {
+    opacity: 0.15;
+  }
+
+  20% {
+    opacity: 1;
+  }
+
+  30% {
+    opacity: 0.3;
+  }
+
+  45% {
+    opacity: 1;
+  }
+
+  55% {
+    opacity: 0.4;
+  }
+
+  65%,
+  100% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sign,
+  .box {
+    animation: none;
+    transition: none;
+  }
+}
+
+:global([data-motion="reduced"]) .sign,
+:global([data-motion="reduced"]) .box {
+  animation: none;
+  transition: none;
+}
