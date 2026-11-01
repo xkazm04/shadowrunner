@@ -1,0 +1,4 @@
+/* Seeded violation: named colour (expects color-named). */
+.frame {
+  outline: var(--sr-line-width) solid crimson;
+}

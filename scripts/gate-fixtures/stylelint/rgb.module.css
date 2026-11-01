@@ -1,0 +1,4 @@
+/* Seeded violation: rgb() colour (expects function-disallowed-list). */
+.frame {
+  outline: var(--sr-line-width) solid rgb(11 10 9);
+}

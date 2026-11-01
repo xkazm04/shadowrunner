@@ -6,11 +6,11 @@
   - `pnpm install && pnpm typecheck && pnpm test` green.
   - _Requirements: 1.1, 1.2, 1.4_
 
-- [ ] 2. Lint gates and the line cap
-  - [ ] 2.1 eslint flat config with typescript-eslint strict, no-explicit-any, a rule banning `as unknown as`, and eslint-plugin-boundaries encoding the layering in `.kiro/steering/structure.md`.
-  - [ ] 2.2 stylelint for `*.module.css` allowing only `var(--sr-*)` for colour, spacing, font-size, radius and shadow values.
-  - [ ] 2.3 `scripts/line-cap.mjs` (exit 1 on >400 lines, exit 2 if zero files scanned) wired into `pnpm lint`.
-  - [ ] 2.4 `scripts/gate-fixtures/` with one seeded violation per rule (any, as-unknown-as, boundary breach, hex in CSS module, 401-line file) and `pnpm test:gates` asserting each one fails.
+- [x] 2. Lint gates and the line cap
+  - [x] 2.1 eslint flat config with typescript-eslint strict, no-explicit-any, a rule banning `as unknown as`, and eslint-plugin-boundaries encoding the layering in `.kiro/steering/structure.md`.
+  - [x] 2.2 stylelint for `*.module.css` allowing only `var(--sr-*)` for colour, spacing, font-size, radius and shadow values.
+  - [x] 2.3 `scripts/line-cap.mjs` (exit 1 on >400 lines, exit 2 if zero files scanned) wired into `pnpm lint`.
+  - [x] 2.4 `scripts/gate-fixtures/` with one seeded violation per rule (any, as-unknown-as, boundary breach, hex in CSS module, 401-line file) and `pnpm test:gates` asserting each one fails.
   - _Requirements: 1.3, 1.5_
 
 - [ ] 3. Theme package

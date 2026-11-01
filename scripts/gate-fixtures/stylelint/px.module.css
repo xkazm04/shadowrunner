@@ -1,0 +1,4 @@
+/* Seeded violation: raw px (expects unit-disallowed-list). */
+.slot {
+  width: 12px;
+}

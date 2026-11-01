@@ -1,0 +1,4 @@
+/* Seeded violation: a token property given a raw value (expects declaration-strict-value). */
+.label {
+  font-size: 1.25rem;
+}

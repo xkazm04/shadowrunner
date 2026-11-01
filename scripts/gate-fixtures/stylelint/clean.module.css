@@ -1,0 +1,12 @@
+/* Control: tokens only, must lint clean. */
+.label {
+  color: var(--sr-text);
+  background: var(--sr-surface-1);
+  padding: var(--sr-space-2) var(--sr-space-3);
+  margin: 0 auto;
+  font-size: var(--sr-size-text);
+  border-radius: var(--sr-radius-1);
+  border-color: currentcolor;
+  box-shadow: none;
+  width: 100%;
+}

@@ -7,6 +7,7 @@ submission write-up is impossible to reconstruct in week 5.
 | Date | Spec / task | Kiro surface + agent + model | Outcome | What Kiro got right | What it got wrong / we corrected | Commit |
 |---|---|---|---|---|---|---|
 | 2026-11-01 | m0-spine / 1 workspace skeleton | CLI 2.37 v3 headless, sr-builder, Opus 5.5 xhigh; sr-reviewer Sonnet 5.5 | done, reviewer `accept` | pnpm workspace with 5 `@sr/*` stubs, Vite + React 19 app, `api/health.ts`, strict TS with `noUncheckedIndexedAccess`; typecheck, 7 tests and `pnpm build` green (re-run by director) | `pnpm lint` left as an honest warning stub until task 2; used `vitest.config.ts` `projects` instead of design's `vitest.workspace.ts` (accepted); health stub returns `{ ok: true }` until task 5 | (this commit) |
+| 2026-11-01 | m0-spine / 2 lint gates and line cap | CLI 2.37 v3 headless, sr-builder, Opus 5.5 high; sr-reviewer Sonnet 5.5 | done, reviewer `accept` | eslint strict + `as unknown as` ban + boundaries layering, two-layer stylelint token rule, `scripts/line-cap.mjs`; 15 gate fixtures with clean controls, runner checks the exact rule that fired; Kiro mutated the configs itself to prove the runner goes red (11/15) | touched `pnpm-workspace.yaml` (outside task scope) to unblock pnpm 11 build-script approval for `unrs-resolver`, accepted; director aligned the save hook's line count with the repo cap (trailing newline) | (this commit) |
 
 ## Setup notes
 - 2026-11-01: Kiro plan upgraded; kiro-cli 2.37.0. `claude-opus-5.5` (2.0x credits) verified headless

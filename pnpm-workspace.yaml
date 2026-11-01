@@ -2,3 +2,7 @@ packages:
   - apps/*
   - packages/*
   - api
+# unrs-resolver (via eslint-import-resolver-typescript) ships its native binding as an optional
+# dependency; its postinstall only re-checks that binding, so it does not need to run.
+allowBuilds:
+  unrs-resolver: false

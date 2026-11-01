@@ -1,0 +1,4 @@
+/* Seeded violation: hex colour (expects color-no-hex and declaration-strict-value). */
+.label {
+  color: #0b0a09;
+}

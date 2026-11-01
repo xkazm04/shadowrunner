@@ -11,14 +11,22 @@
     "dev": "pnpm --filter @sr/web dev",
     "build": "pnpm --filter @sr/web build",
     "typecheck": "tsc -b",
-    "lint": "node -e \"console.warn('lint: NOT CONFIGURED - eslint, stylelint and the line cap arrive in m0-spine task 2; nothing was checked')\"",
+    "lint": "eslint . && stylelint \"{apps,packages}/**/*.module.css\" --allow-empty-input && node scripts/line-cap.mjs",
     "test": "vitest run",
-    "test:gates": "node -e \"console.error('test:gates: no gate fixtures yet - m0-spine task 2.4');process.exit(1)\""
+    "test:gates": "node scripts/gate-fixtures/run.mjs"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/node": "^22.20.5",
+    "eslint": "^10.14.0",
+    "eslint-import-resolver-typescript": "^4.4.5",
+    "eslint-plugin-boundaries": "^7.4.0",
     "fast-check": "^4.10.2",
+    "globals": "^17.13.0",
+    "stylelint": "^17.16.0",
+    "stylelint-declaration-strict-value": "^1.12.1",
     "typescript": "~6.0.3",
+    "typescript-eslint": "^8.72.1",
     "vite": "^8.3.5",
     "vitest": "^5.0.5"
   }
