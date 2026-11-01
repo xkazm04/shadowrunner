@@ -13,3 +13,5 @@ export * from "./cut.js";
 export * from "./fill.js";
 export * from "./palette.js";
 export * from "./assemble.js";
+export * from "./job.js";
+export * from "./validate.js";

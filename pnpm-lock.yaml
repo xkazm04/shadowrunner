@@ -53,6 +53,12 @@ importers:
       '@sr/engine':
         specifier: workspace:*
         version: link:../packages/engine
+      '@sr/forge':
+        specifier: workspace:*
+        version: link:../packages/forge
+      '@sr/rig':
+        specifier: workspace:*
+        version: link:../packages/rig
       '@vercel/blob':
         specifier: 2.8.2
         version: 2.8.2

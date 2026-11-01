@@ -96,10 +96,11 @@ describe("MemoryJobStore", () => {
     expect(await store.get(ID)).toBeUndefined();
   });
 
-  it("refuses a record over 50 KB with upstream, and a bad id", async () => {
+  it("refuses a bad id, but holds records with inline data: URLs past the KV cap", async () => {
     const store = new MemoryJobStore<Job>();
-    await expect(store.put({ jobId: ID, status: "x".repeat(MAX_JOB_BYTES) })).rejects.toMatchObject({ code: "upstream" });
     await expect(store.put({ jobId: "../x", status: "q" })).rejects.toThrow(RangeError);
+    await store.put({ jobId: ID, status: "x".repeat(MAX_JOB_BYTES) });
+    expect((await store.get(ID))?.status).toHaveLength(MAX_JOB_BYTES);
   });
 
   it("stores images as data: URLs and reads them back", async () => {
@@ -125,6 +126,7 @@ describe("RedisBlobJobStore (fake KV and Blob)", () => {
     kv.data.set(`job:${ID}`, { value: '{"jobId":"zzzzzzzzzzzzzzzz","status":"done"}', ttl: 1 });
     expect(await store.get(ID)).toBeUndefined();
     expect(await store.get("../../x")).toBeUndefined();
+    await expect(store.put({ jobId: ID, status: "x".repeat(MAX_JOB_BYTES) })).rejects.toMatchObject({ code: "upstream" });
   });
 
   it("puts images in Blob under forge/<jobId>/ and never in KV", async () => {

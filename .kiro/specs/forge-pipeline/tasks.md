@@ -47,7 +47,7 @@
   - From the task 5 review: take the fill list for `fillPrompt` and the `blurExtend` hole from `FILL_PARTS` (one owner); map `assembleRig`'s `RangeError` on a plate/portrait size mismatch to `upstream` (never a raw error to the client); when the spike is re-run for 1.2, inspect each composite for a box edge around the jaw on the plate-sourced head and record it in 0003.
   - Malformed parts JSON (seen live 2026-11-01: Gemini added a stray `]`): `packages/forge/src/validate.ts` `parsePartsJson(text)` is the only `JSON.parse` of the reply; when it fails, the parts step re-asks the model once (counts against quota), then fails the job with `upstream`. No text repair in production. Test with the recorded raw reply.
   - [ ] 7.1 `api/forge/index.ts` (validation, likeness/content check for images, quota, portrait step) and `api/forge/[jobId].ts` (advance one step via `forge-steps.ts`: parts -> fill (edit, fallback on failure/30 s) -> cut -> assemble).
-  - [ ] 7.2 Tests with a fake Gemini client: happy path reaches `done` with a valid rig; `refused_likeness`; `quota` before any call; upstream garbage -> `upstream`; no secret or raw upstream text in responses.
+  - [x] 7.2 Tests with a fake Gemini client: happy path reaches `done` with a valid rig; `refused_likeness`; `quota` before any call; upstream garbage -> `upstream`; no secret or raw upstream text in responses.
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 5.1, 5.2, 7.1, 7.4, 7.6_
 
 - [ ] 8. Replay plane

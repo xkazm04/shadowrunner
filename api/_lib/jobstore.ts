@@ -68,7 +68,7 @@ function serialize(job: StoredJob): string {
   return text;
 }
 
-/** Replay and `pnpm dev`: records cloned in a map with the same TTL and size cap, images as data: URLs. */
+/** Replay and `pnpm dev`: records cloned in a map with the same TTL, images as data: URLs. */
 export class MemoryJobStore<J extends StoredJob> implements JobStore<J> {
   readonly backend = "memory";
   readonly #jobs = new Map<string, { job: J; expiresAt: number }>();
@@ -89,7 +89,8 @@ export class MemoryJobStore<J extends StoredJob> implements JobStore<J> {
   }
 
   async put(job: J): Promise<void> {
-    serialize(job);
+    // No 50 KB cap here: the cap bounds KV, and this store's image URLs are inline data: URLs.
+    if (!isJobId(job.jobId)) throw new RangeError("put: bad job id");
     this.#jobs.set(job.jobId, { job: structuredClone(job), expiresAt: this.#now() + JOB_TTL_SECONDS * 1000 });
   }
 

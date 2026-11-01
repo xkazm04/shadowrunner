@@ -5,6 +5,8 @@
   "type": "module",
   "dependencies": {
     "@sr/engine": "workspace:*",
+    "@sr/forge": "workspace:*",
+    "@sr/rig": "workspace:*",
     "@vercel/blob": "2.8.2"
   }
 }
