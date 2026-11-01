@@ -6,6 +6,7 @@ submission write-up is impossible to reconstruct in week 5.
 
 | Date | Spec / task | Kiro surface + agent + model | Outcome | What Kiro got right | What it got wrong / we corrected | Commit |
 |---|---|---|---|---|---|---|
+| 2026-11-01 | m0-spine / 1 workspace skeleton | CLI 2.37 v3 headless, sr-builder, Opus 5.5 xhigh; sr-reviewer Sonnet 5.5 | done, reviewer `accept` | pnpm workspace with 5 `@sr/*` stubs, Vite + React 19 app, `api/health.ts`, strict TS with `noUncheckedIndexedAccess`; typecheck, 7 tests and `pnpm build` green (re-run by director) | `pnpm lint` left as an honest warning stub until task 2; used `vitest.config.ts` `projects` instead of design's `vitest.workspace.ts` (accepted); health stub returns `{ ok: true }` until task 5 | (this commit) |
 
 ## Setup notes
 - 2026-11-01: Kiro plan upgraded; kiro-cli 2.37.0. `claude-opus-5.5` (2.0x credits) verified headless

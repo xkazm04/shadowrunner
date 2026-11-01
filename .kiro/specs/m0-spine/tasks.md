@@ -1,6 +1,6 @@
 # Implementation plan: M0 spine
 
-- [ ] 1. Workspace skeleton
+- [x] 1. Workspace skeleton
   - Create `package.json` (scripts dev/build/typecheck/lint/test/test:gates, `packageManager` pnpm, engines node>=22), `pnpm-workspace.yaml`, `tsconfig.base.json`, and stub packages `packages/{rig,avatar,forge,engine,theme}` each with `package.json`, `tsconfig.json`, `src/index.ts`, one passing vitest test.
   - Create `apps/web` (Vite + React 19 + TS) rendering "Shadowrunner" and `api/health.ts`.
   - `pnpm install && pnpm typecheck && pnpm test` green.

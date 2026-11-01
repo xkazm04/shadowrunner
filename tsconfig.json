@@ -1,0 +1,12 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/rig" },
+    { "path": "packages/avatar" },
+    { "path": "packages/forge" },
+    { "path": "packages/engine" },
+    { "path": "packages/theme" },
+    { "path": "apps/web" },
+    { "path": "api" }
+  ]
+}

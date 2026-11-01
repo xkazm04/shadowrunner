@@ -1,0 +1,25 @@
+{
+  "name": "shadowrunner",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.3.0",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @sr/web dev",
+    "build": "pnpm --filter @sr/web build",
+    "typecheck": "tsc -b",
+    "lint": "node -e \"console.warn('lint: NOT CONFIGURED - eslint, stylelint and the line cap arrive in m0-spine task 2; nothing was checked')\"",
+    "test": "vitest run",
+    "test:gates": "node -e \"console.error('test:gates: no gate fixtures yet - m0-spine task 2.4');process.exit(1)\""
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "fast-check": "^4.10.2",
+    "typescript": "~6.0.3",
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
+  }
+}
