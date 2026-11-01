@@ -13,9 +13,9 @@
   - `api/engine/reply.ts` using the plane switch and `checkAndCharge(ip, "engine", usd)` from `api/_lib/quota.ts` (created by forge-pipeline task 6.2; if absent, stop and report); tests: replay zero fetches, quota before call, input cut to 20 x 300.
   - _Requirements: 2.1, 2.2, 2.3, 2.4_
 
-- [ ] 4. Voice
-  - [ ] 4.1 `api/_lib/tts.ts` (Gemini TTS -> PCM -> WAV header) and `api/voice.ts` with voice validation and quota kind `voice`.
-  - [ ] 4.2 `scripts/render-show.mjs` (owner key, not in tests) renders the show's lines to `assets/replay/shows/malakor-night/*.wav`; replay `/api/voice` returns recorded WAVs; provenance noted in `docs/provenance.md`.
+- [x] 4. Voice
+  - [x] 4.1 `api/_lib/tts.ts` (Gemini TTS -> PCM -> WAV header) and `api/voice.ts` with voice validation and quota kind `voice`.
+  - [x] 4.2 `scripts/render-show.mjs` (owner key, not in tests) renders the show's lines to `assets/replay/shows/malakor-night/*.wav`; replay `/api/voice` returns recorded WAVs; provenance noted in `docs/provenance.md`.
   - _Requirements: 3.1, 3.2, 3.3_
 
 - [ ] 5. Stage page

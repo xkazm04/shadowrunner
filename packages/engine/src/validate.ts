@@ -190,3 +190,21 @@ export function parseEngineRequest(value: unknown, keepChat: number): EngineRequ
     ...(pickedId === undefined ? {} : { pickedId }),
   };
 }
+
+/** Body of POST /api/voice: `text` (1-300 characters after trimming) and one of `VOICE_IDS`. */
+export interface VoiceRequest {
+  text: string;
+  voice: VoiceId;
+}
+
+/** The longest text /api/voice speaks (requirement 3.2). */
+export const MAX_VOICE_CHARS = 300;
+
+/** Validates a decoded /api/voice body; undefined for any other shape, voice or length. */
+export function parseVoiceRequest(value: unknown): VoiceRequest | undefined {
+  if (!isObject(value) || typeof value.text !== "string") return undefined;
+  const text = value.text.trim();
+  if (text.length === 0 || text.length > MAX_VOICE_CHARS) return undefined;
+  const voice = VOICE_IDS.find((v) => v === value.voice);
+  return voice === undefined ? undefined : { text, voice };
+}

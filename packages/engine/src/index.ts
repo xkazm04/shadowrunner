@@ -21,7 +21,15 @@ export type { ShowBeat, ShowScript } from "./types.js";
 export { EMOTIONS, GESTURES } from "./types.js";
 export { isEmotion, isGesture, parseShow, parseShowJson } from "./validate.js";
 export { beatIndex, scriptedReply, ScriptedEngine } from "./scripted.js";
-export { decodeJson, parseEngineRequest, parseMessagesResponse, type MessagesResponse } from "./validate.js";
+export {
+  decodeJson,
+  MAX_VOICE_CHARS,
+  parseEngineRequest,
+  parseMessagesResponse,
+  parseVoiceRequest,
+  type MessagesResponse,
+  type VoiceRequest,
+} from "./validate.js";
 export { EngineError, MAX_LINE_CHARS, parseReply, REPLY_SCHEMA, trimLine, type EngineErrorCode } from "./schema.js";
 export {
   limitChat,

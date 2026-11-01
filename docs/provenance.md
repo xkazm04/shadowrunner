@@ -22,5 +22,7 @@ From it we reuse **assets and ideas only**:
 | Landing stills: `crt-frontal`, `root-cellar-wide`, `root-pile`, `root-eye` (`assets/_incoming/landing-winner/stills-source/`; prompts in `assets/_incoming/landing-winner/PROMPTS.md`) | Gemini 3 Pro Image | 2026-10-31 |
 | Landing prototype The Harvest Floor (`assets/_incoming/landing-winner/`, reference only) | Claude Opus 5.5 via the contest skill, 4 rounds | 2026-10-31 |
 | Forge probe overlays (`docs/decisions/0002-*.png`) | Gemini 3.8 Flash / 3.1 Pro | 2026-10-31 |
+| Recorded show `assets/replay/shows/malakor-night.json`: 40 fictional audience messages and 24 Malakor lines, original writing in the voice of the bible | Claude Opus 5.5 (Claude Code, voice-and-air task 1.2) | 2026-11-01 |
+| Show voice `assets/replay/shows/malakor-night/b00-b23.wav` (24 files, 16-bit mono 24 kHz, 14.4 MB, ~315 s): one run of `scripts/render-show.mjs`, voice `clerk` = Gemini prebuilt `Iapetus`. That run sent a spoken-style prefix that the model read aloud; instead of a second paid run, the prefix was cut locally (boundary from Whisper base.en word timestamps, refined to the quietest gap), the double WAV header unwrapped, the tail trimmed and pauses over 0.6 s shortened. The prefix was removed from `api/_lib/tts.ts` and the script afterwards. | Gemini `gemini-3.8-flash-tts` (owner key); local post-processing with numpy | 2026-11-01 |
 
 Designed and generated art is stylised and labelled as such in the UI; no real person is depicted.
