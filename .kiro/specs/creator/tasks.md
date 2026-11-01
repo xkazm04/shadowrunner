@@ -5,9 +5,9 @@
   - [x] 1.2 `forgeClient.replay.ts` with recorded timings from `assets/replay/forge-timings.json` and `?forge=fail:<code>`; unit tests with fake timers.
   - _Requirements: 3.1, 3.2, 3.6_
 
-- [ ] 2. Pure reducers
-  - [ ] 2.1 `lookReducer.ts` + fast-check properties (non-mutation, palette format, toggle involution, reset = defaultLook).
-  - [ ] 2.2 `forgeReducer.ts` + fast-check properties (forward-only status order, terminal states, failed keeps request).
+- [x] 2. Pure reducers
+  - [x] 2.1 `lookReducer.ts` + fast-check properties (non-mutation, palette format, toggle involution, reset = defaultLook).
+  - [x] 2.2 `forgeReducer.ts` + fast-check properties (forward-only status order, terminal states, failed keeps request).
   - _Requirements: 1.1, 1.2, 1.3, 1.5, 3.2, 3.4_
 
 - [ ] 3. Library store
