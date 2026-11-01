@@ -25,6 +25,8 @@ character works on day one.
 4. WHEN a layer's `follow` names a layer that does not exist, or follows form a cycle THEN validation SHALL fail with `bad_follow`.
 5. WHEN a palette value is not `#rrggbb` THEN validation SHALL fail with `bad_color`.
 6. Validation SHALL accept every rig produced by `serializeRig` (round-trip property).
+7. WHEN the input does not have the shape of `Rig` (not an object, a missing or wrongly typed field, `version` other than `RIG_VERSION`, an unknown `kind`, a `name` not matching `^[a-z0-9_]+$`, a `bbox` or `anchor` that is not a tuple of finite numbers, a non-positive bbox width or height, a `depth` outside `[0, 1]`, or `visible`/`fictional` present with any value other than `false`/`true`) THEN validation SHALL fail with `bad_shape`, naming the JSON path. Shape is checked first; the semantic codes above run only on shape-valid input. (Director amendment 2026-11-01: the code was listed in tasks.md but not defined.)
+8. `RigError` SHALL be `{ code, message, layer?, path? }` with `code` one of the six codes above. Validation SHALL collect every error it finds rather than stopping at the first.
 
 ## Requirement 3: Import of legacy layers.json
 **User story:** As the owner, I want Malakor's existing rig to load, so that the flagship character is on screen from the first build.
