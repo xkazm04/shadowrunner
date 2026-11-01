@@ -24,6 +24,8 @@ export interface ReplayJob {
   /** Holds per status in order, ending with "done" (hold 0). */
   steps: ReplayStep[];
   portraitUrl: string;
+  /** A small still of the portrait (`assets/replay/thumbs/<slug>.webp`), when one is committed. */
+  thumbUrl?: string;
   rig: Rig;
   /** Layer.file -> URL. */
   assets: Record<string, string>;
@@ -90,6 +92,15 @@ const FILES = import.meta.glob<string>("../../../../assets/replay/forge/*/*.{png
   import: "default",
 });
 
+// Small stills for lists (CH 4, the gallery), kept outside the job folders, which the forge-replay
+// script rebuilds from scratch. A job without one falls back to its full portrait.
+const THUMBS = import.meta.glob<string>("../../../../assets/replay/thumbs/*.webp", { eager: true, query: "?url", import: "default" });
+
+/** The committed still for a job slug, if any. */
+export function thumbOf(slug: string): string | undefined {
+  return Object.entries(THUMBS).find(([path]) => path.endsWith(`/${slug}.webp`))?.[1];
+}
+
 /** Folder path -> (file name -> URL). */
 function filesByFolder(): Map<string, Record<string, string>> {
   const out = new Map<string, Record<string, string>>();
@@ -112,7 +123,9 @@ export function loadReplayJobs(): Promise<ReplayJob[]> {
     const jobs = await Promise.all(
       Object.entries(MANIFESTS).map(async ([path, load]) => {
         const dir = path.slice(0, path.lastIndexOf("/") + 1);
-        return replayJobOf(await load(), files.get(dir) ?? {});
+        const job = replayJobOf(await load(), files.get(dir) ?? {});
+        const thumbUrl = job === undefined ? undefined : thumbOf(job.slug);
+        return job === undefined || thumbUrl === undefined ? job : { ...job, thumbUrl };
       }),
     );
     return jobs.filter((j): j is ReplayJob => j !== undefined).sort((a, b) => a.slug.localeCompare(b.slug));

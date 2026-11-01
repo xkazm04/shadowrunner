@@ -13,7 +13,7 @@ import { useForgeJob } from "./forge/useForgeJob";
 import { Gallery } from "./gallery/Gallery";
 import type { GalleryEntry } from "./gallery/entries";
 import { Library } from "./library/Library";
-import { useLibrary } from "./library/useLibrary";
+import { useLibrary, wantedCharacter } from "./library/useLibrary";
 import { ChannelActions } from "./ChannelActions";
 import { Stage } from "./Stage";
 import { Workbench, type Tab } from "./Workbench";
@@ -36,7 +36,17 @@ export function planeClient(plane: Plane, search: string): ForgeClient {
 export const isRecorded = (rig: Rig): boolean => rig.source === "replay" || rig.id.startsWith("replay-");
 
 export function CreatorPage() {
-  const library = useLibrary();
+  // `/creator?character=<slug>` (CH 4's "Open in the Forge") puts that character on the stage.
+  const [want] = useState(() => (typeof window === "undefined" ? undefined : wantedCharacter(window.location.search)));
+  const library = useLibrary(want === undefined ? {} : { want });
+  // The link has done its work once the library has read it: drop it from the address, so a later
+  // visit (or the router carrying the query to another channel) does not pull that character back.
+  useEffect(() => {
+    if (want === undefined || library.status === "loading") return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete("character");
+    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+  }, [want, library.status]);
   const plane = usePlane();
   const client = useMemo(() => planeClient(plane, typeof window === "undefined" ? "" : window.location.search), [plane]);
   const job = useForgeJob(client);
@@ -91,7 +101,11 @@ export function CreatorPage() {
     await add(await entry.load());
     setGalleryOpen(false);
   };
-  const gallery = <Gallery inLibrary={inLibrary} onAdopt={adopt} onClose={() => setGalleryOpen(false)} />;
+  const show = (id: string): void => {
+    setGalleryOpen(false);
+    library.select(id);
+  };
+  const gallery = <Gallery inLibrary={inLibrary} onAdopt={adopt} onShow={show} onClose={() => setGalleryOpen(false)} />;
   const onTab = (next: Tab): void => {
     setGalleryOpen(false);
     setTab(next);

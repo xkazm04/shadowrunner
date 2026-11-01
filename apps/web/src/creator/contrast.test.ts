@@ -60,6 +60,9 @@ function pairs(theme: string): [string, Rgb, Rgb][] {
     ["caption text on surface-0", r("text"), s0],
     ["forging card on surface-1 92% over surface-0", r("text-strong"), mix(r("surface-1"), s0, 0.92)],
     ["subtitle on surface-0 82% over a white face", r("text-strong"), mix(s0, [255, 255, 255], 0.82)],
+    // Gallery cards and library tiles (creator task 9): text on a dark band over a portrait.
+    ["gallery name on its band (surface-0 88% over a white portrait)", r("text-strong"), mix(s0, [255, 255, 255], 0.88)],
+    ["library tile name on its band (surface-0 88% over a white still)", r("text-strong"), mix(s0, [255, 255, 255], 0.88)],
   ];
 }
 

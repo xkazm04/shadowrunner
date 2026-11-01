@@ -11,12 +11,19 @@
 //   path can delete Malakor.
 // - The memory twin also keeps Blobs as given (no structured clone), which is what IndexedDB
 //   would hand back.
+// - The cast seed (creator task 9) keeps a ledger of the character ids it has ever placed, in a
+//   second object store `meta` (database version 2), so a preset the user deleted is not put back
+//   and a new recorded job still joins an old library once.
 import { isEmotion, isGesture, VOICE_IDS, type VoiceId } from "@sr/engine";
 import { defaultLook, validateRig, type Look, type Palette, type Rig } from "@sr/rig";
 
 export const DB_NAME = "sr-library";
 export const STORE = "characters";
-export const DB_VERSION = 1;
+export const META_STORE = "meta";
+export const DB_VERSION = 2;
+const SEED_KEY = "cast-seed";
+/** The ledger format; bump when the meaning of the ids changes. */
+export const SEED_VERSION = 1;
 export const DEFAULT_VOICE: VoiceId = "crypt";
 
 export interface CharacterRecord {
@@ -53,7 +60,19 @@ export interface LibraryStore {
   saveVoice(id: string, voice: VoiceId): Promise<boolean>;
   /** Refused for a seeded record. */
   remove(id: string): Promise<RemoveResult>;
+  /** The ids the cast seed has placed so far; undefined when it never ran (a new or pre-cast library). */
+  seededIds(): Promise<string[] | undefined>;
+  /** Replaces the cast seed's ledger. */
+  writeSeededIds(ids: readonly string[]): Promise<void>;
 }
+
+/** A stored seed ledger, or undefined when it is missing or unreadable (the seed then only adds what is absent). */
+export function readSeedLedger(value: unknown): string[] | undefined {
+  if (!isRecord(value) || value.version !== SEED_VERSION || !Array.isArray(value.ids)) return undefined;
+  return value.ids.every((id): id is string => typeof id === "string") ? [...value.ids] : undefined;
+}
+
+const ledgerOf = (ids: readonly string[]) => ({ key: SEED_KEY, version: SEED_VERSION, ids: [...new Set(ids)] });
 
 type Fields = Record<string, unknown>;
 const isRecord = (v: unknown): v is Fields => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -119,6 +138,7 @@ const byCreated = (a: LibraryEntry, b: LibraryEntry): number => {
 /** The in-memory twin (private mode, no IndexedDB). */
 export function memoryLibrary(): LibraryStore {
   const rows = new Map<string, unknown>();
+  let ledger: unknown;
   const patch = (id: string, field: "look" | "voice", value: unknown): boolean => {
     const row = rows.get(id);
     if (!isRecord(row)) return false;
@@ -140,6 +160,10 @@ export function memoryLibrary(): LibraryStore {
       if (isRecord(row) && row.seeded === true) return "refused";
       rows.delete(id);
       return "deleted";
+    },
+    seededIds: async () => readSeedLedger(ledger),
+    writeSeededIds: async (ids) => {
+      ledger = ledgerOf(ids);
     },
   };
 }
@@ -163,7 +187,9 @@ function openDb(factory: IDBFactory): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const req = factory.open(DB_NAME, DB_VERSION);
     req.onupgradeneeded = () => {
+      // Version 1 had `characters` only; its records are kept as they are.
       if (!req.result.objectStoreNames.contains(STORE)) req.result.createObjectStore(STORE, { keyPath: "id" });
+      if (!req.result.objectStoreNames.contains(META_STORE)) req.result.createObjectStore(META_STORE, { keyPath: "key" });
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error ?? new Error("IndexedDB is unavailable"));
@@ -214,6 +240,14 @@ export function idbLibrary(db: IDBDatabase): LibraryStore {
       else store.delete(id);
       await finished;
       return result;
+    },
+    async seededIds() {
+      return readSeedLedger(await request(db.transaction(META_STORE, "readonly").objectStore(META_STORE).get(SEED_KEY)));
+    },
+    async writeSeededIds(ids) {
+      const tx = db.transaction(META_STORE, "readwrite");
+      tx.objectStore(META_STORE).put(ledgerOf(ids));
+      await done(tx);
     },
   };
 }

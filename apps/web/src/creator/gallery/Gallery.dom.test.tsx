@@ -59,6 +59,18 @@ describe("<Gallery>", () => {
     expect(view.container.textContent).toContain("RECORDED");
   });
 
+  it("puts a character already in the library on the stage, and names what each card shows off", async () => {
+    const onShow = vi.fn();
+    view = await mount(<Gallery inLibrary={new Set(["replay-ghost-b"])} onAdopt={async () => undefined} onShow={onShow} onClose={() => undefined} load={async () => entries} />);
+    await settle();
+    const kept = [...view.container.querySelectorAll<HTMLButtonElement>("li button")][1];
+    expect(kept?.getAttribute("aria-label")).toBe("Ghost B is in your library. Put it on the stage");
+    await act(async () => kept?.click());
+    expect(onShow).toHaveBeenCalledWith("replay-ghost-b");
+    // No notes for the test ghost: the card names its rig's animated kinds.
+    expect(view.container.textContent).toContain("crown · accessory · jaw · eyes");
+  });
+
   it("says when an adoption fails, and closes on request", async () => {
     const onClose = vi.fn();
     view = await mount(<Gallery inLibrary={new Set()} onAdopt={async () => Promise.reject(new Error("x"))} onClose={onClose} load={async () => entries} />);

@@ -1,6 +1,8 @@
 // The library region (creator requirement 2): the characters kept on this computer, the active one
 // marked, a confirm step before a delete (never offered for the seeded Malakor), damaged records
 // listed but never rendered, the private-mode notice, and the way to the replay gallery.
+// Since creator task 9 the whole cast lives here, so the strip is a grid of portrait tiles that
+// shows every character at once (it wraps rather than scrolls).
 import { useEffect, useState } from "react";
 import type { CharacterRecord, LibraryEntry, RemoveResult } from "./libraryStore";
 import { thumbnailOf } from "./thumbnail";
@@ -83,7 +85,7 @@ export function Library({ entries, activeId, persistent, status, onSelect, onRem
           const { record } = entry;
           const name = record.rig.name;
           return (
-            <li key={record.id} className={styles.item}>
+            <li key={record.id} className={styles.item} data-character={record.id}>
               <button
                 type="button"
                 className={styles.card}
@@ -92,7 +94,7 @@ export function Library({ entries, activeId, persistent, status, onSelect, onRem
                 onClick={() => onSelect(record.id)}
               >
                 <Thumb record={record} />
-                <span className={styles.name}>{name}</span>
+                <span className={styles.name}>{name.replace(/^the\s+/i, "")}</span>
               </button>
               {confirming === record.id ? (
                 <span className={styles.confirm} role="group" aria-label={`Delete ${name}?`}>
@@ -106,7 +108,7 @@ export function Library({ entries, activeId, persistent, status, onSelect, onRem
               ) : record.seeded === true ? (
                 refused === record.id && <span className={styles.house}>The house character stays.</span>
               ) : (
-                <button type="button" className={styles.small} aria-label={`Delete ${name}`} title={`Delete ${name}`} onClick={() => setConfirming(record.id)}>
+                <button type="button" className={`${styles.small} ${styles.remove}`} aria-label={`Delete ${name}`} title={`Delete ${name}`} onClick={() => setConfirming(record.id)}>
                   ✕
                 </button>
               )}

@@ -1,12 +1,15 @@
-// The library as React state: opens the store (IndexedDB or memory), seeds Malakor when empty,
-// lists the entries, tracks the active character and decodes its layer images for the stage.
+// The library as React state: opens the store (IndexedDB or memory), seeds the cast (creator task 9:
+// Malakor, or the character a deep link asks for, before the first paint; the rest of the cast in
+// the background, the strip filling as each arrives), lists the entries, tracks the active
+// character and decodes its layer images for the stage.
 import type { RigAssets } from "@sr/avatar";
 import type { VoiceId } from "@sr/engine";
 import type { Look } from "@sr/rig";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { rigAssetsOf } from "./assets";
 import { openLibrary, type CharacterRecord, type LibraryEntry, type LibraryStore, type RemoveResult } from "./libraryStore";
-import { seedIfEmpty } from "./seed";
+import { loadCast, memberFor } from "../gallery/entries";
+import { seedCast, type CastSeed } from "./seed";
 
 const ACTIVE_KEY = "sr-creator-active";
 
@@ -42,12 +45,26 @@ export interface Library {
 
 const okRecords = (entries: readonly LibraryEntry[]): CharacterRecord[] => entries.flatMap((e) => (e.kind === "ok" ? [e.record] : []));
 
-export interface UseLibraryOptions {
-  open?: () => Promise<LibraryStore>;
-  seed?: (store: LibraryStore) => Promise<unknown>;
+/** A cast member as the library seeds it: the house character first. */
+export interface CastMember extends CastSeed {
+  slug: string;
 }
 
-export function useLibrary({ open = () => openLibrary(), seed = seedIfEmpty }: UseLibraryOptions = {}): Library {
+export interface UseLibraryOptions {
+  open?: () => Promise<LibraryStore>;
+  /** The cast to seed, house character first. Default: the gallery's cast. */
+  cast?: () => Promise<readonly CastMember[]>;
+  /** The character a deep link asks for (`/creator?character=<slug>`): a cast slug or a record id. */
+  want?: string;
+}
+
+/** The `character` parameter of a query string, when present. */
+export function wantedCharacter(search: string): string | undefined {
+  const value = new URLSearchParams(search).get("character")?.trim();
+  return value === undefined || value === "" ? undefined : value;
+}
+
+export function useLibrary({ open = () => openLibrary(), cast = loadCast, want }: UseLibraryOptions = {}): Library {
   const store = useRef<LibraryStore | undefined>(undefined);
   const [status, setStatus] = useState<Library["status"]>("loading");
   const [persistent, setPersistent] = useState(true);
@@ -59,17 +76,32 @@ export function useLibrary({ open = () => openLibrary(), seed = seedIfEmpty }: U
     void (async () => {
       try {
         const s = await open();
-        // A seed that cannot load (offline art) leaves an empty library, not a broken page.
-        await seed(s).catch(() => undefined);
+        // A cast that cannot load (offline art) leaves the library as it is, not a broken page.
+        const members = await cast().catch((): CastMember[] => []);
+        const target = want === undefined ? undefined : memberFor(members, want);
+        const first = new Set([members[0]?.id, target?.id].filter((id): id is string => id !== undefined));
+        const clock = new Date();
+        const now = (): Date => clock;
+        await seedCast(s, members, { now, only: first }).catch(() => undefined);
         const list = await s.list();
         if (!live) return;
         store.current = s;
         setPersistent(s.persistent);
         setEntries(list);
-        const remembered = readActive();
         const records = okRecords(list);
-        setActiveId(records.some((r) => r.id === remembered) ? remembered : records[0]?.id);
+        const has = (id: string | undefined): id is string => id !== undefined && records.some((r) => r.id === id);
+        const wanted = target?.id ?? want;
+        const pick = has(wanted) ? wanted : [readActive(), records[0]?.id].find(has);
+        if (pick !== undefined && pick === wanted) writeActive(pick);
+        setActiveId(pick);
         setStatus("ready");
+        // The rest of the cast, in the background.
+        await seedCast(s, members, {
+          now,
+          onAdded: () => {
+            void s.list().then((next) => live && setEntries(next));
+          },
+        }).catch(() => undefined);
       } catch {
         if (live) setStatus("failed");
       }
@@ -77,7 +109,7 @@ export function useLibrary({ open = () => openLibrary(), seed = seedIfEmpty }: U
     return () => {
       live = false;
     };
-    // Opened once per mount: `open` and `seed` are read at mount only.
+    // Opened once per mount: `open`, `cast` and `want` are read at mount only.
   }, []);
 
   const refresh = useCallback(async () => {
