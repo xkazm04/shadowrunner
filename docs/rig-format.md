@@ -107,9 +107,12 @@ a valid Rig. It returns `{ rig, warnings }`, where each warning is `{ layer, mes
   and is skipped with a warning.
 - **Dropped fields.** Numeric follow weights, float and pulse curves, gains, blend modes and other
   Overlord-only fields are not carried over.
-- **Colours.** From `spec.colors` (0..1 RGB triples, rounded to `#rrggbb`): `line_glow` -> `glow`,
-  `line_core` -> `rim` and `eye`, `mouth` -> `mouth`. Without a spec, a fixed Malakor-like default
-  palette is used.
+- **Colours.** From `spec.colors` (0..1 RGB triples, rounded to `#rrggbb`): the eye light `mouth`
+  (Malakor's teal) -> `eye` and `mouth`; `line_glow` -> `glow`; `line_core` (the orange monocle
+  line) -> `rim`. The renderer multiplies eye texels by `palette.eye`, so the eye colour must be the
+  eye light, not the line colour; the glow stays the line glow, so the bloom over the monocle keeps
+  its ring orange (director rulings 2026-11-01, rig-core task 7). Without a spec, Malakor's palette
+  mapped this way is used (`DEFAULT_LEGACY_PALETTE`).
 - **Identity.** `id` and `name` are the legacy `portrait_id` when it is a slug, otherwise
   `"legacy"`.
 - Malformed legacy input is `bad_shape`, with paths into `json` (`$...`) or into `spec`

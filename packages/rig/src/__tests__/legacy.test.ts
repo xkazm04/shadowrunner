@@ -179,12 +179,12 @@ describe("importLegacyLayers: palette", () => {
   const rgb = fc.tuple(unit, unit, unit);
   const hex = (c: readonly number[]): string => `#${c.map((v) => Math.round(v * 255).toString(16).padStart(2, "0")).join("")}`;
 
-  it("takes glow from line_glow, rim and eye from line_core, mouth from mouth (0..1 -> #rrggbb)", () => {
+  it("takes eye and mouth from the eye light (mouth), glow from line_glow, rim from line_core (0..1 -> #rrggbb)", () => {
     fc.assert(
       fc.property(rgb, rgb, rgb, (glow, core, mouth) => {
         const spec = { colors: { line_glow: glow, line_core: core, mouth } };
         const { rig } = imported(legacy([HEAD]), spec);
-        expect(rig.palette).toEqual({ glow: hex(glow), eye: hex(core), rim: hex(core), mouth: hex(mouth) });
+        expect(rig.palette).toEqual({ glow: hex(glow), eye: hex(mouth), rim: hex(core), mouth: hex(mouth) });
       }),
     );
   });

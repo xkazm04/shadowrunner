@@ -55,7 +55,7 @@ export interface Look { palette: Palette; hidden: string[]; emotion: Emotion; ge
 | eye | eye | `follow: "head"` |
 | pulse (monocle) | accessory | `follow: "head"` |
 | shard_* names | crown | `follow: "head"` |
-Colours: `spec.colors.line_glow -> glow`, `line_core -> rim`, `mouth -> mouth`, eye = `line_core`;
+Colours: `spec.colors.line_glow -> glow`, `line_core -> rim`, `mouth -> mouth` and `eye` (the teal eye light; director ruling 2026-11-01, rig-core task 7);
 0..1 floats -> `#rrggbb`. Missing spec -> a fixed Malakor-like default palette.
 
 ## Pose math
