@@ -16,6 +16,10 @@ inclusion: always
   reducers). A property test must be proven red once on a seeded fault before it counts.
 - **Planes:** `SR_PLANE=replay|live` on the server; replay serves `assets/replay/**`. Tests
   never call a paid API.
+- **Plane override reaches the server:** when the client is on replay through `?plane=replay`, every
+  `/api/*` request carries `x-sr-plane: replay`. Every endpoint that can spend money (engine, forge,
+  voice) SHALL serve replay when that header is present, even on a live deploy. The header can only
+  force replay, never live. The badge must never say RECORDED while a paid call runs.
 
 ## Gates (run before you report a task done)
 ```

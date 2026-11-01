@@ -30,7 +30,11 @@
   color: var(--sr-text-muted);
 }
 
+/* Sticky so the RECORDED badge stays in view however far a page scrolls. */
 .header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -43,6 +47,20 @@
 .brand {
   font-family: var(--sr-font-display);
   font-size: var(--sr-size-text-lg);
+}
+
+/* Replay plane label. Body-text contrast (text-strong on surface-2); the warn signal is the frame. */
+.recorded {
+  margin: 0;
+  padding: var(--sr-space-1) var(--sr-space-2);
+  background-color: var(--sr-surface-2);
+  color: var(--sr-text-strong);
+  border: thin solid var(--sr-signal-warn);
+  border-radius: var(--sr-radius-1);
+  font-family: var(--sr-font-mono);
+  font-size: var(--sr-size-text-sm);
+  font-weight: 700;
+  letter-spacing: 0.08em;
 }
 
 .nav ul {

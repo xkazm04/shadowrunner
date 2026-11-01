@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { buildKeymap, GLOBAL_BINDINGS, stepChannel, useHotkeys, type KeyAction } from "./keys";
 import { channelPages, PAGES, type PageDef } from "./pages";
+import { usePlane, type Plane } from "./plane";
 import { handleLinkClick, navigate, useRoute } from "./router";
 import styles from "./Shell.module.css";
 import { nextTheme, usePreferences, useTheme, type Motion, type ThemeName } from "./theme";
@@ -90,9 +91,19 @@ function NoSignal({ path }: { path: string }) {
   );
 }
 
+/** Lives in the shell header, outside every page, so no page can drop it (requirement 4.2). */
+function RecordedBadge() {
+  return (
+    <p className={styles.recorded} data-badge="recorded" title="Replay plane: recorded answers, no live calls">
+      RECORDED
+    </p>
+  );
+}
+
 export interface ShellViewProps {
   path: string;
   page: PageDef | undefined;
+  plane: Plane;
   theme: ThemeName;
   motion: Motion;
   gotoOpen: boolean;
@@ -101,14 +112,15 @@ export interface ShellViewProps {
 }
 
 /** Pure render of the shell for a given route and settings (rendered directly by tests). */
-export function ShellView({ path, page, theme, motion, gotoOpen, onToggleTheme, onCloseGoto }: ShellViewProps) {
+export function ShellView({ path, page, plane, theme, motion, gotoOpen, onToggleTheme, onCloseGoto }: ShellViewProps) {
   const next = nextTheme(theme);
   return (
-    <div data-shell data-motion={motion} className={styles.shell}>
+    <div data-shell data-motion={motion} data-plane={plane} className={styles.shell}>
       <header className={styles.header}>
         <a href="/" className={styles.brand} onClick={(event) => handleLinkClick(event, "/")}>
           Shadowrunner
         </a>
+        {plane === "replay" && <RecordedBadge />}
         <nav aria-label="Channels" className={styles.nav}>
           <ul>
             {NAV_ORDER.map((p) => (
@@ -148,6 +160,7 @@ export function ShellView({ path, page, theme, motion, gotoOpen, onToggleTheme, 
 
 export function Shell() {
   const { path, page } = useRoute(PAGES);
+  const plane = usePlane();
   const [theme, toggleTheme] = useTheme();
   const { motion } = usePreferences();
   const [gotoOpen, setGotoOpen] = useState(false);
@@ -195,6 +208,7 @@ export function Shell() {
     <ShellView
       path={path}
       page={page}
+      plane={plane}
       theme={theme}
       motion={motion}
       gotoOpen={gotoOpen}

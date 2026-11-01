@@ -10,6 +10,7 @@ function view(page: PageDef | undefined, over: Partial<ShellViewProps> = {}): st
     <ShellView
       path={page?.path ?? "/nowhere"}
       page={page}
+      plane="replay"
       theme="halloween"
       motion="full"
       gotoOpen={false}
@@ -26,6 +27,18 @@ describe("Shell", () => {
     expect(html).toContain("Shadowrunner");
     expect(html).toContain('data-page="landing"');
     expect(html).toContain('data-motion="reduced"');
+    expect(html).toContain('data-plane="replay"');
+    expect(html).toContain(">RECORDED</p>");
+  });
+
+  it("shows the RECORDED badge on replay, on every page and outside it, and not on live", () => {
+    for (const page of [...PAGES, undefined]) {
+      const recorded = view(page, { plane: "replay" });
+      const badge = recorded.indexOf('data-badge="recorded"');
+      expect(badge).toBeGreaterThan(-1);
+      expect(badge).toBeLessThan(recorded.indexOf("<main"));
+      expect(view(page, { plane: "live" })).not.toContain("RECORDED");
+    }
   });
 
   it("renders a placeholder for every live page and the sealed door for sealed ones", () => {
