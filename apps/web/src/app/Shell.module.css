@@ -86,6 +86,24 @@
   cursor: pointer;
 }
 
+/* On the set: the disc icon (and its key hint), named by aria-label. */
+.iconToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sr-space-2);
+  box-sizing: border-box;
+  min-inline-size: 2.25rem;
+  block-size: 2.25rem;
+  padding: 0 var(--sr-space-2);
+  line-height: 1;
+}
+
+.toggleIcon {
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
+  flex: none;
+}
+
 .main {
   padding: var(--sr-space-6) var(--sr-space-5);
 }

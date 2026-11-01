@@ -18,11 +18,13 @@ const CHANNEL = { number: ON_AIR?.channel ?? 2, title: ON_AIR?.title ?? "On air"
 export interface LandingPageProps {
   /** The plane the shell resolved (usePlane()); replay until told otherwise. */
   plane?: Plane;
-  /** The shell's RECORDED badge and theme toggle, shown in the status bar. */
+  /** The shell's RECORDED badge, shown as a tag after the wordmark. */
+  badge?: ReactNode;
+  /** The shell's theme toggle, shown in the status bar before the daemon pill. */
   controls?: ReactNode;
 }
 
-export function LandingPage({ plane = "replay", controls }: LandingPageProps) {
+export function LandingPage({ plane = "replay", badge, controls }: LandingPageProps) {
   const daemon = daemonOf(useHealth());
   return (
     <section data-page="landing" aria-label="On air" className={styles.landing}>
@@ -33,7 +35,7 @@ export function LandingPage({ plane = "replay", controls }: LandingPageProps) {
           <Eye />
           <Spiral />
         </Room>
-        <StatusBar plane={plane} daemon={daemon} channel={CHANNEL} controls={controls} />
+        <StatusBar plane={plane} daemon={daemon} channel={CHANNEL} badge={badge} controls={controls} />
       </World>
     </section>
   );

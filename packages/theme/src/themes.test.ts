@@ -26,6 +26,8 @@ const LANDING_ROLES = [
   ...["text-strong", "text", "text-muted", "signal-onair", "signal-warn", "signal-ok", "accent"],
   ...["phosphor", "phosphor-2", "phosphor-spill", "ember", "paper", "paper-ink", "paper-ink-signal"],
   ...["font-display", "font-body", "font-type"],
+  // landing task 5.0: the ON AIR lamp and the daemon pill are fully rounded.
+  "radius-pill",
 ];
 
 /** landing design.md: halloween values taken from the reference :root. */
@@ -45,10 +47,14 @@ const HALLOWEEN_LANDING: Record<string, string> = {
   "paper-ink-signal": "#7e1407",
 };
 
-/** landing 1.2: the self-hosted @fontsource family each font role leads with, per theme. */
+/**
+ * landing 1.2: the self-hosted @fontsource family each font role leads with, per theme.
+ * landing 5.0 (director decision 2026-11-01): baseline shares Barlow Semi Condensed for display,
+ * so both themes share one layout and the 96 px portrait header holds in both.
+ */
 const FONT_FAMILIES: Record<string, Record<string, string>> = {
   halloween: { "font-display": "Barlow Semi Condensed", "font-body": "Inter", "font-type": "Courier Prime" },
-  baseline: { "font-display": "Inter", "font-body": "Inter", "font-type": "Courier Prime" },
+  baseline: { "font-display": "Barlow Semi Condensed", "font-body": "Inter", "font-type": "Courier Prime" },
 };
 
 /** product.md: working text >= 14px equivalent (0.875rem at the 16px root). */
@@ -107,6 +113,14 @@ describe.each(THEMES)("theme %s", (theme) => {
     for (const [role, family] of Object.entries(families ?? {})) {
       expect(values.get(role), `${theme}: ${role}`).toMatch(new RegExp(`^"${family}",`));
     }
+  });
+
+  it("rounds radius-pill fully: larger than half of any control it shapes", () => {
+    // The tallest pill-shaped control is the 2.625rem daemon pill; a radius past half its height
+    // makes the ends semicircles. 4rem leaves room for a taller control later.
+    const rem = /^(\d*\.?\d+)rem$/.exec(resolved(theme).get("radius-pill") ?? "")?.[1];
+    expect(rem, `${theme}: radius-pill`).toBeDefined();
+    expect(Number(rem)).toBeGreaterThanOrEqual(4);
   });
 
   it(`keeps every text size at or above ${MIN_TEXT_REM}rem`, () => {

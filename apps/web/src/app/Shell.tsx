@@ -115,16 +115,30 @@ export interface ShellViewProps {
   onCloseGoto: () => void;
 }
 
-function ThemeToggle({ theme, onToggle }: { theme: ThemeName; onToggle: () => void }) {
+/** A half-filled disc: two themes, one switch. Drawn in currentColor. */
+function ThemeIcon() {
+  return (
+    <svg className={styles.toggleIcon} viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+      <circle cx="10" cy="10" r="7.5" fill="none" stroke="currentColor" strokeWidth="1.75" />
+      <path d="M10 2.5a7.5 7.5 0 0 1 0 15z" fill="currentColor" />
+    </svg>
+  );
+}
+
+function ThemeToggle({ theme, onToggle, icon = false }: { theme: ThemeName; onToggle: () => void; icon?: boolean }) {
   const next = nextTheme(theme);
+  const label = `Theme: ${THEME_LABEL[theme]}. Switch to ${THEME_LABEL[next]}`;
   return (
     <button
       type="button"
-      className={styles.toggle}
+      className={icon ? `${styles.toggle} ${styles.iconToggle}` : styles.toggle}
       onClick={onToggle}
-      aria-label={`Theme: ${THEME_LABEL[theme]}. Switch to ${THEME_LABEL[next]}`}
+      aria-label={label}
+      title={icon ? label : undefined}
+      data-toggle="theme"
     >
-      Theme: {THEME_LABEL[theme]} {themeKey && <kbd>{themeKey}</kbd>}
+      {icon ? <ThemeIcon /> : `Theme: ${THEME_LABEL[theme]} `}
+      {themeKey && <kbd>{themeKey}</kbd>}
     </button>
   );
 }
@@ -133,7 +147,8 @@ function ThemeToggle({ theme, onToggle }: { theme: ThemeName; onToggle: () => vo
 export function ShellView({ path, page, plane, theme, motion, gotoOpen, onToggleTheme, onCloseGoto }: ShellViewProps) {
   const onSet = page?.id === "landing";
   const badge = plane === "replay" && <RecordedBadge />;
-  const toggle = <ThemeToggle theme={theme} onToggle={onToggleTheme} />;
+  // On the set the toggle is an icon button in the status bar (spec landing task 5.0).
+  const toggle = <ThemeToggle theme={theme} onToggle={onToggleTheme} icon={onSet} />;
   return (
     <div
       data-shell
@@ -172,15 +187,7 @@ export function ShellView({ path, page, plane, theme, motion, gotoOpen, onToggle
         ) : page.status === "sealed" ? (
           <SealedDoor page={page} />
         ) : onSet ? (
-          <LandingPage
-            plane={plane}
-            controls={
-              <>
-                {badge}
-                {toggle}
-              </>
-            }
-          />
+          <LandingPage plane={plane} badge={badge} controls={toggle} />
         ) : (
           <Placeholder page={page} />
         )}

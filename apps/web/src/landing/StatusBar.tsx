@@ -1,6 +1,7 @@
 // The landing's header row (landing requirement 2). On the set it is the only header: it sits in
-// the world as an overlay, as in the reference. Left to right: wordmark, ON AIR lamp, viewers,
-// channel, the live-since clock (or the dead-air timer), the shell's controls, the daemon pill.
+// the world as an overlay, as in the reference. Left to right: wordmark (tagged RECORDED on
+// replay), ON AIR lamp, viewers, channel, the live-since clock (or the dead-air timer), the theme
+// icon, the daemon pill. In portrait it folds into two rows (task 5.0, StatusBar.module.css).
 // The lamp, the clock and the pill follow the daemon state the composition root derives from
 // GET /api/health (daemonOf); the D key shows only on replay, where the sample toggle lives
 // (task 8 wires the toggle itself).
@@ -51,18 +52,23 @@ export interface StatusBarProps {
   daemon: DaemonHealth;
   /** The channel on the set: number and manifest title. */
   channel: { number: number; title: string };
-  /** The shell's own controls (RECORDED badge, theme toggle), so the shell keeps owning them. */
+  /** The shell's RECORDED badge (the shell keeps owning it), shown as a tag after the wordmark. */
+  badge?: ReactNode;
+  /** The shell's other controls (the theme toggle), between the stats and the pill. */
   controls?: ReactNode;
 }
 
-export function StatusBar({ plane, daemon, channel, controls }: StatusBarProps) {
+export function StatusBar({ plane, daemon, channel, badge, controls }: StatusBarProps) {
   const { up, dead } = useBroadcastClock(daemon);
   const on = daemon === "online";
   return (
     <header className={styles.bar} data-status-bar data-daemon={daemon}>
-      <a href="/" className={styles.brand} onClick={(event) => handleLinkClick(event, "/")}>
-        Shadowrunner
-      </a>
+      <div className={styles.mark}>
+        <a href="/" className={styles.brand} onClick={(event) => handleLinkClick(event, "/")}>
+          Shadowrunner
+        </a>
+        {badge && <span className={styles.tag}>{badge}</span>}
+      </div>
       <div className={styles.stats}>
         <span className={styles.lamp} data-lamp={on ? "on" : "off"}>
           {on ? "ON AIR" : "OFF AIR"}

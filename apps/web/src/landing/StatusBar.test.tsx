@@ -99,6 +99,13 @@ describe("StatusBar", () => {
     expect(bar({ channel: { number: 6, title: "Daemon" } })).toContain("6 · Daemon");
   });
 
+  it("tags the wordmark with the shell's badge, before the lamp", () => {
+    const html = bar({ badge: <p data-badge="recorded">RECORDED</p> });
+    expect(at(html, ">Shadowrunner</a>")).toBeLessThan(at(html, ">RECORDED</p>"));
+    expect(at(html, ">RECORDED</p>")).toBeLessThan(at(html, ">ON AIR</span>"));
+    expect(bar()).not.toContain("RECORDED");
+  });
+
   it("places the shell's controls between the stats and the daemon pill", () => {
     const html = bar({ controls: <button type="button">Theme</button> });
     expect(at(html, ">03:12:40</b>")).toBeLessThan(at(html, ">Theme</button>"));

@@ -1,8 +1,8 @@
 /* The header row on the set, ported from the reference (Round 4 "header row" rules). It lives in
    the world, so lengths are world lengths: percentages of the 1600x900 (or 420x910) world, or rem
-   (1rem is 16 world px). Landscape: one 66 px row. Portrait: brand and pill, then the stats, then
-   the shell's controls. The reference's literal colours are role tokens; its pill and lamp radii
-   become radius-1, the only radius role. */
+   (1rem is 16 world px). Landscape: one 66 px row. Portrait: two rows in at most 96 px, the
+   wordmark (and the RECORDED tag) with the pill, then the stats with the theme icon. The
+   reference's literal colours are role tokens; the lamp and the pill are radius-pill. */
 
 .bar {
   position: absolute;
@@ -25,6 +25,17 @@
   font-size: var(--sr-size-text);
   line-height: 1;
   white-space: nowrap;
+}
+
+/* The wordmark and, on replay, the shell's RECORDED badge as a tag right after it. */
+.mark {
+  display: flex;
+  align-items: center;
+  gap: var(--sr-space-3);
+}
+
+.tag {
+  display: flex;
 }
 
 .brand {
@@ -69,8 +80,8 @@
   align-items: center;
   box-sizing: border-box;
   block-size: 2.25rem;
-  padding: 0 var(--sr-space-3);
-  border-radius: var(--sr-radius-1);
+  padding: 0 var(--sr-space-4);
+  border-radius: var(--sr-radius-pill);
   font-family: var(--sr-font-display);
   font-size: var(--sr-size-text-lg);
   font-weight: 800;
@@ -115,7 +126,7 @@
   margin: 0;
   padding: 0 var(--sr-space-4);
   border: thin solid var(--sr-line);
-  border-radius: var(--sr-radius-1);
+  border-radius: var(--sr-radius-pill);
   background-image: linear-gradient(
     color-mix(in srgb, var(--sr-surface-0) 86%, transparent),
     color-mix(in srgb, var(--sr-surface-0) 86%, transparent)
@@ -166,19 +177,22 @@
   color: var(--sr-text-strong);
 }
 
-/* ---------- portrait: brand and pill, then the stats, then the controls ---------- */
+/* ---------- portrait: two rows in at most 96 world px (R4-1-390x844-load.png) ----------
+   Row 1: wordmark and RECORDED tag, the pill at the right. Row 2: the stats, the theme icon at
+   the right. The stats' basis leaves room for the icon only, so the pill cannot join row 2 and
+   the stats cannot join row 1. Text stays at 16 world px (about 15 px on a 390 px screen), set in
+   the condensed display face: in Inter the daemon-lost rows measure about 510 and 475 world px
+   against 396. Measured in halloween (Barlow): row 1 lost 388, row 2 lost 385. A display face as
+   wide as Inter (baseline) wraps to more rows; min-block-size lets the bar grow, never clip. */
 
 :global([data-world="portrait"]) .bar {
-  display: grid;
-  grid-template-areas:
-    "brand pill"
-    "stats stats"
-    "controls controls";
-  grid-template-columns: 1fr auto;
-  align-items: center;
-  gap: var(--sr-space-2) var(--sr-space-3);
+  font-family: var(--sr-font-display);
+  flex-wrap: wrap;
+  align-content: center;
+  gap: var(--sr-space-2);
   block-size: auto;
-  padding: var(--sr-space-3);
+  min-block-size: 10.55%;
+  padding: var(--sr-space-1) var(--sr-space-3) 0;
   background-image: linear-gradient(
     color-mix(in srgb, var(--sr-surface-0) 95%, transparent),
     color-mix(in srgb, var(--sr-surface-0) 88%, transparent) 80%,
@@ -186,17 +200,40 @@
   );
 }
 
-:global([data-world="portrait"]) .brand {
-  grid-area: brand;
-  font-size: var(--sr-size-text);
-  letter-spacing: 0.14em;
+:global([data-world="portrait"]) .mark {
+  order: 1;
+  gap: var(--sr-space-2);
 }
 
-/* Tight gaps so "Dead air for hh:mm:ss" fits the 420 px row; it wraps rather than clips. */
+:global([data-world="portrait"]) .brand {
+  font-size: var(--sr-size-text);
+  letter-spacing: 0.08em;
+}
+
+:global([data-world="portrait"]) .pill {
+  order: 2;
+  margin-inline-start: auto;
+  block-size: 2.25rem;
+  padding: 0 var(--sr-space-2);
+  gap: var(--sr-space-2);
+  font-size: var(--sr-size-text);
+}
+
+/* Lost, the pill's warn border and fill carry the state; the dot gives its room to "re-seat". */
+:global([data-world="portrait"]) .pill[data-pill="lost"] .dot {
+  display: none;
+}
+
 :global([data-world="portrait"]) .stats {
-  grid-area: stats;
+  order: 3;
+  flex: 1 1 calc(100% - 2.5rem);
   flex-wrap: wrap;
-  gap: var(--sr-space-1) var(--sr-space-1);
+  gap: var(--sr-space-1);
+}
+
+:global([data-world="portrait"]) .controls {
+  order: 4;
+  margin-inline-start: 0;
 }
 
 :global([data-world="portrait"]) .sep {
@@ -209,28 +246,26 @@
 
 :global([data-world="portrait"]) .lamp {
   block-size: 1.75rem;
-  padding: 0 var(--sr-space-1);
+  padding: 0 var(--sr-space-2);
   font-size: var(--sr-size-text);
   letter-spacing: 0.08em;
 }
 
-:global([data-world="portrait"]) .controls {
-  grid-area: controls;
-  margin-inline-start: 0;
-}
-
-:global([data-world="portrait"]) .pill {
-  grid-area: pill;
-  block-size: 2.375rem;
-  padding: 0 var(--sr-space-3);
-  font-size: var(--sr-size-text);
-}
-
-/* Phone text stays at 16 world px (about 15 px on a 390 px screen); key hints are dropped. */
+/* Key hints are dropped on the phone. */
 :global([data-world="portrait"]) .bar kbd {
   display: none;
 }
 
-:global([data-world="portrait"]) .controls :global([data-badge]) {
+:global([data-world="portrait"]) .tag :global([data-badge]) {
+  padding: 0 var(--sr-space-1);
+  font-family: var(--sr-font-display);
   font-size: var(--sr-size-text);
+  letter-spacing: 0.02em;
+  line-height: 1.375;
+}
+
+:global([data-world="portrait"]) .controls button {
+  min-inline-size: 2rem;
+  block-size: 2rem;
+  padding: 0 var(--sr-space-1);
 }

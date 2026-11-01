@@ -15,7 +15,9 @@ describe("LandingPage (static)", () => {
   });
 
   it("lays the status bar over the room, inside the world, on channel 2 with the daemon online", () => {
-    const html = renderToString(<LandingPage controls={<button type="button">Theme</button>} />);
+    const html = renderToString(
+      <LandingPage badge={<p data-badge="recorded">RECORDED</p>} controls={<button type="button">Theme</button>} />,
+    );
     const world = html.indexOf("data-world=");
     const room = html.indexOf("data-room");
     const status = html.indexOf("data-status-bar");
@@ -24,5 +26,6 @@ describe("LandingPage (static)", () => {
     expect(html).toContain('data-daemon="online"');
     expect(html).toContain("2 · On air");
     expect(html.indexOf(">Theme</button>")).toBeGreaterThan(status);
+    expect(html.indexOf(">RECORDED</p>")).toBeGreaterThan(status);
   });
 });
