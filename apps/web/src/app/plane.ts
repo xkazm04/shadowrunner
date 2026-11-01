@@ -97,6 +97,11 @@ function browserPlane(): Plane {
   return resolvePlane(planeOverride(window.location.search), browserStore.health());
 }
 
+/** The one health read (the same request usePlane() resolves from). Undefined until it answers. */
+export function useHealth(): Health | undefined {
+  return useSyncExternalStore(browserStore.subscribe, browserStore.health, () => undefined);
+}
+
 /** The plane this visit runs on. Without a window (tests, prerender) it is replay. */
 export function usePlane(): Plane {
   return useSyncExternalStore(browserStore.subscribe, browserPlane, () => DEFAULT_PLANE);

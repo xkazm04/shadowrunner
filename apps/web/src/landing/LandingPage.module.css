@@ -1,4 +1,5 @@
-/* The landing fills the space the shell leaves under its header; the world scales into it. */
+/* The landing fills the shell's main, which on the set is the whole viewport (no shell header);
+   the world scales into it. */
 
 .landing {
   display: flex;

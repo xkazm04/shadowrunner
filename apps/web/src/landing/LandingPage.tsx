@@ -1,13 +1,29 @@
-// Composition root of the landing (spec landing, design.md "Files"). Static for now: the world,
-// the cellar and its light, the eye and the spiral pumpkin. The status bar (task 4), the set
-// (task 5), the gourds (task 6) and the chat (task 7) join here as their tasks land.
+// Composition root of the landing (spec landing, design.md "Files"). The world holds the cellar
+// and its light, the eye and the spiral pumpkin, and the status bar over them: on the set the
+// status bar is the header (the shell renders none on /). The set (task 5), the gourds (task 6)
+// and the chat (task 7) join here as their tasks land.
+import type { ReactNode } from "react";
+import { PAGES } from "../app/pages";
+import { useHealth, type Plane } from "../app/plane";
 import { Eye } from "./Eye";
 import styles from "./LandingPage.module.css";
 import { Room } from "./Room";
 import { Spiral, SpiralThrow } from "./Spiral";
+import { daemonOf, StatusBar } from "./StatusBar";
 import { World } from "./World";
 
-export function LandingPage() {
+const ON_AIR = PAGES.find((p) => p.id === "landing");
+const CHANNEL = { number: ON_AIR?.channel ?? 2, title: ON_AIR?.title ?? "On air" };
+
+export interface LandingPageProps {
+  /** The plane the shell resolved (usePlane()); replay until told otherwise. */
+  plane?: Plane;
+  /** The shell's RECORDED badge and theme toggle, shown in the status bar. */
+  controls?: ReactNode;
+}
+
+export function LandingPage({ plane = "replay", controls }: LandingPageProps) {
+  const daemon = daemonOf(useHealth());
   return (
     <section data-page="landing" aria-label="On air" className={styles.landing}>
       <World className={styles.stage}>
@@ -17,6 +33,7 @@ export function LandingPage() {
           <Eye />
           <Spiral />
         </Room>
+        <StatusBar plane={plane} daemon={daemon} channel={CHANNEL} controls={controls} />
       </World>
     </section>
   );

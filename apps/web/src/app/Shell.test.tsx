@@ -36,8 +36,29 @@ describe("Shell", () => {
       const recorded = view(page, { plane: "replay" });
       const badge = recorded.indexOf('data-badge="recorded"');
       expect(badge).toBeGreaterThan(-1);
-      expect(badge).toBeLessThan(recorded.indexOf("<main"));
+      if (page?.id === "landing") {
+        // On the set the status bar is the header: the badge sits in it, before the pill.
+        expect(badge).toBeGreaterThan(recorded.indexOf("data-status-bar"));
+        expect(badge).toBeLessThan(recorded.indexOf('role="status"'));
+      } else {
+        expect(badge).toBeLessThan(recorded.indexOf("<main"));
+      }
       expect(view(page, { plane: "live" })).not.toContain("RECORDED");
+    }
+  });
+
+  it("renders no shell header on the set, and keeps the theme toggle in the status bar", () => {
+    const landing = PAGES.find((p) => p.id === "landing");
+    const html = view(landing);
+    expect(html).not.toContain('aria-label="Channels"');
+    expect(html.match(/<header/g)).toHaveLength(1);
+    expect(html.indexOf("Switch to Baseline")).toBeGreaterThan(html.indexOf("data-status-bar"));
+    expect(html).toContain("<kbd>D</kbd>");
+    expect(view(landing, { plane: "live" })).not.toContain("<kbd>D</kbd>");
+    for (const page of PAGES.filter((p) => p.id !== "landing")) {
+      const other = view(page);
+      expect(other).toContain('aria-label="Channels"');
+      expect(other).not.toContain("data-status-bar");
     }
   });
 
