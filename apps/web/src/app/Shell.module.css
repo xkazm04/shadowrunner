@@ -138,3 +138,9 @@
   background-color: var(--sr-surface-2);
   border-bottom: thin solid var(--sr-line);
 }
+
+/* A channel behind the set: its frame (channels/ChannelFrame) paints the room and the bar. */
+.channel {
+  display: flex;
+  flex-direction: column;
+}

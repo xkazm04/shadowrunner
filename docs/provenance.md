@@ -12,6 +12,7 @@ From it we reuse **assets and ideas only**:
 |---|---|---|---|
 | Arch-Lich Malakor character bible (original fiction) | `assets/characters/malakor/bible.md` | Overlord `characters/malakor/bible.md` | before 2026-10-30 |
 | Malakor portrait and 18-layer rig cut from it (PNG + layers.json + depth + spec) | `assets/characters/malakor/rig/` | Overlord local `data/avatar/rig/` | before 2026-10-30 |
+| Malakor portrait, stylised, as a 512 px WebP for the CH 4 listings (converted by Claude Code, landing task 9, 2026-11-01, from the reference copy `assets/_incoming/landing-winner/img/portrait.jpg`) | `assets/plates/portrait.webp` | the same portrait | before 2026-10-30 |
 | The "Cellar Exchange" art direction (a design concept chosen in an earlier design contest) | informs `packages/theme`, `apps/web/src/landing` | Overlord design contest, 2026-10 | before 2026-10-30 |
 | Rig format shape (layers with bbox/anchor/z) | re-specified in `.kiro/specs/rig-core` | idea from Overlord | - |
 

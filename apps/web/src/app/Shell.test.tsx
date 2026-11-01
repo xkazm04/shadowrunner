@@ -40,6 +40,10 @@ describe("Shell", () => {
         // On the set the status bar is the header: the badge sits in it, before the pill.
         expect(badge).toBeGreaterThan(recorded.indexOf("data-status-bar"));
         expect(badge).toBeLessThan(recorded.indexOf('role="status"'));
+      } else if (page?.channel !== undefined) {
+        // Behind the set the channel frame is the header: the badge sits in its bar.
+        expect(badge).toBeGreaterThan(recorded.indexOf("data-channel-frame"));
+        expect(badge).toBeLessThan(recorded.indexOf("</header>"));
       } else {
         expect(badge).toBeLessThan(recorded.indexOf("<main"));
       }
@@ -57,8 +61,11 @@ describe("Shell", () => {
     expect(view(landing, { plane: "live" })).not.toContain("<kbd>D</kbd>");
     for (const page of PAGES.filter((p) => p.id !== "landing")) {
       const other = view(page);
-      expect(other).toContain('aria-label="Channels"');
       expect(other).not.toContain("data-status-bar");
+      // Channels behind the set open in their frame; the stage (off the dial) keeps the header.
+      if (page.channel === undefined) expect(other).toContain('aria-label="Channels"');
+      else expect(other).toContain(`data-channel-frame="${page.id}"`);
+      expect(other.match(/<header/g)).toHaveLength(1);
     }
   });
 
@@ -78,14 +85,14 @@ describe("Shell", () => {
   });
 
   it("navigation lists every manifest page with its key, and marks the current one", () => {
-    const current = PAGES.find((p) => p.id === "creator");
+    const current = PAGES.find((p) => p.id === "air");
     const html = view(current);
     for (const page of PAGES) {
       expect(html).toContain(`href="${page.path}"`);
       expect(html).toContain(`<kbd>${page.hotkey}</kbd>`);
     }
     expect(html.match(/aria-current="page"/g)).toHaveLength(1);
-    expect(html).toMatch(/href="\/creator" aria-current="page"/);
+    expect(html).toMatch(/href="\/air" aria-current="page"/);
   });
 
   it("shows no signal for a path outside the manifest", () => {

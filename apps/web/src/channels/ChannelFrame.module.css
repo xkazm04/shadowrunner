@@ -1,0 +1,104 @@
+/* The channel frame (ChannelFrame.tsx), ported from the reference's `.layer`, `.backbar`, `.back`
+   and `.where` rules: a dark room (the guide's radial falloff) under a bar with the back pill and
+   the breadcrumb. Literal colours are roles: the near-black room is surface-0/1, the pill's brown
+   rim is line, the ink is text and text-strong. */
+
+.frame {
+  display: flex;
+  flex-direction: column;
+  min-block-size: 100dvh;
+  background-image: radial-gradient(ellipse at 50% 40%, var(--sr-surface-1), var(--sr-surface-0) 70%);
+}
+
+.bar {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sr-space-4);
+  padding: var(--sr-space-3) var(--sr-space-5);
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--sr-surface-0) 92%, transparent),
+    color-mix(in srgb, var(--sr-surface-0) 70%, transparent)
+  );
+}
+
+/* Two classes, over the shell's `.shell a` colour. */
+.bar .back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sr-space-2);
+  box-sizing: border-box;
+  min-block-size: 2.75rem;
+  padding: 0 var(--sr-space-4);
+  border: thin solid var(--sr-line);
+  border-radius: var(--sr-radius-pill);
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--sr-surface-0) 90%, transparent),
+    color-mix(in srgb, var(--sr-surface-0) 90%, transparent)
+  );
+  color: var(--sr-text-strong);
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text-lg);
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.bar .back:hover {
+  background-color: var(--sr-surface-2);
+  background-image: none;
+}
+
+.bar .back kbd {
+  padding: var(--sr-space-1) var(--sr-space-2);
+  border: thin solid var(--sr-line);
+  border-radius: var(--sr-radius-1);
+  color: var(--sr-text);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+  line-height: 1;
+}
+
+.where ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sr-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--sr-text);
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text-lg);
+  line-height: 1.2;
+}
+
+.where li + li::before {
+  content: "▸";
+  margin-inline-end: var(--sr-space-2);
+  font-size: var(--sr-size-text-sm);
+}
+
+.where b {
+  color: var(--sr-text-strong);
+  font-weight: 600;
+}
+
+.end {
+  display: flex;
+  align-items: center;
+  gap: var(--sr-space-3);
+  margin-inline-start: auto;
+}
+
+.body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sr-space-4) var(--sr-space-5) var(--sr-space-6);
+}

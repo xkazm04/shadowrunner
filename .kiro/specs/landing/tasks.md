@@ -51,7 +51,7 @@
   - [x] 8.3 `fx/` dust, flicker and typing as a lazy chunk behind `data-motion`; the reduced-motion static twin; an intro that can be skipped within 4 s and never pulls the visitor back.
   - _Requirements: 4.4, 4.5, 7.1, 7.2, 7.3, 7.4, 9.2, 9.3_
 
-- [ ] 9. Channels behind the set
+- [x] 9. Channels behind the set
   - Shell behaviour tests (rendered with a DOM test environment, e.g. happy-dom for `apps/web` only): `Esc` closes Go to first and then returns to `/`; `←`/`→` wrap around the dial; arrows do nothing on `/air`.
   - `ChannelFrame.tsx` ("Back to the set · Esc", breadcrumb), CH 4 `Listings.tsx`, CH 6 `Daemon.tsx`, CH 9 sealed door, all matching `screenshots/ch-*.png`. CH 3 is restyled by `creator` task 8.
   - _Requirements: 8.1, 8.2, 8.3_

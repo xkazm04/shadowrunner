@@ -1,11 +1,17 @@
 // App shell: everything outside a page. The router, the keymap and the navigation all derive
-// from the page manifest (pages.ts). Pages are placeholders until their specs land; a page with
-// status "sealed" renders the sealed door and its line of lore instead.
+// from the page manifest (pages.ts). Channels behind the set open in the ChannelFrame (spec
+// landing task 9): CH 4 the listings, CH 6 the daemon, a "sealed" page the sealed door; a page
+// whose spec has not landed yet (CH 3 until creator task 8) is a placeholder in the same frame.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { buildKeymap, GLOBAL_BINDINGS, stepChannel, useHotkeys, type KeyAction } from "./keys";
+import { ChannelFrame } from "../channels/ChannelFrame";
+import { Daemon } from "../channels/Daemon";
+import { Listings } from "../channels/Listings";
+import { Sealed } from "../channels/Sealed";
 import { LandingPage } from "../landing/LandingPage";
+import { daemonOf } from "../landing/StatusBar";
 import { channelPages, PAGES, type PageDef } from "./pages";
-import { usePlane, type Plane } from "./plane";
+import { useHealth, usePlane, type Health, type Plane } from "./plane";
 import { handleLinkClick, navigate, useRoute } from "./router";
 import styles from "./Shell.module.css";
 import { nextTheme, usePreferences, useTheme, type Motion, type ThemeName } from "./theme";
@@ -61,15 +67,6 @@ function GoTo({ current, onClose }: { current: PageDef | undefined; onClose: () 
   );
 }
 
-function SealedDoor({ page }: { page: PageDef }) {
-  return (
-    <section data-door="sealed" aria-labelledby="page-title">
-      <h1 id="page-title">{pageLabel(page)}</h1>
-      <p>{page.lore}</p>
-    </section>
-  );
-}
-
 function Placeholder({ page }: { page: PageDef }) {
   return (
     <section data-page={page.id} aria-labelledby="page-title">
@@ -90,6 +87,14 @@ function NoSignal({ path }: { path: string }) {
       </a>
     </section>
   );
+}
+
+/** A page's programme: the sealed door, the listings, the daemon, or a placeholder. */
+function ChannelBody({ page, plane, health, lost }: { page: PageDef; plane: Plane; health?: Health; lost: boolean }) {
+  if (page.status === "sealed") return <Sealed page={page} />;
+  if (page.id === "characters") return <Listings />;
+  if (page.id === "daemon") return <Daemon health={health} plane={plane} lost={lost} />;
+  return <Placeholder page={page} />;
 }
 
 /**
@@ -113,6 +118,8 @@ export interface ShellViewProps {
   gotoOpen: boolean;
   /** The replay-only daemon sample (key D): the set plays the daemon-lost state. */
   daemonSample?: boolean;
+  /** The one health read (usePlane resolves from the same request); undefined until it answers. */
+  health?: Health;
   onToggleTheme: () => void;
   onCloseGoto: () => void;
 }
@@ -154,10 +161,14 @@ export function ShellView({
   motion,
   gotoOpen,
   daemonSample = false,
+  health,
   onToggleTheme,
   onCloseGoto,
 }: ShellViewProps) {
   const onSet = page?.id === "landing";
+  // A channel behind the set: its frame is the header (back control, breadcrumb, badge, toggle).
+  const framed = !onSet && page?.channel !== undefined;
+  const sample = plane === "replay" && daemonSample;
   const badge = plane === "replay" && <RecordedBadge />;
   // On the set the toggle is an icon button in the status bar (spec landing task 5.0).
   const toggle = <ThemeToggle theme={theme} onToggle={onToggleTheme} icon={onSet} />;
@@ -169,7 +180,7 @@ export function ShellView({
       className={onSet ? `${styles.shell} ${styles.onSet}` : styles.shell}
     >
       {/* On the set the landing's status bar is the header; the shell hands it the badge and toggle. */}
-      {!onSet && (
+      {!onSet && !framed && (
         <header className={styles.header}>
           <a href="/" className={styles.brand} onClick={(event) => handleLinkClick(event, "/")}>
             Shadowrunner
@@ -193,15 +204,17 @@ export function ShellView({
         </header>
       )}
       {gotoOpen && <GoTo current={page} onClose={onCloseGoto} />}
-      <main className={onSet ? styles.set : styles.main}>
+      <main className={onSet ? styles.set : framed ? styles.channel : styles.main}>
         {page === undefined ? (
           <NoSignal path={path} />
-        ) : page.status === "sealed" ? (
-          <SealedDoor page={page} />
         ) : onSet ? (
-          <LandingPage plane={plane} badge={badge} controls={toggle} daemonSample={plane === "replay" && daemonSample} />
+          <LandingPage plane={plane} badge={badge} controls={toggle} daemonSample={sample} />
+        ) : framed ? (
+          <ChannelFrame page={page} badge={badge} controls={toggle}>
+            <ChannelBody page={page} plane={plane} health={health} lost={daemonOf(health) === "lost" || sample} />
+          </ChannelFrame>
         ) : (
-          <Placeholder page={page} />
+          <ChannelBody page={page} plane={plane} health={health} lost={daemonOf(health) === "lost" || sample} />
         )}
       </main>
     </div>
@@ -211,6 +224,7 @@ export function ShellView({
 export function Shell() {
   const { path, page } = useRoute(PAGES);
   const plane = usePlane();
+  const health = useHealth();
   const [theme, toggleTheme] = useTheme();
   const { motion } = usePreferences();
   const [gotoOpen, setGotoOpen] = useState(false);
@@ -267,6 +281,7 @@ export function Shell() {
       motion={motion}
       gotoOpen={gotoOpen}
       daemonSample={daemonSample}
+      health={health}
       onToggleTheme={toggleTheme}
       onCloseGoto={closeGoto}
     />

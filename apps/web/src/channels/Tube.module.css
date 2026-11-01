@@ -1,0 +1,111 @@
+/* The tube (Tube.tsx): the `crt-frontal` plate and its glass, after the reference's set and
+   `#tubeText`. Roles: the glass is a cold phosphor grade (phosphor-spill into surface-0), the
+   type is phosphor and phosphor-2. Text sits
+   on a translucent surface-0 band so phosphor on the glass keeps 4.5:1 over any picture. */
+
+/* The set: the frontal plate at its own aspect, as large as the frame allows. */
+.set {
+  position: relative;
+  inline-size: min(66rem, 100%, calc((100dvh - 6rem) * 1.3393));
+  aspect-ratio: 1200 / 896;
+  margin: 0;
+}
+
+.plate {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  /* No rectangle edges (requirement 4.3): the photo falls off into the dark room, and the set's
+     base, cut off by the photo's edge, fades into the floor (design.md). */
+  mask-image: radial-gradient(ellipse 52% 56% at 50% 46%, var(--sr-surface-0) 62%, transparent 100%);
+}
+
+/* The glass box in the plate (Tube.tsx GLASS_IN_PLATE), clipped to the superellipse. */
+.glass {
+  position: absolute;
+  inset-block-start: var(--glass-y);
+  inset-inline-start: var(--glass-x);
+  display: grid;
+  place-items: center;
+  inline-size: var(--glass-w);
+  block-size: var(--glass-h);
+  overflow: hidden;
+  background-image: radial-gradient(
+    ellipse 60% 60% at 46% 42%,
+    color-mix(in srgb, var(--sr-phosphor-spill) 34%, var(--sr-surface-0)),
+    color-mix(in srgb, var(--sr-phosphor-spill) 10%, var(--sr-surface-0)) 75%,
+    var(--sr-surface-0)
+  );
+}
+
+.reticle,
+.snow {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+.reticle {
+  fill: none;
+  stroke: var(--sr-phosphor-2);
+  stroke-width: 1.5;
+  opacity: 0.32;
+}
+
+.pip {
+  fill: var(--sr-phosphor-2);
+}
+
+.snow {
+  opacity: 0.62;
+  filter: contrast(1.8) brightness(0.85);
+}
+
+.text {
+  position: relative;
+  max-inline-size: 86%;
+  padding: var(--sr-space-3) var(--sr-space-5);
+  border-radius: var(--sr-space-4);
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--sr-surface-0) 62%, transparent),
+    color-mix(in srgb, var(--sr-surface-0) 62%, transparent)
+  );
+  color: var(--sr-phosphor);
+  text-align: center;
+}
+
+/* Scanlines and the glass's own glare, over the picture and the type. */
+.scan {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(ellipse 18% 12% at 22% 14%, color-mix(in srgb, var(--sr-phosphor) 22%, transparent), transparent),
+    repeating-linear-gradient(
+      transparent 0 0.125rem,
+      color-mix(in srgb, var(--sr-surface-0) 22%, transparent) 0.125rem 0.1875rem
+    ),
+    radial-gradient(ellipse at 50% 50%, transparent 62%, color-mix(in srgb, var(--sr-surface-0) 60%, transparent));
+}
+
+/* A narrow screen: the glass alone, full width, so its type stays at working size. */
+@media (max-width: 40rem) {
+  .set {
+    inline-size: 100%;
+    aspect-ratio: auto;
+  }
+
+  .plate {
+    display: none;
+  }
+
+  .glass {
+    position: relative;
+    inset: auto;
+    inline-size: 100%;
+    block-size: auto;
+    aspect-ratio: 506 / 408;
+  }
+}

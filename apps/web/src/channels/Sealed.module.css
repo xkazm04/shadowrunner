@@ -1,0 +1,37 @@
+/* CH 9 (Sealed.tsx): the reference's `#tubeText .kick`, `.big` and `.sub` on the snow. The type is
+   phosphor on the tube's dark band (Tube.module.css), so it holds AA over the static. */
+
+.page {
+  display: flex;
+  justify-content: center;
+  inline-size: 100%;
+}
+
+.kick {
+  margin: 0;
+  color: var(--sr-phosphor-2);
+  font-family: var(--sr-font-display);
+  font-size: var(--sr-size-text-lg);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.big {
+  margin: var(--sr-space-1) 0 0;
+  color: var(--sr-phosphor);
+  font-family: var(--sr-font-display);
+  font-size: var(--sr-size-display);
+  font-weight: 700;
+  line-height: 0.95;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.lore {
+  margin: var(--sr-space-3) 0 0;
+  color: var(--sr-phosphor);
+  font-family: var(--sr-font-display);
+  font-size: var(--sr-size-text-lg);
+  line-height: 1.25;
+}

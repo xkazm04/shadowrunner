@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 // The daemon sample key (landing task 8.1): D plays the daemon-lost state on replay, and changes
 // nothing on live. Each test imports a fresh Shell, so the plane store reads its own health stub.
+import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mount, press, restoreMotion, setMotion, type Mounted } from "./testDom";
 
@@ -76,5 +77,82 @@ describe("Shell: D, the daemon sample", () => {
     expect(landing(m)?.dataset.daemon).toBe("dark");
     const keys = [...m.container.querySelectorAll("[data-status-bar] kbd, [data-legend] kbd")].map((k) => k.textContent);
     expect(keys).not.toContain("D");
+  });
+});
+
+/** Opens the shell at `path` (replay: no functions answer). */
+async function shellAt(path: string): Promise<Mounted> {
+  window.history.replaceState(null, "", path);
+  return freshShell(undefined);
+}
+
+async function pressCtrl(key: string): Promise<boolean> {
+  const event = new KeyboardEvent("keydown", { key, ctrlKey: true, bubbles: true, cancelable: true });
+  await act(async () => {
+    window.dispatchEvent(event);
+  });
+  return event.defaultPrevented;
+}
+
+describe("Shell: Esc and the dial (landing task 9)", () => {
+  afterEach(() => {
+    window.history.replaceState(null, "", "/");
+  });
+
+  it("Esc closes Go to first, then returns to the set", async () => {
+    mounted = await shellAt("/characters");
+    const m = mounted;
+    expect(m.container.querySelector('[data-channel-frame="characters"]')).not.toBeNull();
+    expect(await pressCtrl("k")).toBe(true);
+    expect(m.container.querySelector('[role="dialog"]')).not.toBeNull();
+
+    expect(await press("Escape")).toBe(true);
+    expect(m.container.querySelector('[role="dialog"]')).toBeNull();
+    expect(window.location.pathname).toBe("/characters");
+
+    expect(await press("Escape")).toBe(true);
+    expect(window.location.pathname).toBe("/");
+    expect(m.container.querySelector('[data-page="landing"]')).not.toBeNull();
+  });
+
+  it("the back control in the frame returns to the set too", async () => {
+    mounted = await shellAt("/daemon");
+    const m = mounted;
+    const back = m.container.querySelector<HTMLAnchorElement>("[data-back]");
+    expect(back?.textContent).toBe("◂ Back to the set Esc");
+    await act(async () => {
+      back?.click();
+    });
+    expect(window.location.pathname).toBe("/");
+  });
+
+  it("← and → turn the dial and wrap around it", async () => {
+    mounted = await shellAt("/");
+    const dial = ["/", "/creator", "/characters", "/daemon", "/sealed"];
+    for (const expected of [...dial.slice(1), "/"]) {
+      expect(await press("ArrowRight")).toBe(true);
+      expect(window.location.pathname).toBe(expected);
+    }
+    // From 2, left wraps to 9.
+    expect(await press("ArrowLeft")).toBe(true);
+    expect(window.location.pathname).toBe("/sealed");
+    expect(mounted.container.querySelector('[data-door="sealed"]')).not.toBeNull();
+  });
+
+  it("arrows do nothing on the stage (/air), which is off the dial", async () => {
+    mounted = await shellAt("/air");
+    expect(await press("ArrowRight")).toBe(false);
+    expect(await press("ArrowLeft")).toBe(false);
+    expect(window.location.pathname).toBe("/air");
+  });
+
+  it("D on CH 6 cuts the carrier on the test card, on replay", async () => {
+    mounted = await shellAt("/daemon");
+    const m = mounted;
+    await vi.waitFor(() => expect(m.container.querySelector('[data-plane="replay"]')).not.toBeNull());
+    expect(m.container.querySelector('[data-page="daemon"]')?.getAttribute("data-daemon")).toBe("online");
+    expect(await press("d")).toBe(true);
+    expect(m.container.querySelector('[data-page="daemon"]')?.getAttribute("data-daemon")).toBe("lost");
+    expect(m.container.textContent).toContain("press D to re-seat it");
   });
 });
