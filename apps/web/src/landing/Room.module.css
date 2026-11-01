@@ -1,0 +1,173 @@
+/* The cellar and its static light. Ported from the reference (assets/_incoming/landing-winner,
+   Round 4 rules) with world px turned into percentages of the world box: 1600x900 landscape,
+   420x910 portrait ([data-world="portrait"] on the stage). Literal colours are role tokens:
+   black is surface-0, the gourds' orange is ember, the set's light is phosphor-spill. */
+
+/* --light (0 dark .. 1 lit) is the room's candle level. It is set here, on the ancestor shared by
+   the thrown dots and the spiral pumpkin, so both always read one value; the flicker and the
+   daemon-lost dimming (landing task 8) drive it on this element. */
+.room {
+  --light: 1;
+
+  position: absolute;
+  inset: 0;
+}
+
+/* Only the room's own layers; children bring their own positioning and pointer rules. */
+.cellar,
+.gourdGlow,
+.ceiling,
+.spill,
+.vignette,
+.floorShade,
+.edges {
+  position: absolute;
+  pointer-events: none;
+}
+
+/* The plate is brightened down and desaturated into the dark, as in the reference. */
+.cellar {
+  inset-block-start: 0;
+  inset-inline-start: -0.375%;
+  inline-size: 100.75%;
+  block-size: 100%;
+  object-fit: fill;
+  background-color: var(--sr-surface-0);
+  filter: brightness(0.56) saturate(0.72) contrast(1.08);
+}
+
+:global([data-world="portrait"]) .cellar {
+  inset-inline-start: -133.33%;
+  inline-size: 388.1%;
+}
+
+/* Candle light from the lit gourds pooling on the floor and the left wall. */
+.gourdGlow {
+  inset: 0;
+  mix-blend-mode: screen;
+  opacity: 0.85;
+  background-image:
+    radial-gradient(
+      ellipse 26.25% 40% at 8.75% 84.44%,
+      color-mix(in srgb, var(--sr-ember) 30%, transparent),
+      transparent 72%
+    ),
+    radial-gradient(
+      ellipse 18.75% 28.89% at 87.5% 77.78%,
+      color-mix(in srgb, var(--sr-ember) 16%, transparent),
+      transparent 72%
+    ),
+    radial-gradient(
+      ellipse 43.75% 17.78% at 50% 91.11%,
+      color-mix(in srgb, var(--sr-ember) 16%, transparent),
+      transparent 72%
+    );
+}
+
+:global([data-world="portrait"]) .gourdGlow {
+  background-image: radial-gradient(
+    ellipse 71.43% 17.58% at 50% 64.84%,
+    color-mix(in srgb, var(--sr-ember) 22%, transparent),
+    transparent 72%
+  );
+}
+
+/* The ceiling falls away into black above the rafters (120 world px). */
+.ceiling {
+  inset-block-start: 0;
+  inset-inline: 0;
+  block-size: 13.33%;
+  background-image: linear-gradient(
+    var(--sr-surface-0),
+    color-mix(in srgb, var(--sr-surface-0) 70%, transparent) 40%,
+    transparent
+  );
+}
+
+:global([data-world="portrait"]) .ceiling {
+  display: none;
+}
+
+/* The set's own light on the room, centred on the glass. */
+.spill {
+  inset: 0;
+  mix-blend-mode: screen;
+  background-image: radial-gradient(
+    ellipse 40% 62.22% at 49.875% 43.11%,
+    color-mix(in srgb, var(--sr-phosphor-spill) 26%, transparent),
+    color-mix(in srgb, var(--sr-phosphor-spill) 8%, transparent) 45%,
+    transparent 75%
+  );
+}
+
+:global([data-world="portrait"]) .spill {
+  background-image: radial-gradient(
+    ellipse 78.57% 36.26% at 50% 29.89%,
+    color-mix(in srgb, var(--sr-phosphor-spill) 28%, transparent),
+    color-mix(in srgb, var(--sr-phosphor-spill) 10%, transparent) 45%,
+    transparent 75%
+  );
+}
+
+.vignette {
+  inset: 0;
+  background-image: radial-gradient(
+    ellipse 68.75% 91.11% at 49.875% 46.67%,
+    transparent 40%,
+    color-mix(in srgb, var(--sr-surface-0) 42%, transparent) 74%,
+    color-mix(in srgb, var(--sr-surface-0) 84%, transparent)
+  );
+}
+
+:global([data-world="portrait"]) .vignette {
+  background-image: radial-gradient(
+    ellipse 90.48% 57.14% at 50% 35.16%,
+    transparent 45%,
+    color-mix(in srgb, var(--sr-surface-0) 50%, transparent) 80%,
+    color-mix(in srgb, var(--sr-surface-0) 85%, transparent)
+  );
+}
+
+/* Floor shadow: the set's cut-off base and the gourd row sink into it (690 world px down). */
+.floorShade {
+  inset-block: 76.67% 0;
+  inset-inline: 0;
+  background-image: linear-gradient(
+    transparent,
+    color-mix(in srgb, var(--sr-surface-0) 62%, transparent) 45%,
+    color-mix(in srgb, var(--sr-surface-0) 90%, transparent)
+  );
+}
+
+:global([data-world="portrait"]) .floorShade {
+  inset-block-start: 51.65%;
+  background-image: linear-gradient(
+    transparent,
+    color-mix(in srgb, var(--sr-surface-0) 80%, transparent) 18%,
+    color-mix(in srgb, var(--sr-surface-0) 92%, transparent)
+  );
+}
+
+/* When the stage is not the world's shape, the world sits in surface-0 bands ([data-band] from
+   World.tsx). The world's edges on those sides shade into the band so the photo has no hard
+   rectangle edge (requirement 4.3). Flush to the stage, nothing is drawn. */
+.edges {
+  inset: 0;
+  display: none;
+}
+
+:global([data-band="pillar"]) .edges {
+  display: block;
+  background-image: linear-gradient(
+    to right,
+    var(--sr-surface-0),
+    transparent 7%,
+    transparent 93%,
+    var(--sr-surface-0)
+  );
+}
+
+:global([data-band="letter"]) .edges {
+  display: block;
+  background-image: linear-gradient(var(--sr-surface-0), transparent 7%, transparent 93%, var(--sr-surface-0));
+}

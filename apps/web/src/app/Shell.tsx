@@ -3,6 +3,7 @@
 // status "sealed" renders the sealed door and its line of lore instead.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { buildKeymap, GLOBAL_BINDINGS, stepChannel, useHotkeys, type KeyAction } from "./keys";
+import { LandingPage } from "../landing/LandingPage";
 import { channelPages, PAGES, type PageDef } from "./pages";
 import { usePlane, type Plane } from "./plane";
 import { handleLinkClick, navigate, useRoute } from "./router";
@@ -114,8 +115,14 @@ export interface ShellViewProps {
 /** Pure render of the shell for a given route and settings (rendered directly by tests). */
 export function ShellView({ path, page, plane, theme, motion, gotoOpen, onToggleTheme, onCloseGoto }: ShellViewProps) {
   const next = nextTheme(theme);
+  const onSet = page?.id === "landing";
   return (
-    <div data-shell data-motion={motion} data-plane={plane} className={styles.shell}>
+    <div
+      data-shell
+      data-motion={motion}
+      data-plane={plane}
+      className={onSet ? `${styles.shell} ${styles.onSet}` : styles.shell}
+    >
       <header className={styles.header}>
         <a href="/" className={styles.brand} onClick={(event) => handleLinkClick(event, "/")}>
           Shadowrunner
@@ -145,11 +152,13 @@ export function ShellView({ path, page, plane, theme, motion, gotoOpen, onToggle
         )}
       </header>
       {gotoOpen && <GoTo current={page} onClose={onCloseGoto} />}
-      <main className={styles.main}>
+      <main className={onSet ? styles.set : styles.main}>
         {page === undefined ? (
           <NoSignal path={path} />
         ) : page.status === "sealed" ? (
           <SealedDoor page={page} />
+        ) : onSet ? (
+          <LandingPage />
         ) : (
           <Placeholder page={page} />
         )}

@@ -90,6 +90,21 @@
   padding: var(--sr-space-6) var(--sr-space-5);
 }
 
+/* On the set the world takes exactly the viewport under the header, with no page scroll. */
+.onSet {
+  display: flex;
+  flex-direction: column;
+  block-size: 100dvh;
+  overflow: hidden;
+}
+
+.set {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-block-size: 0;
+}
+
 .main h1 {
   margin: 0 0 var(--sr-space-4);
   font-family: var(--sr-font-display);

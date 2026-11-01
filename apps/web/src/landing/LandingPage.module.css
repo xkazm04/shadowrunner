@@ -1,0 +1,15 @@
+/* The landing fills the space the shell leaves under its header; the world scales into it. */
+
+.landing {
+  display: flex;
+  flex: 1 1 auto;
+  min-block-size: 0;
+}
+
+/* Overrides the stage's default 100dvh (two classes, so CSS chunk order cannot flip it): here the
+   shell's main gives the height and the stage stretches into it. */
+.landing .stage {
+  flex: 1 1 auto;
+  block-size: auto;
+  min-block-size: 0;
+}
