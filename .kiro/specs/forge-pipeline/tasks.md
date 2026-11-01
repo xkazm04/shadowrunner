@@ -5,9 +5,15 @@
   - _Requirements: 7.1_
 
 - [ ] 1. Spike (run first; gates the rest)
-  - [ ] 1.1 `scripts/forge-spike.mjs`: generate 3 portraits from 3 different prompts with `portraitPrompt`, request parts with `PARTS_PROMPT`, save JSON + overlays under `var/forge-spike/`. Reads `GEMINI_API_KEY` from env; refuses to run without it; not referenced by any test.
+  - [x] 1.1 `scripts/forge-spike.mjs`: generate 3 portraits from 3 different prompts with `portraitPrompt`, request parts with `PARTS_PROMPT`, save JSON + overlays under `var/forge-spike/`. Reads `GEMINI_API_KEY` from env; refuses to run without it; not referenced by any test.
   - [ ] 1.2 Write `docs/decisions/0003-forge-spike.md`: per portrait timings, part count, whether a rig assembled and validated (after tasks 3-6 exist, re-run and update), overlay paths, and the decision (polygons vs pose-template fallback).
   - _Requirements: 1.1, 1.2, 1.3_
+
+- Director rulings on the spike findings (docs/decisions/0003, 2026-11-01), binding for tasks 2-4:
+  1. Gemini returns JPEG: `png.ts` becomes `image.ts` with `decodeImage` (PNG via `upng-js`, JPEG via the pure-JS `jpeg-js`), sniffed by magic bytes; layers are still encoded as PNG.
+  2. Background is near-black, not #050505: `lumaKey` takes `lo` measured per portrait from its four 40 px corner patches (max corner luma + 4, at least 10), not a constant.
+  3. `rasterizeMask` uses the non-zero winding rule (Gemini polygons can self-cross); property with a self-crossing polygon.
+  4. Hoods: when the `head` polygon lies mostly (>60% of its area) inside `hat`, subtract the head, eyes and jaw polygons from the hat mask before cutting; golden test from the spike's Announcer parts.
 
 - [ ] 2. Types, prompts and part parsing
   - [ ] 2.1 `types.ts`, `prompts.ts` (exact strings from design.md), `png.ts` with `upng-js`.
