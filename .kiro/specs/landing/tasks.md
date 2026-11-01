@@ -57,6 +57,6 @@
   - _Requirements: 8.1, 8.2, 8.3_
 
 - [ ] 10. Guards
-  - [ ] 10.1 Playwright visual test (`pnpm test:visual`): 1600x900 in both themes, 390x844 in halloween and daemon-lost at 1600x900, all with reduced motion on the replay plane, 2% tolerance, baselines committed.
+  - [x] 10.1 Playwright visual test (`pnpm test:visual`): 1600x900 in both themes, 390x844 in halloween and daemon-lost at 1600x900, all with reduced motion on the replay plane, 2% tolerance, baselines committed.
   - [ ] 10.2 Lighthouse accessibility of 90 or more and a first load of 2 MB or less on the deployed URL, recorded in `docs/kiro-log.md`.
   - _Requirements: 9.4, 9.5, 10.1, 10.2_
