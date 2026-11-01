@@ -22,20 +22,23 @@ describe("Malakor golden import", () => {
     expect(rig).toMatchObject({ version: 1, source: "import", width: 1024, height: 1024 });
   });
 
-  it("takes its palette from m8.spec.json: teal eye light for eye/glow/mouth, orange line for rim", () => {
-    // mouth [0.2, 0.85, 0.78] -> #33d9c7, line_core [1, 0.62, 0.22] -> #ff9e38 (x255, rounded).
-    expect(malakor().rig.palette).toEqual({ glow: "#33d9c7", eye: "#33d9c7", rim: "#ff9e38", mouth: "#33d9c7" });
+  it("takes its palette from m8.spec.json: teal eye light for eye/mouth, orange lines for glow and rim", () => {
+    // mouth [0.2, 0.85, 0.78] -> #33d9c7, line_glow [0.85, 0.45, 0.12] -> #d9731f,
+    // line_core [1, 0.62, 0.22] -> #ff9e38 (x255, rounded).
+    expect(malakor().rig.palette).toEqual({ glow: "#d9731f", eye: "#33d9c7", rim: "#ff9e38", mouth: "#33d9c7" });
   });
 
-  it("gives the eyes a teal light (green and blue well above red), the monocle rim an orange one", () => {
+  it("gives the eyes a teal light (green and blue well above red), the monocle ring an orange rim and glow", () => {
     const rgb = (hex: string): [number, number, number] => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)) as [number, number, number];
     const { palette } = malakor().rig;
     const [er, eg, eb] = rgb(palette.eye);
     expect(eg).toBeGreaterThan(2 * er);
     expect(eb).toBeGreaterThan(2 * er);
-    const [rr, rg, rb] = rgb(palette.rim);
-    expect(rr).toBeGreaterThan(rg);
-    expect(rg).toBeGreaterThan(rb);
+    for (const ring of [palette.rim, palette.glow]) {
+      const [rr, rg, rb] = rgb(ring);
+      expect(rr).toBeGreaterThan(rg);
+      expect(rg).toBeGreaterThan(rb);
+    }
   });
 
   it("maps every layer per the design.md table and follows the head", () => {

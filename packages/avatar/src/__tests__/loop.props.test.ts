@@ -33,11 +33,16 @@ describe("cutGesture", () => {
       fc.property(driveArb, (d) => {
         const drive = toDriveOf(d);
         const cut = poseLayers(rig, look, cutGesture(drive, true));
-        const running = d.elapsed >= 0 && d.elapsed <= GESTURE_DURATION_S;
+        // Elapsed as the drive's own clock gives it: at the edges `t - startedAt` can differ from
+        // `d.elapsed` by an ulp (1.7 + 0.4 = 2.0999999999999996), and the gesture runs on that clock.
+        const elapsed = drive.t - d.startedAt;
+        const running = elapsed >= 0 && elapsed <= GESTURE_DURATION_S;
         const peak = poseLayers(rig, look, { ...drive, t: d.startedAt + GESTURE_DURATION_S / 2 });
         const rest = poseLayers(rig, look, drive);
         expect(cut).toEqual(running ? peak : rest);
       }),
+      // The float edges that once made this property flaky, run on every pass.
+      { examples: [[{ startedAt: 1.7, elapsed: 0.4, name: "nod", yaw: -22, jaw: 0 }], [{ startedAt: 0.1, elapsed: 0.4, name: "tilt", yaw: 0, jaw: 0 }], [{ startedAt: 0.3, elapsed: 0, name: "flare", yaw: 0, jaw: 0 }]] },
     );
   });
 
