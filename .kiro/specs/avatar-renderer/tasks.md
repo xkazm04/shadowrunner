@@ -29,7 +29,7 @@
   - `canvas2d/renderer.ts` with the same interface; `createRenderer` falls back when `webgl2` is null or throws, and on `webglcontextlost`; test via stub that `info().mode === "2d"`.
   - _Requirements: 2.1, 2.2, 2.3_
 
-- [ ] 5. React wrapper
+- [x] 5. React wrapper
   - `react/AvatarCanvas.tsx`: owns canvas, renderer, driver, rAF loop; `drive` override; reads `prefers-reduced-motion` and `[data-motion]`; gesture prop edge-triggers; cancels loop and disposes on unmount. Test with React Testing Library + the GL stub.
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 5.3_
 

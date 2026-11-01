@@ -9,3 +9,5 @@ export * from "./render/types.js";
 export * from "./render/frame.js";
 export * from "./gl/renderer.js";
 export * from "./canvas2d/renderer.js";
+export * from "./react/loop.js";
+export * from "./react/AvatarCanvas.js";
