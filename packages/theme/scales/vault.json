@@ -1,0 +1,7 @@
+{
+  "vault": {
+    "alarm": "#ffd2c4",
+    "word": "clamp(7.5rem, 24vh, 15rem)",
+    "reading": "clamp(1.4375rem, 3.5vh, 2.125rem)"
+  }
+}

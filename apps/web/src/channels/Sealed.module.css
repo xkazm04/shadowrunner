@@ -1,37 +1,338 @@
-/* CH 9 (Sealed.tsx): the reference's `#tubeText .kick`, `.big` and `.sub` on the snow. The type is
-   phosphor on the tube's dark band (Tube.module.css), so it holds AA over the static. */
+/* CH 9, lights out (Sealed.tsx), ported from r1/sealed-c.html. Three copies of the crt-frontal
+   plate: the dark base, the wall lit by the tube while it is on (flickering with the snow's
+   brightness, --flick), and the torch under the pointer (--mx/--my, written through a ref). The
+   glass is the landing's superellipse; the Announcer's reflection grows with each switch-off
+   (--peak, --refl-w from SealedGlass.reflection). Literal colours are roles: the torch and the
+   pilot ring are ember, the tube is phosphor and phosphor-spill, the tag is paper and paper-ink,
+   its status line paper-ink-signal. Glows are drop-shadow filters. */
 
-.page {
-  display: flex;
-  justify-content: center;
-  inline-size: 100%;
+.cellar {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  display: grid;
+  grid-template-rows: 4.5rem 1fr;
+  place-items: center;
+  overflow: hidden;
+  color: var(--sr-text-strong);
+  background-color: var(--sr-surface-0);
+  cursor: none;
 }
 
-.kick {
+.sr {
+  position: absolute;
+  inline-size: 0.0625rem;
+  block-size: 0.0625rem;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.set {
+  position: relative;
+  grid-row: 2;
+  inline-size: min(73.75rem, 100vw, calc((100dvh - 5rem) * 1.3393));
+  aspect-ratio: 1200 / 896;
+  margin: 0;
+  container-type: inline-size;
+}
+
+.layer {
+  position: absolute;
+  inset: 0;
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  pointer-events: none;
+}
+
+.base {
+  filter: brightness(0.05) saturate(0.3);
+}
+
+/* The torch: warm, small, follows the pointer; clicks on with a stutter. */
+.torch {
+  filter: brightness(0.9) sepia(0.45) saturate(1.1) contrast(1.05);
+  mask-image: radial-gradient(
+    circle 13cqw at var(--mx, 50%) var(--my, 62%),
+    var(--sr-surface-0) 0,
+    color-mix(in srgb, var(--sr-surface-0) 55%, transparent) 45%,
+    transparent 100%
+  );
+  animation: torch 0.8s step-end both;
+}
+
+@keyframes torch {
+  0%,
+  62% {
+    opacity: 0;
+  }
+
+  62.5% {
+    opacity: 0.7;
+  }
+
+  70% {
+    opacity: 0;
+  }
+
+  80% {
+    opacity: 0.9;
+  }
+
+  87.5% {
+    opacity: 0.2;
+  }
+
+  97.5%,
+  100% {
+    opacity: 1;
+  }
+}
+
+/* The wall is lit only while the tube is on. */
+.tubelit {
+  filter: brightness(0.85) saturate(0.6) hue-rotate(8deg);
+  opacity: 0;
+  mask-image: radial-gradient(ellipse 42% 48% at 50% 47%, var(--sr-surface-0) 30%, transparent 100%);
+  transition: opacity 0.15s;
+}
+
+.cellar[data-power="on"] .tubelit {
+  opacity: var(--flick, 1);
+}
+
+.edge {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(ellipse 52% 56% at 50% 46%, transparent 60%, var(--sr-surface-0) 100%);
+  pointer-events: none;
+}
+
+.glass {
+  position: absolute;
+  inset-block-start: var(--glass-y);
+  inset-inline-start: var(--glass-x);
+  display: grid;
+  inline-size: var(--glass-w);
+  block-size: var(--glass-h);
+  overflow: hidden;
+  background-color: var(--sr-surface-0);
+}
+
+.glass > *,
+.screen > * {
+  grid-area: 1 / 1;
+}
+
+/* Black glass at rest: it reflects your torch. */
+.sheen {
+  background-image:
+    radial-gradient(circle 9cqw at var(--gx, 50%) var(--gy, 50%), color-mix(in srgb, var(--sr-ember) 13%, transparent), transparent 70%),
+    radial-gradient(ellipse 34% 20% at 24% 14%, color-mix(in srgb, var(--sr-phosphor) 9%, transparent), transparent 70%),
+    radial-gradient(ellipse 72% 72% at 50% 50%, transparent 50%, color-mix(in srgb, var(--sr-surface-0) 80%, transparent) 100%);
+  pointer-events: none;
+}
+
+/* Who was standing behind you: mirrored, blurred, a little clearer every switch-off. */
+.refl {
+  position: relative;
+  inset-inline-end: 2%;
+  align-self: end;
+  justify-self: end;
+  inline-size: var(--refl-w, 62%);
+  block-size: auto;
+  opacity: 0;
+  filter: grayscale(0.3) contrast(1.4) brightness(0.9) blur(0.075rem);
+  mix-blend-mode: screen;
+  mask-image: radial-gradient(ellipse 50% 55% at 50% 45%, var(--sr-surface-0) 40%, transparent 80%);
+  transform: scaleX(-1);
+  pointer-events: none;
+  animation: glimpse 2.8s ease-out forwards;
+}
+
+@keyframes glimpse {
+  18% {
+    opacity: 0;
+  }
+
+  32% {
+    opacity: var(--peak);
+  }
+
+  40% {
+    opacity: calc(var(--peak) * 0.6);
+  }
+
+  50% {
+    opacity: var(--peak);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scaleX(-1) translateX(3%);
+  }
+}
+
+.screen {
+  display: grid;
+  background-color: var(--sr-surface-1);
+  opacity: 0;
+  transform: scale(0, 0);
+  transform-origin: 50% 50%;
+}
+
+.screen[data-power="on"] {
+  animation: tube-on 0.62s cubic-bezier(0.6, 0, 0.3, 1) forwards;
+}
+
+.screen[data-power="off"] {
+  animation: tube-off 0.38s cubic-bezier(0.7, 0, 0.4, 1) forwards;
+}
+
+@keyframes tube-on {
+  0% {
+    opacity: 1;
+    transform: scale(0.02, 0.004);
+    filter: brightness(4);
+  }
+
+  35% {
+    opacity: 1;
+    transform: scale(1, 0.006);
+    filter: brightness(3);
+  }
+
+  100% {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+@keyframes tube-off {
+  0% {
+    opacity: 1;
+    transform: none;
+  }
+
+  45% {
+    opacity: 1;
+    transform: scale(1, 0.005);
+    filter: brightness(3);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(0.01, 0.004);
+    filter: brightness(4);
+  }
+}
+
+.screen canvas {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  opacity: 0.8;
+  filter: contrast(1.25);
+}
+
+.slate {
+  position: relative;
+  align-self: center;
+  justify-self: center;
+  padding: var(--sr-space-4) var(--sr-space-5);
+  border-radius: var(--sr-radius-1);
+  text-align: center;
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--sr-surface-0) 78%, transparent),
+    color-mix(in srgb, var(--sr-surface-0) 78%, transparent)
+  );
+}
+
+.slate p {
   margin: 0;
   color: var(--sr-phosphor-2);
   font-family: var(--sr-font-display);
   font-size: var(--sr-size-text-lg);
   font-weight: 700;
-  letter-spacing: 0.18em;
+  line-height: 1;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
 }
 
-.big {
-  margin: var(--sr-space-1) 0 0;
+.slate h1 {
+  margin: var(--sr-space-2) 0 0;
   color: var(--sr-phosphor);
   font-family: var(--sr-font-display);
   font-size: var(--sr-size-headline);
-  font-weight: 700;
+  font-weight: 800;
   line-height: 0.95;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
+  filter: drop-shadow(0 0 1rem color-mix(in srgb, var(--sr-phosphor-spill) 50%, transparent));
 }
 
-.lore {
-  margin: var(--sr-space-3) 0 0;
-  color: var(--sr-phosphor);
-  font-family: var(--sr-font-display);
-  font-size: var(--sr-size-text-lg);
-  line-height: 1.25;
+.scan {
+  background-image: repeating-linear-gradient(
+    0deg,
+    color-mix(in srgb, var(--sr-surface-0) 28%, transparent) 0 0.0625rem,
+    transparent 0.0625rem 0.1875rem
+  );
+  pointer-events: none;
+}
+
+/* The tube collapses to a dot that lingers, then goes. */
+.dot {
+  place-self: center;
+  inline-size: 1.2cqw;
+  block-size: 1.2cqw;
+  border-radius: var(--sr-radius-pill);
+  background-color: var(--sr-phosphor);
+  opacity: 0;
+  filter: drop-shadow(0 0 1.5cqw var(--sr-phosphor-spill));
+  pointer-events: none;
+  animation: dot 1.5s 0.34s;
+}
+
+@keyframes dot {
+  25% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .torch,
+  .dot,
+  .refl,
+  .screen[data-power] {
+    animation: none;
+  }
+
+  .tubelit {
+    transition: none;
+  }
+
+  .screen[data-power="on"] {
+    opacity: 1;
+    transform: none;
+  }
+
+  .refl {
+    opacity: calc(var(--peak) * 0.8);
+  }
+}
+
+/* Narrow screens: the set spans the width; the cellar scrolls to the tag below it. */
+@media (max-width: 56rem) {
+  .cellar {
+    grid-template-rows: 12rem auto;
+    place-items: start center;
+    overflow-y: auto;
+    cursor: auto;
+  }
+
+  .set {
+    inline-size: 100vw;
+  }
 }

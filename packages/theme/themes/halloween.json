@@ -102,5 +102,8 @@
   "wall-glow-osd": "wall.glowosd",
   "wall-glow-onair": "wall.glowonair",
   "wall-glow-led": "wall.glowled",
-  "wall-size-name": "wall.sizename"
+  "wall-size-name": "wall.sizename",
+  "vault-alarm": "vault.alarm",
+  "vault-word-size": "vault.word",
+  "vault-reading-size": "vault.reading"
 }

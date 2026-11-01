@@ -25,6 +25,8 @@ const PAPER_PAIRS: [string, string, number][] = [
 // glass has no role of its own; its backing is a surface, so phosphor must clear 4.5:1 on all of them.
 const PHOSPHOR_TEXT = ["phosphor", "phosphor-2"];
 const GLASS_PAIRS = SURFACES.flatMap((bg) => PHOSPHOR_TEXT.map((fg): [string, string, number] => [fg, bg, AA_BODY]));
+// costume 5.1: the root vault's alarm readings sit on the darkened plate, backed by surface-0 shade.
+const VAULT_PAIRS = SURFACES.map((bg): [string, string, number] => ["vault-alarm", bg, AA_BODY]);
 
 // costume 4 (the wall of sets): the cabinet plates (14 px hour, name in text-strong) sit on the
 // darkened lower band of each cabinet skin, so both inks clear 4.5:1 on every skin's low stop; the
@@ -51,6 +53,7 @@ const PAIRS: [fg: string, bg: string, min: number][] = [
   ...PAPER_PAIRS,
   ...GLASS_PAIRS,
   ...WALL_PAIRS,
+  ...VAULT_PAIRS,
 ];
 
 it("finds surfaces and text roles to pair", () => {

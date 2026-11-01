@@ -102,5 +102,8 @@
   "wall-glow-osd",
   "wall-glow-onair",
   "wall-glow-led",
-  "wall-size-name"
+  "wall-size-name",
+  "vault-alarm",
+  "vault-word-size",
+  "vault-reading-size"
 ]
