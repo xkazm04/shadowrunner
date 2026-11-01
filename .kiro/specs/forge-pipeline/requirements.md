@@ -44,7 +44,7 @@ no keys.
 1. `rasterizeMask(poly, w, h, feather)` SHALL produce an alpha mask in [0,255] whose fully-opaque area lies inside the polygon and whose feather band is at most `feather` px wide.
 2. `lumaKey(rgba, lo, hi)` SHALL make near-black ground transparent (luma <= lo -> 0, >= hi -> 255, linear between).
 3. `cutLayer(portrait, mask)` SHALL return an RGBA image cropped to the mask's bbox plus the bbox in canvas px.
-4. Cutting SHALL be front to back (eyes, monocle/accessories, jaw before head; head before torso) so no pixel belongs to two layers' opaque cores.
+4. Cutting SHALL be front to back (eyes, monocle/accessories, jaw before head; head before torso) so no pixel belongs to two layers' opaque cores. Exception (director ruling 2026-11-01): when a filled plate is given, head and torso are cut from the plate and may lie under the cores of `FILL_PARTS` (eyes, monocle, accessory, jaw), so an open jaw or a moving eye reveals painted surface, never a hole.
 5. All cut functions SHALL be pure over `{ width, height, data: Uint8ClampedArray }` and tested without network.
 
 ## Requirement 5: Fill

@@ -7,49 +7,16 @@
 //     outer silhouette fades to the ground by design and is left out).
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import portraitUrl from "../../../assets/characters/malakor/rig/portrait.png?inline";
 import announcer from "../test/fixtures/spike-announcer-of-dead-air-parts.json";
 import m8 from "../test/fixtures/m8-parts.json";
-import { CUT_FEATHER, type CutPart, type CutResult, KEYED_PARTS, cutAll } from "./cut.js";
-import { decodeImage } from "./image.js";
+import { CUT_FEATHER, type CutPart, type CutResult, HOOD_SHARE, KEYED_PARTS, cutAll, hoodShare } from "./cut.js";
+import { malakorPortrait, partsOf } from "./malakor.fixture.js";
 import { KEY_HI, type Mask, cornerKeyLo, featherMask, luma, lumaKey, rasterizeMask } from "./mask.js";
-import { parseParts, toCanvas } from "./parts.js";
+import { toCanvas } from "./parts.js";
 import { PART_NAMES, type Part, type Rgba } from "./types.js";
 
 /** Largest luma change a seam may cause (task 4 (b)). */
 const SEAM_TOLERANCE = 8;
-
-function unbase64(text: string): Uint8Array {
-  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-  const table = new Int16Array(128).fill(-1);
-  for (let i = 0; i < 64; i++) table[alphabet.charCodeAt(i)] = i;
-  const clean = text.replace(/=+$/, "");
-  const out = new Uint8Array(Math.floor((clean.length * 6) / 8));
-  let acc = 0;
-  let bits = 0;
-  let at = 0;
-  for (let i = 0; i < clean.length; i++) {
-    acc = ((acc << 6) | (table[clean.charCodeAt(i)] ?? 0)) & 0xffffff;
-    bits += 6;
-    if (bits >= 8) {
-      bits -= 8;
-      out[at++] = (acc >> bits) & 255;
-    }
-  }
-  return out;
-}
-
-function malakorPortrait(): Rgba {
-  const decoded = decodeImage(unbase64(portraitUrl.slice(portraitUrl.indexOf(",") + 1)));
-  if (!decoded.ok) throw new Error(decoded.errors.message);
-  return decoded.value;
-}
-
-function partsOf(json: unknown): Part[] {
-  const parsed = parseParts(json);
-  if (!parsed.ok) throw new Error("fixture does not parse");
-  return parsed.value.parts;
-}
 
 /** Layers (front to back, as cutAll returns them) composited back to front over black: RGB floats. */
 function composite(layers: readonly CutPart[], width: number, height: number): Float64Array {
@@ -133,6 +100,35 @@ describe("seams (task 4 (b))", () => {
     fc.assert(
       fc.property(arbParts, arbPortrait, (parts, portrait) => {
         expect(seams(portrait, parts, cutAll(portrait, parts))).toEqual([]);
+      }),
+      { numRuns: 150 },
+    );
+  });
+
+  // Task 5 ruling (c): a plain hat sits above the head and overlaps its top, not a hood.
+  const arbBand = (yMin: number, yMax: number): fc.Arbitrary<[number, number][]> =>
+    fc.array(fc.tuple(fc.integer({ min: yMin, max: yMax }), fc.integer({ min: 0, max: 1000 })), { minLength: 3, maxLength: 12 });
+  const arbHatted: fc.Arbitrary<Part[]> = fc
+    .tuple(arbBand(350, 1000), arbBand(0, 550), fc.subarray(PART_NAMES.filter((n) => n !== "head" && n !== "hat")))
+    .chain(([head, hat, others]) =>
+      fc
+        .tuple(...others.map((name) => arbPoly.map((poly): Part => ({ name, box_2d: [0, 0, 1000, 1000], poly }))))
+        .map((rest): Part[] => [
+          { name: "head", box_2d: [0, 0, 1000, 1000], poly: head },
+          { name: "hat", box_2d: [0, 0, 1000, 1000], poly: hat },
+          ...rest,
+        ]),
+    );
+
+  it("property: a plain hat on a head (overlapping it, head not inside it) composites back without a seam", () => {
+    fc.assert(
+      fc.property(arbHatted, arbPortrait, (parts, portrait) => {
+        const poly = (name: Part["name"]): [number, number][] => toCanvas(parts.find((p) => p.name === name)?.poly ?? [], SIZE, SIZE);
+        const share = hoodShare(poly("head"), poly("hat"), SIZE, SIZE);
+        fc.pre(share > 0 && share <= HOOD_SHARE);
+        const result = cutAll(portrait, parts);
+        expect(result.hood).toBe(false);
+        expect(seams(portrait, parts, result)).toEqual([]);
       }),
       { numRuns: 150 },
     );

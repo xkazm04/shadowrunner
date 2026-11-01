@@ -12,3 +12,4 @@ export * from "./mask.js";
 export * from "./cut.js";
 export * from "./fill.js";
 export * from "./palette.js";
+export * from "./assemble.js";

@@ -32,7 +32,7 @@
   - `fill.ts` `blurExtend` (iterative masked blur outward from the hole edge); `palette.ts` `samplePalette`; tests on synthetic images.
   - _Requirements: 5.3, 6.3_
 
-- [ ] 5. Assemble
+- [x] 5. Assemble
   - Director rulings from the task 4 review (2026-11-01): (a) open jaw must not show a hole: when `cutAll` gets `plate`, the plate-sourced layers (head, torso) are NOT reduced by the cores of parts the fill removed (jaw, eyes, monocle, accessory); test that the head layer is opaque under the jaw polygon on the m8 fixture. (b) `samplePalette` never falls back to a fixed colour: when no eye pixels qualify, derive from the head region's dominant saturated hue, and return a `palette_fallback` warning that `assembleRig` surfaces. (c) add a seam property for a plain hat on a head (hat above, head polygon not inside it).
   - `assemble.ts`: anchors, depth defaults, follows, background layer, `fictional: true`; property: output always passes `validateRig`; golden: Malakor portrait + m8 parts -> valid rig.
   - _Requirements: 6.1, 6.2, 6.3, 6.4_
@@ -44,6 +44,7 @@
   - _Requirements: 7.2, 7.3, 7.6_
 
 - [ ] 7. Forge endpoints and steps
+  - From the task 5 review: take the fill list for `fillPrompt` and the `blurExtend` hole from `FILL_PARTS` (one owner); map `assembleRig`'s `RangeError` on a plate/portrait size mismatch to `upstream` (never a raw error to the client); when the spike is re-run for 1.2, inspect each composite for a box edge around the jaw on the plate-sourced head and record it in 0003.
   - Malformed parts JSON (seen live 2026-11-01: Gemini added a stray `]`): `packages/forge/src/validate.ts` `parsePartsJson(text)` is the only `JSON.parse` of the reply; when it fails, the parts step re-asks the model once (counts against quota), then fails the job with `upstream`. No text repair in production. Test with the recorded raw reply.
   - [ ] 7.1 `api/forge/index.ts` (validation, likeness/content check for images, quota, portrait step) and `api/forge/[jobId].ts` (advance one step via `forge-steps.ts`: parts -> fill (edit, fallback on failure/30 s) -> cut -> assemble).
   - [ ] 7.2 Tests with a fake Gemini client: happy path reaches `done` with a valid rig; `refused_likeness`; `quota` before any call; upstream garbage -> `upstream`; no secret or raw upstream text in responses.

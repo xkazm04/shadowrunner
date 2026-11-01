@@ -30,6 +30,13 @@ export const KEYED_PARTS: readonly PartName[] = ["crown", "hair", "accessory"];
 /** Parts cut from the filled plate when one is given (step 4). */
 export const PLATE_PARTS: readonly PartName[] = ["head", "torso"];
 
+/**
+ * Parts the fill step removes from the plate (task 5 ruling (a)): the server passes these to
+ * `fillPrompt` and to `blurExtend`'s hole. They move or hide on their own, so the plate under them
+ * is painted surface that the head layer carries.
+ */
+export const FILL_PARTS: readonly PartName[] = ["eye_l", "eye_r", "monocle", "accessory", "jaw"];
+
 /** Ruling 4: a hat holding more than this share of the head's area is a hood. */
 export const HOOD_SHARE = 0.6;
 
@@ -61,7 +68,11 @@ export interface CutResult {
 }
 
 export interface CutOptions {
-  /** The filled portrait (fill step); head and torso are cut from it. Defaults to the portrait. */
+  /**
+   * The filled portrait (fill step, FILL_PARTS removed); head and torso are cut from it and keep
+   * the filled surface under FILL_PARTS (ruling (a)). Without it head and torso come from the
+   * portrait and lose those parts' cores like any other.
+   */
   plate?: Rgba;
   /** Defaults to CUT_FEATHER. */
   feather?: number;
@@ -157,17 +168,34 @@ function underFront(own: Mask, front: Mask, reach: number): Mask {
  * `lumaKey(cornerKeyLo(portrait), KEY_HI)`; for a hood (head more than HOOD_SHARE inside the hat)
  * take the head, eye and jaw masks out of the hat; then drop every pixel where a part in front is
  * fully opaque. So opaque cores never overlap, and where a front part's edge is partly transparent
- * the part behind it is opaque: the stack composites back to the source with no dark seam. Head and torso are cut from `options.plate` when given. A part name that repeats
+ * the part behind it is opaque: the stack composites back to the source with no dark seam.
+ * With `options.plate` (ruling (a)), head and torso are cut from the plate, are not reduced by the
+ * cores of FILL_PARTS, and the head also takes in the FILL_PARTS polygons, so an open jaw or a
+ * hidden monocle shows filled surface, never a hole. Without a plate no two cores overlap at all;
+ * with one, only a FILL_PARTS core may overlap a head or torso core. A part name that repeats
  * keeps its first polygon (parseParts already drops repeats).
  */
 export function cutAll(portrait: Rgba, parts: readonly Part[], options: CutOptions = {}): CutResult {
   const { width, height } = portrait;
+  const filled = options.plate !== undefined;
   const plate = options.plate ?? portrait;
   sameSize(portrait, plate, "cutAll plate");
   const feather = options.feather ?? CUT_FEATHER;
 
   const polys = new Map<PartName, Polygon>();
   for (const part of parts) if (!polys.has(part.name)) polys.set(part.name, toCanvas(part.poly, width, height));
+
+  /** Ruling (a): hard union of the FILL_PARTS polygons, which the head covers on a filled plate. */
+  const lifted: Mask = { width, height, data: new Uint8ClampedArray(width * height) };
+  if (filled) {
+    for (const name of FILL_PARTS) {
+      const poly = polys.get(name);
+      if (poly === undefined) continue;
+      rasterizeMask(poly, width, height, 0).data.forEach((a, i) => {
+        if (a !== 0) lifted.data[i] = 255;
+      });
+    }
+  }
 
   const keyLo = Math.min(cornerKeyLo(portrait), KEY_HI - 1);
   let key: Mask | undefined;
@@ -180,13 +208,17 @@ export function cutAll(portrait: Rgba, parts: readonly Part[], options: CutOptio
   const front: Mask = { width, height, data: new Uint8ClampedArray(width * height) };
   /** 1 where a part in front is fully opaque: nothing behind may keep alpha there. */
   const core = new Uint8Array(width * height);
+  /** The same, counting only parts outside FILL_PARTS: what blocks head and torso on a filled plate. */
+  const kept = new Uint8Array(width * height);
   const layers: CutPart[] = [];
   const empty: PartName[] = [];
   for (const name of CUT_ORDER) {
     const poly = polys.get(name);
     if (poly === undefined) continue;
     const own = rasterizeMask(poly, width, height, 0);
-    const m = featherMask(underFront(own, front, reach), feather).data;
+    const shape = underFront(own, front, reach);
+    if (filled && name === "head") for (let i = 0; i < shape.data.length; i++) if (lifted.data[i] === 255) shape.data[i] = 255;
+    const m = featherMask(shape, feather).data;
     if (KEYED_PARTS.includes(name)) {
       key ??= lumaKey(portrait, keyLo, KEY_HI);
       for (let i = 0; i < m.length; i++) m[i] = Math.round(((m[i] ?? 0) * (key.data[i] ?? 0)) / 255);
@@ -199,12 +231,18 @@ export function cutAll(portrait: Rgba, parts: readonly Part[], options: CutOptio
         for (let i = 0; i < m.length; i++) m[i] = Math.min(m[i] ?? 0, 255 - (o[i] ?? 0));
       }
     }
+    const onPlate = PLATE_PARTS.includes(name);
+    const blocked = filled && onPlate ? kept : core;
+    const isKept = !FILL_PARTS.includes(name);
     for (let i = 0; i < m.length; i++) {
-      if (core[i] === 1) m[i] = 0;
-      else if (m[i] === 255) core[i] = 1;
+      if (blocked[i] === 1) m[i] = 0;
+      else if (m[i] === 255) {
+        core[i] = 1;
+        if (isKept) kept[i] = 1;
+      }
       if (own.data[i] !== 0) front.data[i] = 255;
     }
-    const cut = cutLayer(PLATE_PARTS.includes(name) ? plate : portrait, { width, height, data: m });
+    const cut = cutLayer(onPlate ? plate : portrait, { width, height, data: m });
     if (cut === undefined) empty.push(name);
     else layers.push({ name, ...cut });
   }
