@@ -42,8 +42,8 @@ character works on day one.
 #### Acceptance criteria
 1. `poseLayers(rig, look, drive): LayerPose[]` SHALL return, per visible layer in `z` order, `{ name, x, y, scale, rotation, opacity, tint }` for a `drive = { t, headYaw, headPitch, jawOpen, blink, gesture? }`.
 2. A layer with `follow` SHALL inherit its parent's translation and rotation about the parent's `anchor`.
-3. `jawOpen` in `[0,1]` SHALL move only `kind: "jaw"` layers, downward, by at most `0.06 * height`.
-4. Parallax: a layer's offset under `headYaw` SHALL scale with its `depth` (0 = background, 1 = nearest) and SHALL be monotonic in `depth`.
+3. `jawOpen` in `[0,1]` SHALL move only `kind: "jaw"` layers, downward in the head's frame (it turns with tilt), by at most `0.06 * height` in canvas pixels under any gesture or scale. The jaw drop SHALL NOT propagate to layers that follow a jaw layer (director ruling 2026-11-01: 4.3 wins over 4.2 for the drop).
+4. Parallax: a layer's offset under `headYaw` SHALL scale with its own `depth` (0 = background, 1 = nearest) and SHALL be monotonic in `depth` across all layers of the rig, followers included: a follower inherits its parent's gesture translation and rotation but takes its parallax from its own depth only (director ruling 2026-11-01).
 5. Layers named in `look.hidden` SHALL be absent from the output.
 6. `poseLayers` SHALL be pure: identical inputs give identical outputs (property).
 

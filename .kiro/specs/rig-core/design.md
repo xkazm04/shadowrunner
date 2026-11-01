@@ -61,8 +61,11 @@ Colours: `spec.colors.line_glow -> glow`, `line_core -> rim`, `mouth -> mouth`, 
 ## Pose math
 For each layer (z order): base position = bbox top-left. Head yaw/pitch in degrees (clamped
 ±22 / ±12, the clamp Overlord measured for 2.5D artefacts): parallax offset `dx = yaw/22 * 0.04
-* width * depth`, `dy = pitch/12 * 0.03 * height * depth`. Followers add the parent's offset and
-rotate about the parent's anchor. Jaw: `dy += jawOpen * 0.06 * height`. Blink in [0,1] scales
+* width * depth`, `dy = pitch/12 * 0.03 * height * depth`. Followers inherit the parent's gesture translation,
+rotation and scale about the parent's anchor, but their parallax comes from their own depth only
+(not added to the parent's). Jaw: a drop of `jawOpen * 0.06 * height` along the head's down axis,
+applied after the parent transform and capped at `0.06 * height` canvas px; it is not inherited by
+the jaw's followers. Blink in [0,1] scales
 `eye` layers' y-scale by `1 - 0.9 * blink`. Gestures add a short additive offset curve over
 `t` (nod: pitch +6° sine 400 ms; tilt: rotation 5°; lean_in: scale 1.04; recoil: scale .96 and
 dy -1%; glare: eye tint gain 1.6; flare: glow gain 2.0).
