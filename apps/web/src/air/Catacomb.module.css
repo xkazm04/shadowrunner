@@ -1,0 +1,374 @@
+/* The catacomb set (costume 8.1, ported from r2/air-b.html). Role tokens only. Three live values
+   arrive as CSS variables written through refs (useStageLights): --back on the stage (the tunnel
+   backlight, his speech level), and --flame, --glow, --refl on each candle (candleLevels). The
+   flames are screen-blended over the candles painted into the plate, so the overlays stay faint
+   fills (the lit ON AIR box is still the brightest fill; air.tokens.test.ts). Dead line: the
+   candles gutter to embers, the tunnel goes out, the bulb tries every 5 s like the health poll. */
+
+/* The plate: wider than the set, anchored on its centre line, so the corridor's vanishing point
+   stays behind the skull at any width. The plate is its own size container: candles sit in it by
+   the plate's own pixels (1376 x 768). */
+.plate {
+  position: absolute;
+  inset-block-start: -1.7%;
+  inset-inline-start: 50%;
+  z-index: 0;
+  inline-size: max(100cqw, calc(100cqh * 1.7917 * 1.12));
+  aspect-ratio: 1376 / 768;
+  translate: -50% 0;
+  container-type: size;
+}
+
+.img,
+.grade,
+.tunnel {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.img {
+  background-image: url("../../../../assets/plates/catacomb.webp");
+  background-position: center;
+  background-size: cover;
+  filter: brightness(calc(0.62 + var(--heat, 0) * 0.2)) saturate(0.85) contrast(1.06);
+  transition: filter 2s ease-out;
+}
+
+.grade {
+  background-image:
+    radial-gradient(ellipse 70% 80% at 50% 45%, transparent 40%, color-mix(in srgb, var(--sr-surface-0) 70%, transparent) 100%),
+    linear-gradient(
+      color-mix(in srgb, var(--sr-surface-0) 50%, transparent),
+      transparent 25%,
+      transparent 70%,
+      color-mix(in srgb, var(--sr-surface-0) 55%, transparent)
+    );
+}
+
+/* The corridor's far light, right behind the skull: his backlight, swelling with his voice. */
+.tunnel {
+  inset: auto;
+  inset-block-start: 37%;
+  inset-inline-start: 50.3%;
+  inline-size: 28cqw;
+  block-size: 40cqh;
+  border-radius: var(--sr-radius-pill);
+  background-image: radial-gradient(
+    ellipse 50% 50% at 50% 50%,
+    color-mix(in srgb, var(--sr-catacomb-tunnel) 45%, transparent),
+    color-mix(in srgb, var(--sr-catacomb-tunnel) 14%, transparent) 35%,
+    transparent 70%
+  );
+  mix-blend-mode: screen;
+  opacity: calc(0.55 + var(--back, 0) * 0.45);
+  transform: translate(-50%, -50%) scale(calc(0.9 + var(--back, 0) * 0.25));
+  transition: opacity 1s ease-out;
+}
+
+/* A wall candle: a point on the plate, scaled by its distance down the corridor. */
+.candle {
+  --flame: 0.3;
+  --glow: 0.2;
+  --refl: 0.2;
+  --near: 1;
+
+  position: absolute;
+  inline-size: 0;
+  block-size: 0;
+  pointer-events: none;
+  transform: scale(var(--near));
+}
+
+.candle[data-candle="0"] { inset-block-start: 73.18%; inset-inline-start: 21.29%; }
+.candle[data-candle="1"] { inset-block-start: 72.4%; inset-inline-start: 23.11%; }
+.candle[data-candle="2"] { --near: 0.7; inset-block-start: 55.08%; inset-inline-start: 37.72%; }
+.candle[data-candle="3"] { --near: 0.5; inset-block-start: 51.17%; inset-inline-start: 43.75%; }
+.candle[data-candle="4"] { --near: 0.5; inset-block-start: 51.3%; inset-inline-start: 57.27%; }
+.candle[data-candle="5"] { --near: 0.7; inset-block-start: 55.6%; inset-inline-start: 62.94%; }
+.candle[data-candle="6"] { inset-block-start: 70.31%; inset-inline-start: 80.23%; }
+.candle[data-candle="7"] { inset-block-start: 69.4%; inset-inline-start: 81.76%; }
+
+.halo,
+.tip,
+.refl {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  mix-blend-mode: screen;
+}
+
+/* The halo on the wall: wider and warmer as chat speeds up. */
+.halo {
+  inline-size: 13cqw;
+  block-size: 13cqw;
+  border-radius: var(--sr-radius-pill);
+  background-image: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--sr-ember) 42%, transparent),
+    color-mix(in srgb, var(--sr-ember) 10%, transparent) 40%,
+    transparent 70%
+  );
+  opacity: var(--glow);
+  transform: translate(-50%, -55%) scale(calc(0.55 + var(--glow) * 0.75));
+}
+
+/* The flame itself, standing on the painted wick. */
+.tip {
+  inline-size: 0.55cqw;
+  block-size: 1.5cqw;
+  border-radius: var(--sr-radius-pill);
+  background-image: radial-gradient(
+    ellipse at 50% 75%,
+    color-mix(in srgb, var(--sr-catacomb-flame) 40%, transparent),
+    color-mix(in srgb, var(--sr-ember) 55%, transparent) 45%,
+    color-mix(in srgb, var(--sr-ember) 25%, transparent) 75%,
+    transparent
+  );
+  transform: translate(-50%, -100%) scaleY(calc(0.6 + var(--flame) * 0.9));
+  transform-origin: 50% 100%;
+  animation: flick 1.7s ease-in-out infinite alternate;
+}
+
+/* Its streak on the wet floor. */
+.refl {
+  inline-size: 2.2cqw;
+  block-size: 12cqh;
+  background-image: linear-gradient(color-mix(in srgb, var(--sr-ember) 45%, transparent), transparent);
+  clip-path: polygon(30% 0, 70% 0, 100% 100%, 0 100%);
+  filter: blur(0.25rem);
+  opacity: calc(var(--refl) * 0.85);
+  transform: translate(-50%, 6%);
+}
+
+@keyframes flick {
+  from {
+    opacity: 0.85;
+    rotate: -3deg;
+  }
+
+  to {
+    opacity: 1;
+    rotate: 3deg;
+  }
+}
+
+/* The warm key light from the vault, over the face. */
+.key {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 15%;
+  z-index: 2;
+  inline-size: 70%;
+  block-size: 80%;
+  background-image: radial-gradient(ellipse at 50% 32%, color-mix(in srgb, var(--sr-ember) 18%, transparent), transparent 60%);
+  mix-blend-mode: screen;
+  pointer-events: none;
+  transition: opacity 1.5s ease-out;
+}
+
+/* The bulb hangs in front of the vault, under the lightbox. */
+.bulb {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 50%;
+  z-index: 6;
+  inline-size: 0;
+  block-size: 15%;
+  border-inline-start: thin solid var(--sr-line);
+  transform-origin: top center;
+  animation: sway 7s ease-in-out infinite;
+}
+
+.glass {
+  position: absolute;
+  inset-block-end: -1.5rem;
+  inset-inline-start: -0.5625rem;
+  inline-size: 1.125rem;
+  block-size: 1.625rem;
+  border-radius: var(--sr-radius-pill);
+  background-image: radial-gradient(
+    circle at 50% 60%,
+    color-mix(in srgb, var(--sr-catacomb-flame) 45%, var(--sr-surface-0)),
+    color-mix(in srgb, var(--sr-ember) 45%, var(--sr-surface-0)) 40%,
+    color-mix(in srgb, var(--sr-ember) 20%, var(--sr-surface-0)) 75%
+  );
+  filter: drop-shadow(0 0 0.75rem color-mix(in srgb, var(--sr-ember) 60%, transparent));
+}
+
+@keyframes sway {
+  0%,
+  100% {
+    rotate: 1deg;
+  }
+
+  50% {
+    rotate: -1deg;
+  }
+}
+
+/* The tunnel mouth blooming around the crown: the far light his skull hides. */
+.bloom {
+  position: absolute;
+  inset-block-start: 36%;
+  inset-inline-start: 50%;
+  z-index: 3;
+  inline-size: min(72%, 51.25rem);
+  aspect-ratio: 1.1;
+  border-radius: var(--sr-radius-pill);
+  background-image: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--sr-catacomb-tunnel) 30%, transparent) 0,
+    color-mix(in srgb, var(--sr-catacomb-tunnel) 11%, transparent) 32%,
+    transparent 62%
+  );
+  mix-blend-mode: screen;
+  opacity: calc(0.6 + var(--back, 0) * 0.4);
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(calc(0.92 + var(--back, 0) * 0.16));
+  transition: opacity 1.5s ease-out;
+}
+
+/* His shadow pooled on the floor under him. */
+.pool {
+  position: absolute;
+  inset-block-end: -8%;
+  inset-inline-start: 50%;
+  z-index: 3;
+  inline-size: min(76%, 56.25rem);
+  block-size: 36%;
+  background-image: radial-gradient(
+    ellipse 50% 46% at 50% 70%,
+    color-mix(in srgb, var(--sr-surface-0) 85%, transparent),
+    color-mix(in srgb, var(--sr-surface-0) 45%, transparent) 55%,
+    transparent 76%
+  );
+  pointer-events: none;
+  translate: -50% 0;
+}
+
+.lip {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: 0;
+  z-index: 5;
+  block-size: 18%;
+  background-image: linear-gradient(
+    0deg,
+    color-mix(in srgb, var(--sr-surface-0) 95%, transparent),
+    color-mix(in srgb, var(--sr-surface-0) 55%, transparent) 50%,
+    transparent
+  );
+  pointer-events: none;
+}
+
+/* Scanline static, only on the dead line. */
+.static {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  background-image: repeating-linear-gradient(0deg, color-mix(in srgb, var(--sr-text-strong) 5%, transparent) 0 0.0625rem, transparent 0.0625rem 0.1875rem);
+  mix-blend-mode: screen;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 1.2s ease-out;
+}
+
+/* The haunt toggle off (a theme whose haunt tokens are zero): the candles stand still. */
+:global([data-haunt="off"]) .tip {
+  animation: none;
+}
+
+/* LINE DEAD: the corridor goes cold. */
+:global([data-page="air"][data-state="dead_line"]) .img {
+  filter: brightness(0.3) saturate(0.25) contrast(1.1);
+}
+
+:global([data-page="air"][data-state="dead_line"]) .tunnel {
+  opacity: 0.08;
+}
+
+:global([data-page="air"][data-state="dead_line"]) .bloom,
+:global([data-page="air"][data-state="dead_line"]) .key,
+:global([data-page="air"][data-state="dead_line"]) .halo,
+:global([data-page="air"][data-state="dead_line"]) .refl {
+  opacity: 0;
+  transition: opacity 2.5s ease-out;
+}
+
+/* Candles burnt down to embers. */
+:global([data-page="air"][data-state="dead_line"]) .tip {
+  background-image: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--sr-ember) 50%, transparent),
+    color-mix(in srgb, var(--sr-paper-ink-signal) 60%, transparent) 60%,
+    transparent
+  );
+  transform: translate(-50%, -100%) scaleY(0.28);
+  animation: none;
+  transition: transform 2.5s ease-out;
+}
+
+:global([data-page="air"][data-state="dead_line"]) .static {
+  opacity: 0.2;
+}
+
+/* The dead bulb tries to strike every 5 s (the health poll). */
+:global([data-page="air"][data-state="dead_line"]) .glass {
+  background-image: radial-gradient(circle at 50% 60%, var(--sr-surface-3), var(--sr-surface-1) 70%);
+  filter: none;
+  animation: strike 5s steps(1, end) infinite;
+}
+
+@keyframes strike {
+  0%,
+  6%,
+  12%,
+  100% {
+    opacity: 1;
+    filter: none;
+  }
+
+  3%,
+  9% {
+    opacity: 1;
+    filter: brightness(3) drop-shadow(0 0 0.75rem color-mix(in srgb, var(--sr-ember) 60%, transparent));
+  }
+}
+
+/* Reduced-motion twins: the same states, held still. */
+:global([data-motion="reduced"]) .img,
+:global([data-motion="reduced"]) .tunnel,
+:global([data-motion="reduced"]) .tip,
+:global([data-motion="reduced"]) .key,
+:global([data-motion="reduced"]) .bulb,
+:global([data-motion="reduced"]) .bloom,
+:global([data-motion="reduced"]) .static,
+:global([data-motion="reduced"]) :global([data-page="air"][data-state="dead_line"]) .bloom,
+:global([data-motion="reduced"]) :global([data-page="air"][data-state="dead_line"]) .key,
+:global([data-motion="reduced"]) :global([data-page="air"][data-state="dead_line"]) .halo,
+:global([data-motion="reduced"]) :global([data-page="air"][data-state="dead_line"]) .refl,
+:global([data-motion="reduced"]) :global([data-page="air"][data-state="dead_line"]) .tip,
+:global([data-motion="reduced"]) :global([data-page="air"][data-state="dead_line"]) .glass {
+  transition: none;
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .img,
+  .tunnel,
+  .tip,
+  .key,
+  .bulb,
+  .bloom,
+  .static,
+  :global([data-page="air"][data-state="dead_line"]) .bloom,
+  :global([data-page="air"][data-state="dead_line"]) .key,
+  :global([data-page="air"][data-state="dead_line"]) .halo,
+  :global([data-page="air"][data-state="dead_line"]) .refl,
+  :global([data-page="air"][data-state="dead_line"]) .tip,
+  :global([data-page="air"][data-state="dead_line"]) .glass {
+    transition: none;
+    animation: none;
+  }
+}

@@ -97,7 +97,8 @@ function rules(text: string): Rule[] {
   }));
 }
 
-const STAGE_CSS = ["./air.module.css", "./OnAirLamp.module.css", "./Captions.module.css", "./Chat.module.css"].map(css).flatMap((text) => rules(text));
+const STAGE_FILES = ["./air.module.css", "./Catacomb.module.css", "./OnAirLamp.module.css", "./Captions.module.css", "./Chat.module.css"];
+const STAGE_CSS = STAGE_FILES.map(css).flatMap((text) => rules(text));
 const FILL_PROPS = ["background-color", "background-image", "background"];
 /** Rules that are not on screen while on air (the dark lamp, the dead line). */
 const OFF_AIR = /data-lit="off"|dead_line/;
@@ -130,7 +131,7 @@ describe.each(["halloween", "baseline"])("the stage in the %s theme", (name) => 
     expect(fg && bg && contrast(fg, bg)).toBeGreaterThanOrEqual(4.5);
   });
 
-  it("sets captions in text-strong at 14 px or more, AA on their plate", () => {
+  it("sets captions in text-strong at 14 px or more, AA on their bar", () => {
     const line = STAGE_CSS.filter((r) => r.selector.split(",").some((s) => s.trim() === ".line"));
     const colour = line.map((r) => r.decls.get("color")).find((c) => c !== undefined);
     expect(colour).toBe("var(--sr-text-strong)");
@@ -141,7 +142,7 @@ describe.each(["halloween", "baseline"])("the stage in the %s theme", (name) => 
       const value = parseFloat(theme.get(role) ?? "0");
       expect(value * 16, `${rule.selector} ${size}`).toBeGreaterThanOrEqual(14);
     }
-    const plate = line.flatMap((r) => fillColours(r.decls.get("background-image") ?? "", theme));
+    const plate = STAGE_CSS.filter((r) => r.selector === ".bar").flatMap((r) => fillColours(r.decls.get("background-image") ?? "", theme));
     const text = hex(theme.get("text-strong") ?? "");
     expect(plate.length).toBeGreaterThan(0);
     for (const bg of plate) expect(text && contrast(text, bg)).toBeGreaterThanOrEqual(4.5);
@@ -150,26 +151,40 @@ describe.each(["halloween", "baseline"])("the stage in the %s theme", (name) => 
 
 describe("haunt bound to status in the stage CSS", () => {
   const air = rules(css("./air.module.css"));
+  const catacomb = rules(css("./Catacomb.module.css"));
   const moving = (r: Rule) => [...r.decls].some(([k, v]) => (k === "animation" || k === "transition") && v !== "none");
 
-  it("gives every animation and transition a reduced-motion twin that holds still", () => {
-    const twins = air.filter((r) => r.selector.includes(':global([data-motion="reduced"])'));
+  it.each(STAGE_FILES)("gives every animation and transition in %s a reduced-motion twin that holds still", (file) => {
+    const sheet = rules(css(file));
+    const twins = sheet.filter((r) => r.selector.includes(':global([data-motion="reduced"])'));
     const still = (r: Rule) => r.decls.get("animation") === "none" && r.decls.get("transition") === "none";
     const covered = new Set(
       twins.filter(still).flatMap((r) => r.selector.split(",").map((s) => s.replace(':global([data-motion="reduced"])', "").trim())),
     );
-    const animated = air.filter((r) => moving(r) && !r.selector.includes("data-motion"));
-    expect(animated.length).toBeGreaterThan(1);
-    for (const rule of animated) expect(covered.has(rule.selector), rule.selector).toBe(true);
+    const animated = sheet.filter((r) => moving(r) && !r.selector.includes("data-motion"));
+    for (const rule of animated) for (const sel of rule.selector.split(",")) expect(covered.has(sel.trim()), sel).toBe(true);
   });
 
-  it("drives the dead line from data-state: haunt glow to zero, the face dimmed", () => {
+  it("drives the dead line from data-state: haunt glow to zero, the face dimmed, the corridor cold", () => {
     const dead = air.find((r) => r.selector === '.stage[data-state="dead_line"]');
     expect(dead?.decls.get("--sr-haunt-glow")).toBe("0");
     expect(air.find((r) => r.selector === '.stage[data-state="dead_line"] .face')?.decls.get("filter")).toMatch(/brightness\(0\.\d+\)/);
-    // The bulb's halo is haunt glow, and the fog's density is the fog var.
-    expect(air.find((r) => r.selector === ".bulb::before")?.decls.get("opacity")).toBe("var(--sr-haunt-glow)");
-    expect(air.find((r) => r.selector === ".fog" && r.decls.has("opacity"))?.decls.get("opacity")).toBe("var(--sr-haunt-fog)");
+    const deadSel = (part: string) => catacomb.filter((r) => r.selector.split(",").some((s) => s.trim() === `:global([data-page="air"][data-state="dead_line"]) ${part}`) && !r.selector.includes("data-motion"));
+    // the candles burn down to embers, their halos and reflections go out, the tunnel light too
+    expect(deadSel(".tip")[0]?.decls.get("transform")).toMatch(/scaleY\(0\.\d+\)/);
+    expect(deadSel(".halo")[0]?.decls.get("opacity")).toBe("0");
+    expect(deadSel(".refl")[0]?.decls.get("opacity")).toBe("0");
+    expect(deadSel(".bloom")[0]?.decls.get("opacity")).toBe("0");
+    expect(Number(deadSel(".tunnel")[0]?.decls.get("opacity"))).toBeLessThan(0.1);
+    // the bulb tries to strike once per health poll (5 s)
+    expect(deadSel(".glass")[0]?.decls.get("animation")).toMatch(/^strike 5s /);
+  });
+
+  it("binds the candles to their levels and stills them when the theme does not haunt", () => {
+    expect(catacomb.find((r) => r.selector === ".tip")?.decls.get("transform")).toContain("var(--flame)");
+    expect(catacomb.find((r) => r.selector === ".halo")?.decls.get("opacity")).toBe("var(--glow)");
+    expect(catacomb.find((r) => r.selector === ".refl")?.decls.get("opacity")).toContain("var(--refl)");
+    expect(catacomb.find((r) => r.selector === ':global([data-haunt="off"]) .tip')?.decls.get("animation")).toBe("none");
   });
 
   it("binds every haunt token to zero in the baseline theme", () => {

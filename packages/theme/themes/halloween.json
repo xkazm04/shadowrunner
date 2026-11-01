@@ -105,5 +105,7 @@
   "wall-size-name": "wall.sizename",
   "vault-alarm": "vault.alarm",
   "vault-word-size": "vault.word",
-  "vault-reading-size": "vault.reading"
+  "vault-reading-size": "vault.reading",
+  "catacomb-tunnel": "tube.200",
+  "catacomb-flame": "paper.50"
 }

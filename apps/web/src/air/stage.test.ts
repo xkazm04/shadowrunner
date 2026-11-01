@@ -1,10 +1,8 @@
 // Haunt bound to status (voice-and-air task 6): the stage state machine, the dead line in the show
 // controller (enter on a failed health read or two engine errors in a row, poll every 5 s, recover
-// automatically), and the fog from chat velocity.
-import type { ChatMsg } from "@sr/engine";
+// automatically). The candles that replaced the fog are tested in candles.test.ts.
 import fc from "fast-check";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { chatVelocity, FOG_FULL_VELOCITY, fogFor, smooth, VELOCITY_WINDOW_MS } from "./fog";
 import { flush, LINE_MS, play, setup } from "./showKit";
 import { DEAD_AFTER_ENGINE_ERRORS, HEALTH_POLL_MS, INITIAL_STAGE, stageStep, type StageEvent, type StageState } from "./stage";
 
@@ -117,38 +115,5 @@ describe("the dead line in the show", () => {
     await play(LINE_MS * 3);
     expect(healthCalls).toHaveLength(1);
     show.stop();
-  });
-});
-
-describe("fog from chat velocity", () => {
-  const msg = (ts: number): ChatMsg => ({ id: `m${ts}`, user: "u", text: "t", ts });
-
-  it("counts the messages of the last 30 s", () => {
-    const chat = [0, 1_000, 20_000, 29_999, 31_000, 40_000].map(msg);
-    expect(chatVelocity(chat, 40_000)).toBe(4); // 20 000, 29 999, 31 000, 40 000
-    expect(chatVelocity(chat, 40_000 + VELOCITY_WINDOW_MS)).toBe(0);
-  });
-
-  it("smooths with alpha 0.2 and maps into [0, 1], zero when the theme does not haunt", () => {
-    expect(smooth(0, 10)).toBeCloseTo(2);
-    expect(smooth(5, Number.NaN)).toBe(5);
-    fc.assert(
-      fc.property(fc.double({ min: -100, max: 1e6, noNaN: true }), (v) => {
-        const fog = fogFor(v, true);
-        expect(fog).toBeGreaterThanOrEqual(0);
-        expect(fog).toBeLessThanOrEqual(1);
-        expect(fogFor(v, false)).toBe(0); // baseline: haunt tokens at zero
-      }),
-    );
-    expect(fogFor(FOG_FULL_VELOCITY / 2, true)).toBeCloseTo(0.5);
-    expect(fogFor(FOG_FULL_VELOCITY * 3, true)).toBe(1);
-  });
-
-  it("rises while chat is busy and settles back when it stops", () => {
-    let v = 0;
-    for (let s = 0; s < 30; s += 1) v = smooth(v, 12);
-    expect(fogFor(v, true)).toBeGreaterThan(0.99);
-    for (let s = 0; s < 30; s += 1) v = smooth(v, 0);
-    expect(fogFor(v, true)).toBeLessThan(0.01);
   });
 });

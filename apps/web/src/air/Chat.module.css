@@ -1,6 +1,7 @@
-/* The stage's chat column (voice-and-air 5.3): the audience, the character's replies (accent
-   name), the visitor's own messages (signal-ok name), the message being answered outlined, and
-   the visitor's input. Role tokens only. Landscape: a column at the right; portrait: below. */
+/* The stage's chat column (voice-and-air 5.3, costume 8.2): a niche in the catacomb wall. The
+   velocity row's wicks light with the corridor heat; every chatter's name carries a small flame;
+   answered messages keep a phosphor-green mark, the one being answered right now is lit. Role
+   tokens only. Landscape: a column at the right; portrait: below the set. */
 
 .chat {
   position: relative;
@@ -9,42 +10,133 @@
   min-block-size: 0;
   border-inline-start: thin solid var(--sr-line);
   background-image: linear-gradient(
-    color-mix(in srgb, var(--sr-surface-1) 92%, transparent),
-    color-mix(in srgb, var(--sr-surface-0) 92%, transparent)
+    color-mix(in srgb, var(--sr-surface-1) 96%, transparent),
+    color-mix(in srgb, var(--sr-surface-0) 96%, transparent)
   );
+}
+
+.head {
+  padding: var(--sr-space-5) var(--sr-space-4) var(--sr-space-3);
+  border-block-end: thin solid var(--sr-line);
 }
 
 .chatTitle {
   margin: 0;
-  padding: var(--sr-space-4) var(--sr-space-4) var(--sr-space-2);
-  color: var(--sr-text-muted);
+  color: var(--sr-text);
   font-family: var(--sr-font-display);
   font-size: var(--sr-size-text);
   font-weight: 700;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
+}
+
+.vel {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--sr-space-3);
+  margin: var(--sr-space-3) 0 0;
+  color: var(--sr-text-muted);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+  line-height: 1;
+}
+
+.velCount {
+  color: var(--sr-text);
+}
+
+.wicks {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  block-size: 1.125rem;
+}
+
+/* A candle stub; lit, a flame stands on it. */
+.wick {
+  position: relative;
+  inline-size: 0.375rem;
+  block-size: 0.625rem;
+  border-radius: var(--sr-radius-1);
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--sr-paper) 50%, var(--sr-surface-0)),
+    color-mix(in srgb, var(--sr-paper) 50%, var(--sr-surface-0))
+  );
+  opacity: 0.5;
+  transition: opacity 0.8s ease-out;
+}
+
+.wick::before {
+  position: absolute;
+  inset-block-end: 100%;
+  inset-inline-start: 0;
+  inline-size: 0.375rem;
+  block-size: 0.5625rem;
+  border-radius: var(--sr-radius-pill);
+  background-image: radial-gradient(
+    ellipse at 50% 75%,
+    color-mix(in srgb, var(--sr-catacomb-flame) 40%, transparent),
+    color-mix(in srgb, var(--sr-ember) 55%, transparent) 50%,
+    transparent 80%
+  );
+  opacity: 0;
+  transition: opacity 0.8s ease-out;
+  content: "";
+}
+
+.wick[data-on] {
+  opacity: 1;
+}
+
+.wick[data-on]::before {
+  opacity: 1;
+}
+
+:global([data-page="air"][data-state="dead_line"]) .wick::before {
+  opacity: 0;
 }
 
 .messages {
   flex: 1 1 auto;
   min-block-size: 0;
   margin: 0;
-  padding: 0 var(--sr-space-4) var(--sr-space-3);
+  padding: var(--sr-space-3) var(--sr-space-3);
   overflow-y: auto;
   list-style: none;
   font-size: var(--sr-size-text);
-  line-height: 1.45;
+  line-height: 1.4;
+  mask-image: linear-gradient(transparent, var(--sr-surface-0) 12%);
 }
 
 .message {
   padding: var(--sr-space-1) var(--sr-space-2);
+  border-inline-start: medium solid transparent;
   border-radius: var(--sr-radius-1);
   overflow-wrap: anywhere;
 }
 
 .user {
   color: var(--sr-text-muted);
+  font-family: var(--sr-font-display);
+  font-size: var(--sr-size-text-sm);
   font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+/* Every chatter owns a candle: a small flame before the name. */
+.user::before {
+  display: inline-block;
+  inline-size: 0.3125rem;
+  block-size: 0.5rem;
+  margin-inline-end: var(--sr-space-1);
+  border-radius: var(--sr-radius-pill);
+  background-image: radial-gradient(
+    ellipse at 50% 75%,
+    color-mix(in srgb, var(--sr-ember) 60%, var(--sr-surface-0)),
+    color-mix(in srgb, var(--sr-ember) 40%, var(--sr-surface-0))
+  );
+  content: "";
 }
 
 .text {
@@ -55,29 +147,48 @@
   color: var(--sr-accent);
 }
 
+.message[data-kind="self"] .user::before {
+  display: none;
+}
+
 .message[data-kind="self"] .text {
   color: var(--sr-text-strong);
 }
 
 .message[data-kind="visitor"] .user {
-  color: var(--sr-signal-ok);
+  color: var(--sr-ember);
 }
 
 .message[data-answered] {
+  border-inline-start-color: var(--sr-signal-ok);
+  background-image: linear-gradient(90deg, color-mix(in srgb, var(--sr-signal-ok) 12%, transparent), transparent);
+}
+
+.message[data-answering] {
   background-color: var(--sr-surface-3);
-  outline: thin solid var(--sr-accent);
+}
+
+.mark {
+  color: var(--sr-signal-ok);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+}
+
+:global([data-page="air"][data-state="dead_line"]) .messages {
+  filter: grayscale(1) brightness(0.7);
 }
 
 .compose {
   display: flex;
   flex-direction: column;
-  gap: var(--sr-space-1);
-  padding: var(--sr-space-3) var(--sr-space-4) var(--sr-space-4);
+  gap: var(--sr-space-2);
+  padding: var(--sr-space-3) var(--sr-space-4) var(--sr-space-3);
   border-block-start: thin solid var(--sr-line);
+  background-color: var(--sr-surface-0);
 }
 
 .composeLabel {
-  color: var(--sr-text-muted);
+  color: var(--sr-text);
   font-size: var(--sr-size-text-sm);
 }
 
@@ -92,7 +203,7 @@
   padding: var(--sr-space-2) var(--sr-space-3);
   border: thin solid var(--sr-line);
   border-radius: var(--sr-radius-1);
-  background-color: var(--sr-surface-0);
+  background-color: var(--sr-surface-1);
   color: var(--sr-text-strong);
   font: inherit;
 }
@@ -107,8 +218,9 @@
   border-radius: var(--sr-radius-1);
   background-color: var(--sr-surface-3);
   color: var(--sr-text-strong);
-  font: inherit;
+  font-family: var(--sr-font-display);
   font-weight: 700;
+  letter-spacing: 0.06em;
   cursor: pointer;
 }
 
@@ -118,13 +230,41 @@
   outline-offset: var(--sr-space-1);
 }
 
+.keys {
+  margin: 0;
+  color: var(--sr-text-muted);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+}
+
+.keys kbd {
+  color: var(--sr-text);
+  font-family: inherit;
+  font-weight: 700;
+}
+
+/* Reduced-motion twins: the wicks switch without fading. */
+:global([data-motion="reduced"]) .wick,
+:global([data-motion="reduced"]) .wick::before {
+  transition: none;
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wick,
+  .wick::before {
+    transition: none;
+    animation: none;
+  }
+}
+
 @media (orientation: portrait) {
   .chat {
     border-inline-start: 0;
     border-block-start: thin solid var(--sr-line);
   }
 
-  .chatTitle {
+  .head {
     padding-block-start: var(--sr-space-2);
   }
 }
