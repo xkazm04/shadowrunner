@@ -1,7 +1,7 @@
 # Implementation plan: voice-and-air
 
 - [ ] 1. Engine contract and scripted engine
-  - [ ] 1.1 `types.ts`, `voices.ts`, `picker.ts` with properties (never self, never twice).
+  - [x] 1.1 `types.ts`, `voices.ts`, `picker.ts` with properties (never self, never twice).
   - [ ] 1.2 Write `assets/replay/shows/malakor-night.json` (fictional audience of ~40 messages, ~24 beats in Malakor's voice from `assets/characters/malakor/bible.md`, generic beats for visitors); `scripted.ts` with the determinism property.
   - _Requirements: 1.1, 1.2_
 
@@ -19,6 +19,7 @@
   - _Requirements: 3.1, 3.2, 3.3_
 
 - [ ] 5. Stage page
+  - One clock (from the 1.1 review): the stage stamps every chat message, audience and visitor alike, with the same monotonic show clock before it reaches `pickMessage`, and passes `ctx.self` equal to the name the character's replies are posted under. Test: a visitor message typed in the same millisecond as a pick is still answered on the next beat.
   - [ ] 5.1 `useLoudness.ts` (AnalyserNode RMS -> jawOpen with attack/release) with a unit test on synthetic buffers.
   - [ ] 5.2 `useShow.ts` beat loop (pick -> reply -> voice -> play -> captions), TTS failure -> caption only, one retry.
   - [ ] 5.3 `AirPage.tsx`, `Chat.tsx` (visitor input), `OnAirLamp.tsx`, `Captions.tsx`, `air.module.css` with role tokens only; register `air` in the page manifest as `live`.

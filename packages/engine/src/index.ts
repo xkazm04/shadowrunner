@@ -4,3 +4,16 @@ export const PACKAGE = "@sr/engine";
 
 export { ENGINE_STATES, PLANE_HEADER, PLANES, type EngineState, type Health, type Plane } from "./health.js";
 export { parseHealth } from "./validate.js";
+export type { ChatMsg, Engine, EngineReply, EngineRequest, Persona } from "./types.js";
+export { VOICE_IDS, VOICES, type Voice, type VoiceId } from "./voices.js";
+export {
+  initialPickState,
+  NEW_USER_BONUS,
+  pickMessage,
+  QUESTION_BONUS,
+  RECENCY_TAU_MS,
+  VISITOR_BONUS,
+  type PickContext,
+  type PickResult,
+  type PickState,
+} from "./picker.js";
