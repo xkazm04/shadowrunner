@@ -39,7 +39,7 @@
   - Gates green; existing health and plane tests keep passing after the move.
   - _Requirements: 4.1, 4.3_
 
-- [ ] 8. Deploy wiring for the full app (director, 2026-11-01)
+- [x] 8. Deploy wiring for the full app (director, 2026-11-01)
   - `scripts/vercel-output.mjs`: dynamic routes (`/api/forge/:jobId` -> `api/forge/[jobId]`, and any other `[param]` file generically), register `api/cron/forge-gc` in `config.json` `crons` (daily), copy `assets/replay/**` to static `/replay/**` and `assets/plates/**` as needed, and keep the static/SPA fallback order. Test the generated `config.json` (routes, crons) and run every bundled function once under plain node with replay env.
   - `vercel.json` / README deploy notes: `ENABLE_EXPERIMENTAL_COREPACK=1`, `CRON_SECRET`, KV/Blob env names.
   - _Requirements: 5.1_

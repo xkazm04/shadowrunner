@@ -28,10 +28,24 @@ The gates every change must pass: `pnpm typecheck && pnpm lint && pnpm test`.
 
 ## Deploy
 `vercel.json` hands the build to the root `vercel-build` script: `pnpm build` writes the static
-app to `apps/web/dist`, then `scripts/vercel-output.mjs` bundles each `api/*.ts` function with its
-`@sr/*` imports into one file and writes the Vercel Build Output (`.vercel/output`). A deploy with
-no variables set runs on replay. To go live, set the server variables listed in
-[`.env.example`](.env.example) in the Vercel project, with `SR_PLANE=live`.
+app to `apps/web/dist`, then `scripts/vercel-output.mjs` writes the Vercel Build Output
+(`.vercel/output`, git-ignored):
+- each `api/**/*.ts` function bundled with its `@sr/*` imports into one file (Node 22);
+  `api/forge/index.ts` answers `/api/forge`, and `[param]` files such as `api/forge/[jobId].ts`
+  get a rewrite (`/api/forge/<id>` reaches it with `?jobId=<id>`);
+- the recorded replay files, `assets/replay/**`, as static files under `/replay/**`;
+- `config.json`: static files and functions first, then the dynamic rewrites, then a 404 for any
+  other `/api/*` or `/replay/*` path, then the single-page app; every `api/cron/*` function is a
+  daily cron (`/api/cron/forge-gc`, 04:00 UTC).
+
+Check it locally with `pnpm vercel-build`. Vercel project settings:
+- `ENABLE_EXPERIMENTAL_COREPACK=1`, so the install uses the pnpm pinned in `package.json`.
+- Nothing else for replay: a deploy with no variables set runs on the replay plane.
+- To go live: `SR_PLANE=live`, `GEMINI_API_KEY`, `ANTHROPIC_API_KEY`, an Upstash Redis store
+  (`KV_REST_API_URL`, `KV_REST_API_TOKEN`) for jobs and quota, a Vercel Blob store
+  (`BLOB_READ_WRITE_TOKEN`) for forge images, and `CRON_SECRET` for the daily Blob sweep. Without
+  KV and Blob a live deploy refuses paid calls. All names are listed in
+  [`.env.example`](.env.example).
 
 ## How it is built
 Shadowrunner is built **spec-first with Kiro**. Everything Kiro reads lives in [`.kiro/`](.kiro):

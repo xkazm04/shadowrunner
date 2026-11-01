@@ -3,15 +3,19 @@
 // Why not zero-config: @vercel/node compiles api/*.ts file by file but leaves workspace packages
 // as they are, and @sr/* export TypeScript source (`"exports": "./src/index.ts"`), so the deployed
 // function fails with ERR_MODULE_NOT_FOUND. Here every function is bundled into one ESM file with
-// its workspace imports inlined, and the static app is copied as is.
+// its workspace imports inlined, and the static app is copied as is. The recorded replay files
+// (assets/replay/**) are published as static files under /replay/**. Routes and crons come from
+// scripts/vercel-config.mjs (pure, tested).
 import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "vite";
+import { functionName, outputConfig } from "./vercel-config.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const API = join(ROOT, "api");
 const STATIC = join(ROOT, "apps", "web", "dist");
+const REPLAY = join(ROOT, "assets", "replay");
 const OUT = resolve(ROOT, process.argv[2] ?? ".vercel/output");
 const RUNTIME = "nodejs22.x";
 
@@ -25,10 +29,9 @@ function* functionEntries(dir) {
   }
 }
 
-/** api/health.ts -> api/health (the route, and the .func folder under functions/). */
-function routeOf(entry) {
-  return relative(ROOT, entry).split(sep).join("/").replace(/\.ts$/, "");
-}
+/** api/health.ts -> api/health, api/forge/index.ts -> api/forge (the .func folder under functions/). */
+const fileOf = (entry) => relative(ROOT, entry).split(sep).join("/");
+const routeOf = (entry) => functionName(fileOf(entry));
 
 async function bundle(entry, funcDir) {
   await build({
@@ -63,14 +66,15 @@ if (entries.length === 0) {
 rmSync(OUT, { recursive: true, force: true });
 mkdirSync(OUT, { recursive: true });
 cpSync(STATIC, join(OUT, "static"), { recursive: true });
+// Recorded replay files, served as is: /replay/forge/<slug>/*, /replay/shows/<show>/*.wav.
+if (existsSync(join(OUT, "static", "replay"))) {
+  console.error("vercel-output: apps/web/dist already has a replay/ folder; it would collide with assets/replay");
+  process.exit(1);
+}
+cpSync(REPLAY, join(OUT, "static", "replay"), { recursive: true });
+const config = outputConfig(entries.map(fileOf));
 for (const entry of entries) {
   await bundle(entry, join(OUT, "functions", `${routeOf(entry)}.func`));
 }
-// Files and functions first; an unknown /api/* path is a 404, any other path is the SPA.
-const routes = [
-  { handle: "filesystem" },
-  { src: "^/api(?:/.*)?$", status: 404 },
-  { src: "^/(.*)$", dest: "/index.html" },
-];
-writeFileSync(join(OUT, "config.json"), `${JSON.stringify({ version: 3, routes }, null, 2)}\n`);
-console.log(`vercel-output: ${relative(ROOT, OUT)} (static + ${entries.map(routeOf).join(", ")})`);
+writeFileSync(join(OUT, "config.json"), `${JSON.stringify(config, null, 2)}\n`);
+console.log(`vercel-output: ${relative(ROOT, OUT)} (static + replay + ${entries.map(routeOf).join(", ")}; crons: ${(config.crons ?? []).map((c) => c.path).join(", ") || "none"})`);
