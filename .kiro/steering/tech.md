@@ -33,7 +33,8 @@ pnpm typecheck && pnpm lint && pnpm test
 
 ## Conventions
 - Optional JSON fields are **omitted**, never `null`.
-- `JSON.parse` of external data only inside a validator (`packages/*/src/validate.ts`).
+- `JSON.parse` of external data only inside a validator (`packages/*/src/validate.ts`). Tests may
+  parse their own fixtures and serializer output.
 - Errors crossing the API are `{ error: { code, message } }` with codes from the spec.
 - Components consume **role tokens** only (`--sr-surface-*`, `--sr-signal-*`, `--sr-haunt-*`),
   never scale tokens.
