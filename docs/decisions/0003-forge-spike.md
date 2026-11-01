@@ -1,23 +1,26 @@
 # 0003: Forge spike on fresh portraits
 
-- **Status:** provisional (2026-11-01). The rig column waits for forge-pipeline tasks 3-6. Re-run
-  `scripts/forge-spike.mjs` with cut and assemble in place, then make this decision final.
+- **Status:** final (2026-11-01). Run 1 (portrait and parts only) and run 2 (end to end, after
+  forge-pipeline tasks 3-7) are both recorded below. Run 2 decides requirement 1.3.
 - **Spec:** forge-pipeline requirement 1, task 1.
-- **Run:** 2026-11-01 13:15 UTC, one pass, no retries needed. Portraits from `gemini-3-pro-image`
+- **Run 1:** 2026-11-01 13:15 UTC, one pass, no retries needed. Portraits from `gemini-3-pro-image`
   (`portraitPrompt`), parts from `gemini-3.8-flash` (`PARTS_PROMPT`, `responseMimeType:
   application/json`). Client timeout 120 s, so the timings below are true latency.
 - **Prompts:** presets 1, 3 and 5 from `assets/characters/presets/PROMPTS.md` (351-377 characters,
   so none was cut by the 400-character limit).
-- **Outputs:** `var/forge-spike/` (git-ignored): `summary.json`, and per portrait `prompt.txt`,
-  `portrait.jpg`, `parts.raw.txt`, `parts.json`, `check.json`, `overlay.svg`, `overlay.png`.
+- **Run 1 outputs** (git-ignored): first in `var/forge-spike/`, now kept in
+  `var/forge-spike-20261101-1315/` because run 2 writes to `var/forge-spike/`: `summary.json`,
+  and per portrait `prompt.txt`, `portrait.jpg`, `parts.raw.txt`, `parts.json`, `check.json`,
+  `overlay.svg`, `overlay.png`. The three run-1 portraits are committed as replay jobs in
+  `assets/replay/forge/<slug>/portrait.jpg` (task 8).
 
-## Results
+## Run 1 results (portrait and parts)
 
-| Portrait | Portrait step | Parts step | Total | Parts (valid / returned) | Expected parts found | Rig assembled and validated | Overlay |
+| Portrait | Portrait step | Parts step | Total | Parts (valid / returned) | Expected parts found | Rig (run 1) | Overlay |
 |---|---|---|---|---|---|---|---|
-| Lantern Warden (preset 1) | 15.0 s | 17.1 s | 32.0 s | 6 / 6 | 6 of 6 (head, jaw, eye_l, eye_r, hat, torso) | pending tasks 3-6 | `var/forge-spike/lantern-warden/overlay.png` |
-| The Understudy (preset 3) | 15.4 s | 13.7 s | 29.1 s | 6 / 6 | 6 of 6 (head, jaw, eye_l, eye_r, accessory, torso) | pending tasks 3-6 | `var/forge-spike/understudy/overlay.png` |
-| Announcer of Dead Air (preset 5) | 15.9 s | 19.6 s | 35.6 s | 7 / 7 | 7 of 7 (head, jaw, eye_l, eye_r, hat, crown, torso) | pending tasks 3-6 | `var/forge-spike/announcer-of-dead-air/overlay.png` |
+| Lantern Warden (preset 1) | 15.0 s | 17.1 s | 32.0 s | 6 / 6 | 6 of 6 (head, jaw, eye_l, eye_r, hat, torso) | valid, built offline in task 8 (`assets/replay/forge/lantern-warden/`, fill fallback) | `var/forge-spike-20261101-1315/lantern-warden/overlay.png` |
+| The Understudy (preset 3) | 15.4 s | 13.7 s | 29.1 s | 6 / 6 | 6 of 6 (head, jaw, eye_l, eye_r, accessory, torso) | valid, built offline in task 8 (fill fallback) | `var/forge-spike-20261101-1315/understudy/overlay.png` |
+| Announcer of Dead Air (preset 5) | 15.9 s | 19.6 s | 35.6 s | 7 / 7 | 7 of 7 (head, jaw, eye_l, eye_r, hat, crown, torso) | valid, built offline in task 8 (fill fallback) | `var/forge-spike-20261101-1315/announcer-of-dead-air/overlay.png` |
 
 "Valid" means the requirement 3.2/3.3 checks pass: names from the closed list, integer coordinates
 in 0..1000, `box_2d` has 4 values, `poly` has 3..60 points, `head` is present, and no name repeats.
@@ -61,13 +64,72 @@ decide.
    would be nearly empty. Possible fixes: cut `head` before `hat`, or subtract the head polygon
    from `hat` whenever the head lies inside the hat. Task 3 should test this case.
 
-## Decision (provisional)
-**Keep polygons. Do not adopt the pose-template fallback yet.** All 3 fresh portraits returned
-`head` and every expected part as valid polygons in 13.7-19.6 s. That matches the 2026-10-31
-Malakor probe (0002: 7 parts, 20.4 s). The rule in requirement 1.3 is about valid rigs: if fewer
-than 2 of 3 portraits produce a valid rig, the pose-template fallback is adopted. That rule cannot
-be applied until cut and assemble exist (tasks 3-6), so this decision rests on part quality alone.
-Findings 1-4 are the risks most likely to break a rig, and tasks 2.1 and 3 should handle them.
+Run 1's provisional decision was to keep polygons on part quality alone, because requirement 1.3
+is about valid rigs and cut and assemble did not exist yet. Findings 1-4 were handled by the
+director rulings in tasks 2-4.
+
+## Run 2: end to end (task 1.2)
+- **Run:** 2026-11-01 15:58 UTC, `node scripts/forge-spike.mjs`, one pass, no retries. The script
+  now drives the server code itself: `api/_lib/forge-steps.ts` with the `api/_lib/gemini.ts`
+  client, the server timeouts (55 s per call, 30 s for the fill edit), a memory job store and no
+  quota. The steps are portrait, parts, fill edit, cut and assemble. Models: `gemini-3-pro-image`
+  for the portrait and the fill edit, and `gemini-3.8-flash` for the parts. The run made 9 paid
+  calls (3 portraits, 3 parts, 3 fill edits). Each one succeeded on the first attempt, inside its timeout.
+- **New portraits:** the same 3 preset prompts, generated again, so they differ from run 1
+  (sha256 `29cbd8a8...`, `b13485be...`, `24082a46...`). All 3 are 1024x1024 JPEG.
+- **Outputs (git-ignored):** `var/forge-spike/summary.json`, and per portrait `portrait.jpg`,
+  `parts.raw.txt`, `parts.json`, `overlay.png`, `plate.jpg` (the fill edit), `rig.json`,
+  `layer-*.png` and `composite.png`. The composite shows the portrait, the layers composited, and
+  the layers with the jaw moved down 31 px (3% of the height). A downscaled copy of the 3
+  composites is committed as `docs/decisions/0003-forge-spike-composites.jpg`, one row per portrait.
+
+| Portrait | Portrait | Parts | Fill edit | Cut + assemble | Total | Parts returned | Expected parts found | Fill | validateRig | Layers | Composite |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Lantern Warden (preset 1) | 17.3 s | 17.9 s | 16.7 s | 1.9 s | 54.3 s | 6 | 6 of 6 | edit | ok | 7: background, torso, head, jaw, hat, eye_r, eye_l | `var/forge-spike/lantern-warden/composite.png` |
+| The Understudy (preset 3) | 18.0 s | 11.7 s | 18.1 s | 1.5 s | 50.0 s | 6 | 6 of 6 | edit | ok | 7: background, torso, head, jaw, accessory, eye_r, eye_l | `var/forge-spike/understudy/composite.png` |
+| Announcer of Dead Air (preset 5) | 16.3 s | 11.9 s | 15.8 s | 1.6 s | 46.1 s | 7 | 6 of 7 (the antenna ring came back as `accessory`, not `crown`) | edit | ok | 8: background, torso, head, jaw, hat, accessory, eye_r, eye_l | `var/forge-spike/announcer-of-dead-air/composite.png` |
+
+Every parts reply parsed as JSON on the first ask, so no re-ask was needed. Every step fit well
+inside one 60 s function invocation: the longest single GET took 18.4 s (the Understudy fill edit).
+The step columns come from the server's own `timings`. The totals are wall time.
+
+### What the composites show (inspected by eye)
+- **The faces work.** Eyes, jaw, hat and the Announcer's ring sit where they belong. Each composite
+  reads as the same character as its portrait.
+- **Box edge around the jaw (task 7 note).** There is no rectangular (bbox) edge. The plate-sourced
+  head is painted exactly over the jaw polygon, never over the jaw's bounding box. I checked this by
+  drawing the head layer alone, with the jaw bbox and polygon on top. But when the jaw moves, a hard
+  edge **does** show in all 3 portraits, and it follows the jaw polygon. The head and jaw polygons do
+  not touch (Lantern, Announcer), or they meet along straight seams (Understudy). Nothing covers the
+  space outside them. So the opened jaw shows a jaw-shaped painted patch on the head with an empty
+  black gap around it. The Understudy's jaw polygon is almost rectangular, so its patch looks like a
+  dark box between the two seams. The Announcer's patch is grey skull bone with a straight top edge.
+- **Uncovered regions go black.** Anything outside every part polygon is dropped, and the
+  `background` layer is a solid near-black ground. This removes the neck and collar (Lantern,
+  Understudy), the ears and the sides of the ruff (Understudy), and the microphone-mesh collar
+  (Announcer). It shows even with the jaw closed.
+- **The fill edit drifts.** The final-model edit redraws more than the lifted parts. On the
+  Announcer, the "void of soft darkness" face came back as a visible skull. The head layer is cut
+  from that plate, so the rig's face is not the portrait's face. On the Understudy, the edit removed
+  the ribbon and bell (the accessory) as asked, but it also changed the cracks and the brow.
+
+## Decision
+**Keep polygons. Do not adopt the pose-template fallback.** Requirement 1.3: 3 of 3 fresh portraits
+produced a rig that passes `validateRig` (the threshold is 2 of 3). Each found every expected part
+and finished end to end in 46-54 s. The 4 replay jobs from task 8 also assemble and validate. They
+were built offline from run 1 and Malakor.
+
+The findings above are about rig quality, not validity. They go to the owner for a ruling, with
+these counter-proposals:
+1. Make the `background` layer the filled plate instead of a solid ground. Every region outside the
+   parts then keeps its pixels (neck, collar, ears), and the open jaw shows plate, not black.
+2. On the plate-sourced head, grow the lifted jaw region upward until it meets the head polygon (for
+   example, use the convex hull of the head and jaw polygons). Also grow it downward by the jaw's
+   travel. Then the opened jaw never shows a polygon edge.
+3. Guard against fill drift. One option: compare the plate to the portrait outside the lifted parts
+   (for example, mean luma difference over the head polygon), and use the `blurExtend` fallback when
+   the drift is too large. Another option: cut only the lifted region from the plate and the rest of
+   the head from the portrait.
 
 ## Malakor parts-only run (fixture `m8-parts.json`)
 Director ruling (a) of the task 2 review: the parts fixture for the Malakor golden test is a
@@ -84,16 +146,18 @@ succeeded) on the committed 1024x1024 PNG (sha256 `c215283f...bd02989`).
   JSON. The last torso point closes with `]]]}` where `]]}` belongs, at offset 2,011. The fixture
   is the recorded response with that one extra `]` removed. No coordinate, name or order was
   changed, and the result is pretty-printed. A strict JSON decoder on the server would turn this
-  response into `upstream`. Task 6.1 (`generateJson`) and task 7 decide whether to tolerate it,
-  retry, or fail; this record does not.
+  response into `upstream`. Resolved in task 7: `parsePartsJson` stays strict, and the parts
+  step asks once more, then fails with `upstream`. The test uses this recorded reply.
 - **Quality:** not judged yet. The script draws overlays from the parsed parts, and the raw text
   did not parse, so `overlay.png` and `overlay.svg` show the portrait with no polygons. The cut
   golden test in task 5 is the first visual check of these polygons.
-- **Outputs (git-ignored):** `var/forge-spike/parts-only/portrait/` holds `run.json`,
+- **Outputs (git-ignored):** `var/forge-spike-20261101-1315/parts-only/portrait/` holds `run.json`,
   `parts.raw.txt`, `check.json`, `overlay.svg` and `overlay.png`. The fixture holds polygons only,
   with no image data.
 
 ## Provenance
-The 3 portraits were generated by Gemini 3 Pro Image on 2026-11-01 from the preset prompts. They
-are original fiction and do not depict a real person. Before any portrait is promoted to
-`assets/replay/forge/` (task 8), it needs a row in `docs/provenance.md` and `fictional: true`.
+Gemini 3 Pro Image generated the 6 portraits (3 in run 1, 3 in run 2) and the 3 fill-edit plates
+on 2026-11-01, from the preset prompts. Gemini 3.8 Flash generated the part polygons. All are
+original fiction and depict no real person. The run-1 portraits are promoted to
+`assets/replay/forge/` with `fictional: true` and have rows in `docs/provenance.md`. Run-2 outputs
+stay in `var/`, except the downscaled composite grid `0003-forge-spike-composites.jpg` (226 KB).

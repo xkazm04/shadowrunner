@@ -1,58 +1,44 @@
-// Forge spike (forge-pipeline task 1.1, requirement 1). Owner-only, paid, never run by tests.
+// Forge spike (forge-pipeline task 1, requirement 1). Owner-only, paid, never run by tests.
 //   GEMINI_API_KEY=... node scripts/forge-spike.mjs [--force]
 //   GEMINI_API_KEY=... node scripts/forge-spike.mjs --parts-only <image> [--force]
-// --parts-only (task 2.2, director ruling (a)): one PARTS_PROMPT call on an existing PNG/JPEG,
-// output under var/forge-spike/parts-only/<image name>/; no portrait is generated.
-// For 3 preset prompts (assets/characters/presets/PROMPTS.md, characters 1, 3 and 5) it generates a
-// portrait with portraitPrompt(), asks the segmentation model for parts with PARTS_PROMPT, and
-// writes portrait, raw + parsed parts, a structural check, and overlays under var/forge-spike/.
-// Cut, fill and assemble (tasks 3-6) are not in this script yet; the decision record says so.
+// End to end (task 1.2): for 3 preset prompts (assets/characters/presets/PROMPTS.md, characters 1,
+// 3 and 5) it runs the SERVER pipeline itself (api/_lib/forge-steps.ts with the real Gemini client
+// from api/_lib/gemini.ts, the server's timeouts, a memory job store and no quota): portrait ->
+// parts (one re-ask on malformed JSON) -> fill edit (30 s, blurExtend fallback) -> cut -> assemble.
+// Per portrait it writes under var/forge-spike/<slug>/: portrait, parts.json, overlay.png, the
+// rig, every layer PNG, and composite.png (portrait | layers composited | jaw opened), and a
+// summary.json with step timings, part count, the validateRig result and the fill mode.
+// --parts-only (task 2.2, ruling (a)): one PARTS_PROMPT call on an existing PNG/JPEG, raw reply kept.
 //
-// Paid-call discipline: each call is retried at most once (network error, timeout, 429, 5xx), and
-// the script refuses to run again over an existing var/forge-spike/summary.json without --force.
-// The key is sent only in the x-goog-api-key header; it is never printed or written, and any
-// upstream text that is recorded is scrubbed of it first.
+// Paid-call discipline: no call is retried (the server does not retry either; the parts step's one
+// re-ask is part of the pipeline), and the script refuses to run again over an existing
+// var/forge-spike/summary.json without --force. The key reaches only the Gemini client, which
+// sends it in the x-goog-api-key header; it is never printed or written, and error messages are ours.
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { basename, extname, join, relative } from "node:path";
-import { crc32, deflateSync, inflateSync } from "node:zlib";
+import { basename, extname, join } from "node:path";
+import { runnerImport } from "vite";
 
 const OUT = join("var", "forge-spike");
-const API = "https://generativelanguage.googleapis.com/v1beta/models";
-const TIMEOUT_MS = 120_000; // generous on purpose: the spike measures real latency (server cap is 55 s)
-const IMAGE_MODEL = process.env.SR_IMAGE_MODEL || "gemini-3-pro-image";
-const SEGMENT_MODEL = process.env.SR_SEGMENT_MODEL || "gemini-3.8-flash";
+const load = async (id) => (await runnerImport(id)).module;
+const forge = await load("/packages/forge/src/index.ts");
+const { validateRig } = await load("/packages/rig/src/index.ts");
+const { createGemini, geminiModels } = await load("/api/_lib/gemini.ts");
+const { MemoryJobStore, newJobId } = await load("/api/_lib/jobstore.ts");
+const { startJob, runStep } = await load("/api/_lib/forge-steps.ts");
 
-// Exact strings from .kiro/specs/forge-pipeline/design.md "Prompts (exact)". Duplicated here
-// because packages/forge/src/prompts.ts (task 2.1) does not exist yet and this is plain .mjs.
-const HOUSE_STYLE =
-  "Original character portrait, head and shoulders bust, facing the camera, centred, symmetrical framing, theatrical horror, painterly realism, dramatic rim light, the face clearly separated from the body, the jaw and eyes clearly visible, near-black (#050505) empty background, no text, no logos, no frame, not a real person, no gore, 1:1.";
-const portraitPrompt = (t) => `${HOUSE_STYLE} The character: ${t.slice(0, 400)}`;
-const PARTS_PROMPT =
-  'This is a character portrait to be cut into animation layers. For each visible part among: head (skull/face, excluding crown, hair, hat and jaw), jaw (lower jaw that moves when speaking), eye_l (character\'s left eye), eye_r, monocle, crown (all crown spikes together), hat, hair, accessory (one other worn object on the head), torso (shoulders/robe), return a tight polygon outline. Return JSON: [{"name": string, "box_2d": [ymin,xmin,ymax,xmax], "poly": [[y,x],...]}] with coordinates normalized to 0-1000, 8-40 points per polygon, clockwise. Omit parts that are not visible.';
-const PART_NAMES = ["head", "jaw", "eye_l", "eye_r", "monocle", "crown", "torso", "hat", "hair", "accessory"];
-
-// Character texts from assets/characters/presets/PROMPTS.md (verbatim, line breaks joined).
+const presets = readFileSync(join("assets", "characters", "presets", "PROMPTS.md"), "utf8");
+function presetText(n) {
+  const section = presets.split(/\n## /).find((s) => s.startsWith(`${n}. `));
+  const match = section?.match(/\*\*Character[^\n]*\n((?:>.*\n?)+)/);
+  if (!match) throw new Error(`forge-spike: no Character text for preset ${n}`);
+  return match[1].split("\n").map((l) => l.replace(/^>\s?/, "").trim()).filter(Boolean).join(" ");
+}
 const CHARACTERS = [
-  {
-    slug: "lantern-warden",
-    preset: 1,
-    expected: ["head", "jaw", "eye_l", "eye_r", "hat", "torso"],
-    text: "A watchman whose head is a rotting carved gourd, mottled orange and moss-green, flecked with white mould. Two triangular eye holes burn with steady amber candlelight. The lower rind is cut as a separate hinged jaw with ragged carved teeth, lit from inside. A wide-brimmed, moth-eaten felt hat sits low. Shoulders in a damp oilcloth coat with a brass lantern hook at the collar.",
-  },
-  {
-    slug: "understudy",
-    preset: 3,
-    expected: ["head", "jaw", "eye_l", "eye_r", "accessory", "torso"],
-    text: "A theatre marionette loose of its strings: cracked ivory porcelain face, faded rose cheeks, glass eyes with a dim carmine glow. The jaw is a separate hinged wooden piece, two straight seams running down from the mouth corners. A small tarnished brass bell hangs on a ribbon across the brow. A deep crimson velvet theatre coat with gold piping and a white ruff.",
-  },
-  {
-    slug: "announcer-of-dead-air",
-    preset: 5,
-    expected: ["head", "jaw", "eye_l", "eye_r", "hat", "crown", "torso"],
-    text: "A tall hooded announcer whose face is a void of soft darkness: only two round eyes of violet phosphor and a wide mouth of flickering static-white teeth on a separate lower jaw. A deep hood of heavy black felt, frayed at the edge. Above the hood floats a broken ring of rusted antenna rods crackling with violet sparks. A collar of old microphone mesh.",
-  },
-];
+  { slug: "lantern-warden", preset: 1, expected: ["head", "jaw", "eye_l", "eye_r", "hat", "torso"] },
+  { slug: "understudy", preset: 3, expected: ["head", "jaw", "eye_l", "eye_r", "accessory", "torso"] },
+  { slug: "announcer-of-dead-air", preset: 5, expected: ["head", "jaw", "eye_l", "eye_r", "hat", "crown", "torso"] },
+].map((c) => ({ ...c, text: presetText(c.preset) }));
 
 const KEY = process.env.GEMINI_API_KEY;
 if (!KEY) {
@@ -70,327 +56,182 @@ if (existsSync(GUARD) && !FORCE) {
   console.error(`forge-spike: ${GUARD} exists. Re-running spends money again; pass --force to do it anyway.`);
   process.exit(2);
 }
-
 const scrub = (s) => String(s).split(KEY).join("[redacted]").slice(0, 400);
 
-/** One generateContent call, retried at most once on transient failure. Returns { json, ms, attempts }. */
-async function generate(model, body) {
+/** The server's Gemini client, with every call and failure reason logged for the record (no bodies). */
+const models = geminiModels(process.env);
+const calls = [];
+/** Raw JSON replies, kept for the record (parts.raw.txt), never parsed here. */
+const raws = [];
+const real = createGemini({ apiKey: KEY, models });
+const logged = (kind, fn) => async (...args) => {
   const started = performance.now();
-  let lastError;
-  for (let attempt = 1; attempt <= 2; attempt += 1) {
-    let res;
-    try {
-      res = await fetch(`${API}/${model}:generateContent`, {
-        method: "POST",
-        headers: { "content-type": "application/json", "x-goog-api-key": KEY },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(TIMEOUT_MS),
-      });
-    } catch (err) {
-      lastError = { kind: err?.name === "TimeoutError" ? "timeout" : "network", message: scrub(err?.message ?? err) };
-      continue;
-    }
-    const text = await res.text();
-    if (res.ok) {
-      return { json: JSON.parse(text), ms: Math.round(performance.now() - started), attempts: attempt };
-    }
-    let message = text;
-    try {
-      message = JSON.parse(text)?.error?.message ?? text;
-    } catch {
-      // keep raw text
-    }
-    lastError = { kind: "http", status: res.status, message: scrub(message) };
-    if (res.status !== 429 && res.status < 500) break;
-  }
-  const error = new Error(`${model}: ${lastError.kind} ${lastError.status ?? ""}`.trim());
-  error.detail = { ...lastError, ms: Math.round(performance.now() - started) };
-  throw error;
-}
-
-const partsOf = (json) => json?.candidates?.[0]?.content?.parts ?? [];
-
-async function makePortrait(text) {
-  const body = {
-    contents: [{ role: "user", parts: [{ text: portraitPrompt(text) }] }],
-    generationConfig: { responseModalities: ["TEXT", "IMAGE"], imageConfig: { aspectRatio: "1:1", imageSize: "1K" } },
-  };
-  const { json, ms, attempts } = await generate(IMAGE_MODEL, body);
-  const image = partsOf(json).find((p) => p.inlineData?.data);
-  if (!image) {
-    const why = json?.candidates?.[0]?.finishReason ?? json?.promptFeedback?.blockReason ?? "no image part";
-    const error = new Error(`${IMAGE_MODEL}: no image (${why})`);
-    error.detail = { kind: "no_image", reason: scrub(why), ms };
-    throw error;
-  }
-  return { bytes: Buffer.from(image.inlineData.data, "base64"), mimeType: image.inlineData.mimeType, ms, attempts, usage: json.usageMetadata };
-}
-
-async function requestParts(bytes, mimeType) {
-  const body = {
-    contents: [{ role: "user", parts: [{ inlineData: { mimeType, data: bytes.toString("base64") } }, { text: PARTS_PROMPT }] }],
-    generationConfig: { responseMimeType: "application/json" },
-  };
-  const { json, ms, attempts } = await generate(SEGMENT_MODEL, body);
-  const raw = partsOf(json).filter((p) => typeof p.text === "string" && !p.thought).map((p) => p.text).join("");
-  return { raw, ms, attempts, usage: json.usageMetadata };
-}
-
-/** Structural check mirroring requirement 3.2/3.3 (parseParts lands in task 2.2). */
-function checkParts(raw) {
-  let data;
   try {
-    data = JSON.parse(raw.replace(/^\s*```(?:json)?\s*|\s*```\s*$/g, ""));
+    const out = await fn(...args);
+    calls.push({ kind, ms: Math.round(performance.now() - started), ok: true });
+    if (kind === "generateJson") raws.push(out);
+    return out;
   } catch (err) {
-    return { parsed: false, error: scrub(err.message), parts: [] };
+    calls.push({ kind, ms: Math.round(performance.now() - started), ok: false, reason: err?.reason ?? err?.name, httpStatus: err?.httpStatus });
+    throw err;
   }
-  if (!Array.isArray(data)) return { parsed: true, error: "not an array", parts: [] };
-  const isCoord = (n) => Number.isInteger(n) && n >= 0 && n <= 1000;
-  const report = data.map((p, i) => {
-    const problems = [];
-    if (!PART_NAMES.includes(p?.name)) problems.push(`unknown name ${JSON.stringify(p?.name)}`);
-    if (!Array.isArray(p?.box_2d) || p.box_2d.length !== 4 || !p.box_2d.every(isCoord)) problems.push("bad box_2d");
-    const poly = Array.isArray(p?.poly) ? p.poly : [];
-    if (poly.length < 3 || poly.length > 60) problems.push(`poly has ${poly.length} points (3..60)`);
-    if (!poly.every((pt) => Array.isArray(pt) && pt.length === 2 && pt.every(isCoord))) problems.push("bad poly point");
-    return { index: i, name: p?.name, points: poly.length, problems };
-  });
-  const valid = report.filter((r) => r.problems.length === 0);
-  const names = valid.map((r) => r.name);
-  return {
-    parsed: true,
-    total: data.length,
-    valid: valid.length,
-    headPresent: names.includes("head"),
-    duplicates: names.filter((n, i) => names.indexOf(n) !== i),
-    parts: report,
-    data,
-  };
-}
-
-// ---- overlays: SVG always; PNG composite when the portrait is an 8-bit RGB/RGBA PNG ----
-const COLOURS = {
-  head: [255, 80, 80], jaw: [255, 200, 40], eye_l: [60, 220, 255], eye_r: [60, 140, 255], monocle: [200, 120, 255],
-  crown: [255, 120, 220], torso: [80, 255, 120], hat: [255, 150, 60], hair: [180, 255, 60], accessory: [255, 255, 255],
 };
-const colourOf = (name) => COLOURS[name] ?? [128, 128, 128];
+const gemini = {
+  models: real.models,
+  generateImage: logged("generateImage", real.generateImage),
+  editImage: logged("editImage", (image, prompt, options) => real.editImage(image, prompt, options)),
+  generateJson: logged("generateJson", real.generateJson),
+};
 
-function overlaySvg(portraitFile, w, h, parts) {
-  const shapes = parts
-    .filter((p) => Array.isArray(p?.poly))
-    .map((p) => {
-      const [r, g, b] = colourOf(p.name);
-      const pts = p.poly.map(([y, x]) => `${((x / 1000) * w).toFixed(1)},${((y / 1000) * h).toFixed(1)}`).join(" ");
-      const [y0, x0] = p.poly[0] ?? [0, 0];
-      return `<polygon points="${pts}" fill="rgb(${r},${g},${b})" fill-opacity="0.22" stroke="rgb(${r},${g},${b})" stroke-width="3"/>` +
-        `<text x="${(x0 / 1000) * w}" y="${(y0 / 1000) * h}" fill="rgb(${r},${g},${b})" font-size="22" font-family="sans-serif">${p.name}</text>`;
-    })
-    .join("\n");
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">\n<image href="${portraitFile}" width="${w}" height="${h}"/>\n${shapes}\n</svg>\n`;
-}
+// ---- images: decode, overlay, composite (pure JS through @sr/forge) ----
+const COLOURS = { head: [255, 80, 80], jaw: [255, 200, 40], eye_l: [60, 140, 255], eye_r: [60, 220, 255], monocle: [200, 120, 255], crown: [255, 120, 220], torso: [80, 255, 120], hat: [255, 150, 60], hair: [180, 255, 60], accessory: [255, 255, 255] };
+const fromDataUrl = (url) => new Uint8Array(Buffer.from(url.slice(url.indexOf(",") + 1), "base64"));
+const decode = (bytes) => {
+  const d = forge.decodeImage(bytes);
+  if (!d.ok) throw new Error(`decode failed: ${d.errors.message}`);
+  return d.value;
+};
 
-function decodePng(buf) {
-  if (buf.readUInt32BE(0) !== 0x89504e47) return null;
-  let off = 8, w = 0, h = 0, depth = 0, type = 0, interlace = 0;
-  const idat = [];
-  while (off < buf.length) {
-    const len = buf.readUInt32BE(off);
-    const kind = buf.toString("latin1", off + 4, off + 8);
-    const data = buf.subarray(off + 8, off + 8 + len);
-    if (kind === "IHDR") [w, h, depth, type, interlace] = [data.readUInt32BE(0), data.readUInt32BE(4), data[8], data[9], data[12]];
-    if (kind === "IDAT") idat.push(data);
-    if (kind === "IEND") break;
-    off += 12 + len;
-  }
-  if (depth !== 8 || interlace !== 0 || (type !== 2 && type !== 6)) return { w, h, rgb: null };
-  const bpp = type === 6 ? 4 : 3;
-  const raw = inflateSync(Buffer.concat(idat));
-  const stride = w * bpp;
-  const px = Buffer.alloc(h * stride);
-  for (let y = 0; y < h; y += 1) {
-    const filter = raw[y * (stride + 1)];
-    const src = raw.subarray(y * (stride + 1) + 1, (y + 1) * (stride + 1));
-    for (let x = 0; x < stride; x += 1) {
-      const a = x >= bpp ? px[y * stride + x - bpp] : 0;
-      const b = y > 0 ? px[(y - 1) * stride + x] : 0;
-      const c = x >= bpp && y > 0 ? px[(y - 1) * stride + x - bpp] : 0;
-      const p = a + b - c, pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c);
-      const pred = [0, a, b, (a + b) >> 1, pa <= pb && pa <= pc ? a : pb <= pc ? b : c][filter];
-      px[y * stride + x] = (src[x] + pred) & 255;
-    }
-  }
-  const rgb = Buffer.alloc(w * h * 3);
-  for (let i = 0; i < w * h; i += 1) px.copy(rgb, i * 3, i * bpp, i * bpp + 3);
-  return { w, h, rgb };
-}
-
-/** Width and height from a JPEG's SOFn marker (no pixel decode). */
-function jpegSize(buf) {
-  let off = 2;
-  while (off + 9 < buf.length && buf[off] === 0xff) {
-    const marker = buf[off + 1];
-    if (marker >= 0xc0 && marker <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marker)) {
-      return { w: buf.readUInt16BE(off + 7), h: buf.readUInt16BE(off + 5), rgb: null };
-    }
-    off += 2 + buf.readUInt16BE(off + 2);
-  }
-  return null;
-}
-
-function encodePng(w, h, rgb) {
-  const rows = Buffer.alloc(h * (w * 3 + 1));
-  for (let y = 0; y < h; y += 1) rgb.copy(rows, y * (w * 3 + 1) + 1, y * w * 3, (y + 1) * w * 3);
-  const chunk = (kind, data) => {
-    const head = Buffer.alloc(8);
-    head.writeUInt32BE(data.length, 0);
-    head.write(kind, 4, "latin1");
-    const crc = Buffer.alloc(4);
-    crc.writeUInt32BE(crc32(Buffer.concat([head.subarray(4), data])) >>> 0, 0);
-    return Buffer.concat([head, data, crc]);
-  };
-  const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(w, 0);
-  ihdr.writeUInt32BE(h, 4);
-  ihdr.set([8, 2, 0, 0, 0], 8);
-  return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk("IHDR", ihdr), chunk("IDAT", deflateSync(rows)), chunk("IEND", Buffer.alloc(0))]);
-}
-
-function overlayPng(img, parts) {
-  const { w, h } = img;
-  const rgb = Buffer.from(img.rgb);
-  const blend = (x, y, [r, g, b], a) => {
-    if (x < 0 || y < 0 || x >= w || y >= h) return;
-    const i = (y * w + x) * 3;
-    rgb[i] = rgb[i] * (1 - a) + r * a;
-    rgb[i + 1] = rgb[i + 1] * (1 - a) + g * a;
-    rgb[i + 2] = rgb[i + 2] * (1 - a) + b * a;
-  };
+function overlay(img, parts) {
+  const out = { width: img.width, height: img.height, data: img.data.slice() };
   for (const part of parts) {
-    if (!Array.isArray(part?.poly) || part.poly.length < 3) continue;
-    const colour = colourOf(part.name);
-    const pts = part.poly.map(([y, x]) => [(x / 1000) * w, (y / 1000) * h]);
-    for (let y = 0; y < h; y += 1) {
-      const xs = [];
-      for (let i = 0; i < pts.length; i += 1) {
-        const [x1, y1] = pts[i], [x2, y2] = pts[(i + 1) % pts.length];
-        if ((y1 <= y + 0.5) !== (y2 <= y + 0.5)) xs.push(x1 + ((y + 0.5 - y1) / (y2 - y1)) * (x2 - x1));
-      }
-      xs.sort((a, b) => a - b);
-      for (let k = 0; k + 1 < xs.length; k += 2) for (let x = Math.ceil(xs[k] - 0.5); x < xs[k + 1] - 0.5; x += 1) blend(x, y, colour, 0.22);
-    }
-    for (let i = 0; i < pts.length; i += 1) {
-      const [x1, y1] = pts[i], [x2, y2] = pts[(i + 1) % pts.length];
-      const steps = Math.ceil(Math.hypot(x2 - x1, y2 - y1));
-      for (let s = 0; s <= steps; s += 1) {
-        const x = Math.round(x1 + ((x2 - x1) * s) / Math.max(steps, 1)), y = Math.round(y1 + ((y2 - y1) * s) / Math.max(steps, 1));
-        for (let dy = -1; dy <= 1; dy += 1) for (let dx = -1; dx <= 1; dx += 1) blend(x + dx, y + dy, colour, 1);
-      }
+    const [r, g, b] = COLOURS[part.name] ?? [128, 128, 128];
+    const mask = forge.rasterizeMask(forge.toCanvas(part.poly, img.width, img.height), img.width, img.height, 0);
+    const edge = forge.dilateMask(mask, 2);
+    for (let i = 0; i < mask.data.length; i++) {
+      const a = mask.data[i] ? (edge.data[i] && !isInterior(mask, i, 2) ? 1 : 0.22) : edge.data[i] ? 1 : 0;
+      if (a === 0) continue;
+      out.data[i * 4] = out.data[i * 4] * (1 - a) + r * a;
+      out.data[i * 4 + 1] = out.data[i * 4 + 1] * (1 - a) + g * a;
+      out.data[i * 4 + 2] = out.data[i * 4 + 2] * (1 - a) + b * a;
     }
   }
-  return encodePng(w, h, rgb);
+  return out;
+}
+function isInterior(mask, i, r) {
+  const x = i % mask.width, y = Math.floor(i / mask.width);
+  for (const [dx, dy] of [[r, 0], [-r, 0], [0, r], [0, -r]]) if (!mask.data[(y + dy) * mask.width + x + dx]) return false;
+  return true;
 }
 
-/** --parts-only: one parts call on an existing image; records the raw response, parsed parts and overlays. */
-async function partsOnly(file) {
-  const bytes = readFileSync(file);
-  const mimeType = bytes.readUInt32BE(0) === 0x89504e47 ? "image/png" : bytes[0] === 0xff && bytes[1] === 0xd8 ? "image/jpeg" : undefined;
-  if (!mimeType) {
-    console.error(`forge-spike: ${file} is neither PNG nor JPEG.`);
-    process.exitCode = 2;
-    return;
+/** The rig's layers composited back to front over black; `jawPx` moves the jaw layer down. */
+function composite(rig, assets, jawPx) {
+  const { width, height } = rig;
+  const data = new Uint8ClampedArray(width * height * 4);
+  for (let i = 3; i < data.length; i += 4) data[i] = 255;
+  for (const layer of [...rig.layers].sort((a, b) => a.z - b.z)) {
+    const img = decode(fromDataUrl(assets[layer.file]));
+    const [bx, by] = layer.bbox;
+    const dy = layer.kind === "jaw" ? jawPx : 0;
+    for (let y = 0; y < img.height; y++) {
+      const ty = Math.round(by) + y + dy;
+      if (ty < 0 || ty >= height) continue;
+      for (let x = 0; x < img.width; x++) {
+        const tx = Math.round(bx) + x;
+        if (tx < 0 || tx >= width) continue;
+        const s = (y * img.width + x) * 4, t = (ty * width + tx) * 4, a = img.data[s + 3] / 255;
+        for (let c = 0; c < 3; c++) data[t + c] = img.data[s + c] * a + data[t + c] * (1 - a);
+      }
+    }
   }
-  const dir = join(OUT, "parts-only", basename(file, extname(file)));
+  return { width, height, data };
+}
+function sideBySide(images) {
+  const { height } = images[0];
+  const width = images.reduce((w, im) => w + im.width, 0);
+  const data = new Uint8ClampedArray(width * height * 4);
+  let x0 = 0;
+  for (const im of images) {
+    for (let y = 0; y < height; y++) data.set(im.data.subarray(y * im.width * 4, (y + 1) * im.width * 4), (y * width + x0) * 4);
+    x0 += im.width;
+  }
+  return { width, height, data };
+}
+
+// ---- --parts-only ----
+if (PARTS_ONLY) {
+  const bytes = new Uint8Array(readFileSync(PARTS_ONLY));
+  const format = forge.sniffImage(bytes);
+  const dir = join(OUT, "parts-only", basename(PARTS_ONLY, extname(PARTS_ONLY)));
   mkdirSync(dir, { recursive: true });
-  const run = { ranAt: new Date().toISOString(), segmentModel: SEGMENT_MODEL, timeoutMs: TIMEOUT_MS, image: file.replaceAll("\\", "/"), mimeType, sha256: createHash("sha256").update(bytes).digest("hex") };
-  console.log(`forge-spike: parts-only ${run.image} (${SEGMENT_MODEL})...`);
+  const run = { ranAt: new Date().toISOString(), segmentModel: models.segment, image: PARTS_ONLY.replaceAll("\\", "/"), sha256: createHash("sha256").update(bytes).digest("hex") };
   try {
-    const parts = await requestParts(bytes, mimeType);
-    Object.assign(run, { partsMs: parts.ms, partsAttempts: parts.attempts, partsUsage: parts.usage });
-    writeFileSync(join(dir, "parts.raw.txt"), parts.raw);
-    const check = checkParts(parts.raw);
-    writeFileSync(join(dir, "check.json"), `${JSON.stringify({ ...check, data: undefined }, null, 2)}\n`);
-    if (check.data) writeFileSync(join(dir, "parts.json"), `${JSON.stringify(check.data, null, 2)}\n`);
-    const img = mimeType === "image/png" ? decodePng(bytes) : jpegSize(bytes);
-    const data = check.data ?? [];
-    writeFileSync(join(dir, "overlay.svg"), overlaySvg(relative(dir, file).replaceAll("\\", "/"), img?.w ?? 1024, img?.h ?? 1024, data));
-    if (img?.rgb) writeFileSync(join(dir, "overlay.png"), overlayPng(img, data));
-    Object.assign(run, { width: img?.w, height: img?.h, parsed: check.parsed, partCount: check.total ?? 0, validParts: check.valid ?? 0, headPresent: check.headPresent ?? false, duplicates: check.duplicates ?? [] });
-    console.log(`forge-spike: parts ${parts.ms} ms, ${run.validParts}/${run.partCount} valid, head ${run.headPresent}`);
+    const started = performance.now();
+    const raw = await gemini.generateJson(forge.PARTS_PROMPT, { mimeType: format === "png" ? "image/png" : "image/jpeg", data: bytes });
+    run.partsMs = Math.round(performance.now() - started);
+    writeFileSync(join(dir, "parts.raw.txt"), raw);
+    const parsed = forge.parsePartsJson(raw);
+    run.parsed = parsed.ok;
+    if (parsed.ok) writeFileSync(join(dir, "parts.json"), `${JSON.stringify(parsed.value.parts, null, 2)}\n`);
   } catch (err) {
-    run.partsError = err.detail ?? { message: scrub(err.message) };
-    console.error(`forge-spike: parts failed: ${scrub(err.message)}`);
+    run.error = scrub(err?.message ?? err);
     process.exitCode = 1;
   }
-  writeFileSync(join(dir, "run.json"), `${JSON.stringify(run, null, 2)}\n`);
+  writeFileSync(join(dir, "run.json"), `${JSON.stringify({ ...run, calls }, null, 2)}\n`);
   console.log(`forge-spike: wrote ${join(dir, "run.json")}`);
-}
-
-// ---- run ----
-if (PARTS_ONLY) {
-  await partsOnly(PARTS_ONLY);
   process.exit();
 }
+
+// ---- end to end ----
 mkdirSync(OUT, { recursive: true });
+const ranAt = new Date().toISOString();
 const results = [];
 for (const c of CHARACTERS) {
   const dir = join(OUT, c.slug);
   mkdirSync(dir, { recursive: true });
-  const prompt = portraitPrompt(c.text);
-  writeFileSync(join(dir, "prompt.txt"), `${prompt}\n`);
-  const result = { slug: c.slug, preset: c.preset, textChars: c.text.length, truncated: c.text.length > 400, expected: c.expected, timings: {} };
+  writeFileSync(join(dir, "prompt.txt"), `${forge.portraitPrompt(c.text)}\n`);
+  const store = new MemoryJobStore();
+  const ctx = { gemini, store, charge: async () => true, now: () => performance.now() };
+  const firstCall = calls.length;
+  const firstRaw = raws.length;
+  const result = { slug: c.slug, preset: c.preset, expected: c.expected, steps: [] };
   results.push(result);
-  console.log(`forge-spike: ${c.slug}: portrait (${IMAGE_MODEL})...`);
-  let portrait;
-  try {
-    portrait = await makePortrait(c.text);
-  } catch (err) {
-    result.portraitError = err.detail ?? { message: scrub(err.message) };
-    console.error(`forge-spike: ${c.slug}: portrait failed: ${scrub(err.message)}`);
-    continue;
+  console.log(`forge-spike: ${c.slug}: running the server pipeline...`);
+  let job = { jobId: newJobId(), plane: "live", mode: "prompt", status: "queued", createdAt: Date.now(), prompt: c.text };
+  const wall = performance.now();
+  for (let i = 0; i < 8 && job.status !== "done" && job.status !== "failed"; i++) {
+    const from = job.status, t = performance.now();
+    job = i === 0 ? await startJob(job, undefined, ctx) : await runStep(job, ctx);
+    result.steps.push({ from, to: job.status, ms: Math.round(performance.now() - t) });
+    console.log(`forge-spike: ${c.slug}: ${from} -> ${job.status} (${result.steps.at(-1).ms} ms)`);
   }
-  const ext = portrait.mimeType === "image/png" ? "png" : portrait.mimeType === "image/jpeg" ? "jpg" : "img";
-  const portraitFile = `portrait.${ext}`;
-  writeFileSync(join(dir, portraitFile), portrait.bytes);
-  // JPEG portraits (what gemini-3-pro-image returned on 2026-11-01) get an SVG overlay only.
-  const img = ext === "png" ? decodePng(portrait.bytes) : ext === "jpg" ? jpegSize(portrait.bytes) : null;
-  Object.assign(result, { portrait: join(dir, portraitFile), mimeType: portrait.mimeType, width: img?.w, height: img?.h, portraitAttempts: portrait.attempts, portraitUsage: portrait.usage });
-  result.timings.portraitMs = portrait.ms;
-  console.log(`forge-spike: ${c.slug}: portrait ${portrait.ms} ms; parts (${SEGMENT_MODEL})...`);
-  let parts;
-  try {
-    parts = await requestParts(portrait.bytes, portrait.mimeType);
-  } catch (err) {
-    result.partsError = err.detail ?? { message: scrub(err.message) };
-    console.error(`forge-spike: ${c.slug}: parts failed: ${scrub(err.message)}`);
-    continue;
-  }
-  result.timings.partsMs = parts.ms;
-  Object.assign(result, { partsAttempts: parts.attempts, partsUsage: parts.usage });
-  writeFileSync(join(dir, "parts.raw.txt"), parts.raw);
-  const check = checkParts(parts.raw);
-  writeFileSync(join(dir, "check.json"), `${JSON.stringify({ ...check, data: undefined }, null, 2)}\n`);
-  if (check.data) writeFileSync(join(dir, "parts.json"), `${JSON.stringify(check.data, null, 2)}\n`);
-  const found = check.parts.filter((p) => p.problems.length === 0).map((p) => p.name);
   Object.assign(result, {
-    parsed: check.parsed,
-    partCount: check.total ?? 0,
-    validParts: check.valid ?? 0,
-    headPresent: check.headPresent ?? false,
-    found,
-    missingExpected: c.expected.filter((n) => !found.includes(n)),
-    problems: check.parts.filter((p) => p.problems.length > 0),
-    duplicates: check.duplicates ?? [],
+    status: job.status,
+    totalMs: Math.round(performance.now() - wall),
+    timings: job.timings,
+    partsAsks: job.partsAsks,
+    fill: job.fill,
+    error: job.error,
+    calls: calls.slice(firstCall),
   });
-  const data = check.data ?? [];
-  writeFileSync(join(dir, "overlay.svg"), overlaySvg(portraitFile, img?.w ?? 1024, img?.h ?? 1024, data));
-  result.overlaySvg = join(dir, "overlay.svg");
-  if (img?.rgb) {
-    writeFileSync(join(dir, "overlay.png"), overlayPng(img, data));
-    result.overlayPng = join(dir, "overlay.png");
+  raws.slice(firstRaw).forEach((raw, i) => writeFileSync(join(dir, i === 0 ? "parts.raw.txt" : `parts.raw.${i + 1}.txt`), raw));
+  if (job.portraitUrl) {
+    const bytes = fromDataUrl(job.portraitUrl);
+    writeFileSync(join(dir, `portrait.${job.portraitMime === "image/png" ? "png" : "jpg"}`), bytes);
+    const img = decode(bytes);
+    Object.assign(result, { width: img.width, height: img.height, mimeType: job.portraitMime });
+    if (job.parts) {
+      writeFileSync(join(dir, "parts.json"), `${JSON.stringify(job.parts, null, 2)}\n`);
+      writeFileSync(join(dir, "overlay.png"), forge.encodePng(overlay(img, job.parts)));
+      const found = job.parts.map((p) => p.name);
+      Object.assign(result, { partCount: found.length, found, missingExpected: c.expected.filter((n) => !found.includes(n)), overlay: join(dir, "overlay.png") });
+    }
+    if (job.plateUrl) writeFileSync(join(dir, `plate.${job.plateUrl.startsWith("data:image/png") ? "png" : "jpg"}`), fromDataUrl(job.plateUrl));
+    if (job.rig && job.assets) {
+      const checked = validateRig(job.rig);
+      result.validateRig = checked.ok ? "ok" : checked.errors.map((e) => e.code);
+      result.layers = job.rig.layers.map((l) => l.name);
+      writeFileSync(join(dir, "rig.json"), `${JSON.stringify(job.rig, null, 2)}\n`);
+      for (const [file, url] of Object.entries(job.assets)) writeFileSync(join(dir, `layer-${file}`), fromDataUrl(url));
+      const jawPx = Math.round(job.rig.height * 0.03);
+      writeFileSync(join(dir, "composite.png"), forge.encodePng(sideBySide([img, composite(job.rig, job.assets, 0), composite(job.rig, job.assets, jawPx)])));
+      result.composite = join(dir, "composite.png");
+      result.jawOpenPx = jawPx;
+    }
   }
-  console.log(`forge-spike: ${c.slug}: parts ${parts.ms} ms, ${result.validParts}/${result.partCount} valid, head ${result.headPresent}`);
+  if (job.error) console.error(`forge-spike: ${c.slug}: failed: ${job.error.code} (${scrub(job.error.message)})`);
 }
 
-const summary = { ranAt: new Date().toISOString(), imageModel: IMAGE_MODEL, segmentModel: SEGMENT_MODEL, timeoutMs: TIMEOUT_MS, results };
+const summary = { ranAt, models, pipeline: "api/_lib/forge-steps.ts (server code, server timeouts)", results };
 writeFileSync(join(OUT, "summary.json"), `${JSON.stringify(summary, null, 2)}\n`);
 console.log(`forge-spike: wrote ${join(OUT, "summary.json")}`);
