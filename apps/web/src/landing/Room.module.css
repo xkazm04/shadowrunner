@@ -3,14 +3,69 @@
    420x910 portrait ([data-world="portrait"] on the stage). Literal colours are role tokens:
    black is surface-0, the gourds' orange is ember, the set's light is phosphor-spill. */
 
+/* Registered, so the daemon-lost sequence can transition it (Gourds.module.css registers the same). */
+@property --light {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 1;
+}
+
 /* --light (0 dark .. 1 lit) is the room's candle level. It is set here, on the ancestor shared by
-   the thrown dots and the spiral pumpkin, so both always read one value; the flicker and the
-   daemon-lost dimming (landing task 8) drive it on this element. */
+   the thrown dots and the spiral pumpkin, so both always read one value. --glow is what they
+   draw: the light times the candle's flicker (fx/flicker.ts writes --flicker here; 1 without
+   motion). --delay, --fade and --fold come inline from daemon.ts (Room.tsx). */
 .room {
   --light: 1;
+  --glow: calc(var(--light) * var(--flicker, 1));
 
   position: absolute;
   inset: 0;
+}
+
+/* Daemon lost: the spiral goes out first (light position 0). */
+.room[data-daemon="dark"] {
+  --light: 0;
+}
+
+.room[data-daemon="dark"],
+.room[data-daemon="relighting"] {
+  transition: --light var(--fade) ease var(--delay);
+}
+
+/* The gourds' candle light on the floor dies with them, and returns with the sweep. */
+.room[data-daemon="dark"] .gourdGlow {
+  opacity: 0.12;
+  transition: opacity 1.6s ease 0.2s;
+}
+
+.room[data-daemon="relighting"] .gourdGlow {
+  transition: opacity 0.9s ease;
+}
+
+/* The set's light goes with its picture. */
+.room[data-daemon="folding"] .spill,
+.room[data-daemon="dark"] .spill {
+  opacity: 0;
+  transition: opacity var(--fold) ease;
+}
+
+.room[data-daemon="relighting"] .spill {
+  transition: opacity 0.9s ease;
+}
+
+/* Reduced motion: every daemon change is an instant switch (as specific as the rules above). */
+@media (prefers-reduced-motion: reduce) {
+  .room[data-daemon],
+  .room[data-daemon] .gourdGlow,
+  .room[data-daemon] .spill {
+    transition: none;
+  }
+}
+
+:global([data-motion="reduced"]) .room[data-daemon],
+:global([data-motion="reduced"]) .room[data-daemon] .gourdGlow,
+:global([data-motion="reduced"]) .room[data-daemon] .spill {
+  transition: none;
 }
 
 /* Only the room's own layers; children bring their own positioning and pointer rules. */

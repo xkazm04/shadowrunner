@@ -45,18 +45,24 @@
   - `ChatStrip.tsx` with `chatScript.ts` (replay lines from the reference), typed in line by line, with a top fade mask that never renders under the header. On live, reads the engine stream once `voice-and-air` lands.
   - _Requirements: 6.1, 6.2, 6.3_
 
-- [ ] 8. Daemon lost and motion
-  - [ ] 8.1 `daemon.ts` state table with fake-timer tests (fast-check over health sequences). Wire the `daemon-sample` action (key `D`, today a no-op in `Shell.tsx`) to the sample toggle only when `usePlane()` is `replay`; test that `D` changes nothing on live.
-  - [ ] 8.2 Choreography: fold to dot, NO CARRIER, gourds going out one by one, the eye that keeps burning and follows with no lag, relight sweep.
-  - [ ] 8.3 `fx/` dust, flicker and typing as a lazy chunk behind `data-motion`; the reduced-motion static twin; an intro that can be skipped within 4 s and never pulls the visitor back.
+- [x] 8. Daemon lost and motion
+  - [x] 8.1 `daemon.ts` state table with fake-timer tests (fast-check over health sequences). Wire the `daemon-sample` action (key `D`, today a no-op in `Shell.tsx`) to the sample toggle only when `usePlane()` is `replay`; test that `D` changes nothing on live.
+  - [x] 8.2 Choreography: fold to dot, NO CARRIER, gourds going out one by one, the eye that keeps burning and follows with no lag, relight sweep.
+  - [x] 8.3 `fx/` dust, flicker and typing as a lazy chunk behind `data-motion`; the reduced-motion static twin; an intro that can be skipped within 4 s and never pulls the visitor back.
   - _Requirements: 4.4, 4.5, 7.1, 7.2, 7.3, 7.4, 9.2, 9.3_
 
-- [ ] 9. Channels behind the set
+- [x] 9. Channels behind the set
   - Shell behaviour tests (rendered with a DOM test environment, e.g. happy-dom for `apps/web` only): `Esc` closes Go to first and then returns to `/`; `←`/`→` wrap around the dial; arrows do nothing on `/air`.
   - `ChannelFrame.tsx` ("Back to the set · Esc", breadcrumb), CH 4 `Listings.tsx`, CH 6 `Daemon.tsx`, CH 9 sealed door, all matching `screenshots/ch-*.png`. CH 3 is restyled by `creator` task 8.
   - _Requirements: 8.1, 8.2, 8.3_
 
 - [ ] 10. Guards
-  - [ ] 10.1 Playwright visual test (`pnpm test:visual`): 1600x900 in both themes, 390x844 in halloween and daemon-lost at 1600x900, all with reduced motion on the replay plane, 2% tolerance, baselines committed.
+  - [x] 10.1 Playwright visual test (`pnpm test:visual`): 1600x900 in both themes, 390x844 in halloween and daemon-lost at 1600x900, all with reduced motion on the replay plane, 2% tolerance, baselines committed.
   - [ ] 10.2 Lighthouse accessibility of 90 or more and a first load of 2 MB or less on the deployed URL, recorded in `docs/kiro-log.md`.
   - _Requirements: 9.4, 9.5, 10.1, 10.2_
+
+- [ ] 11. Follow-ups from the lane D build (director, 2026-11-01)
+  - After 5.2: re-baseline `pnpm test:visual`; decide whether CH 6 and CH 9 tune on the set's own glass like the reference (index.html:916-926) instead of framed pages (requirement 8.1 currently says framed pages, which ships).
+  - Add a `size-headline` role (about 4rem) so channel headlines reach the reference's 64-72 px; the creator restyle (creator task 8) uses it too.
+  - Add the carved-number AA check to the visual test (design.md "Fixes"), and the phosphor-on-glass check once 5.2 lands.
+

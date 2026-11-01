@@ -1,0 +1,59 @@
+/* CH 6 (Daemon.tsx): the test card on the tube, after the reference's `#tubeText .kick` and `.rd`
+   rules. Typewriter rows in phosphor, keys in phosphor-2; the lost daemon's row in signal-warn. */
+
+.page {
+  display: flex;
+  justify-content: center;
+  inline-size: 100%;
+}
+
+.kick {
+  margin: 0 0 var(--sr-space-2);
+  color: var(--sr-phosphor-2);
+  font-family: var(--sr-font-display);
+  font-size: var(--sr-size-text-lg);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0 var(--sr-space-4);
+  margin: 0;
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text);
+  line-height: 1.5;
+  text-align: start;
+}
+
+.row {
+  display: contents;
+}
+
+.row dt {
+  color: var(--sr-phosphor-2);
+}
+
+.row dd {
+  margin: 0;
+  color: var(--sr-phosphor);
+}
+
+.row:first-child dt,
+.row:first-child dd {
+  font-weight: 700;
+}
+
+.row[data-alarm] dd {
+  color: var(--sr-signal-warn);
+}
+
+.action {
+  margin: var(--sr-space-2) 0 0;
+  color: var(--sr-phosphor);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text);
+  font-weight: 700;
+}

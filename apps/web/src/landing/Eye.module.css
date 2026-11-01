@@ -39,7 +39,6 @@
 
 .core {
   fill: var(--sr-ember);
-  opacity: 0.28;
 }
 
 .pupil {
@@ -48,7 +47,6 @@
 
 .glow {
   mix-blend-mode: screen;
-  opacity: 0.42;
 }
 
 .glowCore {
@@ -65,4 +63,79 @@
 .glowEdge {
   stop-color: var(--sr-ember);
   stop-opacity: 0;
+}
+
+/* The candle's flicker (fx/flicker.ts writes --flicker here; 1 without motion). */
+.core {
+  opacity: calc(0.28 * var(--flicker, 1));
+}
+
+.glow {
+  opacity: calc(0.42 * var(--flicker, 1));
+}
+
+/* Daemon dark: the one light left burns harder (the reference's 1.6x), and the gourd lifts. */
+.eye[data-daemon="dark"] .core {
+  opacity: calc(0.45 * var(--flicker, 1));
+}
+
+.eye[data-daemon="dark"] .glow {
+  opacity: calc(0.67 * var(--flicker, 1));
+}
+
+.eye[data-daemon="dark"] .gourd {
+  filter: brightness(0.7) saturate(0.9);
+}
+
+/* IT IS STILL LOOKING, once the last light is out (--stare from daemon.ts). 240x(auto) at
+   (1290, 600) in landscape, over the eye's own pile; a dark band keeps the type at AA. */
+.note {
+  position: absolute;
+  inset-block-start: 66.67%;
+  inset-inline-start: 80.625%;
+  inline-size: 15%;
+  margin: 0;
+  padding: var(--sr-space-1) var(--sr-space-2);
+  border-radius: var(--sr-radius-1);
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--sr-surface-0) 82%, transparent),
+    color-mix(in srgb, var(--sr-surface-0) 82%, transparent)
+  );
+  color: var(--sr-ember);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-align: center;
+  pointer-events: none;
+  animation: stare 1.2s ease var(--stare) both;
+
+  /* Over the room's vignette and floor shade, which are for surfaces, not labels. */
+  z-index: 1;
+}
+
+:global([data-world="portrait"]) .note {
+  inset-block-start: 41.5%;
+  inset-inline: auto 2%;
+  inline-size: auto;
+}
+
+@keyframes stare {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .note {
+    animation: none;
+  }
+}
+
+:global([data-motion="reduced"]) .note {
+  animation: none;
 }

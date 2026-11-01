@@ -1,0 +1,238 @@
+/* CH 4 Cellar Listings (Listings.tsx), after the reference's `#gpage`, `.mast`, `.listing`, `.vac`
+   and `.gbtn` rules: a parchment page, slightly turned, on the frame's dark room. Literal colours
+   are roles: the page is `paper`, the ink `paper-ink`, the red time line `paper-ink-signal`.
+   Contrast (as the chat strip, landing task 7): the page is opaque `paper` and the texture is a
+   screen at 0.24, so it can only lighten and both inks keep their token contrast. */
+
+.page {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1.25fr 1fr;
+  gap: var(--sr-space-6);
+  box-sizing: border-box;
+  inline-size: min(78.75rem, 100%);
+  padding: var(--sr-space-6);
+  overflow: hidden;
+  border-radius: var(--sr-radius-1);
+  background-color: var(--sr-paper);
+  color: var(--sr-paper-ink);
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text);
+  line-height: 1.45;
+  transform: rotate(-0.4deg);
+  filter: drop-shadow(0 1.875rem 2.5rem color-mix(in srgb, var(--sr-surface-0) 85%, transparent));
+}
+
+.page::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: url("../../../../assets/plates/paper.webp");
+  background-position: center;
+  background-size: cover;
+  filter: contrast(1.4);
+  mix-blend-mode: screen;
+  opacity: 0.24;
+}
+
+.page > * {
+  position: relative;
+}
+
+.page h1,
+.page h2,
+.page h3 {
+  margin: 0;
+  color: var(--sr-paper-ink);
+  font-family: var(--sr-font-display);
+  font-weight: 800;
+  line-height: 1;
+}
+
+:where(.page p) {
+  margin: 0;
+}
+
+/* The masthead: title left, the night's line right, over a double rule. */
+.mast {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--sr-space-4);
+  padding-block-end: var(--sr-space-3);
+  border-block-end: 0.25rem double var(--sr-paper-ink);
+}
+
+.mast h1 {
+  font-size: var(--sr-size-display);
+  letter-spacing: -0.01em;
+}
+
+.mast p {
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.3;
+  text-align: end;
+}
+
+.listing {
+  display: grid;
+  grid-template-columns: 15.625rem 1fr;
+  gap: var(--sr-space-5);
+  align-content: start;
+}
+
+.listing figure {
+  margin: 0;
+}
+
+.listing img {
+  display: block;
+  inline-size: 100%;
+  block-size: auto;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border: 0.1875rem solid var(--sr-paper-ink);
+  filter: grayscale(0.55) sepia(0.35) contrast(1.15);
+}
+
+.listing figcaption {
+  margin-block-start: var(--sr-space-2);
+  font-size: var(--sr-size-text);
+  line-height: 1.3;
+}
+
+.time,
+.slotTime {
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-lg);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1;
+}
+
+.time {
+  color: var(--sr-paper-ink-signal);
+}
+
+.listing h2 {
+  margin-block: var(--sr-space-2) var(--sr-space-1);
+  font-size: var(--sr-size-display);
+}
+
+.role {
+  margin-block-end: var(--sr-space-3);
+  font-size: var(--sr-size-text-lg);
+  font-style: italic;
+  line-height: 1.3;
+}
+
+.blurb {
+  margin-block-end: var(--sr-space-3);
+  font-size: var(--sr-size-text-lg);
+  line-height: 1.5;
+}
+
+.listing dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--sr-space-1) var(--sr-space-4);
+  margin: 0 0 var(--sr-space-4);
+}
+
+.listing dl div {
+  display: contents;
+}
+
+.listing dt {
+  font-weight: 700;
+}
+
+.listing dd {
+  margin: 0;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sr-space-2);
+}
+
+/* The programme's buttons: ink-filled, or outlined (alt). Two classes, over `.shell a`. */
+.page .button {
+  display: inline-flex;
+  align-items: center;
+  margin-block-start: var(--sr-space-2);
+  padding: var(--sr-space-3) var(--sr-space-4);
+  border: thin solid var(--sr-paper-ink);
+  border-radius: var(--sr-radius-1);
+  background-color: var(--sr-paper-ink);
+  color: var(--sr-paper);
+  font-size: var(--sr-size-text-lg);
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+}
+
+.page .alt {
+  background-color: transparent;
+  color: var(--sr-paper-ink);
+}
+
+.page .button:focus-visible {
+  outline: medium solid var(--sr-paper-ink-signal);
+  outline-offset: var(--sr-space-1);
+}
+
+.slots {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sr-space-4);
+}
+
+.vacant {
+  padding: var(--sr-space-4) var(--sr-space-5);
+  border: 0.125rem dashed color-mix(in srgb, var(--sr-paper-ink) 60%, var(--sr-paper));
+  border-radius: var(--sr-radius-1);
+}
+
+.vacant h3 {
+  margin-block: var(--sr-space-2);
+  font-size: var(--sr-size-text-lg);
+  font-weight: 700;
+}
+
+.vacant p:not(.slotTime) {
+  line-height: 1.45;
+}
+
+.sealed {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    color-mix(in srgb, var(--sr-paper-ink) 6%, transparent) 0 0.625rem,
+    transparent 0.625rem 1.25rem
+  );
+}
+
+@media (max-width: 60rem) {
+  .page {
+    grid-template-columns: 1fr;
+    padding: var(--sr-space-5);
+    transform: none;
+  }
+}
+
+@media (max-width: 36rem) {
+  .listing {
+    grid-template-columns: 1fr;
+  }
+
+  .listing figure {
+    max-inline-size: 15.625rem;
+  }
+}

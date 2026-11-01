@@ -1,0 +1,211 @@
+/* The carrier on the glass (Carrier.tsx). Geometry: the set's plate box (Gourds.tsx PLATE_VARS),
+   the glass centre at plate (597, 427) = 49.75% 47.66%. The raster is the tube's light, phosphor;
+   the dead glass is surface; the lower third is the reference's `.lt.dead` on role tokens.
+   --fold and --unfold come inline from daemon.ts. */
+
+.plate {
+  position: absolute;
+  inset-block-start: var(--plate-l-y);
+  inset-inline-start: var(--plate-l-x);
+  inline-size: var(--plate-l-w);
+  block-size: var(--plate-l-h);
+  pointer-events: none;
+}
+
+:global([data-world="portrait"]) .plate {
+  inset-block-start: var(--plate-p-y);
+  inset-inline-start: var(--plate-p-x);
+  inline-size: var(--plate-p-w);
+  block-size: var(--plate-p-h);
+}
+
+/* Dead glass: the tube with nothing on it, faintly lit from the room. */
+.glass {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(
+    ellipse 24% 26% at 46% 43%,
+    color-mix(in srgb, var(--sr-surface-2) 92%, transparent),
+    color-mix(in srgb, var(--sr-surface-0) 96%, transparent)
+  );
+}
+
+.plate[data-carrier="folding"] .glass {
+  animation: dead var(--fold) ease-in both;
+}
+
+.plate[data-carrier="relighting"] .glass {
+  animation: dead var(--unfold) ease-out reverse both;
+}
+
+@keyframes dead {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* The picture's power envelope: frame -> line -> dot, flaring as it collapses. */
+.raster {
+  position: absolute;
+  inset: 0;
+  transform-origin: 49.75% 47.66%;
+  background-image: radial-gradient(
+    ellipse 22% 24% at 49.75% 47.66%,
+    var(--sr-phosphor),
+    color-mix(in srgb, var(--sr-phosphor-2) 70%, transparent)
+  );
+  mix-blend-mode: screen;
+}
+
+.plate[data-carrier="folding"] .raster {
+  animation: fold var(--fold) ease-in both;
+}
+
+.plate[data-carrier="relighting"] .raster {
+  animation: unfold var(--unfold) ease-out both;
+}
+
+/* As the reference's power envelope: the flash is nothing on the full frame and peaks on the line
+   and the dot, so the glass never holds a pale slab. */
+@keyframes fold {
+  0% {
+    opacity: 0.05;
+    transform: scale(1, 1);
+  }
+
+  45% {
+    opacity: 0.9;
+    transform: scale(1, 0.012);
+  }
+
+  80% {
+    opacity: 1;
+    transform: scale(0.012, 0.012);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(0.012, 0.012);
+  }
+}
+
+@keyframes unfold {
+  0% {
+    opacity: 1;
+    transform: scale(0.012, 0.012);
+  }
+
+  25% {
+    opacity: 1;
+    transform: scale(1, 0.012);
+  }
+
+  55% {
+    opacity: 0.05;
+    transform: scale(1, 1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1, 1);
+  }
+}
+
+/* The dot left on the phosphor, dying. */
+.afterglow {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(
+    circle at 49.75% 47.66%,
+    var(--sr-phosphor),
+    color-mix(in srgb, var(--sr-phosphor-spill) 40%, transparent) 1.2%,
+    transparent 4%
+  );
+  mix-blend-mode: screen;
+  animation: afterglow 1.8s cubic-bezier(0.1, 0.6, 0.3, 1) both;
+}
+
+@keyframes afterglow {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+/* NO CARRIER: the lower third at plate (402, bottom 587), 400 wide at most. */
+.third {
+  position: absolute;
+  inset-block-end: 34.49%;
+  inset-inline-start: 33.5%;
+  max-inline-size: 33.33%;
+  margin: 0;
+  padding: var(--sr-space-1) var(--sr-space-3);
+  border-inline-start: 0.3125rem solid;
+  border-inline-start-color: var(--sr-signal-warn);
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--sr-surface-0) 86%, transparent),
+    color-mix(in srgb, var(--sr-surface-0) 86%, transparent)
+  );
+  color: var(--sr-text-strong);
+  font-family: var(--sr-font-display);
+  line-height: 1.15;
+  white-space: nowrap;
+  animation: dead 0.4s ease both;
+}
+
+.title,
+.line {
+  display: block;
+  font-size: var(--sr-size-text-lg);
+}
+
+.title {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.line {
+  color: var(--sr-text);
+}
+
+:global([data-world="portrait"]) .third {
+  inset-inline-start: 31%;
+  max-inline-size: none;
+  padding: var(--sr-space-1) var(--sr-space-2);
+}
+
+:global([data-world="portrait"]) .title,
+:global([data-world="portrait"]) .line {
+  font-size: var(--sr-size-text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plate[data-carrier] .glass,
+  .plate[data-carrier] .raster,
+  .afterglow,
+  .third {
+    animation: none;
+  }
+
+  .afterglow {
+    display: none;
+  }
+}
+
+:global([data-motion="reduced"]) .plate[data-carrier] .glass,
+:global([data-motion="reduced"]) .plate[data-carrier] .raster,
+:global([data-motion="reduced"]) .afterglow,
+:global([data-motion="reduced"]) .third {
+  animation: none;
+}
+
+:global([data-motion="reduced"]) .afterglow {
+  display: none;
+}

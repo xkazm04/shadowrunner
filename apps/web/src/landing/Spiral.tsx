@@ -1,7 +1,7 @@
 // The lit spiral pumpkin in the left foreground, cut from `root-pile`, and the spiral of light
 // dots it throws onto the wall (landing requirement 4.2). Static: both read the `--light` custom
-// property (0 dark to 1 lit) from the Room, their shared ancestor; the flicker (fx/) and the
-// daemon-lost dimming (daemon.ts) later drive it there.
+// property (0 dark to 1 lit) from the Room, their shared ancestor, as `--glow` (the light times
+// the flicker from fx/); the daemon-lost sequence (daemon.ts) drives `--light` there.
 // Both parts are landscape-only, as in the reference.
 import { useId } from "react";
 import styles from "./Spiral.module.css";

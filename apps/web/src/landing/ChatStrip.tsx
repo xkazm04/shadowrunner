@@ -6,42 +6,58 @@
 // On replay the reference's script plays: viewer lines land whole and the host's are typed in.
 // With reduced motion the strip is static (chatScript staticChat). On live the lines come from
 // the engine (spec voice-and-air) through `feed`; until that lands the paper waits, empty.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Plane } from "../app/plane";
 import type { Motion } from "../app/theme";
 import styles from "./ChatStrip.module.css";
 import {
-  delayOf,
   HOST_TAG,
   initialChat,
   isTyping,
   START_MS,
   staticChat,
-  stepChat,
   type ChatLine,
   type ChatState,
   type ShownLine,
 } from "./chatScript";
 
-/** Replay with motion: the script on its clock. Reduced motion: the static twin, no timer. */
+/**
+ * Replay with motion: the script on its clock, played by the typewriter in the lazy fx chunk.
+ * Reduced motion: the static twin, no timer, no chunk. While not `enabled` (live, or the daemon
+ * lost) the paper holds still and resumes where it stopped.
+ */
 function useScriptedChat(motion: Motion, enabled: boolean): ChatState {
   const [state, setState] = useState<ChatState>(() => (motion === "full" ? initialChat() : staticChat()));
-  const [started, setStarted] = useState(false);
+  const current = useRef(state);
+  const started = useRef(false);
+  // Declared first, so on a motion change the reset lands before the player below restarts.
   useEffect(() => {
-    setState(motion === "full" ? initialChat() : staticChat());
-    setStarted(false);
+    const fresh = motion === "full" ? initialChat() : staticChat();
+    current.current = fresh;
+    started.current = false;
+    setState(fresh);
   }, [motion]);
   useEffect(() => {
     if (!enabled || motion !== "full") return;
-    const timer = window.setTimeout(
-      () => {
-        setStarted(true);
-        setState((s) => stepChat(s));
-      },
-      started ? delayOf(state) : START_MS,
-    );
-    return () => window.clearTimeout(timer);
-  }, [enabled, motion, started, state]);
+    let stop: (() => void) | undefined;
+    let cancelled = false;
+    void import("./fx").then((fx) => {
+      if (cancelled) return;
+      stop = fx.playChat(
+        current.current,
+        (next) => {
+          started.current = true;
+          current.current = next;
+          setState(next);
+        },
+        started.current ? undefined : START_MS,
+      );
+    });
+    return () => {
+      cancelled = true;
+      stop?.();
+    };
+  }, [enabled, motion]);
   return state;
 }
 
@@ -74,11 +90,13 @@ export interface ChatStripProps {
   host?: string;
   /** Live lines from the engine (spec voice-and-air). Ignored on replay. */
   feed?: readonly ChatLine[];
+  /** The daemon is lost: the host cannot answer, so the script holds where it is. */
+  paused?: boolean;
 }
 
-export function ChatStrip({ plane, motion, host = HOST_TAG, feed }: ChatStripProps) {
+export function ChatStrip({ plane, motion, host = HOST_TAG, feed, paused = false }: ChatStripProps) {
   const replay = plane === "replay";
-  const scripted = useScriptedChat(motion, replay);
+  const scripted = useScriptedChat(motion, replay && !paused);
   const lines: readonly ShownLine[] = replay
     ? scripted.lines
     : (feed ?? []).map((line, id) => ({ id, line, typed: line.text.length }));

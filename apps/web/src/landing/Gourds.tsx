@@ -3,13 +3,15 @@
 // beneath. The current channel's gourd burns, the others hold an ember. Hovering or focusing a
 // gourd writes that channel across the glass (GlassCaption, which the composition root stands on
 // the set's glass). The legend box shows the keymap the shell actually binds (keys.ts).
-// Static: the light levels are CSS states; the flicker and the daemon-lost choreography (task 8)
-// drive the same `--light` property later.
+// The light levels are CSS states on `--light`; the daemon-lost choreography (daemon.ts) moves
+// them with per-gourd delays, and the flicker (fx/, motion only) scales them through `--flicker`.
 import { useRef, type CSSProperties } from "react";
 import { GLOBAL_BINDINGS, type KeyAction } from "../app/keys";
 import { channelPages, PAGES, type PageDef, type PageId } from "../app/pages";
 import type { Plane } from "../app/plane";
 import { navigate } from "../app/router";
+import type { Motion } from "../app/theme";
+import { fadeMs, lightDelayMs, type DaemonState } from "./daemon";
 import styles from "./Gourds.module.css";
 import { clipPolygon, GLASS, PLATE, superellipse } from "./superellipse";
 import { SET_PLATE, WORLD_SIZE, type WorldLayout } from "./World";
@@ -68,10 +70,14 @@ export function cropBackground(crop: Crop): CropBackground {
   };
 }
 
-export type Light = "burn" | "ember";
+export type Light = "burn" | "ember" | "out";
 
-/** Pure: the current channel burns; every other gourd holds an ember. */
-export function lightOf(page: PageDef, current: PageId | undefined): Light {
+/**
+ * Pure: the current channel burns; every other gourd holds an ember. Once the daemon is dark every
+ * gourd is out (its carving stays readable as a cold cut; Gourds.module.css).
+ */
+export function lightOf(page: PageDef, current: PageId | undefined, daemon: DaemonState = "online"): Light {
+  if (daemon === "dark") return "out";
   return page.id === current ? "burn" : "ember";
 }
 
@@ -93,7 +99,11 @@ const pct = (v: number) => `${v.toFixed(4)}%`;
 
 const DIAL = channelPages(PAGES);
 
-const GLASS_CLIP = clipPolygon(superellipse(GLASS, 96), PLATE);
+/** The room's lights in daemon.ts order: the spiral pumpkin (position 0), then the gourds. */
+export const LIGHTS = 1 + DIAL.length;
+
+/** The glass superellipse as a clip-path polygon in percentages of the plate. */
+export const GLASS_CLIP = clipPolygon(superellipse(GLASS, 96), PLATE);
 
 function plateVars(): Vars {
   const vars: Vars = {};
@@ -107,10 +117,11 @@ function plateVars(): Vars {
   return vars;
 }
 
-const PLATE_VARS = plateVars();
+/** The plate box in both layouts, as the custom properties `.plate` rules read. */
+export const PLATE_VARS = plateVars();
 
 /** The glass box inside the plate, as percentages of the plate. */
-const GLASS_BOX: Vars = {
+export const GLASS_BOX: Vars = {
   "--glass-x": pct(((GLASS.cx - GLASS.a) / PLATE.width) * 100),
   "--glass-y": pct(((GLASS.cy - GLASS.b) / PLATE.height) * 100),
   "--glass-w": pct(((2 * GLASS.a) / PLATE.width) * 100),
@@ -198,23 +209,31 @@ export interface GourdsProps {
   /** The page on the set; its gourd burns. */
   current: PageId | undefined;
   plane: Plane;
+  /** The daemon's state (daemon.ts): dark puts every gourd out, relighting brings them back. */
+  daemon?: DaemonState;
+  motion?: Motion;
   /** Called with the hovered (or else focused) channel, and with undefined when there is none. */
   onHover?: (page: PageDef | undefined) => void;
 }
 
-export function Gourds({ current, plane, onHover }: GourdsProps) {
+export function Gourds({ current, plane, daemon = "online", motion = "reduced", onHover }: GourdsProps) {
   const pointer = useRef<PageDef | undefined>(undefined);
   const focus = useRef<PageDef | undefined>(undefined);
   const report = () => onHover?.(pointer.current ?? focus.current);
   const middle = (DIAL.length - 1) / 2;
   return (
     <>
-      <nav className={styles.row} aria-label="Channels: five carved gourds in front of the set">
+      <nav className={styles.row} aria-label="Channels: five carved gourds in front of the set" data-daemon={daemon}>
         {DIAL.map((page, slot) => {
-          const light = lightOf(page, current);
+          const light = lightOf(page, current, daemon);
           const crop = GOURD_CROPS[page.channel ?? -1];
           const bg = crop && cropBackground(crop);
-          const vars: Vars = { "--offset": slot - middle };
+          const vars: Vars = {
+            "--offset": slot - middle,
+            // When this gourd goes out (dark) or comes back (relighting): daemon.ts schedules it.
+            "--delay": `${lightDelayMs(daemon, slot + 1, LIGHTS, motion)}ms`,
+            "--fade": `${fadeMs(daemon)}ms`,
+          };
           if (bg) {
             vars["--crop-size"] = pct(bg.size);
             vars["--crop-x"] = pct(bg.x);
@@ -228,9 +247,10 @@ export function Gourds({ current, plane, onHover }: GourdsProps) {
               style={vars}
               data-channel={page.channel}
               data-light={light}
+              data-flame
               data-status={page.status}
               aria-label={`Channel ${page.channel}, ${page.title}`}
-              aria-current={light === "burn" ? "page" : undefined}
+              aria-current={page.id === current ? "page" : undefined}
               onClick={() => navigate(page.path)}
               onPointerEnter={() => {
                 pointer.current = page;

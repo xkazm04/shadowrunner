@@ -12,9 +12,12 @@
   pointer-events: none;
 }
 
-/* --light: 0 out .. 1 burning. The flicker and the daemon-lost sequence (task 8) drive it. */
+/* --light: 0 out .. 1 burning, a CSS state (registered as a number in Room.module.css, so it can
+   transition). --glow is what the layers draw: the light times the candle's flicker
+   (fx/flicker.ts writes --flicker on [data-flame]; without motion it is 1). */
 .gourd {
   --light: 0.26;
+  --glow: calc(var(--light) * var(--flicker, 1));
 
   position: absolute;
   inset-block-start: 80.44%;
@@ -40,6 +43,20 @@
   --light: 0.75;
 }
 
+/* Daemon lost: each gourd goes out at its own --delay (daemon.ts, inline); the button stays
+   usable. Relighting brings them back in a sweep. */
+.gourd[data-light="out"] { --light: 0; }
+
+.row[data-daemon="dark"] .gourd,
+.row[data-daemon="relighting"] .gourd {
+  transition: --light var(--fade) ease var(--delay);
+}
+
+.row[data-daemon="dark"] .lit,
+.row[data-daemon="relighting"] .lit {
+  transition: fill var(--fade) ease var(--delay), filter var(--fade) ease var(--delay);
+}
+
 /* Three classes, over the shell's `.shell button:focus-visible`. */
 .row .gourd:focus-visible {
   outline: medium solid var(--sr-accent);
@@ -54,7 +71,7 @@
   block-size: 90.4%;
   pointer-events: none;
   mix-blend-mode: screen;
-  opacity: var(--light);
+  opacity: var(--glow);
   background-image: radial-gradient(
     ellipse 50% 42% at 50% 60%,
     color-mix(in srgb, var(--sr-ember) 42%, transparent),
@@ -85,12 +102,12 @@
   background-repeat: no-repeat;
   background-size: var(--crop-size) auto;
   background-position: var(--crop-x) var(--crop-y);
-  filter: brightness(calc(0.8 + var(--light) * 0.4)) saturate(0.9) contrast(1.05);
+  filter: brightness(calc(0.8 + var(--glow) * 0.4)) saturate(0.9) contrast(1.05);
   mask-image: radial-gradient(ellipse 50% 52% at 50% 52%, var(--sr-surface-0) 64%, transparent 79%);
 }
 
 .gourd[data-status="sealed"] .skin {
-  filter: brightness(calc(0.6 + var(--light) * 0.4)) saturate(0.6);
+  filter: brightness(calc(0.6 + var(--glow) * 0.4)) saturate(0.6);
 }
 
 .carving {
@@ -126,12 +143,15 @@
    (and the burn turns its core pale, below). Measured on the rendered gourds in landing task 6. */
 .lit {
   fill: var(--sr-ember);
-  fill-opacity: calc(0.85 + var(--light) * 0.15);
+  fill-opacity: calc(0.85 + var(--glow) * 0.15);
   stroke: var(--sr-surface-0);
   stroke-width: 2;
   stroke-opacity: 0.9;
   paint-order: stroke;
 }
+
+/* Out: no candle behind the cut, so the numeral reads cold, in the label's ink, on the dark cut. */
+.gourd[data-light="out"] .lit { fill: var(--sr-text); }
 
 .gourd[data-light="burn"] .lit {
   fill: var(--sr-text-strong);
@@ -173,19 +193,25 @@
   transition: inline-size 0.3s;
 }
 
-.gourd[data-light="burn"] .name::after {
+/* The current channel keeps its underline when its candle is out. */
+.gourd[aria-current="page"] .name::after {
   inline-size: 30.67%;
 }
 
+/* Reduced motion: every daemon change is an instant switch (as specific as the rules above). */
 @media (prefers-reduced-motion: reduce) {
   .body,
-  .name::after {
+  .name::after,
+  .row[data-daemon] .gourd,
+  .row[data-daemon] .lit {
     transition: none;
   }
 }
 
 :global([data-motion="reduced"]) .body,
-:global([data-motion="reduced"]) .name::after {
+:global([data-motion="reduced"]) .name::after,
+:global([data-motion="reduced"]) .row[data-daemon] .gourd,
+:global([data-motion="reduced"]) .row[data-daemon] .lit {
   transition: none;
 }
 
