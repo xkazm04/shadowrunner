@@ -1,0 +1,567 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>R2 · Creator · A</title>
+<meta name="sr-name" content="The Rite in Four Marks">
+<meta name="sr-pitch" content="Forge new as a sub-page of Anatomy Under Glass: same rail, same glass, but the right column becomes a four-mark rite (describe, bind, forge, wake); the empty layer stack fills slot by slot as the recorded job finds and cuts each part, and at the last mark the page turns into the anatomy view with the new face already lit and talking.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Courier+Prime:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* rig (from Anatomy Under Glass) */
+.rig{position:relative;aspect-ratio:1/1;perspective:1800px;perspective-origin:50% 30%;--rim:#fec654;--eye:#fec654;--glow:#d8a030;--mouth:#ffb347}
+.rig-world,.rig-grp{position:absolute;inset:0;transform-style:preserve-3d;will-change:transform}
+.rig-layer{position:absolute;transform-style:preserve-3d;transition:opacity .45s ease,translate .55s cubic-bezier(.2,.8,.2,1),outline-color .2s}
+.rig-layer img{position:absolute;inset:0;width:100%;height:100%;display:block;user-select:none;filter:var(--tint,) brightness(var(--b,1))}
+.rig-layer.k-head img{filter:brightness(1.02) drop-shadow(-3px -3px 5px color-mix(in srgb,var(--rim) 50%,transparent)) drop-shadow(4px -2px 8px color-mix(in srgb,var(--rim) 28%,transparent))}
+.rig-layer.k-body img{filter:drop-shadow(0 -3px 4px color-mix(in srgb,var(--rim) 40%,transparent))}
+.rig-layer.k-eye{mix-blend-mode:screen}
+.rig-layer.k-eye img{transform-origin:50% 55%}
+.rig-layer.off{opacity:0;translate:0 -9%}
+.rig-layer.k-eye.off{translate:0 -4%}
+.rig-layer.k-static.off{translate:0 0}
+.rig-glow{position:absolute;border-radius:50%;pointer-events:none;mix-blend-mode:screen;transition:opacity .3s;
+  background:radial-gradient(closest-side,color-mix(in srgb,var(--c,#fec654) 85%,transparent),color-mix(in srgb,var(--c,#fec654) 28%,transparent) 50%,transparent)}
+.rig-glow.off{opacity:0!important}
+.rig-label{position:absolute;left:100%;top:0;white-space:nowrap;font:700 13px/1 "Courier Prime",monospace;color:#ffe2b4;opacity:0;transition:opacity .4s;padding:3px 6px;background:rgba(10,6,3,.88);border-left:2px solid #ffb05c;pointer-events:none}
+.rig.exploding .rig-layer:not(.off) .rig-label{opacity:1}
+.rig.exploding .rig-layer:not(.off){outline:1px solid rgba(255,190,110,.35)}
+.rig.exploding .rig-glow{opacity:0!important}
+.rig.exploding .rig-layer{mix-blend-mode:normal}
+@media (prefers-reduced-motion:reduce){.rig-layer,.rig-glow,.rig-label{transition:none!important}}
+
+:root{--ink:#ecebe4;--ink2:#b9bfb6;--dim:#8d958c;--bg:#070908;--line:rgba(180,220,200,.16);--acc:#ffb05c;--pale:#ffe2b4;--red:#d2402f;--eye:#fec654;
+  --display:"Barlow Semi Condensed","Arial Narrow",sans-serif;--body:Inter,system-ui,sans-serif;--typed:"Courier Prime","Courier New",monospace}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--ink);font:400 15px/1.45 var(--body);overflow:hidden}
+button{font:inherit;color:inherit;cursor:pointer;background:none;border:0}
+a{color:inherit}
+:focus-visible{outline:2px solid #ffd27a;outline-offset:3px;border-radius:6px}
+kbd{font:700 12px var(--typed);padding:2px 6px;border:1px solid rgba(236,235,228,.35);border-radius:4px;color:var(--ink2)}
+[hidden]{display:none!important}
+/* header (same chrome as the parent Forge page) */
+header{display:flex;align-items:center;gap:18px;padding:0 20px;border-bottom:1px solid var(--line);height:56px;position:relative;z-index:20}
+.back{display:flex;align-items:center;gap:10px;font:600 17px var(--display);padding:6px 4px;text-decoration:none;white-space:nowrap}
+.back:hover{color:var(--acc)}
+.crumb{font:500 18px var(--display);color:var(--dim);white-space:nowrap;display:flex;align-items:baseline;gap:7px;min-width:0;overflow:hidden}
+.crumb a{color:var(--ink2);text-decoration:none;border-bottom:1px dotted rgba(236,235,228,.35)}.crumb a:hover{color:var(--acc)}
+.crumb b{color:var(--ink);font-weight:700}
+.crumb .path{font:400 14px var(--typed);color:var(--dim);margin-left:4px}
+@media (max-width:1420px){.crumb .path,.crumb .root{display:none}}
+.sp{flex:1}
+.rec{display:flex;align-items:center;gap:8px;font:700 13px var(--typed);letter-spacing:.14em;color:#ffb3a8;padding:5px 9px;border:1px solid var(--red);border-radius:3px;white-space:nowrap}
+.rec::before{content:"";width:8px;height:8px;border-radius:50%;background:#ff4b36;box-shadow:0 0 8px #ff4b36;animation:recb 1.6s steps(2) infinite}
+@keyframes recb{50%{opacity:.25}}
+/* compact channel switcher */
+.chsw{display:flex;align-items:center;gap:2px;padding:3px 3px 3px 9px;border:1px solid var(--line);border-radius:7px;background:linear-gradient(#050706,#0c0f0d);box-shadow:inset 0 1px 4px #000}
+.chsw .ch{font:700 12px var(--typed);letter-spacing:.18em;color:var(--dim);margin-right:4px}
+.chsw a{position:relative;display:flex;align-items:center;justify-content:center;gap:6px;height:28px;min-width:28px;padding:0 7px;border-radius:5px;font:700 14px var(--typed);color:var(--ink2);text-decoration:none;transition:background .2s,color .2s}
+.chsw a span{display:none;font:600 15px var(--display);letter-spacing:.02em}
+.chsw a:hover,.chsw a:focus-visible{background:rgba(255,226,180,.08);color:var(--ink)}
+.chsw a:hover span,.chsw a:focus-visible span{display:inline}
+.chsw a[aria-current]{color:#1a120b;background:var(--pale);box-shadow:0 0 12px rgba(255,176,92,.45)}
+.chsw a[aria-current] span{display:inline}
+.chsw a[aria-current]::before{content:"";width:6px;height:6px;border-radius:50%;background:#c2410c;box-shadow:0 0 6px #ff7a1a}
+/* glass internals */
+.g{position:absolute;inset:0}
+.g-noise{width:100%;height:100%;image-rendering:pixelated;opacity:0;transition:opacity .4s}
+.g-portrait{width:100%;height:100%;object-fit:cover;opacity:0;will-change:filter,clip-path}
+.g-rig{position:absolute;inset:0;opacity:0;transition:opacity .4s}
+.g-scan{position:absolute;left:0;right:0;height:2px;top:0;opacity:0;background:linear-gradient(90deg,transparent,#ffe2b4 20%,#fff 50%,#ffe2b4 80%,transparent);box-shadow:0 0 18px 4px rgba(255,190,110,.55)}
+.g-fill{position:absolute;inset:0;opacity:0;pointer-events:none;background:linear-gradient(100deg,transparent 0 40%,rgba(255,226,180,.18) 47%,rgba(255,255,255,.32) 50%,rgba(255,226,180,.18) 53%,transparent 60%) no-repeat;background-size:250% 100%;mix-blend-mode:screen}
+svg.g-boxes{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
+.g-boxes g{opacity:0;transition:opacity .35s}
+.g-boxes g.on{opacity:1}
+.g-boxes rect{fill:rgba(255,190,110,.06);stroke:#ffe2b4;stroke-width:3;stroke-dasharray:10 7;vector-effect:non-scaling-stroke}
+.g-boxes g.on rect{animation:march 1.2s linear infinite}
+@keyframes march{to{stroke-dashoffset:-34}}
+.g-boxes .tag rect{fill:rgba(8,10,9,.9);stroke:none;animation:none}
+.g-boxes text{font:700 26px "Courier Prime",monospace;fill:#ffe2b4}
+.g-boxes text tspan{fill:#b9bfb6;font-weight:400}
+@media (prefers-reduced-motion:reduce){.g-boxes g.on rect{animation:none}.rec::before{animation:none}.g-noise,.g-rig,.g-boxes g{transition:none}}
+/* recorded tape */
+.tape{position:relative;width:100%}
+.tape-cells{display:flex;gap:3px}
+.tape-cell{position:relative;min-width:0;padding:7px 8px 6px;border-radius:5px;background:#0d1110;border:1px solid rgba(180,220,200,.1);overflow:hidden}
+.tape-cell::before{content:"";position:absolute;inset:0;width:var(--f,0%);background:linear-gradient(90deg,rgba(255,176,92,.10),rgba(255,176,92,.26));border-right:1px solid rgba(255,176,92,.0)}
+.tape-cell.n::before{border-right-color:#ffe2b4}
+.tape-cell b{position:relative;display:block;font:600 15px/1.1 var(--display);color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tape-cell small{position:relative;display:block;font:400 13px/1.25 var(--typed);color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tape-cell.d b,.tape-cell.n b{color:var(--ink)}
+.tape-cell.n{border-color:rgba(255,176,92,.6);box-shadow:0 0 14px rgba(255,176,92,.18)}
+.tape-cell.n b::after{content:" \25CF";color:#ff6a3a}
+
+.app{height:100vh;display:grid;grid-template-rows:56px 1fr;position:relative;isolation:isolate}
+.app::before{content:"";position:absolute;inset:0;z-index:-1;background:
+  radial-gradient(45% 60% at 50% 42%,color-mix(in srgb,var(--eye) var(--warm,4%),transparent),transparent 70%),
+  repeating-linear-gradient(0deg,rgba(255,255,255,.012) 0 1px,transparent 1px 3px),#070908;transition:--warm 1s}
+main{display:grid;grid-template-columns:282px minmax(0,1fr) 352px;gap:18px;padding:16px 18px;min-height:0}
+h2{margin:0 0 10px;font:700 13px var(--typed);letter-spacing:.22em;color:var(--ink2);display:flex;justify-content:space-between;align-items:baseline}
+h2 small{font-size:13px;letter-spacing:.06em;color:var(--dim)}
+/* rail: the layer stack waiting to be filled */
+.rail{display:flex;flex-direction:column;min-height:0;border:1px solid var(--line);border-radius:10px;padding:14px 10px 10px;background:linear-gradient(#0d110f,#090b0a)}
+.rail ol{list-style:none;margin:0;padding:0;display:grid;gap:3px;align-content:start}
+.lrow{display:grid;grid-template-columns:24px 46px 1fr 30px;align-items:center;gap:8px;padding:5px 6px;border-radius:6px;transition:background .3s}
+.lrow .z{font:400 13px var(--typed);color:var(--dim);text-align:right}
+.lrow .th{width:46px;height:46px;border-radius:4px;display:grid;place-items:center;overflow:hidden;border:1px dashed rgba(236,235,228,.18);background:#060807}
+.lrow .th img{max-width:42px;max-height:42px;opacity:0;transform:translateY(-10px) scale(.8);transition:opacity .4s,transform .5s cubic-bezier(.2,1.4,.4,1)}
+.lrow .nm{font:500 15px var(--body);line-height:1.2;color:var(--dim)}.lrow .nm small{display:block;font:400 13px var(--typed);color:var(--dim)}
+.lrow.found .nm{color:var(--ink2)}.lrow.found .th{border-color:rgba(255,226,180,.55);animation:pulse 1.2s ease-in-out infinite}
+.lrow.cut{background:rgba(255,176,92,.07)}.lrow.cut .th{border:1px solid rgba(236,235,228,.12);background:#000 repeating-conic-gradient(#151a17 0 25%,#0c0f0d 0 50%) 0 0/10px 10px;animation:none}
+.lrow.cut .th img{opacity:1;transform:none}.lrow.cut .nm{color:var(--ink)}.lrow.cut .nm small{color:#e8c48e}
+@keyframes pulse{50%{border-color:rgba(255,226,180,.15)}}
+.lit{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;border:1px solid rgba(236,235,228,.2);opacity:0;transition:opacity .4s}
+.lit::after{content:"";width:9px;height:9px;border-radius:50%;background:#ffb05c;box-shadow:0 0 8px #ffb05c}
+.lit[aria-pressed=false]::after{background:#333;box-shadow:none}
+.alive .lit{opacity:1}
+.recipe{margin-top:auto;padding:12px 6px 2px;border-top:1px solid var(--line);font:400 13px/1.5 var(--typed);color:var(--dim)}
+.recipe b{color:var(--ink2);font-weight:700}
+/* center */
+.center{display:flex;flex-direction:column;align-items:center;min-height:0;min-width:0}
+.glasswrap{position:relative;height:min(100%,calc(100vh - 56px - 32px - 168px));aspect-ratio:1/1;max-width:100%}
+.dome{position:absolute;inset:0;border-radius:50% 50% 14px 14px / 34% 34% 14px 14px;overflow:hidden;background:#030404;box-shadow:0 0 0 1px rgba(180,220,200,.25),0 0 0 10px #0c100e,0 0 0 11px rgba(180,220,200,.12),0 30px 80px -20px #000}
+.sheen{position:absolute;inset:0;pointer-events:none;border-radius:50% 50% 14px 14px / 34% 34% 14px 14px;background:linear-gradient(120deg,rgba(255,255,255,.07),transparent 28%),radial-gradient(90% 70% at 50% 40%,transparent 60%,rgba(0,0,0,.6))}
+.chip{position:absolute;right:3%;bottom:3%;font:400 14px var(--typed);color:var(--ink2);background:rgba(8,10,9,.82);padding:5px 9px;border-radius:4px;z-index:3}
+.chip b{color:var(--pale)}
+.wait{position:absolute;inset:0;display:grid;place-items:center;text-align:center;font:600 22px var(--display);color:var(--ink2);z-index:2;transition:opacity .4s;pointer-events:none}
+.wait small{display:block;font:400 14px var(--typed);color:var(--dim);margin-top:6px}
+svg.leaders{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible;z-index:4}
+svg.leaders line{stroke:rgba(255,226,180,.55);stroke-width:1.4;stroke-dasharray:3 3}
+svg.leaders circle{fill:none;stroke:#ffe2b4;stroke-width:2}
+.callout{position:absolute;z-index:5;text-decoration:none;color:var(--ink);display:flex;align-items:center;gap:8px;padding:6px 10px 6px 8px;border-radius:6px;background:rgba(8,10,9,.84);border:1px solid rgba(255,226,180,.3);font:600 14px var(--body);white-space:nowrap;backdrop-filter:blur(3px);transform:translate(-50%,-50%)}
+.callout i{width:14px;height:14px;border-radius:50%;background:var(--s);box-shadow:0 0 10px var(--s)}
+.callout small{font:400 13px var(--typed);color:var(--ink2)}
+.callout:hover{border-color:var(--acc)}
+.handoff svg.leaders,.handoff .callout{transition:opacity .6s}
+.center:not(.handoff) svg.leaders,.center:not(.handoff) .callout{opacity:0;pointer-events:none}
+.status{display:flex;justify-content:space-between;align-items:baseline;gap:12px;width:100%;max-width:calc(100vh - 230px);margin:14px 0 0;font:500 18px var(--display);color:var(--ink2)}
+.status b{color:var(--ink);font-size:21px}
+.lamp{display:inline-flex;align-items:center;gap:8px;font:400 14px var(--typed);white-space:nowrap}.lamp::before{content:"";width:9px;height:9px;border-radius:50%;background:#ff6a3a;box-shadow:0 0 10px #ff6a3a;animation:recb 1s steps(2) infinite}
+.lamp.alive::before{background:var(--eye);box-shadow:0 0 10px var(--eye);animation:none}
+.lamp.speak::before{background:#ff6a3a;box-shadow:0 0 12px #ff6a3a}
+#tape{margin-top:10px;max-width:calc(100vh - 230px)}
+.transcript{width:100%;max-width:calc(100vh - 230px);min-height:22px;margin:8px 0 0;font:400 15px/1.4 var(--typed);color:#f3e6cf}
+/* the rite */
+.right{display:flex;flex-direction:column;gap:10px;min-height:0;overflow:auto;padding-right:2px}
+.rite{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.mark{border:1px solid var(--line);border-radius:10px;background:linear-gradient(#0d110f,#090b0a);transition:border-color .3s}
+.mark.now{border-color:rgba(255,176,92,.45)}
+.mh{width:100%;display:grid;grid-template-columns:38px minmax(0,1fr) auto;align-items:center;gap:11px;padding:10px 12px;text-align:left;border-radius:10px}
+.seal{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font:700 16px var(--display);color:var(--ink2);border:1px solid rgba(236,235,228,.25);background:radial-gradient(circle at 40% 32%,#1b1712,#0a0907)}
+.mark.done .seal{color:#1a120b;border-color:#e8b06a;background:radial-gradient(circle at 38% 30%,#ffe2b4,#d08a3a 70%);box-shadow:0 2px 6px #000}
+.mark.now .seal{color:var(--pale);border-color:var(--acc);box-shadow:0 0 0 3px rgba(255,176,92,.15),0 0 14px rgba(255,176,92,.4)}
+.mh b{display:block;font:700 19px/1.1 var(--display)}
+.mh .sum{display:block;font:400 14px/1.3 var(--typed);color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mh .st{font:700 12px var(--typed);letter-spacing:.14em;color:var(--dim)}
+.mark.now .mh .st{color:#ffb3a8}.mark.done .mh .st{color:#e8c48e}
+.mb{padding:2px 14px 14px}
+.mark:not(.open) .mb{display:none}
+.mark.open .mh .sum{display:none}
+.lbl{font:700 13px var(--typed);letter-spacing:.18em;color:var(--ink2);margin:10px 0 6px;display:flex;justify-content:space-between}
+.lbl small{letter-spacing:.04em;font-weight:400;color:var(--dim)}
+textarea{width:100%;font:400 15px/1.45 var(--typed);color:var(--ink);background:#060807;border:1px solid var(--line);border-radius:6px;padding:10px;resize:none;display:block}
+textarea:focus{border-color:var(--acc);outline:none}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button{padding:6px 10px;border-radius:6px;border:1px solid rgba(236,235,228,.18);font:500 14px var(--body);background:rgba(255,255,255,.03)}
+.chips button:hover{border-color:var(--acc)}
+.chips button[aria-pressed=true]{background:var(--pale);color:#1a120b;font-weight:700;border-color:var(--pale)}
+.chips .sw{display:inline-flex;align-items:center;gap:6px}
+.chips .sw i{width:12px;height:12px;border-radius:50%;background:var(--a);box-shadow:0 0 6px var(--a),7px 0 0 -1px var(--b)}
+.chips .sw i{margin-right:7px}
+.drop{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+.drop button{padding:9px 8px;border:1px dashed rgba(236,235,228,.3);border-radius:6px;font:500 14px var(--body);color:var(--ink2);text-align:left;line-height:1.25}
+.drop button small{display:block;font:400 13px var(--typed);color:var(--dim)}
+.drop button:hover{border-color:var(--acc);color:var(--ink)}
+.refuse{margin-top:8px;padding:10px 12px;border-radius:6px;border:1px solid rgba(160,190,220,.4);background:linear-gradient(#0e1418,#0a0e11);font-size:14px;color:#d3dde6}
+.refuse b{display:block;font:700 17px var(--display);color:#e8f0f7}
+.refuse .why{display:block;margin-top:4px;font:400 13px var(--typed);color:#9fb0bf}
+.vdesc{font:400 14px var(--typed);color:var(--ink2);margin:6px 0 0}
+.go{width:100%;margin-top:10px;padding:10px;border-radius:6px;background:linear-gradient(#cf3f2e,#8e2216);border:1px solid #e0604f;font:700 17px var(--display);display:flex;justify-content:space-between;align-items:center}
+.go small{font:400 13px var(--typed);opacity:.9}
+.stages{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+.stages li{display:grid;grid-template-columns:16px 1fr auto;gap:10px;align-items:center;padding:6px 4px;border-bottom:1px solid rgba(180,220,200,.07)}
+.stages li::before{content:"";width:10px;height:10px;border-radius:50%;border:1px solid rgba(236,235,228,.3)}
+.stages li.d::before{background:#ffb05c;border-color:#ffb05c}
+.stages li.n::before{background:#ff6a3a;border-color:#ff6a3a;box-shadow:0 0 10px #ff6a3a;animation:recb .8s steps(2) infinite}
+.stages b{font:600 16px var(--display);color:var(--ink2)}.stages li.n b,.stages li.d b{color:var(--ink)}
+.stages span{font:400 13px var(--typed);color:var(--dim);text-align:right;white-space:nowrap}
+.stages li.n span{color:var(--pale)}
+.note{font:400 13px/1.45 var(--typed);color:var(--dim);margin:10px 0 0}
+.wake p{margin:4px 0 10px;font-size:15px;color:var(--ink2)}
+.btn{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:11px 14px;border-radius:7px;font:700 18px var(--display);border:1px solid rgba(236,235,228,.22);text-decoration:none;margin-top:8px}
+.btn.amber{border-color:var(--acc);color:var(--pale);box-shadow:0 0 18px rgba(255,176,92,.2)}
+.btn.red{background:linear-gradient(#cf3f2e,#8e2216);border-color:#e0604f}
+.btn:hover{border-color:var(--pale)}
+.foot{margin-top:auto;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.foot .btn{font-size:16px;margin:0;padding:10px 12px}
+@media (max-height:780px){.mh{padding:7px 10px}.lrow{padding:3px 6px}.lrow .th{width:38px;height:38px}}
+@media (prefers-reduced-motion:reduce){.lamp::before,.stages li.n::before,.lrow.found .th{animation:none}.lrow .th img{transition:none}}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+<header>
+  <a class="back" href="../r1/creator-b.html">&#9664; Back to the Forge <kbd>Esc</kbd></a>
+  <nav class="crumb" aria-label="Breadcrumb"><span class="root">SHADOWRUNNER &#9656;</span> <a href="../r1/creator-b.html">CH 3 · Forge</a> &#9656; <b id="leaf" aria-current="page">Forge new</b><span class="path">/creator/new</span></nav>
+  <div class="sp"></div>
+  <nav class="chsw" aria-label="Channels"><span class="ch" aria-hidden="true">CH</span>
+    <a href="../r1/landing-c.html" title="Channel 2: On air (key 2)">2<span>On air</span></a>
+    <a href="../r1/creator-b.html" aria-current="page" title="Channel 3: Forge">3<span>Forge</span></a>
+    <a href="../r1/characters-c.html" title="Channel 4: Characters (key 4)">4<span>Characters</span></a>
+    <a href="../r1/daemon-c.html" title="Channel 6: Daemon (key 6)">6<span>Daemon</span></a>
+    <a href="../r1/sealed-c.html" title="Channel 9: Sealed (key 9)">9<span>Sealed</span></a>
+    <a href="../r1/air-a.html" title="The stage, full screen (key O)">O<span>Stage</span></a>
+  </nav>
+  <span class="rec" title="Replay plane: a recording of a real forge job (lantern-warden, 2026-11-01 15:58 UTC)">RECORDED</span>
+</header>
+
+<main>
+  <aside class="rail" aria-label="Layer stack, filled as the forge cuts" id="rail">
+    <h2>LAYER STACK <small id="lcount">0 / 7 cut</small></h2>
+    <ol id="layers"></ol>
+    <p class="recipe">Cut from <b>portrait.jpg</b> on a <b>1024²</b> canvas. Each slot names its part when the forge finds it, and fills when the knife lands.<br>Fill mode: <b>edit</b> · parts: <b>recorded</b></p>
+  </aside>
+  <section class="center" id="center" aria-label="The glass">
+    <div class="glasswrap">
+      <div class="dome" id="glass"></div>
+      <div class="sheen"></div>
+      <div class="wait" id="wait">The glass is empty<small>describe a character to begin</small></div>
+      <svg class="leaders" id="leaders" viewBox="0 0 1024 1024" preserveAspectRatio="none" aria-hidden="true"></svg>
+      <div id="callouts"></div>
+      <span class="chip" id="chip">awaiting a description</span>
+    </div>
+    <div class="status"><span><b id="cname">Unnamed</b> · <span id="csub">not yet forged</span></span><span class="lamp" id="lamp">00.0 s / 9.5 s</span></div>
+    <div id="tape"></div>
+    <p class="transcript" id="tr" aria-live="polite"></p>
+  </section>
+  <aside class="right" aria-label="The rite">
+    <ol class="rite" id="rite">
+      <li class="mark" data-m="0">
+        <button class="mh" type="button" aria-expanded="false"><span class="seal">I</span><span><b>Describe</b><span class="sum" id="sum0">words or a drawing</span></span><span class="st"></span></button>
+        <div class="mb">
+          <label class="lbl" for="prompt">IN WORDS <small id="pcount">0 / 500</small></label>
+          <textarea id="prompt" rows="5" maxlength="500" spellcheck="false"></textarea>
+          <div class="lbl">OR START FROM</div>
+          <div class="chips" id="ex"></div>
+          <div class="drop">
+            <button type="button" id="up">Bring a drawing<small>png · jpg · up to 8 MB</small></button>
+            <button type="button" id="photo">A photo of a real face?<small>see what happens</small></button>
+          </div>
+          <div class="refuse" id="refuse" role="alert" hidden><b>No real people</b>That picture looks like a real person. The forge only makes invented characters: bring a drawing, or describe someone who never lived.<span class="why">refused_likeness · your words above are kept</span></div>
+        </div>
+      </li>
+      <li class="mark" data-m="1">
+        <button class="mh" type="button" aria-expanded="false"><span class="seal">II</span><span><b>Bind</b><span class="sum" id="sum1">archetype · voice · palette</span></span><span class="st"></span></button>
+        <div class="mb">
+          <div class="lbl">ARCHETYPE <small>shapes the cut</small></div><div class="chips" id="arch"></div>
+          <div class="lbl">VOICE</div><div class="chips" id="voice"></div><p class="vdesc" id="vdesc">&nbsp;</p>
+          <div class="lbl">PALETTE <small>eye · glow</small></div><div class="chips" id="pal"></div>
+          <p class="note">Chosen before the forge so the face wakes already lit and voiced.</p>
+        </div>
+      </li>
+      <li class="mark" data-m="2">
+        <button class="mh" type="button" aria-expanded="false"><span class="seal">III</span><span><b>Forge</b><span class="sum" id="sum2">5 recorded stages</span></span><span class="st"></span></button>
+        <div class="mb">
+          <div class="lbl">STAGE <small>hold / live</small></div><ol class="stages" id="stages"></ol>
+          <p class="note">Replay plane: holds from <b>job.json</b>. The live run took <b id="livet"></b>; the tape plays it in <b id="holdt"></b>.</p>
+        </div>
+      </li>
+      <li class="mark" data-m="3">
+        <button class="mh" type="button" aria-expanded="false"><span class="seal">IV</span><span><b>Wake</b><span class="sum" id="sum3">hand the face to the glass</span></span><span class="st"></span></button>
+        <div class="mb wake">
+          <p>The Lantern Warden is rigged: 7 layers, lit and breathing. Its lights are pinned to the face now, as on the Forge page.</p>
+          <a class="btn amber" href="../r1/creator-b.html">Open in Anatomy Under Glass <kbd>CH 3</kbd></a>
+          <a class="btn red" href="../r1/landing-c.html">Put on air <kbd>CH 2</kbd></a>
+        </div>
+      </li>
+    </ol>
+    <div class="foot">
+      <button class="btn" type="button" id="restart">&#8635; Replay the run</button>
+      <a class="btn" href="../r1/creator-b.html">Back to Forge</a>
+    </div>
+  </aside>
+</main>
+</div>
+<script>
+/* ---- shared: recorded forge job (assets/replay/forge/lantern-warden/job.json) ---- */
+const RM = matchMedia('(prefers-reduced-motion: reduce)');
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const JOB = {
+  slug: 'lantern-warden', name: 'The Lantern Warden', sha: '3c7fb2b5…f2bd', preset: 1,
+  prompt: 'A watchman whose head is a rotting carved gourd, mottled orange and moss-green, flecked with white mould. Two triangular eye holes burn with steady amber candlelight. The lower rind is cut as a separate hinged jaw with ragged carved teeth, lit from inside. A wide-brimmed, moth-eaten felt hat sits low. Shoulders in a damp oilcloth coat with a brass lantern hook at the collar.',
+  steps: [
+    { k: 'queued', label: 'Queued', verb: 'In the queue', hold: 1500, live: null },
+    { k: 'portrait', label: 'Portrait', verb: 'Painting the portrait', hold: 2163, live: 17302 },
+    { k: 'segmenting', label: 'Segmenting', verb: 'Finding the parts', hold: 2241, live: 17928 },
+    { k: 'cutting', label: 'Cutting', verb: 'Cutting the layers', hold: 2087, live: 3134 },
+    { k: 'filling', label: 'Filling', verb: 'Filling behind the cuts', hold: 1500, live: 16696 },
+    { k: 'done', label: 'Done', verb: 'Rigged and alive', hold: 0, live: null },
+  ],
+  // [name, z, kind, bbox] in cut order (z), from job.json rig.layers
+  parts: [['torso', 2, 'body', [4, 549, 852, 473]], ['head', 3, 'head', [299, 256, 461, 437]], ['jaw', 4, 'jaw', [408, 490, 334, 191]],
+    ['hat', 5, 'hat', [173, 64, 702, 402]], ['eye_r', 6, 'eye', [493, 291, 81, 97]], ['eye_l', 7, 'eye', [672, 303, 53, 87]]],
+  palette: { glow: '#d8a030', eye: '#fec654', rim: '#fec654', mouth: '#ffb347' },
+  firstLine: 'Ninety-nine gourds at the last count. There were a hundred at dusk. One is always missing.',
+};
+JOB.total = JOB.steps.reduce((a, s) => a + s.hold, 0);
+JOB.liveTotal = JOB.steps.reduce((a, s) => a + (s.live || 0), 0);
+const KIND = { static: 'plate · filled', body: 'breathes', head: 'bobs', jaw: 'speaks', hat: 'sways', eye: 'blinks · lit' };
+const sec = ms => (ms / 1000).toFixed(ms < 10000 ? 2 : 1).replace(/0$/, '') + ' s';
+const clock = ms => (ms / 1000).toFixed(1).padStart(4, '0') + ' s';
+
+/* replay clock: everything on screen is derived from (stage index, progress), so restart is just t0 */
+function Replay(pre, onFrame, onStage) {
+  let t0 = performance.now(), last = -2;
+  const ends = []; let acc = 0; JOB.steps.forEach(s => { acc += s.hold; ends.push(acc); });
+  function state(now) {
+    const el = now - t0, t = el - pre;
+    if (t < 0) return { i: -1, k: 'pre', p: pre ? el / pre : 1, t: 0, el };
+    let i = 0; while (i < 5 && t >= ends[i]) i++;
+    const start = i ? ends[i - 1] : 0;
+    return { i, k: JOB.steps[i].k, p: i === 5 ? 1 : Math.min(1, (t - start) / JOB.steps[i].hold), t: Math.min(t, JOB.total), el, after: i === 5 ? t - JOB.total : 0 };
+  }
+  function loop(now) { const s = state(now); if (s.i !== last) { const prev = last; last = s.i; onStage && onStage(s, prev); } onFrame(s); requestAnimationFrame(loop); }
+  requestAnimationFrame(loop);
+  return { restart() { t0 = performance.now(); last = -2; }, skip(ms) { t0 -= ms; }, pre };
+}
+const foundOf = s => s.i < 2 ? 0 : s.i > 2 ? 6 : Math.max(0, Math.min(6, Math.ceil(s.p * 6 - .25)));
+const cutOf = s => s.i < 3 ? 0 : s.i > 3 ? 6 : Math.max(0, Math.min(6, Math.ceil(s.p * 6 - .25)));
+const filledOf = s => s.i > 4 || (s.i === 4 && s.p > .3);
+
+/* ---- rig engine (prototype, from Anatomy Under Glass): layered 2.5D face from job.json bboxes ---- */
+const RIGDEF = {
+  name: JOB.name, base: '../a/forge/lantern-', pivot: [526, 690], eyeHue: 40, mouth: [430, 500, 290, 150],
+  layers: [['background', 1, 'static', [0, 0, 1024, 1024]], ...JOB.parts],
+};
+function Rig(stage, opts = {}) {
+  const def = RIGDEF, self = { def, light: { ...JOB.palette }, explode: 0, explodeTarget: 0, status: 'Idle', listeners: [], hidden: {} };
+  stage.innerHTML = ''; stage.classList.add('rig');
+  const world = document.createElement('div'); world.className = 'rig-world'; stage.appendChild(world);
+  const headGrp = document.createElement('div'); headGrp.className = 'rig-grp';
+  const els = {}, glows = {}; const pct = v => (v / 1024 * 100) + '%';
+  const place = (el, b) => { el.style.left = pct(b[0]); el.style.top = pct(b[1]); el.style.width = pct(b[2]); el.style.height = pct(b[3]); };
+  const mkGlow = (cls, b, sc) => { const g = document.createElement('div'); g.className = 'rig-glow ' + cls; const cx = b[0] + b[2] / 2, cy = b[1] + b[3] / 2, w = b[2] * sc, h = b[3] * sc; place(g, [cx - w / 2, cy - h / 2, w, h]); return g; };
+  let headAdded = false;
+  def.layers.forEach(([name, z, kind, bbox]) => {
+    const w = document.createElement('div'); w.className = 'rig-layer k-' + kind; w.dataset.layer = name; place(w, bbox);
+    const img = document.createElement('img'); img.alt = ''; img.draggable = false; img.src = def.base + name + '.webp'; w.appendChild(img);
+    if (opts.labels) { const lb = document.createElement('span'); lb.className = 'rig-label'; lb.textContent = `${String(z).padStart(2, '0')} · ${name}`; w.appendChild(lb); }
+    const L = { name, z, kind, bbox, w, img }; els[name] = L;
+    if (kind === 'static' || kind === 'body') world.appendChild(w);
+    else {
+      if (!headAdded) { world.appendChild(headGrp); headAdded = true; }
+      if (kind === 'jaw') { glows.mouth = mkGlow('g-mouth', def.mouth, 1.3); headGrp.appendChild(glows.mouth); }
+      if (kind === 'eye') { glows[name] = mkGlow('g-eye', bbox, 3.2); headGrp.appendChild(glows[name]); }
+      headGrp.appendChild(w);
+    }
+  });
+  headGrp.style.transformOrigin = def.pivot.map(v => v / 10.24 + '%').join(' ');
+  let k = 1; const ro = new ResizeObserver(() => { k = stage.clientWidth / 1024; }); ro.observe(stage);
+  let gest = null, flash = 0;
+  const emit = (t, v) => self.listeners.forEach(f => f(t, v));
+  self.on = f => self.listeners.push(f);
+  self.gesture = g => { gest = { g, t0: performance.now() }; };
+  self.flash = () => { flash = 1; };
+  self.speak = ms => { self.speakUntil = performance.now() + ms; };
+  self.setPart = (name, on) => { if (!!self.hidden[name] === !on) return; self.hidden[name] = !on; const L = els[name]; if (L) L.w.classList.toggle('off', !on); if (glows[name]) glows[name].classList.toggle('off', !on); if (name === 'jaw' && glows.mouth) glows.mouth.classList.toggle('off', !on); emit('part', name); };
+  self.setExplode = v => { self.explodeTarget = v; if (RM.matches) self.explode = v; };
+  self.setLight = (kind, hex) => { self.light[kind] = hex; apply(); };
+  function apply() {
+    const l = self.light;
+    ['eye_l', 'eye_r'].forEach(n => { const [h, s] = hexHs(l.eye); els[n].img.style.setProperty('--tint', s < .18 ? 'grayscale(1) brightness(1.6)' : `hue-rotate(${Math.round(h - def.eyeHue)}deg) saturate(${(.7 + s).toFixed(2)})`); glows[n].style.setProperty('--c', l.eye); });
+    glows.mouth.style.setProperty('--c', l.mouth);
+    ['rim', 'eye', 'glow', 'mouth'].forEach(n => stage.style.setProperty('--' + n, l[n]));
+  }
+  apply();
+  self.els = els; self.stage = stage;
+  let nextBlink = performance.now() + 1800, blinkT0 = -1; const t0 = performance.now();
+  function frame(now) {
+    const reduce = RM.matches, t = (now - t0) / 1000 * (reduce ? 0 : 1);
+    self.explode += (self.explodeTarget - self.explode) * (reduce ? 1 : .08);
+    const ex = self.explode;
+    let blink = 0;
+    if (!reduce && now > nextBlink && blinkT0 < 0) blinkT0 = now;
+    if (blinkT0 > 0) { const p = (now - blinkT0) / 170; blink = p < 1 ? Math.sin(p * Math.PI) : 0; if (p >= 1) { blinkT0 = -1; nextBlink = now + 2200 + Math.random() * 3600; if (Math.random() < .2) nextBlink = now + 260; } }
+    let jaw = 0; const speaking = self.speakUntil && now < self.speakUntil;
+    if (speaking) { const s = now / 1000; jaw = reduce ? .5 : Math.max(0, Math.sin(s * 13) * .55 + Math.sin(s * 7.3 + 1) * .35 + .2); }
+    const st = speaking ? 'Speaking' : blink > .05 ? 'blinking' : 'Idle'; if (st !== self.status) { self.status = st; emit('status', st); }
+    let gy = 0, gr = 0, gs = 1, gEye = 0;
+    if (gest) { const p = (now - gest.t0) / 900; if (p >= 1) gest = null; else { const e = Math.sin(p * Math.PI);
+      ({ nod: () => { gy = Math.sin(p * Math.PI * 2) * 14; }, tilt: () => { gr = e * 7; }, flare: () => { gEye = e * .9; gs = 1 + e * .03; }, glare: () => { gEye = e * 1.2; } })[gest.g]?.(); } }
+    flash *= .94; gEye += flash * 1.3;
+    const b = Math.sin(t * 6.283 * .21);
+    const hx = Math.sin(t * 6.283 * .11) * 3, hy = Math.sin(t * 6.283 * .18 + .6) * 4 + gy + b * 1.5, hr = Math.sin(t * 6.283 * .09) * .8 + gr;
+    world.style.transform = ex > .001 ? `translateY(${ex * 4}%) rotateX(${ex * 58}deg) rotateZ(${-ex * 38}deg) scale(${1 - ex * .3})` : '';
+    stage.classList.toggle('exploding', ex > .05);
+    headGrp.style.transform = `translate(${hx * k}px,${hy * k}px) rotate(${hr}deg) scale(${gs})`;
+    Object.values(els).forEach(L => {
+      let tr = ''; const zt = ex > .001 ? ` translateZ(${(L.z - 1) * ex * (opts.spacing || 60) * k}px)` : '';
+      if (L.kind === 'body') tr = `translateY(${-b * 3 * k}px) scaleY(${1 + b * .008})`;
+      else if (L.kind === 'jaw') tr = `translateY(${jaw * 22 * k}px) rotate(${jaw * 3}deg)`;
+      else if (L.kind === 'hat') tr = `rotate(${Math.sin(t * 6.283 * .13 + 1) * 1.6}deg)`;
+      else if (L.kind === 'eye') {
+        const inten = Math.max(.15, (1 + gEye) * (1 - blink * .85));
+        L.img.style.setProperty('--b', inten.toFixed(2)); L.img.style.transform = `scaleY(${(1 - blink * .35).toFixed(3)})`;
+        if (glows[L.name]) glows[L.name].style.opacity = self.hidden[L.name] ? 0 : Math.min(1, .55 * inten + .1);
+      }
+      L.w.style.transform = (tr + zt) || '';
+    });
+    if (glows.mouth) glows.mouth.style.opacity = self.hidden.jaw ? 0 : (.12 + jaw * .85).toFixed(2);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+  return self;
+}
+function hexHs(hex) { const n = parseInt(hex.slice(1), 16), r = (n >> 16) / 255, g = (n >> 8 & 255) / 255, b = (n & 255) / 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2; let h = 0, s = 0;
+  if (mx !== mn) { const d = mx - mn; s = l > .5 ? d / (2 - mx - mn) : d / (mx + mn); h = (mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4) * 60; }
+  return [h, s, l]; }
+
+/* ---- the glass: one surface that shows every pipeline state of the recorded job ---- */
+function Glass(host, opts = {}) {
+  const X = opts.explode ?? .4;
+  host.insertAdjacentHTML('beforeend', `<canvas class="g g-noise" width="128" height="128" aria-hidden="true"></canvas>
+    <img class="g g-portrait" src="../a/cast/lantern-warden.webp" alt="Painted portrait of The Lantern Warden">
+    <div class="g-rig"></div><div class="g-fill" aria-hidden="true"></div>
+    <svg class="g-boxes" viewBox="0 0 1024 1024" preserveAspectRatio="none" aria-hidden="true"></svg><div class="g-scan" aria-hidden="true"></div>`);
+  const nz = host.querySelector('.g-noise'), por = host.querySelector('.g-portrait'), rh = host.querySelector('.g-rig'),
+    fill = host.querySelector('.g-fill'), svg = host.querySelector('.g-boxes'), scan = host.querySelector('.g-scan');
+  JOB.parts.forEach(([n, , , b]) => {
+    const lx = Math.min(b[0] + 6, 1024 - 190), ly = b[1] < 40 ? b[1] + 6 : b[1] - 38;
+    svg.insertAdjacentHTML('beforeend', `<g data-p="${n}"><rect x="${b[0]}" y="${b[1]}" width="${b[2]}" height="${b[3]}" rx="6"/>
+      <g class="tag"><rect x="${lx}" y="${ly}" width="${(n.length + String(b[2]).length + String(b[3]).length + 2) * 15.6 + 16}" height="34" rx="3"/><text x="${lx + 8}" y="${ly + 25}">${n} <tspan>${b[2]}×${b[3]}</tspan></text></g></g>`);
+  });
+  const boxes = [...svg.children];
+  const rig = Rig(rh, { labels: opts.labels, spacing: opts.spacing });
+  RIGDEF.layers.forEach(l => rig.setPart(l[0], false));
+  const ctx = nz.getContext('2d'), img = ctx.createImageData(128, 128); let nf = 0;
+  function noise() { for (let i = 0; i < img.data.length; i += 4) { const v = Math.random() * 120; img.data[i] = v * 1.1; img.data[i + 1] = v * .85; img.data[i + 2] = v * .6; img.data[i + 3] = 255; } ctx.putImageData(img, 0, 0); }
+  noise();
+  let wasDone = false;
+  function update(s) {
+    const { i, p } = s;
+    const nO = i <= 0 ? .5 : i === 1 ? .5 * (1 - p) : 0; nz.style.opacity = nO;
+    if (nO > 0 && !RM.matches && (nf++ % 3 === 0)) noise();
+    if (i < 1) { por.style.opacity = 0; }
+    else if (i === 1) { const q = RM.matches ? 1 : p; por.style.opacity = 1; por.style.clipPath = `inset(0 0 ${((1 - Math.min(1, q * 1.1)) * 100).toFixed(1)}% 0)`;
+      por.style.filter = `blur(${((1 - q) * 14).toFixed(1)}px) brightness(${(.35 + .65 * q).toFixed(2)}) sepia(${((1 - q) * .8).toFixed(2)})`; }
+    else { por.style.clipPath = 'none'; por.style.filter = i === 2 ? 'brightness(.85)' : 'brightness(.55) grayscale(.4)';
+      por.style.opacity = i === 2 ? 1 : i === 3 ? (1 - p * .7).toFixed(2) : i === 4 ? (.3 * (1 - p)).toFixed(2) : 0; }
+    scan.style.opacity = (i === 1 || i === 2) && !RM.matches ? 1 : 0;
+    if (i === 1) scan.style.top = Math.min(100, p * 110) + '%'; if (i === 2) scan.style.top = ((p * 2.2) % 1 * 100) + '%';
+    const f = foundOf(s), c = cutOf(s);
+    boxes.forEach((g, j) => { g.classList.toggle('on', j < f && i <= 3); g.style.opacity = i === 3 ? (j < c ? 0 : 1) : ''; });
+    rh.style.opacity = i >= 3 ? 1 : 0;
+    JOB.parts.forEach(([n], j) => rig.setPart(n, j < c));
+    rig.setPart('background', filledOf(s));
+    rig.setExplode(i === 3 ? X * Math.min(1, p * 1.6) : i === 4 ? X * Math.max(0, 1 - p * 1.4) : 0);
+    fill.style.opacity = i === 4 ? 1 : 0; if (i === 4) fill.style.backgroundPosition = `${(1 - p) * 100}% 0`;
+    if (i === 5 && !wasDone) { rig.flash(); rig.gesture('flare'); }
+    wasDone = i === 5;
+  }
+  return { update, rig };
+}
+
+/* ---- the recorded tape: pipeline cells sized by their recorded hold ---- */
+function Tape(host, opts = {}) {
+  host.classList.add('tape');
+  host.innerHTML = `<div class="tape-cells">${JOB.steps.slice(0, 5).map(s => `<div class="tape-cell" style="flex:${s.hold} 1 0"><b>${opts.verbs ? s.verb : s.label}</b><small>${sec(s.hold)} hold</small><small>${s.live ? 'live ' + sec(s.live) : 'no model'}</small></div>`).join('')}</div>`;
+  const cells = [...host.querySelectorAll('.tape-cell')];
+  return { update(s) { cells.forEach((c, j) => { c.className = 'tape-cell' + (j < s.i ? ' d' : j === s.i ? ' n' : ''); c.style.setProperty('--f', (j < s.i ? 100 : j === s.i ? s.p * 100 : 0) + '%'); }); } };
+}
+function chswKeys() {
+  document.addEventListener('keydown', e => { if (e.target.closest('textarea,input')) return;
+    const m = { '2': '../r1/landing-c.html', '4': '../r1/characters-c.html', '6': '../r1/daemon-c.html', '9': '../r1/sealed-c.html', 'o': '../r1/air-a.html', 'Escape': '../r1/creator-b.html' }[e.key];
+    if (m && !e.ctrlKey && !e.metaKey && !e.altKey && !document.querySelector('[data-modal-open]')) location.href = m; });
+}
+
+const gl = Glass($('#glass'), { explode: .42, labels: true, spacing: 60 }), rig = gl.rig, tape = Tape($('#tape'), { verbs: false });
+const PRE = 2000;
+// rail slots, top = highest z, as on the parent page
+const SLOTS = [...RIGDEF.layers].sort((a, b) => b[1] - a[1]);
+$('#layers').innerHTML = SLOTS.map(([n, z, kind, b]) => `<li class="lrow" data-n="${n}"><span class="z">${String(z).padStart(2, '0')}</span><span class="th"><img src="../a/forge/lantern-${n}.webp" alt=""></span><span class="nm">awaiting the knife<small>&nbsp;</small></span>${kind === 'static' ? '<span></span>' : `<button class="lit" type="button" aria-pressed="true" aria-label="${n} on the face" tabindex="-1"></button>`}</li>`).join('');
+$$('.lit').forEach(b => b.onclick = () => { const on = b.getAttribute('aria-pressed') !== 'true'; b.setAttribute('aria-pressed', on); rig.setPart(b.closest('li').dataset.n, on); });
+// rite inputs
+const EX = [['Moth archivist', 'A moth-winged archivist with violet eyes and dusty velvet robes, named Vesper'], ['Diving helmet', 'An iron diving helmet that hums sea shanties, cold blue light behind the glass, named Brine'], ['Wax bishop', 'A candle-wax bishop who melts when angry, a gold glow in his eyes, named Tallow']];
+const ARCH = ['Watchman', 'Lich', 'Moth', 'Marionette', 'Drowned', 'Announcer'];
+const VOICES = [['Crypt', 'low and slow'], ['Velvet', 'warm and close'], ['Rasp', 'gravel and smoke'], ['Choir', 'airy and distant'], ['Clerk', 'dry and precise']];
+const PAL = [['Candle', '#fec654', '#d8a030'], ['Verdigris', '#3fd6c4', '#ff7a1a'], ['Violet', '#bc8bfa', '#8a4fd4'], ['Brine', '#77b1cd', '#438bae'], ['Cinder', '#d04f51', '#b12d2f']];
+const pick = { arch: -1, voice: -1, pal: -1 }, user = { arch: 0, voice: 0, pal: 0, prompt: 0 };
+$('#ex').innerHTML = EX.map(([l]) => `<button type="button">${l}</button>`).join('');
+$$('#ex button').forEach((b, i) => b.onclick = () => { $('#prompt').value = EX[i][1]; user.prompt = 1; count(); });
+$('#arch').innerHTML = ARCH.map(a => `<button type="button" aria-pressed="false">${a}</button>`).join('');
+$('#voice').innerHTML = VOICES.map(([v]) => `<button type="button" aria-pressed="false">${v}</button>`).join('');
+$('#pal').innerHTML = PAL.map(([n, a, b]) => `<button type="button" class="sw" aria-pressed="false" style="--a:${a};--b:${b}"><i></i>${n}</button>`).join('');
+['arch', 'voice', 'pal'].forEach(g => $$('#' + g + ' button').forEach((b, i) => b.onclick = () => { user[g] = 1; setPick(g, i); }));
+function setPick(g, i) { if (pick[g] === i) return; pick[g] = i; $$('#' + g + ' button').forEach((b, j) => b.setAttribute('aria-pressed', j === i));
+  if (g === 'voice') $('#vdesc').textContent = i < 0 ? ' ' : VOICES[i][1];
+  if (g === 'pal' && i >= 0) { const [, e, gw] = PAL[i]; rig.setLight('eye', e); rig.setLight('rim', e); rig.setLight('glow', gw); $('#app').style.setProperty('--eye', e); paintCallouts(); }
+  sum1(); }
+function sum1() { $('#sum1').textContent = pick.arch < 0 ? 'archetype · voice · palette' : [ARCH[pick.arch], VOICES[pick.voice]?.[0], PAL[pick.pal]?.[0]].filter(Boolean).join(' · '); }
+const count = () => { const v = $('#prompt').value; $('#pcount').textContent = v.length + ' / 500'; $('#sum0').textContent = v ? v.slice(0, 60) + '…' : 'words or a drawing'; };
+$('#prompt').oninput = () => { user.prompt = 1; count(); };
+$('#photo').onclick = () => { const r = $('#refuse'); r.hidden = !r.hidden; };
+$('#up').onclick = () => { $('#refuse').hidden = true; $('#up').innerHTML = 'Drawings are read as invented<small>replay plane: the recording plays</small>'; };
+$('#stages').innerHTML = JOB.steps.map(s => `<li><b>${s.verb}</b><span>${s.hold ? sec(s.hold) : ''}${s.live ? ' / ' + sec(s.live) : ''}</span></li>`).join('');
+$('#livet').textContent = sec(JOB.liveTotal); $('#holdt').textContent = sec(JOB.total);
+// marks (one open; a click opens another until the rite moves on)
+let manual = -1, lastMark = -1;
+$$('.mh').forEach((h, i) => h.onclick = () => { manual = manual === i ? -1 : i; paintMarks(lastMark); });
+function paintMarks(m) { const open = manual >= 0 ? manual : m;
+  $$('.mark').forEach((el, i) => { el.classList.toggle('done', i < m || (m === 3 && i === 3)); el.classList.toggle('now', i === m && m < 3); el.classList.toggle('open', i === open);
+    el.querySelector('.mh').setAttribute('aria-expanded', i === open); el.querySelector('.st').textContent = i < m || (m === 3 && i === 3) ? 'DONE' : i === m ? 'NOW' : 'NEXT'; }); }
+// callouts on the face (the parent page's language), shown at the handoff
+const CALL = [['eye', 'Eye light', [532, 340], [140, 300]], ['glow', 'Glow', [700, 350], [880, 300]], ['mouth', 'Mouth light', [575, 585], [880, 640]], ['rim', 'Rim light', [320, 450], [130, 560]]];
+const NAMES = { '#fec654': 'candle', '#d8a030': 'tallow', '#ffb347': 'ember amber', '#3fd6c4': 'verdigris', '#ff7a1a': 'forge', '#bc8bfa': 'violet', '#8a4fd4': 'amethyst', '#77b1cd': 'brine', '#438bae': 'deep brine', '#d04f51': 'cinder', '#b12d2f': 'signal' };
+CALL.forEach(([k, label, p, l]) => { $('#leaders').insertAdjacentHTML('beforeend', `<line x1="${p[0]}" y1="${p[1]}" x2="${l[0]}" y2="${l[1]}"/><circle cx="${p[0]}" cy="${p[1]}" r="9"/>`);
+  $('#callouts').insertAdjacentHTML('beforeend', `<a class="callout" href="../r1/creator-b.html" data-k="${k}" style="left:${l[0] / 10.24}%;top:${l[1] / 10.24}%" tabindex="-1"><i></i>${label} <small></small></a>`); });
+function paintCallouts() { $$('.callout').forEach(b => { const c = rig.light[b.dataset.k]; b.style.setProperty('--s', c); b.querySelector('small').textContent = NAMES[c] || c; }); }
+paintCallouts();
+rig.on((t, v) => { if (t === 'status' && alive) { const l = $('#lamp'); l.classList.toggle('speak', v === 'Speaking'); l.textContent = v === 'Speaking' ? 'Speaking' : 'Alive · idle'; } });
+// the run
+let alive = false, railKey = '', typer;
+const CHIP = ['waiting for the painter · 1 ahead', 'portrait.jpg developing · preset 1', '', '', 'background.png · filling behind the cuts', 'alive · 7 layers'];
+function frame(s) {
+  gl.update(s); tape.update(s);
+  const m = s.i < 0 ? (s.p < .65 ? 0 : 1) : s.i < 5 ? 2 : 3;
+  if (m !== lastMark) { manual = -1; lastMark = m; paintMarks(m); }
+  if (s.i < 0) { // the recorded hand types the words and binds the choices
+    if (!user.prompt) { $('#prompt').value = JOB.prompt.slice(0, Math.round(JOB.prompt.length * Math.min(1, RM.matches ? 1 : s.p / .6))); count(); }
+    if (!user.arch) setPick('arch', s.p > .72 ? 0 : -1); if (!user.voice) setPick('voice', s.p > .82 ? 2 : -1); if (!user.pal) setPick('pal', s.p > .92 ? 0 : -1);
+  }
+  const f = foundOf(s), c = cutOf(s), filled = filledOf(s), key = `${f}${c}${filled}${s.i === 5}`;
+  if (key !== railKey) { railKey = key;
+    $$('.lrow').forEach(li => { const n = li.dataset.n, j = JOB.parts.findIndex(p => p[0] === n), b = RIGDEF.layers.find(l => l[0] === n);
+      const isCut = n === 'background' ? filled : j < c, isFound = n === 'background' ? s.i >= 4 : j < f;
+      li.className = 'lrow' + (isCut ? ' cut' : isFound ? ' found' : '');
+      li.querySelector('.nm').innerHTML = isCut ? `${n}<small>${KIND[b[2]]}</small>` : isFound ? `${n}<small>found · ${b[3][2]}×${b[3][3]}</small>` : `awaiting the knife<small>&nbsp;</small>`; });
+    $('#lcount').textContent = (c + (filled ? 1 : 0)) + ' / 7 cut';
+    CHIP[2] = `${f} of 6 parts found`; CHIP[3] = `${c} of 6 cut · lifting off the canvas`; }
+  $('#chip').innerHTML = s.i < 0 ? 'awaiting a description' : CHIP[s.i];
+  $('#wait').style.opacity = s.i < 0 ? 1 : 0;
+  if (!alive) $('#lamp').textContent = `${clock(s.t)} / ${sec(JOB.total)}`;
+  $('#csub').textContent = s.i < 0 ? (m ? 'binding archetype, voice, palette' : 'being described') : s.i < 5 ? JOB.steps[s.i].verb.toLowerCase() + '…' : 'live rig, 7 layers';
+  $$('#stages li').forEach((li, j) => { li.className = j < s.i || (s.i === 5 && j === 5) ? 'd' : j === s.i ? 'n' : ''; });
+  $('#sum2').textContent = s.i < 0 ? '5 recorded stages' : s.i < 5 ? `${JOB.steps[s.i].verb} · ${clock(s.t)}` : `done in ${sec(JOB.total)} (live ${sec(JOB.liveTotal)})`;
+}
+function onStage(s) {
+  const done = s.i === 5; alive = done;
+  $('#center').classList.toggle('handoff', done); $('#rail').classList.toggle('alive', done);
+  $$('.callout,.lit').forEach(e => e.tabIndex = done ? 0 : -1);
+  $('#leaf').textContent = done ? JOB.name : 'Forge new';
+  $('#cname').textContent = s.i >= 1 ? JOB.name : 'Unnamed';
+  $('#app').style.setProperty('--warm', done ? '12%' : '4%');
+  $('#lamp').classList.toggle('alive', done);
+  clearInterval(typer); $('#tr').textContent = '';
+  if (done) { $('#lamp').textContent = 'Alive · idle'; setTimeout(() => { if (!alive) return; const line = JOB.firstLine; rig.speak(line.length * 52); let n = 0;
+    typer = setInterval(() => { n += 2; $('#tr').textContent = '“' + line.slice(0, n) + (n >= line.length ? '”' : ''); if (n >= line.length) clearInterval(typer); }, RM.matches ? 0 : 104); }, 900); }
+}
+const run = Replay(PRE, frame, onStage);
+function restart() { if (!user.prompt) $('#prompt').value = ''; ['arch', 'voice', 'pal'].forEach(g => { if (!user[g]) setPick(g, -1); }); $('#refuse').hidden = true; run.restart(); }
+$('#restart').onclick = restart;
+chswKeys();
+</script>
+</body>
+</html>

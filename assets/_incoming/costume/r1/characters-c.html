@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>R1 · Characters · C</title>
+<meta name="sr-name" content="The Wall of Sets">
+<meta name="sr-pitch" content="The roster becomes a junk-shop wall of stacked cellar TVs, one face per hour: they power on in schedule order, sleep on standby, and warm up when you look at them, throwing that character's own colour across the brick, so the cast is browsed by faces, not by reading a list.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700;800;900&family=Courier+Prime:wght@400;700&family=IM+Fell+English:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --room:#060505; --ink:#ece4d2; --dim:#b3a995;
+  --paper:#dccb9f; --paper-ink:#1d1610; --signal:#9e1b12;
+  --display:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Inter",system-ui,sans-serif;
+  --type:"Courier Prime","Courier New",monospace;
+  --fell:"IM Fell English",Georgia,serif;
+  --sx:50%;--sy:45%;--sc:rgba(79,224,200,.28);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--room);color:var(--ink);font-family:var(--body);overflow-x:hidden;min-height:100vh}
+a{color:inherit}
+:focus-visible{outline:3px solid #ffd27a;outline-offset:3px;border-radius:6px}
+button{font:inherit;color:inherit}
+
+.wallbg{position:fixed;inset:0;z-index:0;pointer-events:none;background:url(../a/plates/cellar-wide.webp) center/cover;filter:brightness(.22) saturate(.5) contrast(1.1)}
+.spill{position:fixed;inset:0;z-index:0;pointer-events:none;mix-blend-mode:screen;
+  background:radial-gradient(28% 38% at var(--sx) var(--sy),var(--sc),transparent 72%);transition:background .8s}
+.vign{position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(110% 90% at 40% 50%,transparent 45%,rgba(0,0,0,.85))}
+
+header.chrome{position:relative;z-index:10;display:flex;align-items:center;gap:22px;padding:12px 24px;height:64px}
+.back{display:inline-flex;align-items:center;gap:10px;padding:8px 14px 8px 18px;border:1px solid rgba(236,228,210,.28);border-radius:999px;text-decoration:none;font-family:var(--display);font-weight:700;font-size:20px;background:rgba(6,5,5,.6)}
+.back kbd{font-family:var(--type);font-size:12px;border:1px solid rgba(236,228,210,.35);border-radius:4px;padding:1px 6px;color:var(--dim)}
+.crumb{font-family:var(--display);font-size:20px;color:var(--dim)}
+.crumb b{color:var(--ink);font-weight:700}
+.crumb .sep{margin:0 8px;font-size:12px}
+.spacer{flex:1}
+.recorded{font-family:var(--type);font-weight:700;font-size:13px;letter-spacing:.12em;color:#ffd9d2;border:1.5px solid #e0473a;padding:5px 9px;border-radius:3px;background:rgba(120,16,10,.35);display:flex;gap:7px;align-items:center}
+.recorded::before{content:"";width:8px;height:8px;border-radius:50%;background:#ff4a33;box-shadow:0 0 8px #ff4a33}
+.theme{font-size:15px;font-weight:500;border:1px solid rgba(236,228,210,.25);border-radius:4px;padding:7px 12px;background:rgba(6,5,5,.6)}
+
+main{position:relative;z-index:1;display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:26px;height:calc(100vh - 64px);min-height:640px;padding:4px 24px 20px}
+h1.title{position:absolute;left:24px;top:-2px;margin:0;font-family:var(--display);font-weight:800;font-size:15px;letter-spacing:.3em;color:var(--dim);text-transform:uppercase;z-index:2}
+h1.title span{color:var(--ink)}
+
+/* ---------- the wall ---------- */
+.wall{position:relative;display:grid;gap:14px;padding-top:40px;min-height:0;
+  grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:1fr 1fr .9fr;
+  grid-template-areas:"a m m b" "c m m d" "e v s s"}
+/* the shelf boards the sets sit on */
+.wall::before,.wall::after{content:"";position:absolute;left:-8px;right:-8px;height:10px;border-radius:2px;background:linear-gradient(#3b2a1a,#1b120b);box-shadow:0 8px 14px rgba(0,0,0,.7);z-index:0}
+.wall::before{top:calc(40px + (100% - 40px - 28px) * (1/2.9) + 3px)}
+.wall::after{top:calc(40px + (100% - 40px - 28px) * (2/2.9) + 17px)}
+
+.tv{--c:#888;position:relative;z-index:1;display:flex;flex-direction:column;min-height:0;border:0;padding:10px 10px 8px;text-align:left;cursor:pointer;
+  border-radius:14px;background:
+    linear-gradient(180deg,rgba(255,255,255,.07),transparent 30%,rgba(0,0,0,.35)),
+    repeating-linear-gradient(92deg,rgba(0,0,0,.18) 0 2px,transparent 2px 7px),
+    linear-gradient(135deg,#6a4426,#3a2414);
+  box-shadow:inset 0 0 0 1px rgba(255,220,170,.12),0 14px 26px rgba(0,0,0,.75);transition:transform .35s cubic-bezier(.2,.8,.2,1)}
+.tv.cream{background:linear-gradient(180deg,rgba(255,255,255,.18),transparent 35%,rgba(0,0,0,.3)),linear-gradient(135deg,#8c8270,#4c463c)}
+.tv.black{background:linear-gradient(180deg,rgba(255,255,255,.08),transparent 35%,rgba(0,0,0,.4)),linear-gradient(135deg,#2c2a28,#121110)}
+.tv.teal{background:linear-gradient(180deg,rgba(255,255,255,.1),transparent 35%,rgba(0,0,0,.4)),linear-gradient(135deg,#2f4a48,#162321)}
+.tv:hover,.tv:focus-visible{transform:translateY(-3px)}
+.bezel{position:relative;flex:1;min-height:0;padding:7px;border-radius:12px;background:#0d0b09;box-shadow:inset 0 2px 6px rgba(0,0,0,.9)}
+.tube{position:relative;width:100%;height:100%;overflow:hidden;border-radius:16% / 20%;background:#030303;
+  box-shadow:inset 0 0 30px rgba(0,0,0,.9);transition:box-shadow .6s}
+.tube img.face{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 22%;
+  filter:brightness(.46) saturate(.45) contrast(1.1);transition:filter .7s ease}
+.tube::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:4;border-radius:inherit;
+  background:radial-gradient(55% 35% at 30% 15%,rgba(255,255,255,.12),transparent 60%),radial-gradient(100% 100% at 50% 50%,transparent 55%,rgba(0,0,0,.75)),repeating-linear-gradient(0deg,rgba(0,0,0,.3) 0 1px,transparent 1px 3px)}
+.tube .standby{position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px;border-radius:50%;background:#fff;box-shadow:0 0 10px 3px var(--c);opacity:.0;z-index:3;transition:opacity .4s}
+/* warm (looked at, or chosen) */
+.tv.warm .tube img.face,.tv[aria-pressed="true"] .tube img.face{filter:none}
+.tv.warm .tube,.tv[aria-pressed="true"] .tube{box-shadow:inset 0 0 30px rgba(0,0,0,.6),0 0 34px 4px var(--c)}
+.tv.warm.flick .tube img.face{animation:warm .7s cubic-bezier(.2,.7,.2,1) both}
+@keyframes warm{0%{clip-path:inset(49% 0);filter:brightness(3) saturate(0)}45%{clip-path:inset(0 0);filter:brightness(1.8) saturate(.5)}100%{clip-path:inset(0 0);filter:none}}
+/* booting in hour order */
+.tv.boot .tube img.face,.tv.boot .tube canvas{animation:boot 1s cubic-bezier(.2,.7,.2,1) both;animation-delay:var(--bd)}
+@keyframes boot{0%{clip-path:inset(49.6% 49.6%);filter:brightness(5)}25%{clip-path:inset(49.6% 0);filter:brightness(4)}60%{clip-path:inset(0 0);filter:brightness(1.6)}100%{clip-path:inset(0 0)}}
+
+.plate{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:7px 4px 0}
+.plate .who{min-width:0}
+.plate .h{display:block;font-family:var(--type);font-weight:700;font-size:14px;letter-spacing:.1em;color:#e7c88e}
+.plate .n{display:block;font-family:var(--display);font-weight:700;font-size:19px;line-height:1.05;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.plate .knobs{display:flex;gap:6px;flex:none}
+.plate .knobs i{width:15px;height:15px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#7a6a58,#1c140e);box-shadow:0 1px 2px #000}
+.led{position:absolute;right:16px;bottom:13px;width:7px;height:7px;border-radius:50%;background:#2a3a1c;transition:background .3s,box-shadow .3s}
+.tv.warm .led,.tv[aria-pressed="true"] .led{background:#9cff6a;box-shadow:0 0 8px #9cff6a}
+
+/* ---------- the big set: on air ---------- */
+.tv.big{grid-area:m;padding:16px 16px 12px;border-radius:20px}
+.tv.big .bezel{padding:12px;border-radius:16px}
+.tv.big .tube{border-radius:13% / 15%}
+.tv.big .plate .h{font-size:16px}
+.tv.big .plate .n{font-size:30px}
+.tv.big .plate .knobs i{width:22px;height:22px}
+.rigbox{position:absolute;left:50%;top:-3%;height:112%;aspect-ratio:1;transform:translateX(-50%)}
+.tv.big.boot .rigbox{animation:boot 1.2s cubic-bezier(.2,.7,.2,1) both;animation-delay:var(--bd)}
+.osd{position:absolute;z-index:5;top:7%;left:7%;font-family:var(--type);font-weight:700;font-size:15px;letter-spacing:.1em;color:#dafff8;text-shadow:0 0 6px #4fe0c8}
+.osd.r{left:auto;right:7%}
+.sub{position:absolute;z-index:5;left:9%;right:9%;bottom:6%;font-family:var(--type);font-size:15px;line-height:1.35;text-align:center;background:rgba(0,0,0,.72);padding:6px 9px;color:#fff}
+.onair{position:absolute;z-index:3;left:50%;top:-2px;transform:translate(-50%,-50%);display:flex;align-items:center;gap:9px;padding:5px 14px;border-radius:4px;
+  font-family:var(--display);font-weight:900;font-size:18px;letter-spacing:.2em;color:#3b1612;background:#1a0b09;border:1px solid #4a1d18;box-shadow:0 6px 14px rgba(0,0,0,.6)}
+.onair.lit{color:#ffe4dd;background:#7d140c;border-color:#ff5a45;text-shadow:0 0 8px #ff6a55;box-shadow:0 0 22px 4px rgba(255,59,42,.55),0 0 80px 20px rgba(255,59,42,.18);animation:onFlick 1.3s steps(1,end) both}
+@keyframes onFlick{0%{opacity:.3}10%{opacity:1}16%{opacity:.4}24%,100%{opacity:1}}
+
+/* vacant + sealed */
+.tv.vac canvas{position:absolute;inset:0;width:100%;height:100%;opacity:.55;filter:contrast(1.2)}
+.tv.vac .msg,.tv.seal .msg{position:absolute;inset:0;z-index:5;display:grid;place-items:center;text-align:center;font-family:var(--type);font-weight:700;font-size:14px;letter-spacing:.08em;color:#efe8da;text-shadow:0 1px 3px #000}
+.tv.vac .msg span{background:rgba(0,0,0,.65);padding:4px 8px}
+.tv.seal .tube{background:#0a0908}
+.tape{position:absolute;z-index:6;left:-10%;right:-10%;top:44%;height:22%;background:rgba(214,196,150,.92);transform:rotate(-8deg);box-shadow:0 2px 6px rgba(0,0,0,.6);
+  display:grid;place-items:center;font-family:var(--type);font-weight:700;font-size:15px;letter-spacing:.18em;color:#2a1f14}
+.tape{top:22%}.tape.two{transform:rotate(5deg);top:58%;opacity:.9}
+
+/* ---------- the clipping (listing) ---------- */
+.clip{position:relative;align-self:center;max-height:100%;overflow:auto;padding:30px 28px 26px;color:var(--paper-ink);
+  background:radial-gradient(120% 90% at 30% 10%,#e8d9b0,var(--paper) 55%,#c7b384);transform:rotate(1deg);
+  clip-path:polygon(0 1%,9% 0,24% .8%,41% .1%,58% .9%,76% 0,92% .7%,100% 0,99.4% 34%,100% 70%,99.5% 100%,80% 99.2%,61% 100%,40% 99.3%,20% 100%,.4% 99.4%,0 66%,.6% 33%);
+  filter:drop-shadow(0 20px 30px rgba(0,0,0,.8))}
+.clip::before{content:"";position:absolute;inset:0;background:url(../a/plates/paper.webp) center/100% 100%;opacity:.14;mix-blend-mode:multiply;pointer-events:none}
+.clip > *{position:relative}
+.tack{position:absolute;left:50%;top:10px;width:16px;height:16px;border-radius:50%;transform:translateX(-50%);background:radial-gradient(circle at 35% 30%,#ff8a70,#8c1a10);box-shadow:0 3px 4px rgba(0,0,0,.5)}
+.clip .mast{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:4px double var(--paper-ink);padding-bottom:6px;margin-bottom:14px}
+.clip .mast b{font-family:var(--display);font-weight:900;font-size:26px;line-height:1}
+.clip .mast span{font-family:var(--type);font-weight:700;font-size:13px;letter-spacing:.08em;text-align:right}
+.slot{font-family:var(--type);font-weight:700;font-size:16px;letter-spacing:.1em;margin:0 0 6px}
+.slot.now{color:var(--signal)}
+.clip h2{font-family:var(--display);font-weight:900;font-size:40px;line-height:.92;margin:0 0 8px}
+.epithet{font-family:var(--fell);font-style:italic;font-size:19px;line-height:1.25;margin:0 0 10px}
+.blurb{font-size:15.5px;line-height:1.55;margin:0 0 12px}
+dl.spec{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0 0 16px;padding:8px 0;border-block:1px solid rgba(29,22,16,.4);font-size:14.5px}
+dl.spec dt{font-family:var(--type);font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:.06em}
+dl.spec dd{margin:0;line-height:1.4}
+.actions{display:flex;flex-wrap:wrap;gap:10px}
+.btn{display:inline-flex;font-family:var(--display);font-weight:700;font-size:18px;text-decoration:none;padding:9px 15px;border:2px solid var(--paper-ink);color:var(--paper-ink);background:transparent;cursor:pointer}
+.btn.solid{background:var(--paper-ink);color:#f3e6c4}
+.btn.solid:hover{background:#3a1410}
+.btn:not(.solid):hover{background:rgba(29,22,16,.1)}
+.hint{margin:14px 0 0;font-family:var(--type);font-size:14px;color:#4a3d2e}
+.clip .swap{transition:opacity .25s}
+.clip.changing .swap{opacity:0}
+
+/* Malakor rig */
+.rig{position:absolute;inset:0}
+.rig .L{position:absolute;display:block;pointer-events:none;user-select:none}
+.rig .hg{position:absolute;inset:0;transform-origin:50% 35.6%;animation:bob 6.2s ease-in-out infinite}
+.rig .L-torso{transform-origin:50% 100%;animation:breathe 4.8s ease-in-out infinite}
+.rig .sh{animation:shard var(--d,6s) ease-in-out infinite}
+.rig .L-jaw{transform-origin:50% 0;animation:talk 2.6s steps(1,end) infinite}
+.rig .L-eye_l,.rig .L-eye_r{transform-origin:50% 50%;animation:blink 5.4s ease-in-out infinite}
+.rig .L-monocle{animation:pulse 3.4s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translateY(0) rotate(0)}30%{transform:translateY(-.6%) rotate(-.6deg)}65%{transform:translateY(.35%) rotate(.5deg)}}
+@keyframes breathe{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.012) translateY(-.3%)}}
+@keyframes shard{0%,100%{transform:translateY(0) rotate(calc(var(--r) * -1deg))}50%{transform:translateY(calc(var(--a) * -1px)) rotate(calc(var(--r) * 1deg))}}
+@keyframes talk{0%{transform:translateY(0)}12%{transform:translateY(4%)}20%{transform:translateY(1%)}31%{transform:translateY(5%)}42%{transform:translateY(0)}55%{transform:translateY(3%)}63%{transform:translateY(0)}100%{transform:translateY(0)}}
+@keyframes blink{0%,91%,100%{opacity:1;transform:scaleY(1)}93%{opacity:.2;transform:scaleY(.25)}95%{opacity:1;transform:scaleY(1)}}
+@keyframes pulse{0%,100%{filter:brightness(1)}50%{filter:brightness(1.3) drop-shadow(0 0 6px rgba(255,140,40,.7))}}
+
+@media (max-width:1360px){main{grid-template-columns:minmax(0,1fr) 360px}.clip h2{font-size:34px}.tv.big .plate .n{font-size:24px}}
+@media (max-height:760px){.clip{padding:22px 22px 18px}.blurb{font-size:14.5px;margin-bottom:8px}.epithet{font-size:17px}dl.spec{gap:2px 12px}.sub{display:none}}
+@media (prefers-reduced-motion:reduce){
+  .rig .hg,.rig .L-torso,.rig .sh,.rig .L-jaw,.rig .L-eye_l,.rig .L-eye_r,.rig .L-monocle,.tv.boot .tube img.face,.tv.boot .tube canvas,.tv.big.boot .rigbox,.tv.warm.flick .tube img.face,.onair.lit{animation:none!important}
+  .tv,.spill,.tube img.face,.clip .swap{transition:none!important}
+}
+</style>
+</head>
+<body>
+<div class="wallbg" aria-hidden="true"></div>
+<div class="spill" aria-hidden="true"></div>
+<div class="vign" aria-hidden="true"></div>
+
+<header class="chrome">
+  <a class="back" href="#set">◂ Back to the set <kbd>Esc</kbd></a>
+  <nav class="crumb" aria-label="Breadcrumb">SHADOWRUNNER<span class="sep">▸</span><b>CH 4 · Characters</b> · tonight's listings</nav>
+  <span class="spacer"></span>
+  <span class="recorded">RECORDED</span>
+  <button class="theme" type="button">Theme: Halloween <span style="opacity:.6;font-size:12px">T</span></button>
+</header>
+
+<main>
+  <h1 class="title"><span>Cellar Listings</span> · all night · channels 2 to 9 · characters who stream</h1>
+  <section class="wall" id="wall" aria-label="Tonight's sets, one face per hour"></section>
+
+  <aside class="clip" id="clip" aria-live="polite" aria-label="Listing for the chosen hour">
+    <span class="tack" aria-hidden="true"></span>
+    <div class="mast"><b>Tonight</b><span>CUT FROM THE<br>CELLAR LISTINGS</span></div>
+    <div class="swap" id="clipBody"></div>
+  </aside>
+</main>
+
+<script>
+const SLOTS=[
+ {area:"m",big:1,hour:"03:00",slug:"malakor",name:"Arch-Lich Malakor",acc:"#4fe0c8",live:true,
+  epithet:"High Auditor of the Obsidian Spire, a lich of the Ninth Dark",
+  blurb:"Eleven centuries dead and still under-budgeted, he streams because the Ninth Dark now conquers by audience. He holds court, audits rival schemers from public records, and keeps a ledger of every regular.",
+  facts:[["Rig","18 layers · bone, verdigris, eleven crown shards"],["Voice","Vault Baritone"],["Moves","10 emotions · 6 gestures"],["Segments","Audience Chamber · The Investigation · Table Read"],["Shows off","Crown shards, monocle"]]},
+ {area:"a",skin:"black",hour:"04:00",slug:"announcer-of-dead-air",name:"Announcer of Dead Air",acc:"#b48cff",
+  blurb:"It reads the station identification between programmes that were never scheduled. It speaks only in the third person, and only on the hour.",
+  shows:"A face made only of light. The eyes and mouth glow out of darkness. It also has a hood (hat) and a floating antenna ring (crown). It is the broadcast theme made flesh."},
+ {area:"b",skin:"",hour:"05:00",slug:"lantern-warden",name:"The Lantern Warden",acc:"#ffb347",
+  blurb:"The night watchman of the root cellar. He counts the gourds every hour, and one is always missing.",
+  shows:"Hat and a lit jaw. The hat sways on its own layer, and the jaw opens to show the candle inside."},
+ {area:"c",skin:"cream",hour:"06:00",slug:"moth-widow",name:"The Moth Widow",acc:"#e9c46a",
+  blurb:"She keeps the lamps the cellar forgot. She collects small confessions the way other moths collect light.",
+  shows:"Crown. Tall feathered antennae sway on their own layer, and the large eyes catch the light."},
+ {area:"d",skin:"teal",hour:"07:00",slug:"sister-vesper",name:"Sister Vesper",acc:"#b9cdf2",
+  blurb:"She sang in a chapel that the river took. She still keeps the hours, and asks chat to hum along.",
+  shows:"Hair as a drifting layer. The hair floats as if underwater while the face holds still, and the eyes glow cold."},
+ {area:"e",skin:"",hour:"08:00",slug:"understudy",name:"The Understudy",acc:"#ff4a33",
+  blurb:"A theatre marionette left in the wings for a century. It knows every line of every play and is waiting for its cue.",
+  shows:"A hinged jaw (the clearest lip-sync of the five) and a worn accessory."},
+ {area:"v",skin:"black",hour:"09:00",vacant:1,name:"Before the boiler wakes",acc:"#9a948a",blurb:"The last hour of the night is unclaimed."},
+ {area:"s",skin:"cream",hour:"CH 9",sealed:1,name:"Not built yet",acc:"#7a746a",blurb:"Nothing is broadcast on nine. The set still tunes to it."}
+];
+const LINES=["The throne room is open. Welcome, mortals. Sit down. Be counted.","The lich guy. Eleven centuries of service and I am the lich guy.","It is a livestream, RookAndRot. I have never pretended otherwise."];
+const $=id=>document.getElementById(id);
+const wall=$('wall'),clip=$('clip'),RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const hexA=(h,a)=>{const n=parseInt(h.slice(1),16);return `rgba(${n>>16},${(n>>8)&255},${n&255},${a})`};
+
+SLOTS.forEach((s,i)=>{
+  const b=document.createElement('button');b.type='button';
+  b.className='tv '+(s.skin||'')+(s.big?' big':'')+(s.vacant?' vac':'')+(s.sealed?' seal':'')+' boot';
+  b.style.gridArea=s.area;b.style.setProperty('--c',s.acc);b.style.setProperty('--bd',(s.big?1.35:.15+i*.16)+'s');
+  b.dataset.i=i;b.setAttribute('aria-pressed','false');
+  b.setAttribute('aria-label',`${s.hour}, ${s.name}${s.live?', on air now':s.vacant?', vacant':s.sealed?', sealed':', later tonight'}`);
+  let tube='';
+  if(s.live)tube=`<div class="rigbox" id="rigbox" role="img" aria-label="Arch-Lich Malakor, live rig, speaking"></div><span class="osd">CH 2</span><span class="osd r">03:00 · LIVE</span><span class="sub" id="sub">${LINES[0]}</span>`;
+  else if(s.slug)tube=`<img class="face" src="../a/cast/${s.slug}.webp" alt="" width="768" height="768"><span class="standby"></span>`;
+  else if(s.vacant)tube=`<canvas width="96" height="72"></canvas><div class="msg"><span>09:00 · VACANT</span></div>`;
+  else tube=`<div class="tape">CH 9 · SEALED</div><div class="tape two">NOT BUILT YET</div>`;
+  const where=s.live?'ON AIR NOW · CH 2':s.slug?'LATER · CH 3':s.vacant?'VACANT':'SEALED';
+  b.innerHTML=`${s.live?'<span class="onair" id="onair"><span aria-hidden="true">●</span> ON AIR</span>':''}
+   <div class="bezel"><div class="tube">${tube}</div></div>
+   <div class="plate"><span class="who"><span class="h">${s.big?s.hour+' · '+where:s.slug?s.hour+' · CH 3':s.vacant?'09:00 · VACANT':'CH 9 · SEALED'}</span><span class="n">${s.name}</span></span><span class="knobs" aria-hidden="true"><i></i><i></i></span></div>
+   <span class="led" aria-hidden="true"></span>`;
+  wall.appendChild(b);
+});
+
+let cur=-1;
+function render(s){
+  let h=`<p class="slot ${s.live?'now':''}">${s.live?'03:00 · ON AIR NOW · CH 2':s.slug?`${s.hour} · LATER · CH 3`:s.vacant?'09:00 · VACANT':'CH 9 · SEALED'}</p><h2>${s.name}</h2>`;
+  if(s.epithet)h+=`<p class="epithet">${s.epithet}</p>`;
+  h+=s.slug?`<p class="blurb">${s.blurb}</p>`:`<p class="epithet">${s.blurb}</p>`;
+  if(s.facts)h+=`<dl class="spec">${s.facts.map(([t,v])=>`<dt>${t}</dt><dd>${v}</dd>`).join('')}</dl>`;
+  else if(s.shows)h+=`<dl class="spec"><dt>Shows off</dt><dd>${s.shows}</dd></dl>`;
+  if(s.live)h+=`<div class="actions"><a class="btn solid" href="#creator?character=malakor">Open in the Forge · CH 3</a><a class="btn" href="#landing">Watch · CH 2</a></div>`;
+  else if(s.slug)h+=`<div class="actions"><a class="btn solid" href="#creator?character=${s.slug}">Open in the Forge · CH 3</a></div><p class="hint">Forged · its rig waits in CH 3. Malakor holds the air until ${s.hour}.</p>`;
+  else if(s.sealed)h+=`<div class="actions"><a class="btn" href="#sealed">Tune to 9</a></div>`;
+  else h+=`<p class="hint">The set hisses because nothing is scheduled. Forge a character to claim the hour.</p>`;
+  $('clipBody').innerHTML=h;
+}
+function spillTo(el,s){
+  const r=el.getBoundingClientRect();
+  document.documentElement.style.setProperty('--sx',((r.left+r.width/2)/innerWidth*100).toFixed(1)+'%');
+  document.documentElement.style.setProperty('--sy',((r.top+r.height/2)/innerHeight*100).toFixed(1)+'%');
+  document.documentElement.style.setProperty('--sc',hexA(s.acc,s.slug?(s.big?.34:.42):.12));
+}
+function choose(i){
+  if(i===cur)return;cur=i;const s=SLOTS[i];
+  wall.querySelectorAll('.tv').forEach(t=>t.setAttribute('aria-pressed',String(+t.dataset.i===i)));
+  const el=wall.querySelector(`.tv[data-i="${i}"]`);spillTo(el,s);
+  if(RM){render(s);return}
+  clip.classList.add('changing');setTimeout(()=>{render(s);clip.classList.remove('changing')},220);
+}
+wall.addEventListener('click',e=>{const t=e.target.closest('.tv');if(t)choose(+t.dataset.i)});
+wall.querySelectorAll('.tv').forEach(t=>{
+  const warm=()=>{if(t.classList.contains('warm'))return;t.classList.add('warm');if(!RM){t.classList.remove('flick');void t.offsetWidth;t.classList.add('flick')}
+    const s=SLOTS[+t.dataset.i];spillTo(t,s)};
+  const cool=()=>{t.classList.remove('warm','flick');const s=SLOTS[cur];spillTo(wall.querySelector(`.tv[data-i="${cur}"]`),s)};
+  t.addEventListener('mouseenter',warm);t.addEventListener('focus',warm);
+  t.addEventListener('mouseleave',()=>{if(document.activeElement!==t)cool()});t.addEventListener('blur',cool);
+});
+addEventListener('resize',()=>{const el=wall.querySelector(`.tv[data-i="${cur}"]`);if(el)spillTo(el,SLOTS[cur])});
+
+/* boot sequence: sets wake in schedule order, the big set last, then the ON AIR sign */
+render(SLOTS[0]);
+setTimeout(()=>{choose(0);$('onair').classList.add('lit')},RM?0:2300);
+setTimeout(()=>wall.querySelectorAll('.tv').forEach(t=>t.classList.remove('boot')),RM?0:3200);
+let li=0;setInterval(()=>{const sub=$('sub');if(sub)sub.textContent=LINES[++li%LINES.length]},6000);
+
+/* vacant hour: live snow, because no programme is scheduled */
+const vc=wall.querySelector('.vac canvas'),vx=vc.getContext('2d');
+(function snow(){const d=vx.createImageData(96,72);for(let k=0;k<d.data.length;k+=4){const v=Math.random()*255|0;d.data[k]=d.data[k+1]=d.data[k+2]=v;d.data[k+3]=255}vx.putImageData(d,0,0);if(!RM)setTimeout(()=>requestAnimationFrame(snow),60)})();
+
+/* Malakor's rig */
+const RIG=[["torso",0,445,1024,579],["head",317,153,389,424],["jaw",370,511,283,118],
+["shard_r5",735,267,49,68,.2,4.5,3.5],["shard_l5",241,268,50,65,.21,4.5,3.5],["shard_r4",687,211,56,110,.155,4,2.5],["shard_l4",282,211,56,110,.165,4,2.5],
+["shard_r3",733,124,58,153,.18,4.5,3],["shard_l3",227,129,63,148,.19,4.5,3],["shard_r2",651,58,75,190,.15,4,2.5],["shard_l2",298,59,75,189,.14,4,2.5],
+["shard_r1",579,75,51,102,.16,3.5,2],["shard_l1",387,75,59,104,.17,3.5,2],["shard_c",456,0,110,236,.12,2.5,.6],
+["eye_l",324,263,196,170],["eye_r",534,268,181,167],["monocle",519,224,261,239]];
+function buildRig(stage,scale){
+  const rig=document.createElement('div');rig.className='rig';
+  const mk=([n,x,y,w,h,f,a,r])=>{const i=new Image();i.src='../a/malakor/'+n+'.webp';i.alt='';i.className='L L-'+n+(f?' sh':'');
+    i.style.cssText=`left:${x/10.24}%;top:${y/10.24}%;width:${w/10.24}%;height:${h/10.24}%`;
+    if(f){i.style.setProperty('--d',(1/f).toFixed(2)+'s');i.style.setProperty('--a',(a*scale).toFixed(1));i.style.setProperty('--r',r);i.style.animationDelay=(-Math.random()*6).toFixed(2)+'s'}
+    return i};
+  rig.appendChild(mk(["background",0,0,1024,1024]));rig.appendChild(mk(RIG[0]));
+  const hg=document.createElement('div');hg.className='hg';RIG.slice(1).forEach(l=>hg.appendChild(mk(l)));
+  rig.appendChild(hg);stage.appendChild(rig);
+}
+buildRig($('rigbox'),1.5);
+</script>
+</body>
+</html>

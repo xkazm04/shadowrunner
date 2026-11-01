@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>R1 · Sealed · C</title>
+<meta name="sr-name" content="Lights Out, Nine">
+<meta name="sr-pitch" content="The cellar is dark and the set is off: your pointer is a torch, you hold the knob to tune a channel that has nothing on it, and when you let go the dying tube shows, in its black glass, who was standing behind you all along.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700;800&family=Courier+Prime:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#030303; --ink:#ece4d6; --ink-2:#b9ad9a; --line:#2e2822;
+  --phos:#e6eeff; --phos-2:#a9c0f0; --violet:#b48cff; --rec:#e0574a;
+  --disp:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --type:"Courier Prime","Courier New",ui-monospace,monospace;
+  --mx:50%; --my:62%; --on:0; --torch:0;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:var(--body);overflow:hidden}
+body{display:grid;grid-template-rows:72px 1fr}
+:focus-visible{outline:2px solid var(--phos);outline-offset:3px;border-radius:6px}
+.top{display:flex;align-items:center;gap:22px;padding:0 24px;position:relative;z-index:6}
+.back{display:inline-flex;align-items:center;gap:10px;padding:9px 12px 9px 18px;border:1px solid var(--line);border-radius:999px;color:var(--ink);text-decoration:none;font:700 19px/1 var(--disp);background:rgba(14,12,10,.8)}
+.back:hover{border-color:#6d6253}
+kbd{font:700 12px/1 var(--type);padding:4px 6px;border:1px solid #5b5246;border-radius:4px;color:var(--ink-2)}
+.crumb{font:500 19px/1 var(--disp);color:var(--ink-2);white-space:nowrap}
+.crumb b{color:var(--ink);font-weight:700}.crumb .sep{opacity:.6;margin:0 8px;font-size:12px}
+.right{margin-left:auto;display:flex;gap:12px;align-items:center}
+.rec{font:700 12px/1 var(--type);letter-spacing:.12em;color:var(--ink);padding:8px 9px;border:1.5px solid var(--rec);border-radius:3px;display:inline-flex;gap:7px;align-items:center}
+.rec::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--rec);box-shadow:0 0 8px var(--rec)}
+.theme{font:500 16px/1 var(--body);color:var(--ink);background:#100e0c;border:1px solid var(--line);padding:9px 12px;border-radius:4px;cursor:pointer}
+
+main{position:relative;display:grid;place-items:center;min-height:0;cursor:none}
+main .tag, main button{cursor:pointer}
+.set{position:relative;width:min(1180px,100vw,calc((100vh - 80px) * 1.3393));aspect-ratio:1200/896;container-type:inline-size;margin:0}
+.layer{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
+.base{filter:brightness(.05) saturate(.3)}
+/* torch: warm, small, follows the pointer */
+.torch{filter:brightness(.9) sepia(.45) saturate(1.1) contrast(1.05);opacity:var(--torch);
+  -webkit-mask-image:radial-gradient(circle 13cqw at var(--mx) var(--my),#000 0,rgba(0,0,0,.55) 45%,transparent 100%);
+          mask-image:radial-gradient(circle 13cqw at var(--mx) var(--my),#000 0,rgba(0,0,0,.55) 45%,transparent 100%)}
+/* tube light: the wall is lit only while the tube is on */
+.tubelit{filter:brightness(.85) saturate(.6) hue-rotate(8deg);opacity:calc(var(--on) * var(--flick,1));
+  -webkit-mask-image:radial-gradient(ellipse 42% 48% at 50% 47%,#000 30%,transparent 100%);
+          mask-image:radial-gradient(ellipse 42% 48% at 50% 47%,#000 30%,transparent 100%)}
+.edge{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 52% 56% at 50% 46%,transparent 60%,var(--bg) 100%)}
+
+.glass{position:absolute;left:28.667%;top:24.888%;width:42.167%;height:45.536%;overflow:hidden;background:#050608;display:grid}
+.glass > *{grid-area:1/1}
+/* black glass at rest: reflects your torch */
+.sheen{pointer-events:none;background:radial-gradient(circle 9cqw at var(--gx,50%) var(--gy,50%),rgba(255,226,180,calc(.13 * var(--torch))),transparent 70%),radial-gradient(ellipse 34% 20% at 24% 14%,rgba(220,235,255,.09),transparent 70%),radial-gradient(ellipse 72% 72% at 50% 50%,transparent 50%,rgba(0,0,0,.8) 100%)}
+.refl{width:62%;height:auto;justify-self:end;align-self:end;margin-right:2%;opacity:0;transform:scaleX(-1);
+  filter:grayscale(.3) contrast(1.4) brightness(.9) blur(1.2px);mix-blend-mode:screen;pointer-events:none;
+  -webkit-mask-image:radial-gradient(ellipse 50% 55% at 50% 45%,#000 40%,transparent 80%);mask-image:radial-gradient(ellipse 50% 55% at 50% 45%,#000 40%,transparent 80%)}
+.screen{display:grid;transform-origin:50% 50%;transform:scale(0,0);opacity:0;background:#0b0e14}
+.screen > *{grid-area:1/1}
+.screen canvas{width:100%;height:100%;display:block;opacity:.8;filter:contrast(1.25)}
+.slate{position:relative;align-self:center;justify-self:center;text-align:center;padding:2cqw 3cqw;background:rgba(5,6,9,.74);border-radius:1.4cqw}
+.slate p{margin:0;font:700 max(14px,1.4cqw)/1 var(--disp);letter-spacing:.2em;text-transform:uppercase;color:var(--phos-2)}
+.slate h1{margin:.8cqw 0 0;font:800 max(30px,4.6cqw)/.95 var(--disp);letter-spacing:.03em;text-transform:uppercase;color:var(--phos);text-shadow:0 0 1.6cqw rgba(200,220,255,.5)}
+.scan{pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.28) 0 1px,transparent 1px 3px)}
+.dot{width:1.2cqw;height:1.2cqw;border-radius:50%;place-self:center;background:#f2f6ff;box-shadow:0 0 1.5cqw .5cqw rgba(200,220,255,.9);opacity:0;pointer-events:none}
+
+/* power knob */
+.power{position:absolute;left:34%;top:80.9%;width:6.4%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;border:0;background:transparent;padding:0;touch-action:none}
+.power::before{content:"";position:absolute;inset:-12%;border-radius:50%;box-shadow:0 0 0 1.5px rgba(255,214,150,.55),0 0 18px rgba(255,190,110,.35);animation:pilot 2.8s ease-in-out infinite}
+.power[aria-pressed="true"]::before{box-shadow:0 0 0 2px rgba(220,235,255,.9),0 0 24px rgba(170,200,255,.7);animation:none}
+@keyframes pilot{50%{opacity:.35}}
+.power .lab{position:absolute;left:50%;top:calc(100% + 12px);transform:translateX(-50%);white-space:nowrap;font:700 14px/1 var(--type);color:#f0dcc0;background:rgba(10,8,6,.9);border:1px solid #4a3d2e;padding:7px 9px;border-radius:4px}
+
+/* the tag: the honest label, never in the dark */
+.tag{position:absolute;left:76.5%;top:20%;width:max(220px,19.5%);padding:22px 18px 18px;color:#1c1611;
+  background:radial-gradient(ellipse 120% 80% at 30% 10%,#e6dcc6,#d3c5a6 70%,#c4b392);
+  border-radius:3px;box-shadow:0 18px 40px rgba(0,0,0,.7),inset 0 0 24px rgba(90,60,30,.22);transform:rotate(2.2deg);transform-origin:50% 0;
+  font:400 15px/1.4 var(--type);opacity:0;transition:opacity 1.2s ease .2s;cursor:default}
+.ready .tag{opacity:1}
+.tag::before{content:"";position:absolute;top:8px;left:50%;width:12px;height:12px;margin-left:-6px;border-radius:50%;background:#1a1410;box-shadow:inset 0 1px 2px rgba(255,255,255,.25)}
+.tag::after{content:"";position:absolute;bottom:100%;left:50%;width:1px;height:60px;background:linear-gradient(transparent,#8a7a62)}
+.tag h2{margin:0 0 2px;font:800 34px/1 var(--disp);letter-spacing:.02em}
+.tag .st{margin:0 0 10px;font:700 16px/1.2 var(--type);text-transform:uppercase;letter-spacing:.04em;color:#7a1d17}
+.tag p{margin:0 0 10px}
+.tag hr{border:0;border-top:1px dashed #6f6150;margin:10px 0}
+.tag .how{font-size:14px}
+.tag .log{font:700 14px/1.4 var(--type)}
+.tag .log b{color:#4e2a8a}
+
+/* torch cursor ring */
+.ring{position:fixed;left:0;top:0;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;border:1.5px solid rgba(255,220,170,.8);pointer-events:none;z-index:8;opacity:0;transition:opacity .3s}
+main:hover ~ .ring{opacity:1}
+
+.flip{position:fixed;inset:0;background:#000;display:grid;place-items:center;font:800 42px/1 var(--disp);letter-spacing:.06em;color:var(--phos);opacity:0;pointer-events:none;transition:opacity .25s;z-index:20;text-transform:uppercase;text-align:center}
+.flip.on{opacity:1}
+.flip small{display:block;font:400 16px/1.5 var(--type);letter-spacing:0;color:var(--ink-2);text-transform:none;margin-top:10px}
+@media (prefers-reduced-motion:reduce){.power::before{animation:none}.tag{transition:none}}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="back" href="#" data-back><span aria-hidden="true">&#9666;</span> Back to the set <kbd>Esc</kbd></a>
+  <nav class="crumb" aria-label="Breadcrumb">SHADOWRUNNER<span class="sep">&#9656;</span><b>CH 9 · Sealed</b> · not built yet</nav>
+  <div class="right"><span class="rec" title="Replay plane">RECORDED</span><button class="theme" type="button">Theme: Halloween <kbd>T</kbd></button></div>
+</header>
+<main id="main">
+  <figure class="set" id="set" aria-label="A television set in a dark cellar, switched off. Channel 9 is sealed and not built yet.">
+    <img class="layer base" src="../a/plates/crt-frontal.webp" alt="" width="1200" height="896">
+    <img class="layer tubelit" src="../a/plates/crt-frontal.webp" alt="" width="1200" height="896">
+    <img class="layer torch" src="../a/plates/crt-frontal.webp" alt="" width="1200" height="896">
+    <div class="edge" aria-hidden="true"></div>
+    <div class="glass" id="glass">
+      <div class="sheen" aria-hidden="true"></div>
+      <img class="refl" id="refl" src="../a/cast/announcer-of-dead-air.webp" alt="" aria-hidden="true">
+      <div class="screen" id="screen">
+        <canvas id="snow" width="240" height="194" aria-hidden="true"></canvas>
+        <div class="slate"><p>Channel 9 · Sealed</p><h1>Not built yet</h1></div>
+        <div class="scan" aria-hidden="true"></div>
+      </div>
+      <div class="dot" id="dot" aria-hidden="true"></div>
+    </div>
+    <button class="power" id="power" type="button" aria-pressed="false" aria-label="Power. Hold to tune the set to channel 9"><span class="lab">Hold &#9211; or Space</span></button>
+    <aside class="tag" aria-label="Label on the set">
+      <h2>CH 9</h2>
+      <p class="st">Sealed · not built yet</p>
+      <p>Nothing is broadcast on nine. Something tunes in anyway.</p>
+      <hr>
+      <p class="how">Hold the power knob (or Space) to tune in. There is no programme; only snow.</p>
+      <p class="how">Esc or 2: back to the set.</p>
+      <hr>
+      <p class="log" id="log">tuned in: 0<br>tuned back: 0</p>
+    </aside>
+  </figure>
+</main>
+<div class="ring" id="ring" aria-hidden="true"></div>
+<div class="flip" id="flip" aria-hidden="true"><div>CH 2 · On air<small>tuning back to the set&hellip;</small></div></div>
+<p id="live" aria-live="polite" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)"></p>
+
+<script>
+(function(){
+  var reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var root=document.documentElement,set=document.getElementById('set'),main=document.getElementById('main'),ring=document.getElementById('ring');
+  var pts=[];for(var i=0;i<96;i++){var t=i/96*Math.PI*2,c=Math.cos(t),s=Math.sin(t);
+    pts.push((50+50*Math.sign(c)*Math.pow(Math.abs(c),2/3)).toFixed(3)+'% '+(50+50*Math.sign(s)*Math.pow(Math.abs(s),2/3)).toFixed(3)+'%');}
+  document.getElementById('glass').style.clipPath='polygon('+pts.join(',')+')';
+
+  // load: total dark, then the torch clicks on (with a stutter)
+  document.body.classList.add('ready');
+  function torch(v){root.style.setProperty('--torch',v);}
+  if(reduce)torch(1);
+  else{[[500,.7],[560,0],[640,.9],[700,.2],[780,1]].forEach(function(p){setTimeout(function(){torch(p[1]);},p[0]);});}
+
+  main.addEventListener('pointermove',function(e){
+    var r=set.getBoundingClientRect(),x=(e.clientX-r.left)/r.width*100,y=(e.clientY-r.top)/r.height*100;
+    root.style.setProperty('--mx',x+'%');root.style.setProperty('--my',y+'%');
+    // the torch's highlight on the glass, mirrored like a real reflection
+    root.style.setProperty('--gx',((x-28.667)/42.167*100)+'%');root.style.setProperty('--gy',((y-24.888)/45.536*100)+'%');
+    ring.style.transform='translate('+e.clientX+'px,'+e.clientY+'px)';
+  });
+
+  // tube
+  var screen=document.getElementById('screen'),dot=document.getElementById('dot'),refl=document.getElementById('refl'),power=document.getElementById('power'),log=document.getElementById('log'),live=document.getElementById('live');
+  var cv=document.getElementById('snow'),cx=cv.getContext('2d'),W=cv.width,H=cv.height,img=cx.createImageData(W,H),d=img.data;
+  var on=false,onAt=0,ins=0,backs=0,raf=0,lastF=0;
+  function snow(ts){
+    if(ts-lastF>40){lastF=ts;var sum=0;for(var k=0;k<d.length;k+=4){var v=Math.random()*220|0;d[k]=v;d[k+1]=v;d[k+2]=Math.min(255,v+12);d[k+3]=255;sum+=v;}
+      cx.putImageData(img,0,0);root.style.setProperty('--flick',(0.75+sum/(W*H)/255*0.5).toFixed(3));}
+    if(on&&!reduce)raf=requestAnimationFrame(snow);
+  }
+  function powerOn(){
+    if(on)return;on=true;onAt=performance.now();ins++;power.setAttribute('aria-pressed','true');
+    root.style.setProperty('--on',1);
+    screen.getAnimations().forEach(function(a){a.cancel();});
+    refl.getAnimations().forEach(function(a){a.cancel();});refl.style.opacity=0;
+    if(reduce){screen.style.transform='none';screen.style.opacity=1;snow(1000);}
+    else{
+      screen.animate([{transform:'scale(.02,.004)',opacity:1,filter:'brightness(4)'},{transform:'scale(1,.006)',opacity:1,offset:.35,filter:'brightness(3)'},{transform:'scale(1,1)',opacity:1,filter:'brightness(1)'}],{duration:620,easing:'cubic-bezier(.6,0,.3,1)',fill:'forwards'});
+      raf=requestAnimationFrame(snow);
+    }
+    log.innerHTML='tuned in: '+ins+'<br>tuned back: '+(backs?'<b>'+backs+'</b>':0);
+  }
+  function powerOff(){
+    if(!on)return;on=false;power.setAttribute('aria-pressed','false');cancelAnimationFrame(raf);
+    var held=performance.now()-onAt;
+    root.style.setProperty('--on',0);
+    if(reduce){screen.style.opacity=0;screen.style.transform='scale(0,0)';}
+    else{
+      screen.getAnimations().forEach(function(a){a.cancel();});
+      screen.animate([{transform:'scale(1,1)',opacity:1},{transform:'scale(1,.005)',opacity:1,offset:.45,filter:'brightness(3)'},{transform:'scale(.01,.004)',opacity:0,filter:'brightness(4)'}],{duration:380,easing:'cubic-bezier(.7,0,.4,1)',fill:'forwards'});
+      dot.animate([{opacity:0},{opacity:1,offset:.25},{opacity:0}],{duration:1500,delay:340});
+    }
+    // dead air: the tube has been warm long enough to hold an afterimage. what the dark glass shows is not in the room.
+    if(held>700){
+      backs++;
+      log.innerHTML='tuned in: '+ins+'<br>tuned back: <b>'+backs+'</b>';
+      live.textContent='The tube goes dark. Something is reflected in the glass. Channel 9 is still not built.';
+      var peak=Math.min(.26+backs*.06,.5);
+      if(reduce){refl.style.opacity=peak*.8;setTimeout(function(){refl.style.opacity=0;},2600);}
+      else refl.animate([{opacity:0,transform:'scaleX(-1) translateX(0)'},{opacity:0,offset:.18},{opacity:peak,offset:.32},{opacity:peak*.6,offset:.4},{opacity:peak,offset:.5},{opacity:0,transform:'scaleX(-1) translateX(-3%)'}],{duration:2800,easing:'ease-out'});
+    }
+  }
+  power.addEventListener('pointerdown',function(e){e.preventDefault();power.setPointerCapture(e.pointerId);powerOn();});
+  power.addEventListener('pointerup',powerOff);power.addEventListener('pointercancel',powerOff);
+  document.addEventListener('keydown',function(e){
+    if((e.code==='Space'||(e.key==='Enter'&&document.activeElement===power))&&!e.repeat){if(document.activeElement&&document.activeElement.matches('a,.theme'))return;e.preventDefault();powerOn();}
+    else if(e.code==='Space')e.preventDefault();
+    if(e.key==='Escape'||e.key==='2')back(e);
+  });
+  document.addEventListener('keyup',function(e){if(e.code==='Space'||e.key==='Enter')powerOff();});
+  window.addEventListener('blur',powerOff);
+
+  var flip=document.getElementById('flip');
+  function back(e){if(e)e.preventDefault();powerOff();flip.classList.add('on');setTimeout(function(){flip.classList.remove('on');},1300);}
+  document.querySelectorAll('[data-back]').forEach(function(el){el.addEventListener('click',back);});
+})();
+</script>
+</body>
+</html>

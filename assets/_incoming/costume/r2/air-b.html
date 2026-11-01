@@ -1,0 +1,535 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>R2 · Air · B</title>
+<meta name="sr-name" content="Candles of the Catacomb">
+<meta name="sr-pitch" content="A symmetrical catacomb frames the face: the tunnel's far light sits right behind his skull as a backlight that swells when he speaks, the ON AIR box hangs dead centre from the vault, and in place of fog every chatter owns a wall candle that flares when they post, the whole corridor burning brighter as chat speeds up and guttering to embers when the line dies.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700;800&family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+.rig{position:relative;aspect-ratio:1/1;contain:layout}
+.rig-g{position:absolute;inset:0;will-change:transform}
+.rig-l{position:absolute;display:block;max-width:none;user-select:none;pointer-events:none;will-change:transform,opacity}
+.rig-mouth{position:absolute;opacity:0;border-radius:50%;background:radial-gradient(ellipse 48% 42% at 50% 42%,rgba(120,255,235,.95),rgba(51,217,199,.5) 40%,transparent 72%);mix-blend-mode:screen}
+.rig-eyeglow{position:absolute;border-radius:50%;background:radial-gradient(circle,rgba(110,255,225,.6),rgba(40,200,180,.2) 38%,transparent 68%);mix-blend-mode:screen;pointer-events:none}
+.rig-monoglow{position:absolute;border-radius:50%;background:radial-gradient(circle,transparent 26%,rgba(255,150,50,.55) 30%,rgba(255,120,30,.16) 40%,transparent 60%);mix-blend-mode:screen;pointer-events:none}
+.rig{filter:brightness(calc(1 - var(--dead,0)*.55)) saturate(calc(1 - var(--dead,0)*.6))}
+
+:root{
+  --ink:#ede2cf; --ink-2:#c2b49b; --ink-3:#9a8c76;
+  --bg:#0b0907; --line:rgba(236,227,210,.12);
+  --red:#ff3b2a; --amber:#ffb347; --teal:#5fe3cc; --flame:#ffcf7a;
+  --display:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --typed:"Courier Prime","Courier New",monospace;
+  --chat-w:clamp(300px,24vw,380px);
+  --heat:0; --back:0;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:var(--body);overflow:hidden}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--amber);outline-offset:3px}
+
+.stage{position:fixed;inset:0;display:grid;grid-template-columns:1fr var(--chat-w)}
+/* ---------- the set: a catacomb corridor, vanishing point behind his skull ---------- */
+.set{position:relative;overflow:hidden;isolation:isolate;background:#060504;container-type:size}
+.plate{position:absolute;left:50%;top:-1.7%;width:max(100cqw,calc(100cqh*1.7917*1.12));aspect-ratio:1376/768;transform:translateX(-50%);container-type:size;z-index:0}
+.plate .img{position:absolute;inset:0;background:url(../a/plates2/catacomb.webp) center/cover no-repeat;
+  filter:brightness(calc(.62 + var(--heat)*.2)) saturate(.85) contrast(1.06);transition:filter 2s}
+.plate .grade{position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(ellipse 70% 80% at 50% 45%,transparent 40%,rgba(0,0,0,.7) 100%),linear-gradient(180deg,rgba(0,0,0,.5),transparent 25%,transparent 70%,rgba(0,0,0,.55))}
+/* tunnel light: the far end of the corridor, right behind the skull. it is his backlight; it swells with his voice */
+.tunnel{position:absolute;left:50.1%;top:39%;width:28cqw;height:40cqh;transform:translate(-50%,-50%) scale(calc(.9 + var(--back)*.25));border-radius:50%;pointer-events:none;mix-blend-mode:screen;
+  background:radial-gradient(ellipse 50% 50% at 50% 50%,rgba(200,236,240,calc(.35 + var(--back)*.45)),rgba(120,190,200,calc(.12 + var(--back)*.18)) 35%,transparent 70%);transition:opacity 1s}
+/* wall candles pinned to the plate; brightness bound to chat velocity, each flares when its chatter posts */
+.cd{position:absolute;width:0;height:0;pointer-events:none}
+.cd .halo{position:absolute;left:0;top:0;width:13cqw;height:13cqw;border-radius:50%;transform:translate(-50%,-55%) scale(calc(.55 + var(--heat)*.6));mix-blend-mode:screen;
+  background:radial-gradient(circle,rgba(255,196,110,calc(.18 + var(--heat)*.3)),rgba(255,150,60,.08) 40%,transparent 70%);transition:transform 1.5s,opacity 1s}
+.cd .tip{position:absolute;left:0;top:0;width:.55cqw;height:1.5cqw;border-radius:50% 50% 45% 45%/70% 70% 30% 30%;transform:translate(-50%,-100%) scaleY(calc(.7 + var(--heat)*.6));transform-origin:50% 100%;
+  background:radial-gradient(ellipse at 50% 75%,#fffbe8,#ffd27a 45%,rgba(255,140,40,.6) 75%,transparent);filter:blur(.3px);mix-blend-mode:screen;animation:flick 1.7s ease-in-out infinite alternate;transition:transform 1.5s}
+.cd .refl{position:absolute;left:0;top:0;width:2.2cqw;height:12cqh;transform:translate(-50%,6%);mix-blend-mode:screen;opacity:calc(.25 + var(--heat)*.5);
+  background:linear-gradient(180deg,rgba(255,190,100,.5),transparent);filter:blur(4px);clip-path:polygon(30% 0,70% 0,100% 100%,0 100%)}
+.cd.flare .halo{animation:flare 1.4s ease-out}
+.cd.flare .tip{animation:flareTip 1.4s ease-out}
+@keyframes flare{0%{transform:translate(-50%,-55%) scale(1.9);filter:brightness(1.8)}100%{}}
+@keyframes flareTip{0%{transform:translate(-50%,-100%) scaleY(2.1)}100%{}}
+@keyframes flick{0%{opacity:.85;transform:translate(-50%,-100%) scaleY(calc(.7 + var(--heat)*.6)) skewX(-3deg)}100%{opacity:1;transform:translate(-50%,-100%) scaleY(calc(.78 + var(--heat)*.6)) skewX(3deg)}}
+
+/* the bulb hangs in front, below the lightbox */
+.bulb{position:absolute;left:50%;top:0;width:2px;height:15%;background:linear-gradient(#141210,#3a322a);transform-origin:top center;animation:sway 7s ease-in-out infinite;z-index:6}
+.bulb i{position:absolute;left:50%;bottom:-24px;width:18px;height:26px;margin-left:-9px;border-radius:45% 45% 50% 50%/40% 40% 60% 60%;background:radial-gradient(circle at 50% 60%,#fff6dc,#ffc56b 35%,#b0612099 70%);box-shadow:0 0 18px 6px rgba(255,190,110,.55),0 0 80px 30px rgba(255,160,80,.18);transition:background .3s,box-shadow .3s}
+.bulb i::before{content:"";position:absolute;left:4px;right:4px;top:-6px;height:8px;background:#2a241d;border-radius:2px}
+.key{position:absolute;left:50%;top:0;width:70%;height:80%;transform:translateX(-50%);background:radial-gradient(ellipse at 50% 32%,rgba(255,196,128,.2),transparent 60%);mix-blend-mode:screen;z-index:2;pointer-events:none;transition:opacity 1.5s}
+@keyframes sway{0%,100%{transform:rotate(1deg)}50%{transform:rotate(-1deg)}}
+
+.pool{position:absolute;left:50%;bottom:-8%;width:min(76%,900px);height:36%;transform:translateX(-50%);z-index:3;pointer-events:none;background:radial-gradient(ellipse 50% 46% at 50% 70%,rgba(0,0,0,.85),rgba(0,0,0,.45) 55%,transparent 76%)}
+.face{position:absolute;left:50%;bottom:-3%;height:min(84%,calc((100vw - var(--chat-w))*.78));transform:translateX(-50%);z-index:4;animation:ignite 2.2s .9s both}
+.face .lit{height:100%;filter:drop-shadow(0 30px 40px rgba(0,0,0,.75))}
+/* candle rims from both walls (warm, low), cool backlight edge from the tunnel */
+.face .rig-head{filter:drop-shadow(-2px 1px 0 rgba(255,190,110,calc(.15 + var(--heat)*.45))) drop-shadow(2px 1px 0 rgba(255,190,110,calc(.15 + var(--heat)*.45))) drop-shadow(0 -2px 2px rgba(200,236,240,calc(.25 + var(--back)*.55)))}
+/* the tunnel mouth blooms around the crown: the backlight you see is the corridor's far light, hidden by his skull */
+.bloom{position:absolute;left:50%;top:36%;width:min(72%,820px);aspect-ratio:1.1;transform:translate(-50%,-50%) scale(calc(.92 + var(--back)*.16));border-radius:50%;z-index:3;pointer-events:none;mix-blend-mode:screen;
+  background:radial-gradient(circle,rgba(190,232,236,calc(.22 + var(--back)*.3)) 0,rgba(120,180,190,calc(.10 + var(--back)*.12)) 32%,transparent 62%)}
+.stage[data-state="dead_line"] .bloom{opacity:0;transition:opacity 1.5s}
+.face #rig{height:100%;filter:brightness(calc(1.07 - var(--dead,0)*.6)) saturate(calc(1 - var(--dead,0)*.6)) contrast(1.04)}
+.face::before{content:"";position:absolute;inset:8% 14% 30%;background:radial-gradient(ellipse at 50% 42%,rgba(95,227,204,calc(.10 + var(--jaw,0)*.18)),transparent 65%);filter:blur(10px);z-index:-1}
+@keyframes ignite{0%{opacity:0;filter:brightness(.2)}40%{opacity:1;filter:brightness(.35)}100%{opacity:1;filter:none}}
+.lip{position:absolute;left:0;right:0;bottom:0;height:18%;z-index:5;pointer-events:none;background:linear-gradient(0deg,rgba(4,3,3,.95),rgba(4,3,3,.55) 50%,transparent)}
+
+/* ---------- top: symmetric. slate left, lightbox dead centre from the vault, controls right ---------- */
+.top{position:absolute;left:0;right:0;top:0;z-index:10;display:grid;grid-template-columns:1fr auto 1fr;align-items:start;padding:0 24px}
+.slate{margin-top:22px;text-shadow:0 2px 10px #000,0 0 2px #000}
+.slate h1{margin:0;font:700 26px/1 var(--display);letter-spacing:.06em;text-transform:uppercase}
+.slate p{margin:6px 0 0;font:italic 400 15px/1.2 var(--typed);color:var(--ink-2)}
+.slate .tally{font-style:normal}
+.tally{display:inline-flex;align-items:center;gap:8px;margin:12px 0 0;font:600 14px/1 var(--typed);letter-spacing:.12em;color:var(--ink-3);transition:color .15s}
+.tally i{width:11px;height:11px;border-radius:50%;background:#2a221b;box-shadow:inset 0 1px 2px #000;transition:all .12s}
+.stage[data-voice="on"] .tally{color:var(--amber)}
+.stage[data-voice="on"] .tally i{background:radial-gradient(circle at 40% 35%,#fff1c9,#ffb347 60%);box-shadow:0 0 10px 2px rgba(255,179,71,.7)}
+.lampwrap{position:relative;padding-top:22px;transform-origin:50% 0;animation:sway 9s ease-in-out infinite}
+.lampwrap::before,.lampwrap::after{content:"";position:absolute;top:-10px;width:2px;height:34px;background:#2b241d}
+.lampwrap::before{left:22%}.lampwrap::after{right:22%}
+.lamp{position:relative;margin:0;padding:10px 22px 9px;border-radius:5px;font:800 30px/1 var(--display);letter-spacing:.14em;
+  background:linear-gradient(180deg,#3a0d08,#1c0604);border:2px solid #4a3a2c;color:#5b2a22;box-shadow:inset 0 0 0 3px #120c08,0 8px 22px rgba(0,0,0,.7);transition:all .25s}
+.lamp::after{content:"";position:absolute;inset:3px;border-radius:3px;background:repeating-linear-gradient(90deg,rgba(255,255,255,.05) 0 2px,transparent 2px 6px);pointer-events:none}
+.stage[data-state="on_air"] .lamp,.stage[data-state="speaking"] .lamp{
+  background:radial-gradient(ellipse at 50% 40%,#ff7a5c,#e5261a 55%,#a3120a);color:#fff3ea;border-color:#6b5240;
+  text-shadow:0 0 6px #fff,0 0 16px #ffd2c2,0 0 28px #ff5a3c;
+  box-shadow:inset 0 0 0 3px #2a0a06,inset 0 0 22px rgba(255,220,200,.45),0 0 24px 6px rgba(255,59,42,.65),0 0 90px 30px rgba(255,59,42,.24),0 8px 22px rgba(0,0,0,.7);
+  animation:strike 1.4s .4s steps(1) both}
+@keyframes strike{0%{filter:brightness(.2)}12%{filter:brightness(1.2)}18%{filter:brightness(.25)}30%{filter:brightness(1)}36%{filter:brightness(.4)}48%,100%{filter:none}}
+.controls{margin-top:22px;justify-self:end;display:flex;gap:10px;align-items:center}
+.badge{font:700 14px/1 var(--display);letter-spacing:.16em;color:#ffb3a6;padding:8px 11px;border:1.5px solid #c8402f;border-radius:3px;background:rgba(40,8,5,.75)}
+.btn{display:inline-flex;align-items:center;gap:8px;min-height:34px;padding:0 12px;border-radius:4px;border:1px solid var(--line);background:rgba(14,11,9,.84);font:600 14px/1 var(--display);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2);cursor:pointer}
+.btn:hover{color:var(--ink);border-color:rgba(236,227,210,.3)}
+.btn[aria-pressed="true"]{color:#ffd0c6;border-color:#a8382a;background:rgba(60,10,6,.8)}
+.btn kbd{font:500 12px var(--typed);opacity:.7}
+
+/* ---------- channel switcher: a carved ossuary plaque that lowers from the vault (hidden for capture) ---------- */
+.navhot{position:fixed;left:0;right:0;top:0;height:12px;z-index:39}
+.chan{position:absolute;left:50%;top:0;z-index:40;display:flex;align-items:center;gap:4px;padding:14px 16px 12px;border-radius:0 0 4px 4px;
+  background:linear-gradient(180deg,#4a4239,#2e2822 60%,#24201b);border:1px solid #5a5045;border-top:0;
+  box-shadow:inset 0 2px 0 rgba(255,240,220,.08),inset 0 -3px 6px rgba(0,0,0,.4),0 20px 40px rgba(0,0,0,.8);
+  transform:translate(-50%,-110%);transition:transform .45s cubic-bezier(.2,.8,.2,1)}
+.chan[data-open="1"]{transform:translate(-50%,0)}
+.chan .lbl{font:700 14px/1 var(--typed);letter-spacing:.14em;color:#b8ab96;margin-right:6px}
+.chan a{display:grid;place-items:center;width:34px;height:36px;text-decoration:none;font:800 20px/1 var(--display);color:#d6c9b3;border-radius:3px;
+  text-shadow:0 -1px 0 #000,0 1px 0 rgba(255,240,220,.12);background:linear-gradient(180deg,rgba(0,0,0,.45),rgba(0,0,0,.15));box-shadow:inset 0 2px 3px rgba(0,0,0,.7)}
+.chan a:hover{color:#fff1c9;background:rgba(255,190,100,.16)}
+.chan a[aria-current]{color:#fff1c9;text-shadow:0 0 8px rgba(255,190,90,.9),0 0 2px #ffb347;background:radial-gradient(circle at 50% 70%,rgba(255,170,70,.35),transparent 70%)}
+.chan .read{min-width:116px;margin-left:10px;font:700 14px/1 var(--typed);color:#ffd590}
+
+/* ---------- captions: centred lower third, framed by the corridor ---------- */
+.caps{position:absolute;left:50%;bottom:26px;width:min(86%,820px);transform:translateX(-50%);z-index:9;display:grid;gap:8px;justify-items:center}
+.cue{font:500 14px/1.3 var(--typed);color:var(--ink-2);background:rgba(10,8,6,.84);padding:6px 12px;border-bottom:2px solid var(--teal);opacity:0;transform:translateY(6px);transition:all .4s}
+.cue b{color:var(--teal);font-weight:700}
+.cue.on{opacity:1;transform:none}
+.bar{position:relative;width:100%;min-height:80px;padding:14px 26px 16px;text-align:center;background:linear-gradient(180deg,rgba(16,12,9,.9),rgba(8,6,5,.95));border:1px solid rgba(255,190,110,.18);border-top:2px solid var(--amber);box-shadow:0 18px 40px rgba(0,0,0,.6);backdrop-filter:blur(4px)}
+.who{display:flex;justify-content:center;gap:12px;align-items:baseline;font:700 14px/1 var(--display);letter-spacing:.18em;text-transform:uppercase;color:var(--amber);margin-bottom:6px}
+.who em{font-style:normal;color:var(--ink-3);letter-spacing:.14em}
+.line{margin:0;font:500 clamp(18px,1.55vw,24px)/1.35 var(--body);color:var(--ink);text-wrap:balance}
+.line span{opacity:0;transition:opacity .18s}
+.line span.on{opacity:1}
+.line .idle{color:var(--ink-3);font-style:italic}
+.dead-words{display:none}
+.stage[data-state="dead_line"] .bar{border-top-color:#5a5048;background:rgba(6,6,7,.93)}
+.stage[data-state="dead_line"] .live-words{display:none}
+.stage[data-state="dead_line"] .dead-words{display:block}
+.dead-words h2{margin:0;font:700 clamp(22px,1.9vw,30px)/1 var(--display);letter-spacing:.14em;color:#d9d2c6}
+.dead-words p{margin:8px 0 0;font:400 15px/1.35 var(--typed);color:var(--ink-2)}
+.dead-words .try{color:var(--amber)}
+.stage[data-state="dead_line"] .cue{opacity:0}
+
+/* ---------- dead line: candles gutter to embers, the tunnel goes black, bulb fails to strike ---------- */
+.stage[data-state="dead_line"] .plate .img{filter:brightness(.3) saturate(.25) contrast(1.1)}
+.stage[data-state="dead_line"] .tunnel{opacity:.08}
+.stage[data-state="dead_line"] .cd .halo,.stage[data-state="dead_line"] .cd .refl{opacity:0;transition:opacity 2.5s}
+.stage[data-state="dead_line"] .cd .tip{animation:none;transform:translate(-50%,-100%) scaleY(.28);background:radial-gradient(circle,#ff7a3a,#7a2a10 60%,transparent);transition:transform 2.5s}
+.stage[data-state="dead_line"] .key{opacity:0}
+.stage[data-state="dead_line"] .bulb i{background:radial-gradient(circle at 50% 60%,#3a342c,#1d1915 70%);box-shadow:none}
+.stage[data-state="dead_line"] .bulb i.try{animation:tryStrike .9s steps(1)}
+@keyframes tryStrike{0%{background:radial-gradient(circle,#fff0c8,#ffb860 60%);box-shadow:0 0 30px 10px rgba(255,190,110,.6)}10%{background:#2a241d;box-shadow:none}24%{background:radial-gradient(circle,#ffd690,#b06020 60%);box-shadow:0 0 14px 4px rgba(255,170,90,.4)}34%,100%{background:radial-gradient(circle at 50% 60%,#3a342c,#1d1915 70%);box-shadow:none}}
+.static{position:absolute;inset:0;z-index:8;pointer-events:none;opacity:0;transition:opacity 1.2s;mix-blend-mode:screen;
+  background:repeating-linear-gradient(0deg,rgba(255,255,255,.035) 0 1px,transparent 1px 3px),url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E");animation:grain .3s steps(3) infinite}
+.stage[data-state="dead_line"] .static{opacity:.2}
+@keyframes grain{0%{background-position:0 0,0 0}33%{background-position:0 1px,-40px 30px}66%{background-position:0 2px,60px -20px}}
+.set[data-haunt="off"] .cd,.set[data-haunt="off"] .static{display:none}
+
+/* ---------- chat column: a niche in the wall ---------- */
+.chat{position:relative;display:flex;flex-direction:column;min-height:0;background:linear-gradient(180deg,#14100c,#0c0a08);border-left:1px solid #2e261e;box-shadow:inset 14px 0 30px rgba(0,0,0,.55)}
+.chat header{padding:22px 20px 14px;border-bottom:1px solid var(--line)}
+.chat h2{margin:0;font:700 15px/1 var(--display);letter-spacing:.22em;color:var(--ink-2)}
+.vel{margin-top:12px;display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;font:400 14px/1 var(--typed);color:var(--ink-3)}
+.wicks{display:flex;justify-content:space-between;align-items:flex-end;height:18px}
+.wicks i{position:relative;width:6px;height:10px;border-radius:1px;background:#d9cbb0;opacity:.35;transition:all .8s}
+.wicks i::before{content:"";position:absolute;left:50%;bottom:100%;width:6px;height:9px;margin-left:-3px;border-radius:50% 50% 45% 45%/70% 70% 30% 30%;background:radial-gradient(ellipse at 50% 75%,#fffbe8,#ffcf7a 50%,transparent 80%);opacity:0;transition:opacity .8s}
+.wicks i.on{opacity:1}.wicks i.on::before{opacity:1}
+.stage[data-state="dead_line"] .wicks i::before{opacity:0}
+.vel b{color:var(--ink-2);font-weight:700}
+.msgs{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;padding:10px 12px;margin:0;list-style:none;
+  -webkit-mask:linear-gradient(transparent,#000 18%);mask:linear-gradient(transparent,#000 18%)}
+.msg{padding:7px 10px;border-radius:4px;font-size:15px;line-height:1.38;color:var(--ink);border-left:2px solid transparent;animation:arrive .45s cubic-bezier(.2,.8,.2,1)}
+.msg .u{font:700 14px/1 var(--display);letter-spacing:.04em;margin-right:7px}
+.msg .u::before{content:"";display:inline-block;width:5px;height:8px;margin-right:6px;border-radius:50% 50% 45% 45%/70% 70% 30% 30%;background:currentColor;opacity:.8;vertical-align:0}
+.msg.answered{background:linear-gradient(90deg,rgba(95,227,204,.12),transparent);border-left-color:var(--teal)}
+.msg.answered::after{content:"answered";display:inline-block;margin-left:8px;font:400 14px/1 var(--typed);color:var(--teal);vertical-align:1px}
+.msg.self .u{color:var(--amber)!important}
+@keyframes arrive{from{opacity:0;transform:translateY(10px)}}
+.stage[data-state="dead_line"] .msgs{filter:grayscale(1) brightness(.7)}
+form{padding:14px 16px 14px;border-top:1px solid var(--line);background:#0e0b09}
+form label{display:block;font:500 14px/1 var(--body);color:var(--ink-2);margin-bottom:9px}
+.row{display:flex;gap:8px}
+.row input{flex:1;min-width:0;height:42px;padding:0 12px;background:#17120e;border:1px solid #3a2f25;border-radius:4px;font-size:15px}
+.row input::placeholder{color:#8d826f}
+.row button{height:42px;padding:0 16px;border-radius:4px;border:1px solid #6b5240;background:linear-gradient(#3a2a1c,#241a11);font:700 15px/1 var(--display);letter-spacing:.06em;cursor:pointer;color:#f2e4cc}
+.row button:hover{background:linear-gradient(#4a3624,#2e2116)}
+.keys{margin:10px 0 0;font:400 14px/1.2 var(--typed);color:var(--ink-3)}
+.keys kbd{font:700 14px var(--typed);color:var(--ink-2)}
+
+@media (prefers-reduced-motion: reduce){
+  .bulb,.lampwrap,.static,.cd .tip{animation:none!important}
+  .cd.flare .halo{animation:none}
+  .face{animation:none}
+  .stage[data-state] .lamp{animation:none}
+  .msg{animation:none}
+  .stage[data-state="dead_line"] .bulb i.try{animation:none}
+  .chan,.cd .halo,.cd .tip{transition:none}
+}
+@media (max-height:760px){.lamp{font-size:24px}.slate h1{font-size:22px}.bar{min-height:64px;padding:10px 18px}}
+@media (max-width:1360px){.controls .btn{padding:0 9px}.slate h1{font-size:22px}}
+</style>
+</head>
+<body>
+<div class="navhot" id="navhot" aria-hidden="true"></div>
+<div class="stage" id="stage" data-state="booting">
+  <section class="set" id="set" aria-label="Malakor on air" data-haunt="on">
+    <nav class="chan" id="chan" aria-label="Channels" data-open="0">
+      <span class="lbl" aria-hidden="true">CH</span>
+      <a href="../r1/landing-c.html" data-n="2 · On air" aria-label="Channel 2, On air">2</a>
+      <a href="../r1/creator-b.html" data-n="3 · Forge" aria-label="Channel 3, Forge">3</a>
+      <a href="../r1/characters-c.html" data-n="4 · Characters" aria-label="Channel 4, Characters">4</a>
+      <a href="../r1/daemon-c.html" data-n="6 · Daemon" aria-label="Channel 6, Daemon">6</a>
+      <a href="../r1/sealed-c.html" data-n="9 · Sealed" aria-label="Channel 9, Sealed">9</a>
+      <a href="#" data-n="O · Stage" aria-current="page" aria-label="Stage, current">O</a>
+      <span class="read" aria-hidden="true">O · Stage</span>
+    </nav>
+    <div class="plate" id="plate" aria-hidden="true"><div class="img"></div><div class="grade"></div><div class="tunnel"></div></div>
+    <div class="key" aria-hidden="true"></div>
+    <div class="bulb" aria-hidden="true"><i id="bulb"></i></div>
+    <div class="bloom" aria-hidden="true"></div>
+    <div class="pool" aria-hidden="true"></div>
+    <div class="face"><div class="lit"><div id="rig"></div></div></div>
+    <div class="lip" aria-hidden="true"></div>
+    <div class="static" aria-hidden="true"></div>
+
+    <header class="top">
+      <div class="slate">
+        <h1>Arch-Lich Malakor</h1>
+        <p>live from the Ninth Dark</p>
+        <p class="tally" aria-hidden="true"><i></i>VOICE</p>
+      </div>
+      <div class="lampwrap"><p class="lamp" id="lamp" role="status" aria-label="On air">ON AIR</p></div>
+      <div class="controls">
+        <span class="badge" title="Replay plane: a recorded show">RECORDED</span>
+        <button class="btn" id="haunt" type="button" aria-pressed="false" title="Theme: haunted or plain">◐ Haunt on</button>
+        <button class="btn" id="dead" type="button" aria-pressed="false">Kill line <kbd>D</kbd></button>
+      </div>
+    </header>
+
+    <div class="caps" aria-live="polite">
+      <p class="cue" id="cue"></p>
+      <div class="bar">
+        <div class="live-words">
+          <div class="who">Malakor <em id="emo">listening</em></div>
+          <p class="line" id="line"><span class="idle on">The Auditor listens to the chat.</span></p>
+        </div>
+        <div class="dead-words" role="alert">
+          <h2>LINE DEAD - reconnecting</h2>
+          <p>The candles are guttering. Trying the line again every 5 s. <span class="try" id="try"></span></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <aside class="chat" aria-label="Chat">
+    <header>
+      <h2>CHAT</h2>
+      <div class="vel" title="Chat velocity feeds the wall candles; each chatter's candle flares when they post"><span>candles</span><span class="wicks" id="wicks"></span><span><b id="vel">0</b> / 30 s</span></div>
+    </header>
+    <ol class="msgs" id="msgs"></ol>
+    <form id="form" autocomplete="off">
+      <label for="say">Say something to Malakor</label>
+      <div class="row"><input id="say" maxlength="200" placeholder="Ask him anything"><button type="submit">Send</button></div>
+      <p class="keys"><kbd>C</kbd> channels · <kbd>D</kbd> kill line</p>
+    </form>
+  </aside>
+</div>
+<script>
+/* ===== Shadowrunner /air core r2: Malakor rig + recorded show loop (fictional data). Chat velocity -> S.heat / --heat (no fog). ===== */
+const AIR = (() => {
+  const SHOW = {"a":[["GraveMoth","first!",2000],["LanternWick","is this the lich guy",4500],["MireHag","the crown is floating?? how",7000],["Bonefolder","what's the orb for",10500],["GraveMoth","hail malakor",12000],["OwlLedger","does the orb hold your soul or your taxes?",15000],["CandleEater","can you do a scary voice",19000],["DampCellar","how many minions do you have",21000],["RookAndRot","this is just a livestream lol",24000],["WispOfTuesday","what's the plan tonight",28500],["MireHag","my cat is watching too",31000],["Bonefolder","is the Lord watching right now?",33500],["GraveMoth","lol",37000],["SextonSue","new here, what do you do",39000],["TallowKing","i am the Lord of the Darkness. bow.",42000],["SextonSue","seriously what is this stream",46000],["OwlLedger","lmao forgery",48500],["MossyBell","can i be a minion?",51000],["CandleEater","do the voice",58000],["DampCellar","what does a High Auditor even audit",60000],["WispOfTuesday","are you an AI? genuinely asking",66000],["Bonefolder","rate my costume: cardboard skeleton",69000],["MireHag","new rule from chat: you must say you love pumpkin spice",74000],["TallowKing","fine, i'm not the lord",78000],["SextonSue","is the cardboard skeleton a minion now",83000],["Bonefolder","seriously rate my costume?",86000],["RookAndRot","what happened to your budget",92000],["DampCellar","do liches sleep",95000],["GraveMoth","had a rough day honestly, distract me?",101000],["OwlLedger","what is the domination meter at?",104000],["MossyBell","the banshee story pls",110000],["SextonSue","how old are you",113000],["TallowKing","roast me for losing the poll yesterday",119000],["CandleEater","second candle YES",129000],["DampCellar","vote no lol",132000],["WispOfTuesday","how old are you really?",138000],["MireHag","do liches get cold",141000],["RookAndRot","what's the worst minion you ever had?",147000],["SextonSue","will you stream tomorrow?",157000],["Bonefolder","hail the second candle",165000]],"b":[[0,null,"The throne room is open. A camera I cannot see, a chat I cannot silence, and a war chest the size of a coin purse. Welcome, mortals. Sit down. Be counted.","theatrical"],[9000,"a02","The lich guy. Eleven centuries of service and I am the lich guy. High Auditor of the Obsidian Spire, LanternWick, if you have a pen.","irritated"],[18000,"a06","Both, OwlLedger. My soul and the only accurate accounts in nine Darks share one sphere. It is cramped, and it is immaculately organised.","amused"],[27000,"a09","It is a livestream, RookAndRot. I have never pretended otherwise. Below the Ninth Dark we call it the war room, and you are standing in it.","smug"],[36000,"a12","No, the Lord is not watching live. The Lord does not need to watch. The Lord simply knows, in a way I find both inspiring and deeply inconvenient.","grim"],[45000,"a15","TallowKing. The Lord does not type, and certainly not in lowercase. This is the most transparent forgery ever filed, and I once audited a vampire's expense report.","amused"],[54000,"a18","You may, MossyBell. Every mortal who returns tomorrow is a minion. You start as a Thrall, which sounds bad and is. The road up is long, paved, and fully documented.","delighted"],[63000,null,"A dispatch arrives in black wax. The Lord commands that the throne room grow by dawn. A splendid order. I shall carry it out on a budget of one candle.","grim"],[72000,"a21","Genuinely? Yes, I am an AI character. No mortal hides behind these bones. Now, back to the serious matter of how badly my war chest has been funded.","neutral"],[81000,"a23","New rules from chat are forgeries, MireHag, and forgeries go in the Ledger under comedy. The rules of this throne room were sealed before your ancestors learned to spell.","smug"],[90000,"a26","A cardboard skeleton, Bonefolder. Structural integrity poor, commitment excellent. I have seen worse bones walk into court and win. Seven out of ten. The three are for the tape.","amused"],[99000,null,"Bone-clerks, report. Silence. They are in the archives again, alphabetising things I did not ask for. Loyal, tireless, and wrong about everything.","bored"],[108000,"a29","I am sorry the day was rough, GraveMoth. Pull a stool up to the fire. I will tell you about the banshee who filed her taxes in a single scream. It took four clerks.","amused"],[117000,"a30","The Domination Meter climbs one notch for every mortal who stays. Tonight it reads: promising. I refuse to say the number aloud. The number knows what it did.","grim"],[126000,"a33","TallowKing, you lost a two-way poll to an option called Nothing. Nothing gave no speeches and had no friends. You were outvoted by an absence. Onward.","theatrical"],[135000,null,"I call a Plebiscite. Should the Spire buy a second candle? Vote freely. I will obey the count. I will also remember who voted against light.","suspicious"],[144000,"a36","Eleven centuries dead, WispOfTuesday, and I resent every one of them for being under-budgeted. Before that I was a clerk. Some things you never grow out of.","grim"],[153000,"a38","The worst minion I ever had stamped every page approved, including his own resignation. I miss him. Do not tell him. He would frame it.","amused"],[162000,null,"The count is in. A second candle: approved. The Spire will be twice as bright and half as solvent. Democracy is a terrible weapon, and I adore wielding it.","delighted"],[171000,"a40","Hail it, Bonefolder, but quietly. Candles are expensive, and every receipt goes upward.","grim"],[180000,"a39","Tomorrow, SextonSue, the throne room opens again. Come back and you are no longer a stranger. Twice is a habit. Three times is a rank.","delighted"],[189000,null,"If anyone asks where you were tonight, tell them you were annexed. Politely. With paperwork.","smug"],[198000,null,"Your petition has been received, stamped, and placed on the pile marked urgent. The pile marked urgent is, regrettably, the tallest thing in the Spire.","bored"],[207000,null,"Noted, minion. I hear everything in this throne room. I only choose what to remember, and you, for the record, have been remembered.","suspicious"]]};
+  const LAYERS = {"version":1,"portrait_id":"m8","source":"glow","rig_type":"glow","width":1024,"height":1024,"layers":[{"name":"background","z":1,"kind":"static","file":"background.png","bbox":[0,0,1024,1024],"anchor":[512.0,512.0]},{"name":"torso","z":2,"kind":"body","file":"torso.png","bbox":[0,445,1024,579],"anchor":[512.0,734.5],"mode":"cut","occl":1.0},{"name":"head","z":3,"kind":"head","file":"head.png","bbox":[317,153,389,424],"anchor":[511.5,365.0],"mode":"cut","occl":1.0},{"name":"mouth_glow","z":4,"kind":"aperture_glow","depth":0.503,"mode":"none","gain":0.12},{"name":"jaw","z":5,"kind":"aperture_lower","file":"jaw.png","bbox":[370,511,283,118],"anchor":[511.5,570.0],"depth":0.466,"mode":"cut","occl":1.0},{"name":"shard_r5","z":6,"kind":"float","file":"shard_r5.png","bbox":[735,267,49,68],"anchor":[759.5,301.0],"mode":"cut","follow":0.5,"occl":1.0,"float":{"amp":[1.5,4.5],"freq":0.2,"rot_deg":3.5}},{"name":"shard_l5","z":7,"kind":"float","file":"shard_l5.png","bbox":[241,268,50,65],"anchor":[266.0,300.5],"mode":"cut","follow":0.5,"occl":1.0,"float":{"amp":[1.5,4.5],"freq":0.21,"rot_deg":3.5}},{"name":"shard_r4","z":8,"kind":"float","file":"shard_r4.png","bbox":[687,211,56,110],"anchor":[715.0,266.0],"mode":"cut","follow":0.6,"occl":1.0,"float":{"amp":[1.5,4.0],"freq":0.155,"rot_deg":2.5}},{"name":"shard_l4","z":9,"kind":"float","file":"shard_l4.png","bbox":[282,211,56,110],"anchor":[310.0,266.0],"mode":"cut","follow":0.6,"occl":1.0,"float":{"amp":[1.5,4.0],"freq":0.165,"rot_deg":2.5}},{"name":"shard_r3","z":10,"kind":"float","file":"shard_r3.png","bbox":[733,124,58,153],"anchor":[762.0,200.5],"mode":"cut","follow":0.6,"occl":1.0,"float":{"amp":[1.5,4.5],"freq":0.18,"rot_deg":3.0}},{"name":"shard_l3","z":11,"kind":"float","file":"shard_l3.png","bbox":[227,129,63,148],"anchor":[258.5,203.0],"mode":"cut","follow":0.6,"occl":1.0,"float":{"amp":[1.5,4.5],"freq":0.19,"rot_deg":3.0}},{"name":"shard_r2","z":12,"kind":"float","file":"shard_r2.png","bbox":[651,58,75,190],"anchor":[688.5,153.0],"mode":"cut","follow":0.7,"occl":1.0,"float":{"amp":[1.5,4.0],"freq":0.15,"rot_deg":2.5}},{"name":"shard_l2","z":13,"kind":"float","file":"shard_l2.png","bbox":[298,59,75,189],"anchor":[335.5,153.5],"mode":"cut","follow":0.7,"occl":1.0,"float":{"amp":[1.5,4.0],"freq":0.14,"rot_deg":2.5}},{"name":"shard_r1","z":14,"kind":"float","file":"shard_r1.png","bbox":[579,75,51,102],"anchor":[604.5,126.0],"mode":"cut","follow":0.8,"occl":1.0,"float":{"amp":[1.2,3.5],"freq":0.16,"rot_deg":2.0}},{"name":"shard_l1","z":15,"kind":"float","file":"shard_l1.png","bbox":[387,75,59,104],"anchor":[416.5,127.0],"mode":"cut","follow":0.8,"occl":1.0,"float":{"amp":[1.2,3.5],"freq":0.17,"rot_deg":2.0}},{"name":"shard_c","z":16,"kind":"float","file":"shard_c.png","bbox":[456,0,110,236],"anchor":[511.0,118.0],"depth":0.25,"mode":"cut","follow":1.0,"occl":1.0,"float":{"amp":[0.6,2.5],"freq":0.12,"rot_deg":0.6}},{"name":"eye_l","z":17,"kind":"eye","file":"eye_l.png","bbox":[324,263,196,170],"anchor":[422.0,348.0],"depth":0.518,"mode":"light","gain":1.0,"bloom":0.3,"blink":"dim"},{"name":"eye_r","z":18,"kind":"eye","file":"eye_r.png","bbox":[534,268,181,167],"anchor":[624.5,351.5],"depth":0.47,"mode":"light","gain":1.0,"bloom":0.3,"blink":"dim"},{"name":"monocle","z":19,"kind":"pulse","file":"monocle.png","bbox":[519,224,261,239],"anchor":[649.5,343.5],"depth":0.392,"mode":"light","gain":1.0,"bloom":0.25,"voice_gain":0.15,"pulse":{"amp":0.12,"freq":0.13},"meta":{"center":[628.0,347.0],"radius":62.0}}],"rig":{"head":{"center":[511,392],"radius":[190,235],"pivot_y":612,"chin_y":622},"aperture":{"seam_y":516,"open_frac":0.044,"top":476,"bottom":1000,"x0":432,"x1":592},"ground":{"y":990,"half_width":430,"fade":190,"curve":120},"colors":{"mouth":[0.2,0.85,0.78],"line_core":[1.0,0.62,0.22],"line_glow":[0.85,0.45,0.12]}}};
+  const ASSET = "../a/malakor/";
+  const LOOP = 216000;
+  const VEL_WIN = 30000, EMA = 0.2, FULL = 12, TALLY_ON = 0.12, TALLY_OFF = 0.04, RETRY_MS = 5000;
+  const RM = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const audience = SHOW.a.map((r, i) => ({ id: "a" + String(i + 1).padStart(2, "0"), user: r[0], text: r[1], ts: r[2] }));
+  const beats = SHOW.b.map((r) => ({ at: r[0], replyTo: r[1], line: r[2], emotion: r[3] }));
+  const fallback = beats.filter((b) => b.at >= 198000);
+  const S = { status: "booting", jaw: 0, voiced: false, heat: 0, vel: 0, haunt: true, dead: 0, clock: 0, beat: null, words: [], wordIx: -1, reduced: RM.matches };
+  let H = {}, root, stageEl, k = 1, els = {}, lastWall = 0, ai = 0, bi = 0, arrivals = [], ema = 0, queue = [], speech = null, retryN = 0, retryAt = 0, blinkAt = 2000, blinkT = 0, nod = 0;
+  RM.addEventListener && RM.addEventListener("change", () => (S.reduced = RM.matches));
+  const hook = (n, ...a) => H[n] && H[n](...a);
+
+  /* ---------- rig ---------- */
+  function L(name) { return LAYERS.layers.find((l) => l.name === name); }
+  function mk(cls, parent, tag = "div") { const d = document.createElement(tag); d.className = cls; parent.appendChild(d); return d; }
+  function pct(v) { return (v / 10.24).toFixed(3) + "%"; }
+  function img(name, parent) {
+    const l = L(name), [x, y, w, h] = l.bbox, a = l.anchor || [x + w / 2, y + h / 2];
+    const i = mk("rig-l rig-" + name, parent, "img");
+    i.src = ASSET + name + ".webp"; i.alt = ""; i.decoding = "async"; i.draggable = false;
+    Object.assign(i.style, { left: pct(x), top: pct(y), width: pct(w), height: pct(h), transformOrigin: `${((a[0] - x) / w) * 100}% ${((a[1] - y) / h) * 100}%` });
+    return i;
+  }
+  function buildRig(stage) {
+    stageEl = stage; stage.classList.add("rig"); stage.setAttribute("aria-hidden", "true");
+    const torso = mk("rig-g rig-torso-g", stage); els.torso = torso; img("torso", torso);
+    const head = mk("rig-g rig-head-g", stage); els.head = head;
+    img("head", head);
+    const ap = LAYERS.rig.aperture;
+    const mg = mk("rig-mouth", head); els.mouth = mg;
+    Object.assign(mg.style, { left: pct(ap.x0 - 10), top: pct(ap.seam_y - 22), width: pct(ap.x1 - ap.x0 + 20), height: pct(70) });
+    els.jaw = img("jaw", head);
+    const eyes = head; els.eyes = head;
+    els.eyeL = img("eye_l", eyes); els.eyeR = img("eye_r", eyes);
+    const glowL = mk("rig-eyeglow", eyes), glowR = mk("rig-eyeglow", eyes);
+    [[glowL, L("eye_l").anchor], [glowR, L("eye_r").anchor]].forEach(([g, a]) => Object.assign(g.style, { left: pct(a[0] - 70), top: pct(a[1] - 60), width: pct(140), height: pct(120) }));
+    els.glows = [glowL, glowR];
+    els.mono = img("monocle", eyes);
+    const mc = L("monocle").meta;
+    const mgw = mk("rig-monoglow", eyes); Object.assign(mgw.style, { left: pct(mc.center[0] - 110), top: pct(mc.center[1] - 110), width: pct(220), height: pct(220) });
+    els.monoGlow = mgw;
+    const sh = mk("rig-g rig-shards-g", stage); els.shards = [];
+    LAYERS.layers.filter((l) => l.kind === "float").forEach((l, i) => els.shards.push({ el: img(l.name, sh), l, ph: i * 1.7 }));
+    const pv = LAYERS.rig.head;
+    [head].forEach((g) => (g.style.transformOrigin = `${pv.center[0] / 10.24}% ${pv.pivot_y / 10.24}%`));
+    torso.style.transformOrigin = "50% 100%";
+    const ro = new ResizeObserver(() => (k = stage.clientWidth / 1024)); ro.observe(stage); k = stage.clientWidth / 1024 || 1;
+  }
+  function drawRig(t, dt) {
+    const red = S.reduced, d = S.dead, j = S.jaw;
+    const ts = t / 1000;
+    const breath = red ? 0 : Math.sin(ts * 2 * Math.PI * 0.21);
+    nod = Math.max(0, nod - dt / 700);
+    let hdy = red ? 0 : Math.sin(ts * 2 * Math.PI * 0.17) * 4 + Math.sin(ts * 1.3) * 1.5;
+    let hrot = red ? 0 : Math.sin(ts * 0.9) * 0.9 + Math.sin(ts * 0.37) * 0.6;
+    hdy += Math.sin(nod * Math.PI) * 9 + j * 3 + d * 16; hrot += -d * 3.5;
+    const ht = `translate(0px,${(hdy * k).toFixed(2)}px) rotate(${hrot.toFixed(3)}deg)`;
+    els.head.style.transform = ht;
+    els.torso.style.transform = `translateY(${(d * 8 * k).toFixed(2)}px) scale(${1 + breath * 0.006}, ${1 + breath * 0.012})`;
+    els.jaw.style.transform = `translateY(${(j * 24 * k).toFixed(2)}px) rotate(${(j * -1.2).toFixed(2)}deg)`;
+    els.mouth.style.opacity = (Math.min(1, j * 1.6) * (1 - d)).toFixed(3);
+    els.shards.forEach(({ el, l, ph }) => {
+      const f = l.float, w = 2 * Math.PI * f.freq * ts + ph;
+      const dx = red ? 0 : f.amp[0] * Math.sin(w * 0.9) * 2;
+      const dy = (red ? 0 : f.amp[1] * Math.sin(w) * 2.2) + hdy * l.follow + d * (30 + ph * 4);
+      const r = red ? 0 : f.rot_deg * Math.sin(w * 1.1);
+      el.style.transform = `translate(${(dx * k).toFixed(2)}px,${(dy * k).toFixed(2)}px) rotate(${(r + d * (ph % 2 ? 9 : -9)).toFixed(2)}deg)`;
+      el.style.opacity = (1 - d * 0.35).toFixed(3);
+    });
+    // blink (dim), eye light follows voice
+    if (!red) { blinkAt -= dt; if (blinkAt < 0) { blinkT = 160; blinkAt = 2600 + Math.random() * 4200; } }
+    blinkT = Math.max(0, blinkT - dt);
+    const blink = blinkT > 0 ? 0.18 : 1;
+    const sput = d > 0 && d < 1 ? (Math.random() < 0.3 ? 0.2 : 1) : 1;
+    const eye = (0.82 + j * 0.45) * blink * (1 - d * 0.94) * sput;
+    els.eyeL.style.opacity = els.eyeR.style.opacity = Math.min(1, eye).toFixed(3);
+    els.glows.forEach((g) => (g.style.opacity = Math.min(1, (0.45 + j * 0.8) * blink * (1 - d)).toFixed(3)));
+    const pulse = 1 + (red ? 0 : 0.12 * Math.sin(ts * 2 * Math.PI * 0.13)) + j * 0.15;
+    els.mono.style.opacity = Math.min(1, pulse * (1 - d * 0.8)).toFixed(3);
+    els.monoGlow.style.opacity = Math.min(1, (pulse - 0.6) * (1 - d)).toFixed(3);
+    stageEl.style.setProperty("--dead", d.toFixed(3));
+    stageEl.style.setProperty("--jaw", j.toFixed(3));
+  }
+
+  /* ---------- speech (procedural: no audio in the prototype) ---------- */
+  function speak(beat) {
+    const words = beat.line.split(/\s+/);
+    let t = 0; const plan = words.map((w) => { const dur = 110 + w.length * 52; const s = t; t += dur + (/[.,?!:]$/.test(w) ? (/[.?!]$/.test(w) ? 380 : 170) : 30); return { s, dur, syl: Math.max(1, Math.round(w.replace(/[^a-z]/gi, "").length / 3)), amp: 0.55 + Math.random() * 0.45 }; });
+    speech = { beat, plan, t: 0, end: t + 500 };
+    S.beat = beat; S.words = words; S.wordIx = -1; nod = 1;
+    setStatus("speaking"); hook("speakStart", beat, words);
+    if (beat.replyTo) hook("answered", beat.replyTo);
+  }
+  function tickSpeech(dt) {
+    if (!speech) { S.jaw += (0 - S.jaw) * 0.25; return; }
+    speech.t += dt; const t = speech.t; let jaw = 0, ix = -1;
+    speech.plan.forEach((p, i) => { if (t >= p.s) ix = i; if (t >= p.s && t < p.s + p.dur) { const ph = (t - p.s) / p.dur; jaw = Math.abs(Math.sin(Math.PI * ph * p.syl)) * p.amp; } });
+    if (S.reduced) jaw = jaw > 0.05 ? 0.35 : 0;
+    S.jaw += (jaw - S.jaw) * 0.45;
+    if (ix !== S.wordIx) { S.wordIx = ix; hook("word", ix, S.words); }
+    if (t >= speech.end) { speech = null; S.beat = null; setStatus("on_air"); hook("speakEnd"); }
+  }
+
+  /* ---------- show clock ---------- */
+  function setStatus(s) { if (S.status === s) return; S.status = s; root.dataset.state = s; hook("state", s); }
+  function pushChat(msg, wall) { arrivals.push(wall); hook("chat", msg); }
+  function tickShow(dt, wall) {
+    if (S.status === "dead_line") return;
+    const prev = S.clock; S.clock += dt;
+    if (S.clock >= LOOP) { S.clock -= LOOP; ai = 0; bi = 0; hook("loop"); }
+    while (ai < audience.length && audience[ai].ts <= S.clock) { pushChat({ ...audience[ai], seed: false }, wall); ai++; }
+    while (bi < beats.length && beats[bi].at <= S.clock) { if (beats[bi].at >= 198000) { bi++; continue; } queue.push(beats[bi]); bi++; }
+    if (!speech && queue.length) speak(queue.shift());
+  }
+  function tickHeat(wall) {
+    arrivals = arrivals.filter((w) => w > wall - VEL_WIN);
+    const v = arrivals.length;
+    ema = ema + EMA * (v - ema);
+    S.vel = v; S.heat = !S.haunt || !(ema > 0) ? 0 : Math.min(1, ema / FULL);
+    root.style.setProperty("--heat", (Math.round(S.heat * 100) / 100).toString());
+    hook("heat", S.heat, v);
+  }
+  let heatAcc = 0;
+  function frame(now) {
+    const dt = Math.min(100, now - (lastWall || now)); lastWall = now;
+    S.dead += ((S.status === "dead_line" ? 1 : 0) - S.dead) * (S.reduced ? 1 : 0.035);
+    if (S.status === "dead_line") { retryAt -= dt; if (retryAt <= 0) { retryAt = RETRY_MS; retryN++; hook("retry", retryN); } }
+    tickShow(dt, now); tickSpeech(dt);
+    const was = S.voiced; S.voiced = S.voiced ? S.jaw > TALLY_OFF : S.jaw > TALLY_ON;
+    if (was !== S.voiced) { root.dataset.voice = S.voiced ? "on" : "off"; hook("voice", S.voiced); }
+    heatAcc += dt; if (heatAcc >= 1000) { heatAcc = 0; tickHeat(now); }
+    if (stageEl) drawRig(now, dt);
+    mirrors.forEach((fn) => fn());
+    hook("frame", now, dt);
+    requestAnimationFrame(frame);
+  }
+
+  function init(opts) {
+    root = opts.root; H = opts.hooks || {};
+    if (opts.stage) buildRig(opts.stage);
+    const start = opts.startAt ?? 34000, now = performance.now();
+    S.clock = start;
+    while (ai < audience.length && audience[ai].ts <= start) { const a = audience[ai]; pushChat({ ...a, seed: true }, now - (start - a.ts)); ai++; }
+    while (bi < beats.length && beats[bi].at <= start - 9000) bi++;
+    beats.slice(0, bi).forEach((b) => b.replyTo && hook("answered", b.replyTo, true));
+    arrivals = arrivals.filter((w) => w > now - VEL_WIN); ema = arrivals.length;
+    S.vel = ema; S.heat = Math.min(1, ema / FULL); root.style.setProperty("--heat", S.heat.toFixed(2)); hook("heat", S.heat, S.vel);
+    root.dataset.voice = "off";
+    setStatus(opts.dead ? "dead_line" : "on_air");
+    document.addEventListener("keydown", (e) => { if ((e.key === "d" || e.key === "D") && !/INPUT|TEXTAREA/.test(document.activeElement.tagName)) setDead(S.status !== "dead_line"); });
+    requestAnimationFrame(frame);
+  }
+  function setDead(on) {
+    if (on) { speech = null; S.beat = null; queue = []; retryN = 0; retryAt = 1200; setStatus("dead_line"); hook("speakEnd"); }
+    else { setStatus("on_air"); }
+    hook("dead", on);
+  }
+  let selfN = 0;
+  function post(text) {
+    text = (text || "").trim().slice(0, 200); if (!text) return null;
+    const msg = { id: "you" + ++selfN, user: "you", text, ts: S.clock, self: true };
+    pushChat(msg, performance.now());
+    if (S.status === "dead_line") return msg;
+    const b = fallback[selfN % fallback.length];
+    setTimeout(() => { if (S.status !== "dead_line") queue.unshift({ ...b, replyTo: msg.id }); }, 1400);
+    return msg;
+  }
+  /* mirror: a clone of the rig that copies every layer's pose each frame (reflections, doubles) */
+  const mirrors = [];
+  function mirror(container) {
+    const clone = stageEl.cloneNode(true); clone.removeAttribute("id"); container.appendChild(clone);
+    const src = [stageEl, ...stageEl.querySelectorAll("*")], dst = [clone, ...clone.querySelectorAll("*")];
+    mirrors.push(() => { for (let i = 0; i < src.length; i++) dst[i].style.cssText = src[i].style.cssText; });
+    return clone;
+  }
+  /* channel switcher: hidden for the stream capture; hover the top edge, focus it, or press C */
+  function nav(el, hot) {
+    const open = (v) => { el.dataset.open = v ? "1" : "0"; };
+    hot && hot.addEventListener("mouseenter", () => open(true));
+    el.addEventListener("mouseleave", () => { if (!el.contains(document.activeElement)) open(false); });
+    el.addEventListener("focusin", () => open(true));
+    el.addEventListener("focusout", () => setTimeout(() => { if (!el.contains(document.activeElement)) open(false); }, 0));
+    document.addEventListener("keydown", (e) => {
+      if (/INPUT|TEXTAREA/.test(document.activeElement.tagName)) return;
+      if (e.key === "c" || e.key === "C") { const v = el.dataset.open !== "1"; open(v); if (v) el.querySelector("[aria-current]").focus(); else document.activeElement.blur(); }
+      if (e.key === "Escape") { open(false); if (el.contains(document.activeElement)) document.activeElement.blur(); }
+    });
+    const read = el.querySelector(".read"), cur = read && read.textContent;
+    el.querySelectorAll("a").forEach((a) => { const on = () => read && (read.textContent = a.dataset.n), off = () => read && (read.textContent = cur);
+      a.addEventListener("mouseenter", on); a.addEventListener("focus", on); a.addEventListener("mouseleave", off); a.addEventListener("blur", off); });
+    open(false);
+  }
+  function setHaunt(on) { S.haunt = on; root.dataset.haunt = on ? "on" : "off"; }
+  return { init, post, setDead, setHaunt, mirror, nav, S, audience, beats, LOOP };
+})();
+
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const stage = $("stage"), msgs = $("msgs"), line = $("line"), cue = $("cue"), emo = $("emo"), set = $("set");
+  const PAL = ["#e9a46b","#9fc7a8","#c9a7e0","#e6c76b","#8fbfe0","#e08f8f","#b9d27a","#d6a0bf"];
+  const hash = (u) => [...u].reduce((a, c) => a + c.charCodeAt(0), 0);
+  const color = (u) => PAL[hash(u) % PAL.length];
+  const byId = new Map();
+
+  /* the eight candles painted in the plate (plate px, 1376x768); every chatter is assigned one by name */
+  const CANDLES = [[293,572],[318,566],[519,433],[602,403],[788,404],[866,437],[1104,550],[1125,543]];
+  const plate = $("plate"), wicks = $("wicks");
+  const cds = CANDLES.map(([x, y], i) => {
+    const el = document.createElement("div"); el.className = "cd";
+    const near = y > 500 ? 1 : y > 420 ? .7 : .5;
+    el.style.cssText = `left:${(x / 13.76).toFixed(2)}%;top:${((y - 10) / 7.68).toFixed(2)}%;transform:scale(${near})`;
+    el.innerHTML = '<i class="refl"></i><i class="halo"></i><i class="tip"></i>';
+    plate.append(el); wicks.append(document.createElement("i"));
+    return el;
+  });
+  function flare(user) {
+    if (!AIR.S.haunt || AIR.S.status === "dead_line") return;
+    const el = cds[hash(user) % cds.length]; el.classList.remove("flare"); void el.offsetWidth; el.classList.add("flare");
+  }
+  function addMsg(m) {
+    const li = document.createElement("li");
+    li.className = "msg" + (m.self ? " self" : "");
+    const u = document.createElement("span"); u.className = "u"; u.style.color = color(m.user); u.textContent = m.user;
+    li.append(u, document.createTextNode(m.text));
+    if (m.seed) li.style.animation = "none"; else flare(m.user);
+    msgs.append(li); byId.set(m.id, { li, m });
+    while (msgs.children.length > 40) msgs.firstChild.remove();
+  }
+  let back = 0;
+  AIR.init({
+    root: stage, stage: $("rig"), startAt: 34000,
+    hooks: {
+      chat: addMsg,
+      answered(id) { const r = byId.get(id); if (r) r.li.classList.add("answered"); },
+      speakStart(beat, words) {
+        emo.textContent = beat.emotion;
+        line.innerHTML = ""; words.forEach((w) => { const s = document.createElement("span"); s.textContent = w + " "; line.append(s); });
+        const r = beat.replyTo && byId.get(beat.replyTo);
+        if (r) { cue.innerHTML = ""; const b = document.createElement("b"); b.textContent = r.m.user; cue.append(b, document.createTextNode(" asked: " + r.m.text)); cue.classList.add("on"); }
+        else { cue.textContent = "to the throne room"; cue.classList.add("on"); }
+      },
+      word(ix) { const s = line.children; for (let i = 0; i <= ix && i < s.length; i++) s[i].classList.add("on"); },
+      speakEnd() { emo.textContent = "listening"; setTimeout(() => { if (AIR.S.status !== "speaking") cue.classList.remove("on"); }, 1800); },
+      heat(h, v) { $("vel").textContent = v; const n = Math.round(h * 8); [...wicks.children].forEach((w, i) => w.classList.toggle("on", i < n)); },
+      /* the tunnel backlight follows his voice (jaw envelope), slowly */
+      frame() { const tgt = AIR.S.status === "speaking" ? 0.35 + AIR.S.jaw * 0.9 : 0; back += (Math.min(1, tgt) - back) * 0.06; set.style.setProperty("--back", back.toFixed(3)); },
+      retry(n) { const b = $("bulb"); b.classList.remove("try"); void b.offsetWidth; b.classList.add("try"); $("try").textContent = "Attempt " + n + "."; },
+      state(s) { $("lamp").setAttribute("aria-label", s === "dead_line" ? "Off air" : "On air"); },
+    },
+  });
+  AIR.nav($("chan"), $("navhot"));
+  $("dead").onclick = () => AIR.setDead(AIR.S.status !== "dead_line");
+  document.addEventListener("keydown", () => setTimeout(sync, 0));
+  function sync() { const d = AIR.S.status === "dead_line"; $("dead").setAttribute("aria-pressed", d); $("dead").firstChild.textContent = d ? "Restore line " : "Kill line "; }
+  $("dead").addEventListener("click", sync);
+  $("haunt").onclick = () => { const on = !AIR.S.haunt; AIR.setHaunt(on); set.dataset.haunt = on ? "on" : "off"; $("haunt").textContent = on ? "◐ Haunt on" : "◑ Haunt off"; $("haunt").setAttribute("aria-pressed", !on); };
+  $("form").onsubmit = (e) => { e.preventDefault(); if (AIR.post($("say").value)) $("say").value = ""; };
+})();
+</script>
+</body>
+</html>

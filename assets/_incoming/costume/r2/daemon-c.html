@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>R2 · Daemon · C</title>
+<meta name="sr-name" content="The Root Vault">
+<meta name="sr-pitch" content="The Filament hangs from the grate of a root-choked vault and the photograph is relit every frame from the bulb's real position: the roots carry the carrier up into the socket as travelling light, the giant word lies carved into the wet floor catching the swinging shadows, and pulling the chain leaves only moonlight through the grate while the roots keep growing toward the empty socket, one measured centimetre per second of dead air.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700;800&family=Courier+Prime:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#efeae0; --dim:#bdb6a8; --line:rgba(239,234,224,.2); --bg:#030304;
+  --amber:#ffb45c; --rec:#e9583f; --ember:#ff6a4d; --emberglow:rgba(255,70,40,.75);
+  --moon:#cfdcec; --moonglow:rgba(160,190,230,.5);
+  --display:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --typed:"Courier Prime","Courier New",ui-monospace,monospace;
+  --gx:50%; --gy:70px; --rs:1;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--ink);font:15px/1.4 var(--body)}
+button,a{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--amber);outline-offset:4px;border-radius:4px}
+canvas#room{position:fixed;inset:0;width:100%;height:100%;z-index:0}
+
+/* ---------- header + channel switcher (stones set in the wall) ---------- */
+header{position:relative;z-index:30;height:68px;display:flex;align-items:center;gap:18px;padding:0 24px}
+.chan{display:flex;align-items:center;gap:6px;padding:4px 10px 4px 4px;border-radius:3px;background:rgba(0,0,0,.55);box-shadow:0 0 0 1px rgba(239,234,224,.12)}
+.chan a{display:grid;place-items:center;width:32px;height:34px;text-decoration:none;font:800 16px var(--display);color:#cfc6b4;border-radius:3px 3px 2px 2px;
+  background:linear-gradient(170deg,#3a3732,#191816 70%);box-shadow:inset 0 1px 0 rgba(255,255,255,.08),inset 0 -2px 0 rgba(0,0,0,.6);text-shadow:0 -1px 0 #000}
+.chan a:hover{color:#fff;background:linear-gradient(170deg,#4a463f,#22201d 70%)}
+.chan a[aria-current]{color:#ffe7bd;background:radial-gradient(circle at 50% 70%,rgba(255,170,80,.75),rgba(120,60,10,.6) 60%,#1f1508);text-shadow:0 0 8px rgba(255,180,90,.9);box-shadow:inset 0 0 0 1px rgba(255,190,110,.6),0 0 14px rgba(255,170,80,.35)}
+body.lost .chan a[aria-current]{color:#e6eefa;background:radial-gradient(circle at 50% 30%,rgba(150,180,220,.35),#0d1016 70%);text-shadow:0 0 8px var(--moonglow);box-shadow:inset 0 0 0 1px rgba(170,195,230,.45)}
+.chan .read{min-width:122px;margin-left:6px;font:700 14px var(--typed);color:#ffd9a0}
+body.lost .chan .read{color:var(--moon)}
+kbd{font:700 12px var(--typed);padding:2px 6px;border:1px solid rgba(239,234,224,.4);border-radius:4px;background:rgba(255,255,255,.06)}
+.crumb{font:500 20px var(--display);color:var(--dim);text-shadow:0 1px 3px #000} .crumb b{color:var(--ink);font-weight:700}
+.spacer{flex:1}
+.rec{font:700 13px var(--typed);letter-spacing:.1em;color:#ffd9cf;padding:6px 9px;border:1.5px solid var(--rec);border-radius:3px;background:rgba(80,10,0,.45)}
+.theme{padding:7px 12px;border:1px solid var(--line);border-radius:4px;background:rgba(0,0,0,.5);font:500 16px var(--body);cursor:pointer}
+
+/* ---------- the bulb, hung from the grate ---------- */
+.rig{position:fixed;left:var(--gx);top:var(--gy);z-index:12;width:0;height:0}
+.pend{position:absolute;left:0;top:0;transform-origin:0 0;transform:rotate(var(--sw,0deg)) scale(var(--rs))}
+.wire{position:absolute;left:-1px;top:-30px;width:2px;height:72px;background:linear-gradient(transparent,#1a1612 30%,#2a231c)}
+.sock{position:absolute;left:-17px;top:36px;width:34px;height:30px;border-radius:4px 4px 8px 8px;background:linear-gradient(90deg,#1c1510,#5a4636 45%,#1c1510);box-shadow:0 4px 8px rgba(0,0,0,.6)}
+.sock::after{content:"";position:absolute;left:4px;right:4px;bottom:-8px;height:10px;border-radius:0 0 6px 6px;background:repeating-linear-gradient(0deg,#6f5a46 0 2px,#2c2219 2px 4px)}
+.bulb{position:absolute;left:-62px;top:70px;width:124px;height:156px}
+.bulb .env{position:absolute;inset:0;border-radius:50% 50% 46% 46% / 56% 56% 44% 44%;
+  background:radial-gradient(circle at 50% 42%,rgba(255,250,225,.95),rgba(255,214,140,.65) 30%,rgba(255,170,80,.18) 62%,rgba(255,255,255,.08) 72%);
+  box-shadow:0 0 50px 18px rgba(255,190,110,.55),0 0 160px 70px rgba(255,170,80,.18),inset 0 -6px 16px rgba(255,255,255,.15)}
+.bulb .env::before{content:"";position:absolute;left:24%;top:14%;width:16%;height:30%;border-radius:50%;background:linear-gradient(rgba(255,255,255,.55),transparent);transform:rotate(18deg)}
+.bulb svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.bulb .fil{fill:none;stroke:#fffbe6;stroke-width:2.2;stroke-linecap:round;filter:drop-shadow(0 0 4px #ffd27a) drop-shadow(0 0 10px #ffb45c)}
+.bulb .post{stroke:#8a7a6a;stroke-width:1.4}
+.chain{position:absolute;left:20px;top:60px;display:flex;flex-direction:column;align-items:center;transition:transform .25s cubic-bezier(.3,1.8,.5,1)}
+.chain i{width:5px;height:7px;border:1.5px solid #9b8668;border-radius:3px;margin-top:-1px}
+.chain .pull{margin-top:2px;width:26px;height:26px;border-radius:50%;border:0;cursor:pointer;padding:0;background:radial-gradient(circle at 38% 32%,#f1d9a8,#8a6a3a 60%,#3a2a14);box-shadow:0 3px 6px rgba(0,0,0,.6)}
+.chain.tug{transform:translateY(22px)}
+
+/* ---------- upright instruments ---------- */
+.centre{position:fixed;left:50%;top:var(--ctop,46vh);z-index:11;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;text-align:center;width:min(620px,46vw)}
+.kick{margin:0;font:700 clamp(16px,2.2vh,20px) var(--display);letter-spacing:.42em;color:var(--dim)}
+.since{margin:8px 0 0;font:700 clamp(22px,3.4vh,32px) var(--typed);color:var(--ink)}
+.since b{color:#fff3da}
+.pullbtn{margin-top:clamp(12px,2.2vh,20px);display:flex;align-items:center;gap:12px;padding:12px 22px;border-radius:999px;border:1.5px solid rgba(255,190,110,.6);background:rgba(14,10,6,.78);font:700 18px var(--display);letter-spacing:.16em;cursor:pointer;backdrop-filter:blur(3px)}
+.pullbtn:hover{background:rgba(52,30,10,.88)}
+.note{margin:10px 0 0;font:14px var(--typed);color:var(--dim)}
+.growing{position:fixed;left:50%;top:var(--stop,330px);z-index:11;transform:translateX(-50%);margin:0;text-align:center;opacity:0;transition:opacity 1s ease 1.6s;font:700 clamp(17px,2.4vh,22px) var(--typed);letter-spacing:.3em;color:var(--moon);text-shadow:0 0 12px var(--moonglow),0 1px 3px #000;white-space:nowrap;pointer-events:none}
+.growing small{display:block;margin-top:4px;font:400 14px var(--typed);letter-spacing:.08em;color:#dfe8f4}
+
+/* ---------- the word carved into the floor ---------- */
+.floor{position:fixed;left:0;right:0;bottom:-2vh;height:46vh;z-index:9;perspective:520px;perspective-origin:50% -40%;display:flex;justify-content:center;align-items:flex-end;pointer-events:none}
+.word{margin:0 0 4vh;font:800 clamp(120px,24vh,240px)/.8 var(--display);letter-spacing:.05em;color:#d9cfbd;transform:rotateX(52deg);transform-origin:50% 100%;transition:color .8s;
+  background:linear-gradient(180deg,#8c8478,#efe6d4 70%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 2px 0 rgba(0,0,0,.6))}
+body.lost .word{background:none;-webkit-text-fill-color:#ff7a5a;color:#ff7a5a;filter:drop-shadow(0 0 18px rgba(255,70,40,.8)) drop-shadow(0 0 4px rgba(255,90,60,.9))}
+
+/* side columns */
+.col{position:fixed;bottom:28px;z-index:11;width:clamp(250px,21vw,310px)}
+.log{left:40px}.readings{right:40px}
+.readings{margin:0;display:grid;gap:4px}
+.readings div{padding:7px 0 8px;border-top:1px solid rgba(239,234,224,.22)}
+.readings dt{font:700 14px var(--typed);letter-spacing:.2em;color:var(--dim);text-transform:uppercase}
+.readings dd{margin:0;font:700 clamp(23px,3.5vh,34px)/1.05 var(--display);color:#f6f1e6;letter-spacing:.02em}
+.readings dd small{font:400 15px var(--typed);color:var(--dim);letter-spacing:0;margin-left:6px}
+.readings .bad dd{color:#ffd2c4;text-shadow:0 0 12px var(--emberglow)}
+.readings .cold dd{color:#e6eefa;text-shadow:0 0 12px var(--moonglow)}
+.log h2{margin:0 0 8px;font:700 15px var(--typed);letter-spacing:.2em;color:var(--dim)}
+.log ol{list-style:none;margin:0;padding:0;display:grid;gap:8px;-webkit-mask-image:linear-gradient(to top,#000 70%,transparent);mask-image:linear-gradient(to top,#000 70%,transparent);max-height:46vh;overflow:hidden;align-content:end}
+.log li{font:15px/1.35 var(--typed);color:var(--ink)}
+.log li time{display:block;font-weight:700;font-size:14px;color:var(--amber)}
+.log li.bad{color:#ffd2c4}.log li.bad time{color:var(--ember)}
+.log li.cold{color:#e6eefa}.log li.cold time{color:#a9c2e6}
+.log li.new{animation:rise .6s ease-out both}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.log .fict{margin:10px 0 0;font:14px var(--typed);color:var(--dim)}
+.log li,.log h2,.readings dt,.readings dd,.readings dd small,.kick,.since,.note{text-shadow:0 1px 3px #000,0 0 14px rgba(0,0,0,.95)}
+
+/* ---------- states ---------- */
+body.lost .bulb .env{animation:bout 1s forwards}
+@keyframes bout{0%{filter:none}10%{filter:brightness(.25)}18%{filter:none}30%{filter:brightness(.1)}44%{filter:brightness(.7)}62%,100%{filter:brightness(.1) saturate(0);box-shadow:none}}
+body.lost .bulb .fil{stroke:#3a3632;filter:none}
+body.lost .since b{color:#ffd2c4}
+body[data-daemon="dark"] .growing{opacity:1}
+body.lost .pullbtn{border-color:var(--ember);background:rgba(40,8,4,.85)}
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+  body.lost .bulb .env{filter:brightness(.1) saturate(0);box-shadow:none}
+}
+@media (max-height:820px){ .log li:nth-child(n+5){display:none} .readings div{padding:4px 0 5px} .readings div:nth-child(6){display:none} .note{display:none} }
+@media (max-width:1360px){ .crumb{display:none} }
+</style>
+</head>
+<body data-daemon="online">
+<canvas id="room" aria-hidden="true"></canvas>
+
+<div class="rig" id="rig">
+  <div class="pend" id="pend">
+    <div class="wire"></div><div class="sock"></div>
+    <div class="bulb" aria-hidden="true">
+      <div class="env"></div>
+      <svg viewBox="0 0 92 116"><line class="post" x1="36" y1="0" x2="22" y2="60"/><line class="post" x1="56" y1="0" x2="70" y2="60"/><path class="fil" id="fil" d=""/></svg>
+    </div>
+    <div class="chain" id="chain"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><button class="pull" id="pull" type="button" aria-label="Pull the chain: cut the daemon (D)"></button></div>
+  </div>
+</div>
+
+<header>
+  <nav class="chan" aria-label="Channels" id="chan">
+    <a href="#ch2" data-n="2 · On air" aria-label="Channel 2, On air">2</a>
+    <a href="#ch3" data-n="3 · Forge" aria-label="Channel 3, Forge">3</a>
+    <a href="#ch4" data-n="4 · Characters" aria-label="Channel 4, Characters">4</a>
+    <a href="#ch6" data-n="6 · Daemon" aria-label="Channel 6, Daemon" aria-current="page">6</a>
+    <a href="#ch9" data-n="9 · Sealed" aria-label="Channel 9, Sealed">9</a>
+    <a href="#air" data-n="O · Stage" aria-label="Stage (O)">O</a>
+    <span class="read" id="chanRead" aria-hidden="true">6 · Daemon</span>
+  </nav>
+  <span class="crumb">the carrier · <b>the root vault</b></span>
+  <div class="spacer"></div>
+  <span class="rec" title="Replay plane: recorded answers, no key">RECORDED</span>
+  <button class="theme" type="button">Theme: Halloween <kbd>T</kbd></button>
+</header>
+
+<p class="growing" aria-hidden="true">THE ROOTS ARE STILL GROWING<small id="reach">0.0 cm toward the empty socket</small></p>
+
+<div class="centre" aria-live="polite">
+  <p class="kick">CHANNEL 6 · THE DAEMON IS</p>
+  <p class="since" id="since">awake for <b>03:12:40</b></p>
+  <button class="pullbtn" id="pullbtn" type="button"><span id="pullLabel">PULL THE CHAIN</span><kbd>D</kbd></button>
+  <p class="note" id="note">the roots carry the carrier up into the socket</p>
+</div>
+
+<div class="floor"><h1 class="word" id="word">AWAKE</h1></div>
+
+<section class="col log" aria-labelledby="logh">
+  <h2 id="logh">THE CELLAR REMEMBERS</h2>
+  <ol id="log" aria-live="polite"></ol>
+  <p class="fict">fictional · replay plane</p>
+</section>
+<dl class="col readings" id="readings"></dl>
+
+<script>
+(() => {
+  const $=(id)=>document.getElementById(id), body=document.body, root=document.documentElement;
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const UP_AT_OPEN=3*3600+12*60+40, t0=Date.now();
+  const hms=(s)=>[s/3600|0,(s%3600)/60|0,s%60].map(n=>String(n).padStart(2,'0')).join(':');
+  const el=()=>Math.floor((Date.now()-t0)/1000), clock=()=>hms(UP_AT_OPEN+el());
+  let state='online', lostAt=null, timer=null;
+  const lost=()=>state==='folding'||state==='dark';
+  const deadSecs=()=>lost()&&lostAt!==null?(Date.now()-t0)/1000-lostAt:0;
+  const CM_PER_S=.1;
+
+  const read=$('chanRead');
+  $('chan').querySelectorAll('a').forEach(a=>{const on=()=>read.textContent=a.dataset.n,off=()=>read.textContent='6 · Daemon';
+    a.addEventListener('mouseenter',on);a.addEventListener('focus',on);a.addEventListener('mouseleave',off);a.addEventListener('blur',off);
+    a.addEventListener('click',e=>e.preventDefault());});
+
+  // ---------- the room: the photograph, relit every frame ----------
+  const cv=$('room'), cx=cv.getContext('2d');
+  const graded=document.createElement('canvas'), gx=graded.getContext('2d');
+  const lightC=document.createElement('canvas'), lx=lightC.getContext('2d');
+  const img=new Image(); img.src='../a/plates2/root-vault.webp';
+  let S=1,OX=0,OY=0,VW=0,VH=0,ready=false, RS=1;
+  const P=(x,y)=>[x*S+OX,y*S+OY];
+  const GRATE=[684,46];
+  function layout(){
+    VW=innerWidth; VH=innerHeight; const dpr=Math.min(1.5,devicePixelRatio||1);
+    cv.width=VW*dpr; cv.height=VH*dpr; cx.setTransform(dpr,0,0,dpr,0,0);
+    S=Math.max(VW/1376,VH/768); OX=(VW-1376*S)/2; OY=(VH-768*S)/2;
+    RS=Math.max(.72,Math.min(1,VH/960)); root.style.setProperty('--rs',RS);
+    const [gxp,gyp]=P(GRATE[0],GRATE[1]); root.style.setProperty('--gx',gxp+'px'); root.style.setProperty('--gy',gyp+'px');
+    const bulbBottom=gyp+226*RS;
+    root.style.setProperty('--stop',(bulbBottom+14)+'px');
+    root.style.setProperty('--ctop',Math.max(bulbBottom+84, VH*.42)+'px');
+    lightC.width=Math.ceil(VW/4); lightC.height=Math.ceil(VH/4);
+    if(img.complete&&img.naturalWidth){ graded.width=VW; graded.height=VH; gx.filter='brightness(1.55) contrast(1.08) saturate(.62) sepia(.12)'; gx.drawImage(img,OX,OY,1376*S,768*S); gx.filter='none'; ready=true; }
+  }
+  img.onload=layout;
+
+  // roots in plate pixels: the carrier rises through them into the grate
+  const ROOTS=[
+    [[410,540],[370,450],[350,360],[380,260],[430,170],[520,90],[600,40]],
+    [[290,520],[300,420],[330,300],[400,200],[470,120],[560,60]],
+    [[960,550],[985,480],[1000,400],[980,290],[930,190],[850,100],[770,40]],
+    [[1060,520],[1050,380],[1010,250],[900,150],[800,60]],
+    [[60,520],[40,330],[80,150],[40,0]],
+    [[1320,600],[1350,400],[1330,200],[1290,0]],
+  ];
+  // tendrils that grow toward the socket once it is empty (target set per frame)
+  const TEND=[[470,130,-1],[380,120,-1],[560,22,-1],[905,150,1],[990,120,1],[820,22,1],[640,70,-1],[730,70,1]];
+  const tendJit=TEND.map((_,i)=>[...Array(24)].map((__,k)=>Math.sin(k*.9+i*2.1)*.5+Math.sin(k*2.3+i)*.3));
+
+  function trace(pts){ cx.beginPath(); pts.forEach((p,i)=>{ const [x,y]=P(p[0],p[1]); if(!i) cx.moveTo(x,y); else{ const [px,py]=P(pts[i-1][0],pts[i-1][1]); cx.quadraticCurveTo(px,py,(px+x)/2,(py+y)/2);} }); const l=pts[pts.length-1]; const [x,y]=P(l[0],l[1]); cx.lineTo(x,y); }
+
+  function paint(t,bx,by,lum,grow){
+    if(!ready){ cx.fillStyle='#030304'; cx.fillRect(0,0,VW,VH); return; }
+    const L=lost();
+    // light map (quarter res): ambient + bulb + moon through the grate
+    const w=lightC.width,h=lightC.height,q=.25;
+    lx.globalCompositeOperation='source-over'; lx.fillStyle=`rgb(${Math.round(8+22*lum)},${Math.round(9+20*lum)},${Math.round(12+18*lum)})`; lx.fillRect(0,0,w,h);
+    lx.globalCompositeOperation='lighter';
+    if(lum>.01){
+      const g=lx.createRadialGradient(bx*q,by*q,0,bx*q,by*q,VH*.95*q);
+      g.addColorStop(0,`rgba(255,236,200,${lum})`); g.addColorStop(.28,`rgba(230,170,105,${.85*lum})`); g.addColorStop(.6,`rgba(120,80,45,${.55*lum})`); g.addColorStop(1,'rgba(0,0,0,0)');
+      lx.fillStyle=g; lx.fillRect(0,0,w,h);
+    }
+    const [mx,my]=P(GRATE[0],GRATE[1]); const [fx,fy]=P(690,640);
+    const moon=L?1:.45;
+    let g2=lx.createRadialGradient(mx*q,my*q,0,mx*q,my*q,170*S*q); g2.addColorStop(0,`rgba(150,175,215,${.75*moon})`); g2.addColorStop(1,'rgba(0,0,0,0)'); lx.fillStyle=g2; lx.fillRect(0,0,w,h);
+    lx.save(); lx.beginPath(); lx.moveTo((mx-70*S)*q,my*q); lx.lineTo((mx+70*S)*q,my*q); lx.lineTo((fx+260*S)*q,fy*q); lx.lineTo((fx-260*S)*q,fy*q); lx.closePath();
+    const g3=lx.createLinearGradient(0,my*q,0,fy*q); g3.addColorStop(0,`rgba(130,155,195,${.7*moon})`); g3.addColorStop(1,`rgba(80,100,140,${.42*moon})`); lx.fillStyle=g3; lx.filter='blur(6px)'; lx.fill(); lx.restore(); lx.filter='none';
+    let g4=lx.createRadialGradient(fx*q,fy*q,0,fx*q,fy*q,300*S*q); g4.addColorStop(0,`rgba(90,110,150,${.45*moon})`); g4.addColorStop(1,'rgba(0,0,0,0)'); lx.fillStyle=g4; lx.fillRect(0,0,w,h);
+
+    cx.globalCompositeOperation='source-over'; cx.drawImage(graded,0,0,VW,VH);
+    cx.globalCompositeOperation='multiply'; cx.imageSmoothingEnabled=true; cx.drawImage(lightC,0,0,VW,VH);
+    // warm bloom in the air
+    cx.globalCompositeOperation='lighter';
+    if(lum>.01){ const b=cx.createRadialGradient(bx,by,0,bx,by,VH*.5); b.addColorStop(0,`rgba(255,170,90,${.16*lum})`); b.addColorStop(1,'rgba(0,0,0,0)'); cx.fillStyle=b; cx.fillRect(0,0,VW,VH); }
+    // the carrier travelling up the roots
+    if(lum>.05){
+      cx.save(); cx.beginPath(); cx.rect(0,0,VW,VH*.48); cx.rect(VW*.25,VH*.48,VW*.5,VH*.52); cx.clip();
+      cx.lineCap='round';
+      ROOTS.forEach((r,i)=>{ trace(r); cx.setLineDash([18*S,90*S]); cx.lineDashOffset=(t/14+i*37)%108*S;
+        cx.strokeStyle=`rgba(255,150,60,${.32*lum})`; cx.lineWidth=9*S; cx.shadowColor='rgba(255,130,40,.9)'; cx.shadowBlur=22; cx.stroke();
+        cx.setLineDash([10*S,98*S]); cx.strokeStyle=`rgba(255,220,160,${.45*lum})`; cx.lineWidth=2.2*S; cx.shadowBlur=8; cx.stroke(); });
+      cx.shadowBlur=0;
+      cx.setLineDash([]); cx.restore();
+    }
+    cx.globalCompositeOperation='source-over';
+    // tendrils: moonlit, growing toward the empty socket with every second of dead air
+    if(grow>0){
+      const sx=bx, sy=by-20*RS;
+      TEND.forEach((tp,i)=>{
+        const [ax,ay]=P(tp[0],tp[1]); const n=24, reach=Math.min(1,grow*(.7+((i*37)%10)/30));
+        const cxp=(ax+sx)/2+tp[2]*-30*S, cyp=Math.max(ay,sy)+(70+(i%3)*30)*S;
+        const pts=[]; for(let k=0;k<=n;k++){ const u=k/n*reach; const x=(1-u)*(1-u)*ax+2*(1-u)*u*cxp+u*u*(sx+tp[2]*-46*RS), y=(1-u)*(1-u)*ay+2*(1-u)*u*cyp+u*u*sy;
+          const wob=(Math.sin(u*9+i*1.7)*16+Math.sin(u*23+i)*5)*S*Math.sin(u*Math.PI)+Math.sin(t/1100+i+u*5)*2; pts.push([x+wob*.4,y+wob]); }
+        cx.lineCap='round'; cx.lineJoin='round';
+        for(let pass=0;pass<2;pass++) for(let c=0;c<8;c++){ const f=1-c/8, from=c*3, to=Math.min(pts.length-1,c*3+4); if(from>=pts.length-1) break;
+          const o=pass?(1+3*f)*S:0;
+          cx.beginPath(); cx.moveTo(pts[from][0]-o,pts[from][1]-o*.6); for(let k=from+1;k<=to;k++) cx.lineTo(pts[k][0]-o,pts[k][1]-o*.6);
+          if(!pass){ cx.strokeStyle='rgba(12,13,16,.97)'; cx.lineWidth=(3+11*f)*S; }
+          else { cx.strokeStyle=`rgba(180,200,230,${.14+.3*f})`; cx.lineWidth=(.7+1.6*f)*S; }
+          cx.stroke(); }
+      });
+    }
+  }
+
+  const events=[
+    ['02:59:50','bulb lit under the grate'],
+    ['02:59:51','daemon seated · replay plane, no key'],
+    ['02:59:58','tape loaded · 40 chat lines, 23 replies'],
+    ['03:00:00','on air · malakor-night (recorded)'],
+    ['03:12:40','carrier locked · rising through 6 roots'],
+    ['03:12:40','health read · replay · scripted · dev'],
+  ];
+  function renderLog(n){ const L=events.slice(-8); $('log').innerHTML=L.map((e,i)=>`<li class="${i>=L.length-n?'new':''} ${e[2]||''}"><time>${e[0]}</time>${e[1]}</li>`).join(''); }
+  function log(list){ list.forEach(l=>events.push([clock(),l[0],l[1]])); renderLog(list.length); }
+
+  function render(){
+    const L=lost(), ds=deadSecs(), dead=Math.floor(ds), cm=(ds*CM_PER_S).toFixed(1);
+    $('word').textContent = L ? 'GONE' : 'AWAKE';
+    $('since').innerHTML = L ? 'dead air <b>'+hms(dead)+'</b>' : 'awake for <b>'+clock()+'</b>';
+    $('pullLabel').textContent = L ? 'PULL IT AGAIN · RE-SEAT' : 'PULL THE CHAIN';
+    $('note').textContent = L ? 'no carrier · only the moon comes through the grate' : 'the roots carry the carrier up into the socket';
+    $('reach').textContent = cm+' cm toward the empty socket';
+    $('pull').setAttribute('aria-label', L ? 'Pull the chain: re-seat the daemon (D)' : 'Pull the chain: cut the daemon (D)');
+    const rows=[
+      ['carrier', L?'none':'steady', L?'lost':'locked · 6 roots', 'bad'],
+      ['engine', L?'offline':'scripted', L?'no answer':'replies from tape', 'bad'],
+      ['roots', L?'reaching':'feeding', L?cm+' cm grown':'carrier rising', 'cold'],
+      [L?'dead air':'uptime', L?hms(dead):clock(), L?'counting':'since 03:00', 'bad'],
+      ['light', L?'moon only':'the bulb', L?'through the grate':'swinging', 'cold'],
+      ['plane','replay','recorded',''],
+    ];
+    $('readings').innerHTML=rows.map(r=>`<div class="${L?r[3]:''}"><dt>${r[0]}</dt><dd>${r[1]}<small>${r[2]}</small></dd></div>`).join('');
+  }
+  function enter(next){
+    state=next; body.dataset.daemon=next; body.classList.toggle('lost',lost());
+    clearTimeout(timer);
+    if(next==='folding') timer=setTimeout(()=>enter('dark'), reduced?0:600);
+    if(next==='relighting') timer=setTimeout(()=>enter('online'), reduced?0:900);
+    render();
+  }
+  let lastGrow=0, foldStart=0;
+  function toggle(){
+    const c=$('chain'); c.classList.add('tug'); setTimeout(()=>c.classList.remove('tug'),220);
+    if(lost()){ lostAt=null; enter('relighting'); log([['chain pulled · daemon re-seated'],['carrier rising · the roots let go','']]); }
+    else { lostAt=(Date.now()-t0)/1000; foldStart=performance.now(); enter('folding'); log([['chain pulled · daemon cut (D)','bad'],['carrier lost · the roots go dark','bad'],['bulb out · the roots are still growing','cold']]); }
+  }
+  $('pull').addEventListener('click',toggle); $('pullbtn').addEventListener('click',toggle);
+  addEventListener('keydown',e=>{ if((e.key==='d'||e.key==='D')&&!e.repeat&&!e.metaKey&&!e.ctrlKey&&!e.altKey) toggle(); });
+  addEventListener('resize',layout);
+
+  const word=$('word'); let amp=1, lum=1, grow=0;
+  const FLICK=[[0,1],[.1,.15],[.18,.9],[.3,.05],[.44,.6],[.62,0]];
+  function frame(t){
+    const L=lost(); amp+=((L?0:1)-amp)*(reduced?1:.05);
+    // lum follows the same flicker as the bulb glass on cut, and a stutter on relight
+    if(state==='folding'&&!reduced){ const k=(performance.now()-foldStart)/1000; let v=0; for(const f of FLICK) if(k>=f[0]) v=f[1]; lum=v; }
+    else if(state==='relighting'&&!reduced){ lum+= (1-lum)*.08; if(Math.random()<.04) lum=.3; }
+    else lum+=((L?0:1)-lum)*(reduced?1:.2);
+    const ds=deadSecs(); const target=L?1-Math.exp(-ds/14):0; grow+=(target-grow)*(reduced?1:(L?.06:.08));
+    const ang = reduced ? 0 : Math.sin(t/1500)*6*(.2+.8*amp);
+    $('pend').style.setProperty('--sw', ang+'deg');
+    const rad=ang*Math.PI/180, len=148*RS;
+    const gxp=parseFloat(getComputedStyle(root).getPropertyValue('--gx')), gyp=parseFloat(getComputedStyle(root).getPropertyValue('--gy'));
+    const bx=gxp-Math.sin(rad)*len, by=gyp+Math.cos(rad)*len;
+    let d=''; for(let i=0;i<=40;i++){ const x=22+i*1.2; const y=60+(L?0:amp*Math.sin(i/40*Math.PI*5+t/120)*11+(Math.random()-.5)*1.2); d+=(i?'L':'M')+x.toFixed(1)+' '+y.toFixed(1); }
+    $('fil').setAttribute('d', d);
+    paint(t,bx,by,Math.max(0,lum*(1+Math.sin(t/120)*.02)),grow);
+    // the carved word: shadows thrown toward us and away from the bulb, in the floor's plane
+    if(!L){
+      const r=word.getBoundingClientRect(); let dx=(r.left+r.width/2-bx)/(VW*.5); dx=Math.max(-1,Math.min(1,dx));
+      word.style.filter=`drop-shadow(${(dx*14).toFixed(1)}px 22px 14px rgba(0,0,0,.85))`;
+      word.style.textShadow='none';
+    } else { word.style.filter=''; }
+    if(!reduced) requestAnimationFrame(frame);
+  }
+  layout(); renderLog(0); render(); if(!reduced) requestAnimationFrame(frame); else frame(0);
+  img.addEventListener('load',()=>{ layout(); if(reduced) frame(performance.now()); });
+  setInterval(()=>{ render(); if(reduced) frame(performance.now()); },1000);
+})();
+</script>
+</body>
+</html>
