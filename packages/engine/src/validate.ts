@@ -2,7 +2,8 @@
 // value, check its shape, and return undefined when it does not match.
 import type { Emotion, Gesture } from "@sr/rig";
 import { ENGINE_STATES, PLANES, type EngineState, type Health, type Plane } from "./health.js";
-import { EMOTIONS, GESTURES, type ChatMsg, type EngineReply, type ShowBeat, type ShowScript } from "./types.js";
+import { EMOTIONS, GESTURES, type ChatMsg, type EngineReply, type EngineRequest, type Persona, type ShowBeat, type ShowScript } from "./types.js";
+import { VOICE_IDS, type VoiceId } from "./voices.js";
 
 const PLANE_NAMES: readonly string[] = PLANES;
 const ENGINE_NAMES: readonly string[] = ENGINE_STATES;
@@ -140,4 +141,52 @@ export function parseMessagesResponse(text: string): MessagesResponse | undefine
 export function decodeJsonObject(text: string): Readonly<Record<string, unknown>> | undefined {
   const value = decodeJson(text);
   return isObject(value) ? value : undefined;
+}
+
+const VOICE_NAMES: readonly string[] = VOICE_IDS;
+
+function finite(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function parseChatMsg(value: unknown): ChatMsg | undefined {
+  if (!isObject(value)) return undefined;
+  const { id, user, text, ts, fictional, fromVisitor } = value;
+  if (typeof id !== "string" || typeof user !== "string" || typeof text !== "string" || !finite(ts)) return undefined;
+  if ((fictional !== undefined && fictional !== true) || (fromVisitor !== undefined && fromVisitor !== true)) return undefined;
+  return { id, user, text, ts, ...(fictional ? { fictional } : {}), ...(fromVisitor ? { fromVisitor } : {}) };
+}
+
+function parsePersona(value: unknown): Persona | undefined {
+  if (!isObject(value)) return undefined;
+  const { characterId, name, bible, voice } = value;
+  if (typeof characterId !== "string" || typeof name !== "string" || typeof bible !== "string") return undefined;
+  if (typeof voice !== "string" || !VOICE_NAMES.includes(voice)) return undefined;
+  const id: VoiceId | undefined = VOICE_IDS.find((v) => v === voice);
+  return id === undefined ? undefined : { characterId, name, bible, voice: id };
+}
+
+/**
+ * Validates a decoded EngineRequest body (POST /api/engine/reply). Only the last `keepChat` chat
+ * entries are looked at, so an over-long chat is cut, not rejected (requirement 2.4); older
+ * entries are never validated.
+ */
+export function parseEngineRequest(value: unknown, keepChat: number): EngineRequest | undefined {
+  if (!isObject(value)) return undefined;
+  const { characterId, beat, seed, pickedId } = value;
+  if (typeof characterId !== "string" || !finite(beat)) return undefined;
+  if (seed !== undefined && !finite(seed)) return undefined;
+  if (pickedId !== undefined && typeof pickedId !== "string") return undefined;
+  const persona = parsePersona(value.persona);
+  if (persona === undefined || !Array.isArray(value.chat)) return undefined;
+  const chat = parseAll(value.chat.slice(-keepChat), parseChatMsg);
+  if (chat === undefined) return undefined;
+  return {
+    characterId,
+    persona,
+    chat,
+    beat,
+    ...(seed === undefined ? {} : { seed }),
+    ...(pickedId === undefined ? {} : { pickedId }),
+  };
 }

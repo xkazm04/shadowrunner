@@ -9,6 +9,20 @@ export const MAX_CHAT_CHARS = 300;
 /** User names are cut too, so a name cannot smuggle a paragraph past the text limit. */
 export const MAX_USER_CHARS = 40;
 
+/** The bible is the prompt's bulk; a client cannot send more than this many characters of it. */
+export const MAX_BIBLE_CHARS = 24_000;
+/** Character names are cut to this many characters. */
+export const MAX_NAME_CHARS = 60;
+
+/** A request with every client-controlled text cut to its limit (cut, never rejected). */
+export function limitRequest(req: EngineRequest): EngineRequest {
+  return {
+    ...req,
+    persona: { ...req.persona, name: req.persona.name.slice(0, MAX_NAME_CHARS), bible: req.persona.bible.slice(0, MAX_BIBLE_CHARS) },
+    chat: limitChat(req.chat),
+  };
+}
+
 /** The last 20 messages, each text cut to 300 characters (cut, never rejected). */
 export function limitChat(msgs: readonly ChatMsg[]): ChatMsg[] {
   return msgs.slice(-MAX_CHAT_MESSAGES).map((m) => ({

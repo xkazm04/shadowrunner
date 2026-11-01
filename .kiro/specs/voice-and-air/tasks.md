@@ -9,7 +9,7 @@
   - `schema.ts` (REPLY_SCHEMA, `parseReply` with trimming property), `persona.ts`, `anthropic.ts` with injectable fetch; fake-fetch tests for model, schema, chat quoting and limits.
   - _Requirements: 1.3, 1.4, 1.5_
 
-- [ ] 3. Engine endpoint
+- [x] 3. Engine endpoint
   - `api/engine/reply.ts` using the plane switch and `checkAndCharge(ip, "engine", usd)` from `api/_lib/quota.ts` (created by forge-pipeline task 6.2; if absent, stop and report); tests: replay zero fetches, quota before call, input cut to 20 x 300.
   - _Requirements: 2.1, 2.2, 2.3, 2.4_
 

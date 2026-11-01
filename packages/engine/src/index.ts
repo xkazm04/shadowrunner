@@ -21,12 +21,15 @@ export type { ShowBeat, ShowScript } from "./types.js";
 export { EMOTIONS, GESTURES } from "./types.js";
 export { isEmotion, isGesture, parseShow, parseShowJson } from "./validate.js";
 export { beatIndex, scriptedReply, ScriptedEngine } from "./scripted.js";
-export { decodeJson, parseMessagesResponse, type MessagesResponse } from "./validate.js";
+export { decodeJson, parseEngineRequest, parseMessagesResponse, type MessagesResponse } from "./validate.js";
 export { EngineError, MAX_LINE_CHARS, parseReply, REPLY_SCHEMA, trimLine, type EngineErrorCode } from "./schema.js";
 export {
   limitChat,
+  limitRequest,
+  MAX_BIBLE_CHARS,
   MAX_CHAT_CHARS,
   MAX_CHAT_MESSAGES,
+  MAX_NAME_CHARS,
   MAX_USER_CHARS,
   personaPrompt,
   quoteChat,
