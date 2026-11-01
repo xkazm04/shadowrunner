@@ -1,5 +1,9 @@
 # Implementation plan: forge-pipeline
 
+- [ ] 0. Wire contract stub (director, build-order step 3; may run before the spike because it is types only)
+  - `packages/forge/src/wire.ts` exactly per design.md "Contracts (wire names)": `ForgeRequest`, `ForgeStatus`, `JobView`, `ForgeErrorCode`, types only. Export it as the `@sr/forge/wire` subpath in `packages/forge/package.json`; a type-level test that the creator-side import compiles.
+  - _Requirements: 5.1_
+
 - [ ] 1. Spike (run first; gates the rest)
   - [ ] 1.1 `scripts/forge-spike.mjs`: generate 3 portraits from 3 different prompts with `portraitPrompt`, request parts with `PARTS_PROMPT`, save JSON + overlays under `var/forge-spike/`. Reads `GEMINI_API_KEY` from env; refuses to run without it; not referenced by any test.
   - [ ] 1.2 Write `docs/decisions/0003-forge-spike.md`: per portrait timings, part count, whether a rig assembled and validated (after tasks 3-6 exist, re-run and update), overlay paths, and the decision (polygons vs pose-template fallback).
