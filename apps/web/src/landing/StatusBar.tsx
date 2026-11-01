@@ -1,10 +1,10 @@
-// The landing's header row (landing requirement 2). On the set it is the only header: it sits in
-// the world as an overlay, as in the reference. Left to right: wordmark (tagged RECORDED on
-// replay), ON AIR lamp, viewers, channel, the live-since clock (or the dead-air timer), the theme
-// icon, the daemon pill. In portrait it folds into two rows (task 5.0, StatusBar.module.css).
-// The lamp, the clock and the pill follow the daemon state the composition root derives from
-// GET /api/health (daemonOf); the D key shows only on replay, where the sample toggle lives
-// (task 8 wires the toggle itself).
+// The landing's header row (landing requirement 2; costume task 2). On the set it is the only
+// header: it sits in the world as an overlay, as in the prototype. Left to right: wordmark (tagged
+// RECORDED on replay), viewers, the live-since clock (or the dead-air timer), the theme icon, the
+// daemon pill. The ON AIR lamp hangs from the beam now (Lightbox.tsx) and the channel is chalked
+// over the pitch (Pitch.tsx). In portrait the bar folds into two rows (StatusBar.module.css).
+// The clock and the pill follow the daemon state the composition root derives from
+// GET /api/health (daemonOf); the D key shows only on replay, where the sample toggle lives.
 import { useEffect, useState, type ReactNode } from "react";
 import type { Health, Plane } from "../app/plane";
 import { handleLinkClick } from "../app/router";
@@ -29,11 +29,19 @@ export function hms(seconds: number): string {
   return `${pad(Math.floor(s / 3600))}:${pad(Math.floor(s / 60) % 60)}:${pad(s % 60)}`;
 }
 
+export interface BroadcastClock {
+  /** Seconds the show has been up. */
+  up: number;
+  /** Seconds of dead air since the daemon was lost (0 while it is online). */
+  dead: number;
+}
+
 /**
  * Seconds of uptime, and seconds of dead air since the daemon was lost. Both start from the
- * page's first render (UP_AT_OPEN and 0), so a server render is deterministic.
+ * page's first render (UP_AT_OPEN and 0), so a server render is deterministic. The composition
+ * root runs one clock for the bar and the ghost note, so the two never disagree.
  */
-function useBroadcastClock(daemon: DaemonHealth): { up: number; dead: number } {
+export function useBroadcastClock(daemon: DaemonHealth): BroadcastClock {
   const [elapsed, setElapsed] = useState(0);
   const [lostAt, setLostAt] = useState<number | undefined>(daemon === "lost" ? 0 : undefined);
   useEffect(() => {
@@ -50,16 +58,16 @@ function useBroadcastClock(daemon: DaemonHealth): { up: number; dead: number } {
 export interface StatusBarProps {
   plane: Plane;
   daemon: DaemonHealth;
-  /** The channel on the set: number and manifest title. */
-  channel: { number: number; title: string };
+  /** The broadcast clock (useBroadcastClock); a fresh one (open, no dead air) when absent. */
+  clock?: BroadcastClock;
   /** The shell's RECORDED badge (the shell keeps owning it), shown as a tag after the wordmark. */
   badge?: ReactNode;
   /** The shell's other controls (the theme toggle), between the stats and the pill. */
   controls?: ReactNode;
 }
 
-export function StatusBar({ plane, daemon, channel, badge, controls }: StatusBarProps) {
-  const { up, dead } = useBroadcastClock(daemon);
+export function StatusBar({ plane, daemon, clock = { up: UP_AT_OPEN, dead: 0 }, badge, controls }: StatusBarProps) {
+  const { up, dead } = clock;
   const on = daemon === "online";
   return (
     <header className={styles.bar} data-status-bar data-daemon={daemon}>
@@ -70,17 +78,9 @@ export function StatusBar({ plane, daemon, channel, badge, controls }: StatusBar
         {badge && <span className={styles.tag}>{badge}</span>}
       </div>
       <div className={styles.stats}>
-        <span className={styles.lamp} data-lamp={on ? "on" : "off"}>
-          {on ? "ON AIR" : "OFF AIR"}
-        </span>
         <span>
           Viewers <b>1</b>
           <span className={styles.opt}>{on ? " (you)" : " still you"}</span>
-        </span>
-        <span className={styles.sep} aria-hidden="true" />
-        <span>
-          <span className={styles.opt}>Channel </span>
-          <b>{`${channel.number} · ${channel.title}`}</b>
         </span>
         <span className={styles.sep} aria-hidden="true" />
         {on ? (
@@ -88,12 +88,17 @@ export function StatusBar({ plane, daemon, channel, badge, controls }: StatusBar
             <span className={styles.opt}>Live </span>since <b>{ON_AIR_SINCE}</b>
             <span className={styles.opt}>
               {" · up "}
-              <b className={styles.clock}>{hms(up)}</b>
+              <b className={styles.clock} data-clock>
+                {hms(up)}
+              </b>
             </span>
           </span>
         ) : (
           <span>
-            Dead air for <b className={styles.clock}>{hms(dead)}</b>
+            Dead air for{" "}
+            <b className={styles.clock} data-clock>
+              {hms(dead)}
+            </b>
           </span>
         )}
       </div>

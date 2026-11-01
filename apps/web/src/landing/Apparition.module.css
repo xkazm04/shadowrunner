@@ -1,0 +1,233 @@
+/* The face out of the dark (Apparition.tsx), ported from the prototype's `.apparition`. World
+   lengths (World.tsx): landscape 1600x900, portrait 420x910; 1rem is 16 world px. The prototype's
+   literal colours are roles: the phosphor grade is signal-ok (the cold teal of the set's tube), the
+   scanlines are surface-0, the chalk is text-strong over text. */
+
+.apparition {
+  position: absolute;
+  inset-block-start: 7%;
+  inset-inline-start: 50%;
+  z-index: 5;
+  inline-size: 47.25%;
+  aspect-ratio: 1;
+  transform: translateX(-50%);
+  /* Thrown light: the face screens over the wall (and any ghost behind it), black is no light. */
+  mix-blend-mode: screen;
+  mask-image: radial-gradient(48% 50% at 50% 44%, var(--sr-surface-0) 62%, transparent 100%);
+}
+
+:global([data-world="portrait"]) .apparition {
+  inset-block-start: 10%;
+  inline-size: 96%;
+}
+
+.picture {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 40%;
+}
+
+.face {
+  position: absolute;
+  inset: 0;
+}
+
+/* A faint cold grade over the face: colour only, so his bone keeps its light. */
+.phos {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  mix-blend-mode: color;
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--sr-signal-ok) 14%, transparent),
+    color-mix(in srgb, var(--sr-signal-ok) 14%, transparent)
+  );
+}
+
+.scan {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.22;
+  background-image: repeating-linear-gradient(
+    color-mix(in srgb, var(--sr-surface-0) 70%, transparent) 0 0.0625rem,
+    transparent 0.0625rem 0.1875rem
+  );
+}
+
+/* The intro's raster line, sweeping down as the picture materialises. */
+.wipe {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline: 0;
+  block-size: 0.1875rem;
+  pointer-events: none;
+  opacity: 0;
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--sr-signal-ok) 70%, transparent),
+    color-mix(in srgb, var(--sr-signal-ok) 70%, transparent)
+  );
+  filter: drop-shadow(0 0 0.75rem var(--sr-signal-ok));
+}
+
+/* ---------- the daemon (daemon.ts): fold to a line, then a dot; nothing; open again ---------- */
+
+.apparition[data-daemon="folding"] .picture {
+  animation: fold var(--fold) cubic-bezier(0.6, 0, 0.9, 0.4) forwards;
+}
+
+.apparition[data-daemon="dark"] .picture {
+  opacity: 0;
+  transform: scale(0.002);
+}
+
+.apparition[data-daemon="relighting"] .picture {
+  animation: unfold var(--unfold) cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@keyframes fold {
+  55% {
+    filter: brightness(3);
+    transform: scale(1, 0.006);
+  }
+
+  100% {
+    filter: brightness(4);
+    transform: scale(0.002);
+  }
+}
+
+@keyframes unfold {
+  0% {
+    filter: brightness(4);
+    transform: scale(0.002);
+  }
+
+  40% {
+    filter: brightness(3);
+    transform: scale(1, 0.006);
+  }
+
+  100% {
+    filter: none;
+    transform: none;
+  }
+}
+
+/* ---------- the intro: the picture materialises behind a raster line ---------- */
+
+:global([data-intro]) .picture {
+  animation: materialize 1.2s cubic-bezier(0.3, 0.6, 0.2, 1) 2.1s both;
+}
+
+:global([data-intro]) .wipe {
+  animation: wipe 1.2s linear 2.1s both;
+}
+
+@keyframes materialize {
+  0% {
+    clip-path: inset(0 0 100% 0);
+    filter: brightness(2.5);
+  }
+
+  100% {
+    clip-path: inset(0);
+    filter: none;
+  }
+}
+
+@keyframes wipe {
+  0% {
+    inset-block-start: 0;
+    opacity: 1;
+  }
+
+  95% {
+    inset-block-start: 100%;
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+/* ---------- the ghost note, chalked where he was ---------- */
+
+.ghost {
+  position: absolute;
+  inset-block-start: 32%;
+  inset-inline-start: 50%;
+  z-index: 6;
+  inline-size: 40%;
+  text-align: center;
+  pointer-events: none;
+  transform: translateX(-50%);
+  animation: appear 0.6s ease var(--stare) both;
+}
+
+:global([data-world="portrait"]) .ghost {
+  inset-block-start: 22%;
+  inline-size: 90%;
+}
+
+.gone {
+  margin: 0;
+  color: var(--sr-text-strong);
+  font-family: var(--sr-font-hand);
+  font-size: var(--sr-size-display);
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.small {
+  margin: var(--sr-space-2) 0 0;
+  color: var(--sr-text);
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text);
+  line-height: 1.5;
+}
+
+.small b {
+  color: var(--sr-text-strong);
+}
+
+.clock {
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes appear {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* ---------- reduced-motion twins: the same states, switched without travel ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .apparition .picture,
+  .wipe,
+  .ghost {
+    animation: none;
+  }
+
+  .apparition:is([data-daemon="folding"], [data-daemon="dark"]) .picture {
+    opacity: 0;
+    transform: none;
+  }
+}
+
+:global([data-motion="reduced"]) .apparition .picture,
+:global([data-motion="reduced"]) .wipe,
+:global([data-motion="reduced"]) .ghost {
+  animation: none;
+}
+
+:global([data-motion="reduced"]) .apparition:is([data-daemon="folding"], [data-daemon="dark"]) .picture {
+  opacity: 0;
+  transform: none;
+}

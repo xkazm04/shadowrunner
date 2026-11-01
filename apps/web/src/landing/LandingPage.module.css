@@ -1,5 +1,5 @@
 /* The landing fills the shell's main, which on the set is the whole viewport (no shell header);
-   the world scales into it. */
+   the world scales into it. World lengths below (World.tsx). */
 
 .landing {
   display: flex;
@@ -15,66 +15,79 @@
   min-block-size: 0;
 }
 
-/* Dust through the tube's light (fx/dust.ts draws it; rendered with motion only). */
-.dust {
-  position: absolute;
-  inset: 0;
-  inline-size: 100%;
-  block-size: 100%;
-  pointer-events: none;
-  mix-blend-mode: screen;
+/* With motion the torch's flame is the pointer (Cellar.tsx Flame); controls keep theirs. */
+:global([data-motion="full"]) .landing {
+  cursor: none;
 }
 
-/* ---------- the intro: the set warms up (LandingPage.tsx useIntro, 3.5 s at most) ----------
-   The room comes up out of the dark from 0.35 s, the broadcast's chrome joins from 2.6 s, as in
-   the reference. Any key or click removes [data-intro] and everything is at rest at once. */
+:global([data-motion="full"]) .landing :is(a, button) {
+  cursor: pointer;
+}
 
-.shade {
+/* The floor falls into the dark in front of the tray. */
+.floor {
+  position: absolute;
+  inset-block-end: 0;
+  inset-inline: 0;
+  z-index: 9;
+  block-size: 30%;
+  pointer-events: none;
+  background-image: linear-gradient(transparent, color-mix(in srgb, var(--sr-surface-0) 78%, transparent) 70%);
+}
+
+/* ---------- the intro: you opened the cellar (LandingPage.tsx useIntro, 3.5 s at most) ----------
+   A black door with one line on it, opening from 1.6 s; the face materialises from 2.1 s
+   (Apparition.module.css), the lightbox buzzes on (Lightbox.module.css), the slides warm up one by
+   one (SlideTray.module.css). Any key or click removes [data-intro] and everything is at rest. */
+
+.door {
   position: absolute;
   inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
   pointer-events: none;
   background-color: var(--sr-surface-0);
-  animation: warm 2.4s ease 0.35s both;
+  animation: open 1s ease-in 1.6s forwards;
 }
 
-@keyframes warm {
-  from {
-    opacity: 0.97;
-  }
+.door p {
+  margin: 0;
+  color: var(--sr-text);
+  font-family: var(--sr-font-old);
+  font-size: var(--sr-size-display);
+  font-style: italic;
+  opacity: 0;
+  animation: words 1.6s ease-in-out forwards;
+}
 
+@keyframes open {
   to {
     opacity: 0;
   }
 }
 
-.landing[data-intro] :global(:is([data-status-bar], [data-chat], [data-legend], [data-channel])) {
-  animation: join 0.9s ease 2.6s both;
-}
-
-@keyframes join {
-  from {
-    opacity: 0;
-  }
-
-  to {
+@keyframes words {
+  20%,
+  70% {
     opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .shade {
+  .door {
     display: none;
   }
 
-  .landing[data-intro] :global(:is([data-status-bar], [data-chat], [data-legend], [data-channel])) {
-    animation: none;
+  :global([data-motion="full"]) .landing {
+    cursor: auto;
   }
 }
 
-:global([data-motion="reduced"]) .shade {
+:global([data-motion="reduced"]) .door {
   display: none;
-}
-
-:global([data-motion="reduced"]) .landing[data-intro] :global(:is([data-status-bar], [data-chat], [data-legend], [data-channel])) {
-  animation: none;
 }

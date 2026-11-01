@@ -42,5 +42,7 @@
   "size-text",
   "size-text-lg",
   "size-display",
-  "size-headline"
+  "size-headline",
+  "slide-title",
+  "slide-chalk"
 ]

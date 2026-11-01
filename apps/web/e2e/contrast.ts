@@ -1,6 +1,7 @@
-// Contrast measured on the rendered page, not on tokens (landing tasks 5.2 and 11): text colours
-// come from computed style, backgrounds from screenshots taken with the text hidden, so the
-// glass's picture, grade and glare and the gourd's mottled skin are all in the measurement.
+// Contrast measured on the rendered page, not on tokens (landing tasks 5.2 and 11; costume task 2):
+// text colours come from computed style, backgrounds from screenshots taken with the text hidden,
+// so the cellar plate, the torch, the chalk's own shadow band and the tray's wood are all in the
+// measurement.
 import type { Locator, Page } from "@playwright/test";
 
 export type Rgb = readonly [number, number, number];
@@ -85,18 +86,17 @@ export function worstOnBackground(text: Rgb, background: readonly Rgb[]): number
 }
 
 /**
- * A carved numeral against the cut behind it: the glyph's core pixels are those where the shot
- * with the numeral differs most from the shot without it. Returns the contrast of the median core
- * pixel against the brightest 10% of the cut behind the core (a conservative read of the cut).
+ * Worst case for text of either polarity on a band: the lower of its contrast against the band's
+ * brightest and darkest pixels (dark ink on paper is worst on the paper's darkest grain).
  */
-export function carvedContrast(lit: readonly Rgb[], cut: readonly Rgb[]): number {
-  const diffs = lit.map((p, i) => Math.abs(luminance(p) - luminance(cut[i] ?? [0, 0, 0])));
-  const top = Math.max(...diffs);
-  if (top < 0.02) throw new Error("no numeral found: the two shots do not differ");
-  const core = diffs.flatMap((d, i) => (d >= top * 0.6 ? [i] : []));
-  const fg = core.map((i) => luminance(lit[i] ?? [0, 0, 0])).sort((a, b) => a - b);
-  const bg = core.map((i) => luminance(cut[i] ?? [0, 0, 0])).sort((a, b) => a - b);
-  const median = fg[Math.floor(fg.length / 2)] ?? 0;
-  const brightCut = bg[Math.min(bg.length - 1, Math.floor(bg.length * 0.9))] ?? 0;
-  return ratio(median, brightCut);
+export function worstContrast(text: Rgb, background: readonly Rgb[]): number {
+  const lums = background.map(luminance);
+  const t = luminance(text);
+  return Math.min(ratio(t, Math.max(...lums)), ratio(t, Math.min(...lums)));
+}
+
+/** The luminance below which `fraction` of `pixels` fall (0.95: the bright end, ignoring sparks). */
+export function percentileLuminance(pixels: readonly Rgb[], fraction: number): number {
+  const lums = pixels.map(luminance).sort((a, b) => a - b);
+  return lums[Math.min(lums.length - 1, Math.max(0, Math.floor(lums.length * fraction)))] ?? 0;
 }

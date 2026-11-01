@@ -1,8 +1,8 @@
-// Candle flicker (landing requirement 4.5): light on top of the photographs, never a drawn prop.
-// Every `[data-flame]` under the root (the room, which holds the spiral pumpkin; each gourd; the
-// eye) gets its own phase of the reference's three-sine flicker as `--flicker`, which the CSS
-// multiplies into what it draws (`--glow`). The CSS states (`--light`, the daemon sequence) are
-// untouched, so a light that is out stays out. Motion only: the chunk is never loaded otherwise.
+// Flame flicker (landing requirement 4.5): light on top of the photographs, never a drawn prop.
+// Every `[data-flame]` under the root (the torch, the lantern's projection, the face's spill) gets
+// its own phase of the reference's three-sine flicker as `--flicker`, which the CSS multiplies into
+// what it draws. The daemon's states are untouched, so a light that is out stays out. Motion only:
+// the chunk is never loaded otherwise.
 
 /** Pure: the reference's candle, about 0.82 on average, within [0.61, 1.03]. */
 export function flickerAt(seconds: number, phase: number): number {

@@ -11,10 +11,10 @@ interface Fs {
 const NODE_FS = ["node", "fs"].join(":");
 const fs: Fs = await import(/* @vite-ignore */ NODE_FS);
 const source = fs.readFileSync(new URL("./ChatStrip.module.css", import.meta.url), "utf8");
-/** The stylesheet without its comments (which name the reference's rules). */
+/** The stylesheet without its comments. */
 const css = source.replace(/\/\*[\s\S]*?\*\//g, "");
 
-function strip(over: Partial<ChatStripProps> = {}): string {
+function chat(over: Partial<ChatStripProps> = {}): string {
   return renderToString(<ChatStrip plane="replay" motion="reduced" {...over} />);
 }
 
@@ -24,23 +24,13 @@ function rule(selector: string): string | undefined {
   return at?.split("{")[1];
 }
 
-/** The class name CSS Modules gave `local` in the rendered html. */
-function classOf(html: string, local: string): string {
-  const name = html.match(new RegExp(`class="([^"]*_${local}_[^" ]*)`))?.[1];
-  expect(name, local).toBeDefined();
-  return name ?? "";
-}
-
 describe("ChatStrip on replay, reduced motion (the static twin)", () => {
-  it("is a named section with the board and the host's tag", () => {
-    const html = strip();
-    expect(html).toMatch(/<section[^>]*aria-label="Live chat \(simulated\)"/);
-    expect(html).toContain("LIVE CHAT");
-    expect(html).toContain(`<span>${HOST_TAG}</span>`);
+  it("is a named section of chalk lines", () => {
+    expect(chat()).toMatch(/<section[^>]*aria-label="Live chat \(simulated\)"[^>]*data-chat/);
   });
 
   it("shows the history and the first exchange, complete, with no caret and no timer state", () => {
-    const html = strip();
+    const html = chat();
     for (const line of [...HISTORY, ...SCRIPT.slice(0, 2)]) expect(html).toContain(line.text);
     expect(html).not.toContain(SCRIPT[2]?.text ?? "-");
     expect(html).not.toContain("data-typing");
@@ -49,70 +39,53 @@ describe("ChatStrip on replay, reduced motion (the static twin)", () => {
     expect(html.match(/data-chat-line="viewer"/g)).toHaveLength(3);
   });
 
-  it("writes viewer lines as name · rank then text, and host lines under the host's tag in signal ink", () => {
-    const html = strip();
-    expect(html).toMatch(/<b>moth_in_a_jar<\/b> <span class="_rank_[^"]*">· Thrall<\/span><br\/>first time here/);
-    expect(html).toMatch(new RegExp(`<p class="_line_[^"]* _host_[^"]*" data-chat-line="host"><b>${HOST_TAG}</b><br/>It does\\.`));
+  it("writes viewer lines as name · rank then text, and host lines under the host's tag in ember", () => {
+    const html = chat();
+    expect(html).toMatch(/<span class="_user_[^"]*">moth_in_a_jar · Thrall<\/span>first time here/);
+    expect(html).toMatch(new RegExp(`<p class="_line_[^"]* _host_[^"]*" data-chat-line="host"><span class="_user_[^"]*">${HOST_TAG}</span>It does[.]`));
+    expect(rule(".host") ?? "").toMatch(/color:\s*var\(--sr-ember\)/);
   });
 
-  it("puts every line inside the clipped text box, inside the paper", () => {
-    const html = strip();
-    const paper = html.indexOf("data-chat-paper");
-    const box = html.indexOf("data-chat-lines");
-    expect(paper).toBeGreaterThan(-1);
-    expect(box).toBeGreaterThan(paper);
-    expect(html.indexOf("data-chat-line=")).toBeGreaterThan(box);
-    // The paper wraps the text box directly.
-    expect(html).toMatch(/<div class="_paper_[^"]*" data-chat-paper="true"><div class="_lines_[^"]*" data-chat-lines="true"/);
+  it("writes PAUSED · NO CARRIER under the lines only while the daemon is lost", () => {
+    expect(chat()).not.toContain("NO CARRIER");
+    const paused = chat({ paused: true });
+    expect(paused).toContain("data-paused");
+    expect(paused.indexOf("PAUSED · NO CARRIER")).toBeGreaterThan(paused.indexOf("data-chat-lines"));
   });
 });
 
 describe("ChatStrip on live", () => {
-  it("plays no script: the engine's lines, or an empty paper waiting for them", () => {
-    const html = strip({ plane: "live" });
+  it("plays no script: the engine's lines, or an empty wall waiting for them", () => {
+    const html = chat({ plane: "live" });
     expect(html).toMatch(/aria-label="Live chat"/);
     expect(html).not.toContain("simulated");
     for (const line of [...HISTORY, ...SCRIPT]) expect(html).not.toContain(line.text);
     expect(html).toContain("Waiting for the first message.");
 
-    const fed = strip({ plane: "live", motion: "full", feed: [{ kind: "host", text: "The ledger is open." }] });
+    const fed = chat({ plane: "live", motion: "full", feed: [{ kind: "host", text: "The ledger is open." }] });
     expect(fed).toContain("The ledger is open.");
     expect(fed).not.toContain("data-typing");
   });
 });
 
-describe("ChatStrip styles (contrast and clip, landing task 7)", () => {
-  it("backs the text box with the opaque paper role: no opacity, mask, filter or image on the paper", () => {
-    const html = strip();
-    expect(classOf(html, "paper")).toMatch(/^_paper_/);
-    const paper = rule(".paper") ?? "";
-    expect(paper).toMatch(/background-color:\s*var\(--sr-paper\);/);
-    expect(paper).not.toMatch(/opacity|mask|filter|background-image|mix-blend/);
-    // The reference's darkening ::after gradient is not ported.
-    expect(css).not.toMatch(/\.paper::after/);
-  });
-
-  it("keeps the paper texture at 0.24 opacity or less, lighten-only, under the text box", () => {
-    const texture = rule(".paper::before") ?? "";
-    expect(texture).toContain("paper.webp");
-    // screen and lighten can never take a pixel below `paper`, so the inks keep token contrast.
-    expect(texture).toMatch(/mix-blend-mode:\s*(screen|lighten);/);
-    const opacity = Number(texture.match(/opacity:\s*([\d.]+)/)?.[1]);
-    expect(opacity).toBeGreaterThan(0);
-    expect(opacity).toBeLessThanOrEqual(0.24);
-    expect(texture).not.toMatch(/z-index/);
-    expect(rule(".lines") ?? "").toMatch(/z-index:\s*1/);
-  });
-
-  it("clips the lines to their own box with a top fade, and sets them in the paper inks at 16 px", () => {
+describe("ChatStrip styles", () => {
+  it("clips the lines to their own box with a top fade, bottom-anchored", () => {
     const box = rule(".lines") ?? "";
     expect(box).toMatch(/overflow:\s*hidden/);
     expect(box).toMatch(/justify-content:\s*flex-end/);
     expect(box).toMatch(/mask-image:\s*linear-gradient\(transparent,/);
-    expect(box).toMatch(/color:\s*var\(--sr-paper-ink\)/);
-    expect(box).toMatch(/font-size:\s*var\(--sr-size-text\)/);
-    expect(box).not.toMatch(/background/);
-    expect(rule(".host") ?? "").toMatch(/color:\s*var\(--sr-paper-ink-signal\)/);
+  });
+
+  it("sets the chalk in the hand face at 24 world px (20 on the phone) and the names at 16, never below", () => {
+    expect(rule(".line") ?? "").toMatch(/font-family:\s*var\(--sr-font-hand\)/);
+    expect(rule(".line") ?? "").toMatch(/font-size:\s*var\(--sr-slide-chalk\)/);
+    expect(rule(".user") ?? "").toMatch(/font-size:\s*var\(--sr-size-text\)/);
+    expect(css).not.toMatch(/size-text-sm/);
+  });
+
+  it("greys the chalk by colour, never by opacity, while paused", () => {
+    expect(css).not.toMatch(/opacity:\s*0?\.\d/);
+    expect(css).toMatch(/\.chat\[data-paused\] \.line,\s*\.chat\[data-paused\] \.user \{\s*color: var\(--sr-text-muted\);/);
   });
 
   it("stops the caret with reduced motion", () => {

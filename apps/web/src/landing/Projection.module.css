@@ -1,0 +1,115 @@
+/* The lantern's throw (Projection.tsx), ported from the prototype's `.proj` and `.beam`. World
+   lengths. The ghost is screened onto the wall, sepia, at well under half strength, so it stays
+   dimmer than the face in front of it; the lamp's flicker (fx/flicker.ts, `--flicker`, motion
+   only) breathes in its strength. The beam is ember light with dust drifting up through it. */
+
+.proj {
+  position: absolute;
+  inset-block-start: 1%;
+  inset-inline-start: 50%;
+  z-index: 4;
+  inline-size: 80%;
+  block-size: 82%;
+  pointer-events: none;
+  opacity: 0;
+  mix-blend-mode: screen;
+  mask-image: radial-gradient(50% 50% at 50% 50%, var(--sr-surface-0) 38%, transparent 100%);
+  transform: translateX(-50%) perspective(68.75rem) rotateX(5deg) scale(0.96);
+  transform-origin: 50% 100%;
+  transition:
+    opacity 0.45s ease-out,
+    transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.proj[data-projection] {
+  opacity: calc(0.46 * var(--flicker, 0.95));
+  transform: translateX(-50%) perspective(68.75rem) rotateX(5deg) scale(1);
+}
+
+:global([data-world="portrait"]) .proj {
+  inset-block-start: 8%;
+  inline-size: 100%;
+  block-size: 50%;
+}
+
+/* Two classes, over Still's own box. */
+.proj .still {
+  filter: sepia(0.75) saturate(0.85) brightness(0.95) contrast(1.05);
+  animation: catch 0.5s steps(1);
+}
+
+@keyframes catch {
+  0% {
+    filter: sepia(0.75) brightness(2);
+  }
+
+  30% {
+    filter: sepia(0.75) brightness(0.4);
+  }
+
+  60% {
+    filter: sepia(0.75) brightness(1.4);
+  }
+}
+
+.beam {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  opacity: 0;
+  mix-blend-mode: screen;
+  background-image:
+    linear-gradient(
+      to top,
+      color-mix(in srgb, var(--sr-ember) 26%, transparent),
+      color-mix(in srgb, var(--sr-ember) 7%, transparent) 70%,
+      color-mix(in srgb, var(--sr-ember) 2%, transparent)
+    ),
+    radial-gradient(0.09rem 0.09rem at 20% 30%, color-mix(in srgb, var(--sr-text-strong) 70%, transparent), transparent),
+    radial-gradient(0.075rem 0.075rem at 60% 50%, color-mix(in srgb, var(--sr-text-strong) 60%, transparent), transparent),
+    radial-gradient(0.0625rem 0.0625rem at 40% 70%, color-mix(in srgb, var(--sr-text-strong) 60%, transparent), transparent);
+  background-size:
+    100% 100%,
+    8.75rem 10rem,
+    11.875rem 10.625rem,
+    7.5rem 8.125rem;
+  transition: opacity 0.35s;
+  animation: dust 14s linear infinite;
+}
+
+.beam[data-beam] {
+  opacity: 1;
+}
+
+@keyframes dust {
+  to {
+    background-position:
+      0 0,
+      2.5rem -10rem,
+      -3.75rem -10.625rem,
+      1.875rem -8.125rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .proj,
+  .beam {
+    transition: none;
+  }
+
+  .proj .still,
+  .beam {
+    animation: none;
+  }
+}
+
+:global([data-motion="reduced"]) .proj,
+:global([data-motion="reduced"]) .beam {
+  transition: none;
+}
+
+:global([data-motion="reduced"]) .proj .still,
+:global([data-motion="reduced"]) .beam {
+  animation: none;
+}

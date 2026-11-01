@@ -1,29 +1,35 @@
-// Composition root of the landing (spec landing, design.md "Files"). The world holds the cellar
-// and its light, the eye and the spiral pumpkin, the gourd row and its legend, and the status bar
-// over them: on the set the status bar is the header (the shell renders none on /). The set stands
-// in the middle of the room with Malakor live on its glass (or the user's own character once it
-// is on air). The chat strip hangs on the right (portrait: last).
-// The daemon's state (daemon.ts) comes from health, or from the replay sample (key D, owned by
-// the shell); every lit thing reads it. With motion, the effects chunk (fx/) adds the flicker
-// and the dust, and the set warms up in a short intro that any key or click skips.
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
-import { PAGES, type PageDef } from "../app/pages";
+// Composition root of the landing, "The Lantern Slides" (costume task 2; prototype
+// assets/_incoming/costume/r2/landing-c.html). A torch-lit cellar (Cellar) in one scaled world
+// (World): Malakor projected out of the dark as the live rig (Apparition), his gaze on the visitor's
+// torch; the ON AIR lightbox hanging from the beam (Lightbox); the pitch chalked on the left wall
+// (Pitch) and the chat on the right (ChatStrip); at his feet the tray of magic-lantern slides that
+// is the channel menu (SlideTray), whose pulled slide the lantern throws on the wall behind him
+// (Projection); the status bar over all of it (on the set it is the header; the shell renders none).
+// The daemon's state (daemon.ts) comes from health, or from the replay sample (key D, owned by the
+// shell); every lit thing reads it. The torch follows the pointer and keyboard focus through CSS
+// variables and refs, never a React render per move. With motion the effects chunk (fx/) adds the
+// flicker, and the cellar opens in a short intro that any key or click skips.
+import type { LookAtPoint } from "@sr/avatar";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FocusEvent, type ReactNode, type RefObject } from "react";
+import type { PageDef } from "../app/pages";
 import { useHealth, type Plane } from "../app/plane";
 import { usePreferences, type Motion } from "../app/theme";
+import { Apparition } from "./Apparition";
+import type { OnAirCharacter } from "./cast";
+import { Cellar, Flame } from "./Cellar";
 import { ChatStrip } from "./ChatStrip";
 import { createDaemon, isLost, type DaemonDriver, type DaemonState } from "./daemon";
-import { Eye } from "./Eye";
-import type { OnAirCharacter } from "./Glass";
-import { Gourds, LIGHTS } from "./Gourds";
 import styles from "./LandingPage.module.css";
-import { Room } from "./Room";
-import { TvSet } from "./Set";
-import { Spiral, SpiralThrow } from "./Spiral";
-import { daemonOf, StatusBar } from "./StatusBar";
+import { Lightbox } from "./Lightbox";
+import { Pitch } from "./Pitch";
+import { Projection } from "./Projection";
+import { SlideTray } from "./SlideTray";
+import { LIGHTS } from "./slides";
+import { daemonOf, StatusBar, useBroadcastClock } from "./StatusBar";
+import { gazeAt, SLIDE_REACH, slideLight, TORCH_REST } from "./torch";
 import { World } from "./World";
 
-const ON_AIR = PAGES.find((p) => p.id === "landing");
-const CHANNEL = { number: ON_AIR?.channel ?? 2, title: ON_AIR?.title ?? "On air" };
+const CURRENT = "landing" as const;
 
 /** The intro hands over control by then at the latest (requirement 9.3: within 4 s). */
 export const INTRO_MS = 3500;
@@ -37,7 +43,7 @@ export function resetIntro(): void {
 }
 
 /**
- * True while the set warms up (motion only). Any key or pointer press ends it at once, without
+ * True while the cellar opens (motion only). Any key or pointer press ends it at once, without
  * consuming the press, so a channel key still tunes. It never moves focus, scroll or route.
  */
 export function useIntro(motion: Motion): boolean {
@@ -77,31 +83,103 @@ function useDaemon(lost: boolean, motion: Motion): DaemonState {
   return state;
 }
 
-/** Flicker and dust from the lazy fx chunk, with motion only. */
-function useEffects(
-  motion: Motion,
-  root: RefObject<HTMLElement | null>,
-  dust: RefObject<HTMLCanvasElement | null>,
-  daemon: DaemonState,
-): void {
-  const picture = useRef(true);
-  useEffect(() => {
-    picture.current = !isLost(daemon);
-  }, [daemon]);
+/** The flame's flicker from the lazy fx chunk, with motion only. */
+function useFlicker(motion: Motion, root: RefObject<HTMLElement | null>): void {
   useEffect(() => {
     if (motion !== "full") return;
-    const stops: (() => void)[] = [];
+    let stop: (() => void) | undefined;
     let cancelled = false;
     void import("./fx").then((fx) => {
-      if (cancelled) return;
-      if (root.current) stops.push(fx.startFlicker(root.current));
-      if (dust.current) stops.push(fx.startDust({ canvas: dust.current, active: () => picture.current }));
+      if (!cancelled && root.current) stop = fx.startFlicker(root.current);
     });
     return () => {
       cancelled = true;
-      for (const stop of stops) stop();
+      stop?.();
     };
-  }, [motion, root, dust]);
+  }, [motion, root]);
+}
+
+/** True when `el` shows keyboard focus (a click's focus leaves the torch with the pointer). */
+function focusVisible(el: HTMLElement): boolean {
+  try {
+    return el.matches(":focus-visible");
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * The torch: aims the light at a client point. Writes `--mx` / `--my` (percent of the world) on
+ * the root, `--lit` on every slide (torch.ts slideLight) and the face's look-at point (torch.ts
+ * gazeAt) into `lookAt`. Follows the pointer (one aim per frame at most) and keyboard focus, and
+ * rests low in the middle of the room until the visitor moves it.
+ */
+function useTorch(root: RefObject<HTMLElement | null>, lookAt: { current: LookAtPoint | null }) {
+  const aim = useCallback(
+    (clientX?: number, clientY?: number) => {
+      const el = root.current;
+      const world = el?.querySelector<HTMLElement>("[data-world-box]");
+      if (!el || !world) return;
+      const box = world.getBoundingClientRect();
+      if (box.width <= 0 || box.height <= 0) return;
+      const x = clientX ?? box.left + box.width * TORCH_REST.x;
+      const y = clientY ?? box.top + box.height * TORCH_REST.y;
+      el.style.setProperty("--mx", `${(((x - box.left) / box.width) * 100).toFixed(2)}%`);
+      el.style.setProperty("--my", `${(((y - box.top) / box.height) * 100).toFixed(2)}%`);
+      // World px to client px.
+      const scale = world.offsetWidth > 0 ? box.width / world.offsetWidth : 1;
+      const face = el.querySelector("[data-apparition]")?.getBoundingClientRect();
+      if (face) {
+        lookAt.current = gazeAt(
+          { x, y },
+          { x: face.left + face.width / 2, y: face.top + face.height * 0.34, reachX: box.width * 0.45, reachY: box.height * 0.45 },
+        );
+      }
+      for (const slide of el.querySelectorAll<HTMLElement>("[data-slide]")) {
+        const glass = slide.firstElementChild?.getBoundingClientRect();
+        if (!glass) continue;
+        const d = Math.hypot(glass.left + glass.width / 2 - x, glass.top + glass.height / 2 - y) / scale;
+        slide.style.setProperty("--lit", slideLight(d, SLIDE_REACH).toFixed(2));
+      }
+    },
+    [root, lookAt],
+  );
+
+  useEffect(() => {
+    let frame = 0;
+    let px = 0;
+    let py = 0;
+    const move = (event: PointerEvent) => {
+      px = event.clientX;
+      py = event.clientY;
+      if (frame === 0) {
+        frame = requestAnimationFrame(() => {
+          frame = 0;
+          aim(px, py);
+        });
+      }
+    };
+    const rest = () => aim();
+    rest();
+    window.addEventListener("pointermove", move);
+    window.addEventListener("resize", rest);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("resize", rest);
+    };
+  }, [aim]);
+
+  /** Keyboard focus carries the torch to the focused control. */
+  return useCallback(
+    (event: FocusEvent<HTMLElement>) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement) || !focusVisible(target)) return;
+      const r = (target.firstElementChild ?? target).getBoundingClientRect();
+      aim(r.left + r.width / 2, r.top + r.height / 2);
+    },
+    [aim],
+  );
 }
 
 export interface LandingPageProps {
@@ -114,7 +192,7 @@ export interface LandingPageProps {
   /** The replay sample (key D): play the daemon-lost state. The shell passes it on replay only. */
   daemonSample?: boolean;
   /**
-   * The user's own character once they have put it on air (requirement 3.5): the set shows it
+   * The user's own character once they have put it on air (requirement 3.5): it is projected
    * instead of Malakor. The on-air flow (spec voice-and-air) supplies it; absent until then.
    */
   onAir?: OnAirCharacter;
@@ -124,11 +202,14 @@ export function LandingPage({ plane = "replay", badge, controls, daemonSample = 
   const { motion } = usePreferences();
   const lost = daemonOf(useHealth()) === "lost" || (plane === "replay" && daemonSample);
   const daemon = useDaemon(lost, motion);
+  const down = isLost(daemon);
+  const clock = useBroadcastClock(down ? "lost" : "online");
   const intro = useIntro(motion);
-  const [hover, setHover] = useState<PageDef | undefined>(undefined);
+  const [pulled, setPulled] = useState<PageDef | undefined>(undefined);
   const root = useRef<HTMLElement>(null);
-  const dust = useRef<HTMLCanvasElement>(null);
-  useEffects(motion, root, dust, daemon);
+  const lookAt = useRef<LookAtPoint | null>(null);
+  useFlicker(motion, root);
+  const onFocus = useTorch(root, lookAt);
   return (
     <section
       ref={root}
@@ -137,35 +218,31 @@ export function LandingPage({ plane = "replay", badge, controls, daemonSample = 
       data-intro={intro || undefined}
       aria-label="On air"
       className={styles.landing}
+      onFocus={onFocus}
     >
       <World className={styles.stage}>
-        <Room daemon={daemon} motion={motion} lights={LIGHTS}>
-          <SpiralThrow />
-          {/* The set stands in front of the thrown light and behind the eye. The hovered channel is
-              written on its glass while it has a picture; once the daemon is lost it folds to
-              NO CARRIER. */}
-          <TvSet
-            daemon={daemon}
-            plane={plane}
-            motion={motion}
-            channel={CHANNEL.number}
-            {...(hover === undefined ? {} : { hover })}
-            {...(onAir === undefined ? {} : { character: onAir })}
-          />
-          <Eye daemon={daemon} motion={motion} lights={LIGHTS} />
-          <Spiral />
-          {motion === "full" && <canvas ref={dust} className={styles.dust} data-fx="dust" aria-hidden="true" />}
-        </Room>
-        {intro && <div className={styles.shade} data-intro-shade aria-hidden="true" />}
-        <Gourds current={ON_AIR?.id} plane={plane} daemon={daemon} motion={motion} onHover={setHover} />
-        <ChatStrip plane={plane} motion={motion} paused={isLost(daemon)} />
-        <StatusBar
+        <Cellar daemon={daemon} motion={motion} />
+        <Projection pulled={pulled} current={CURRENT} lit={!down} />
+        <Apparition
+          daemon={daemon}
           plane={plane}
-          daemon={isLost(daemon) ? "lost" : "online"}
-          channel={CHANNEL}
-          badge={badge}
-          controls={controls}
+          motion={motion}
+          dead={clock.dead}
+          lookAt={lookAt}
+          {...(onAir === undefined ? {} : { character: onAir })}
         />
+        <Pitch />
+        <ChatStrip plane={plane} motion={motion} paused={down} />
+        <div className={styles.floor} aria-hidden="true" />
+        <SlideTray current={CURRENT} plane={plane} daemon={daemon} motion={motion} pulled={pulled} onPull={setPulled} />
+        <StatusBar plane={plane} daemon={down ? "lost" : "online"} clock={clock} badge={badge} controls={controls} />
+        <Lightbox daemon={daemon} />
+        {motion === "full" && <Flame />}
+        {intro && (
+          <div className={styles.door} data-intro-shade aria-hidden="true">
+            <p>You opened the cellar.</p>
+          </div>
+        )}
       </World>
     </section>
   );

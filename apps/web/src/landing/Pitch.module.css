@@ -1,0 +1,122 @@
+/* The pitch on the left wall (Pitch.tsx), ported from the prototype's `.pitch`. World lengths.
+   The overline is signal-ok (the tube's teal), the title old-face text-strong with its last word
+   in ember, the lede text; the button is a lit ember plate with paper-ink letters. Shadows that
+   lift chalk off the wall are drop-shadow filters (text-shadow takes tokens only). */
+
+.pitch {
+  position: absolute;
+  inset-block-start: 15%;
+  inset-inline-start: 3.4%;
+  z-index: 8;
+  inline-size: 25%;
+}
+
+.over {
+  margin: 0 0 var(--sr-space-3);
+  color: var(--sr-signal-ok);
+  font-family: var(--sr-font-display);
+  font-size: var(--sr-size-text);
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.title {
+  margin: 0 0 var(--sr-space-4);
+  color: var(--sr-text-strong);
+  font-family: var(--sr-font-old);
+  font-size: var(--sr-slide-title);
+  font-weight: 400;
+  line-height: 1.04;
+  filter: drop-shadow(0 0.125rem 1rem var(--sr-surface-0));
+}
+
+.title i {
+  color: var(--sr-ember);
+}
+
+.lede {
+  margin: 0 0 var(--sr-space-5);
+  color: var(--sr-text);
+  font-size: var(--sr-size-text);
+  line-height: 1.55;
+  filter: drop-shadow(0 0.0625rem 0.5rem var(--sr-surface-0));
+}
+
+.go {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sr-space-3);
+  padding: var(--sr-space-3) var(--sr-space-4);
+  border-radius: var(--sr-radius-1);
+  background-image: linear-gradient(var(--sr-ember), color-mix(in srgb, var(--sr-ember) 78%, var(--sr-signal-onair)));
+  color: var(--sr-paper-ink);
+  font-family: var(--sr-font-display);
+  font-size: var(--sr-size-text-lg);
+  font-weight: 700;
+  text-decoration: none;
+  filter: drop-shadow(0 0.5rem 1.4rem color-mix(in srgb, var(--sr-ember) 35%, transparent));
+}
+
+/* Two classes and an element, over the shell's `.shell a` and `.shell kbd`. */
+.pitch .go {
+  color: var(--sr-paper-ink);
+}
+
+.pitch .go kbd {
+  padding: 0 var(--sr-space-1);
+  border: thin solid color-mix(in srgb, var(--sr-paper-ink) 40%, transparent);
+  border-radius: var(--sr-radius-1);
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--sr-text-strong) 25%, transparent),
+    color-mix(in srgb, var(--sr-text-strong) 25%, transparent)
+  );
+  color: var(--sr-paper-ink);
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text-sm);
+  font-weight: 600;
+}
+
+.pitch .go:focus-visible {
+  outline: medium solid var(--sr-accent);
+  outline-offset: var(--sr-space-1);
+}
+
+/* ---------- portrait: under the face, full width ---------- */
+
+:global([data-world="portrait"]) .pitch {
+  inset-block-start: 46.5%;
+  inset-inline: 0;
+  inline-size: auto;
+  padding: var(--sr-space-4) var(--sr-space-4) 0;
+  /* The face's robe fades out behind the pitch; a band of dark keeps the chalk on the wall. */
+  background-image: linear-gradient(
+    transparent,
+    color-mix(in srgb, var(--sr-surface-0) 82%, transparent) var(--sr-space-4),
+    color-mix(in srgb, var(--sr-surface-0) 82%, transparent)
+  );
+}
+
+:global([data-world="portrait"]) .over {
+  margin-block-end: var(--sr-space-2);
+  letter-spacing: 0.12em;
+}
+
+:global([data-world="portrait"]) .title {
+  margin-block-end: var(--sr-space-2);
+  font-size: var(--sr-size-display);
+}
+
+:global([data-world="portrait"]) .lede {
+  margin-block-end: var(--sr-space-3);
+  line-height: 1.45;
+}
+
+:global([data-world="portrait"]) .go {
+  padding: var(--sr-space-2) var(--sr-space-3);
+}
+
+/* Key hints are dropped on the phone. */
+:global([data-world="portrait"]) .go kbd {
+  display: none;
+}

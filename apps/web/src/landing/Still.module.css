@@ -1,0 +1,89 @@
+/* The stills (Still.tsx). The drawn ones carry role colours: the ground is surface-0, the bulb's
+   glass and the eye's lines are paper, the filament and its halo ember, the wax seal signal-onair. */
+
+.still {
+  position: absolute;
+  inset: 0;
+  display: block;
+  overflow: hidden;
+}
+
+.photo,
+.art {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+
+.ground {
+  fill: var(--sr-surface-1);
+}
+
+.halo {
+  fill: var(--sr-ember);
+  opacity: 0.3;
+  filter: blur(0.4rem);
+}
+
+.glass,
+.socket,
+.lid,
+.stitch,
+.filament {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.glass {
+  stroke: var(--sr-paper);
+  stroke-width: 1.6;
+}
+
+.filament {
+  stroke: var(--sr-ember);
+  stroke-width: 2.2;
+}
+
+.cap {
+  fill: var(--sr-paper);
+  opacity: 0.55;
+}
+
+.cap2 {
+  fill: var(--sr-paper);
+  opacity: 0.4;
+}
+
+.cap3 {
+  fill: var(--sr-paper);
+  opacity: 0.25;
+}
+
+.socket {
+  stroke: var(--sr-paper);
+  opacity: 0.55;
+  stroke-width: 1.4;
+}
+
+.lid {
+  stroke: var(--sr-paper);
+  stroke-width: 2;
+}
+
+.stitch {
+  stroke: var(--sr-paper);
+  stroke-width: 1.6;
+}
+
+.seal {
+  fill: var(--sr-signal-onair);
+}
+
+.sealRim {
+  fill: none;
+  stroke: var(--sr-surface-0);
+  opacity: 0.45;
+  stroke-width: 1.4;
+}
