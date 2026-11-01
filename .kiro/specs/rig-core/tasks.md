@@ -4,15 +4,16 @@
   - Write `packages/rig/src/types.ts` and `result.ts` exactly per design.md "Data model"; write `docs/rig-format.md` describing the same fields in prose and a JSON example.
   - _Requirements: 1.1, 1.3_
 
-- [ ] 2. Serialize and validate
-  - [ ] 2.1 Write fast-check arbitraries for valid `Rig` values (`src/__tests__/arb.ts`).
-  - [ ] 2.2 `serialize.ts` (drop undefined, stable key order) with a test that no `null` ever appears.
-  - [ ] 2.3 `validate.ts` with codes `bbox_out_of_bounds`, `duplicate_name`, `duplicate_z`, `bad_follow`, `bad_color`, `bad_shape` (defined in requirement 2.7); round-trip property; one fault-seeding property per code.
-  - [ ] 2.4 `packages/rig/src/index.ts` re-exports `types`, `result`, `serialize` and `validate` (the public surface of `@sr/rig`), replacing the stub export.
+- [x] 2. Serialize and validate
+  - [x] 2.1 Write fast-check arbitraries for valid `Rig` values (`src/__tests__/arb.ts`).
+  - [x] 2.2 `serialize.ts` (drop undefined, stable key order) with a test that no `null` ever appears.
+  - [x] 2.3 `validate.ts` with codes `bbox_out_of_bounds`, `duplicate_name`, `duplicate_z`, `bad_follow`, `bad_color`, `bad_shape` (defined in requirement 2.7); round-trip property; one fault-seeding property per code.
+  - [x] 2.4 `packages/rig/src/index.ts` re-exports `types`, `result`, `serialize` and `validate` (the public surface of `@sr/rig`), replacing the stub export.
   - _Requirements: 1.2, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8_
 
 - [ ] 3. Legacy import and Malakor golden
   - [ ] 3.1 Copy Malakor's rig into `assets/characters/malakor/rig/` from `assets/_incoming/malakor-rig/` (the orchestrator stages it there; record provenance in `docs/provenance.md`).
+  - [ ] 3.0 Hardening from the task 2 review (in `validate.ts`, with a fault property each): `parseRigJson(text: string): Result<Rig, RigError[]>`, the only `JSON.parse` of rig text, reporting malformed JSON as `bad_shape` at path `$`; `bad_shape` when `width`/`height` are not positive integers; `bad_shape` when a layer `file` is not a relative POSIX path inside the rig folder (no leading `/`, no `..` segment, no `:` scheme, no backslash); `bbox_out_of_bounds` uses a 1e-6 tolerance on the right and bottom edges.
   - [ ] 3.2 `legacy.ts` per the mapping table; warnings for unknown kinds.
   - [ ] 3.3 Golden test: imports with 0 errors, 18 layers, palette from `m8.spec.json`.
   - _Requirements: 3.1, 3.2, 3.3_
