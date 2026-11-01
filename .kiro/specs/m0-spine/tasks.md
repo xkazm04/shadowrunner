@@ -29,7 +29,7 @@
   - `api/_lib/plane.ts`, `api/health.ts` returning `{ plane, engine, version }`; client `plane.ts` with `?plane=` override and `usePlane()`; the "RECORDED" badge in the shell; unit tests for both sides without network.
   - _Requirements: 4.1, 4.2, 4.3, 4.4_
 
-- [ ] 6. Deploy and quickstart
+- [x] 6. Deploy and quickstart
   - `vercel.json` (static build of apps/web, Node functions for api/), `.env.example` (SR_PLANE, SR_DAILY_USD_CAP, GEMINI_API_KEY, ANTHROPIC_API_KEY, model ids - comments, no values), README quickstart (3 commands). Verify `pnpm build` produces `apps/web/dist`.
   - _Requirements: 5.1, 5.2, 5.3_
 

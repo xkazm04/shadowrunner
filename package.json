@@ -10,6 +10,7 @@
   "scripts": {
     "dev": "pnpm --filter @sr/theme build && pnpm --filter @sr/web dev",
     "build": "pnpm --filter @sr/theme build && pnpm --filter @sr/web build",
+    "vercel-build": "pnpm build && node scripts/vercel-output.mjs",
     "typecheck": "tsc -b",
     "lint": "eslint . && stylelint \"{apps,packages}/**/*.module.css\" --allow-empty-input && node scripts/line-cap.mjs",
     "test": "vitest run",

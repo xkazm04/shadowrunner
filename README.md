@@ -12,7 +12,26 @@ when the engine dies, the cellar bulb goes out.
 > Status: under construction (M0). Demo URL: _pending_ · Video: _pending_
 
 ## Quickstart
-_(arrives with spec `m0-spine` task 6)_
+Needs Node 22.12 or later. From a fresh clone:
+
+```sh
+npm install --global pnpm@11.3.0
+pnpm install
+pnpm dev
+```
+
+Open http://localhost:5173. No keys are needed: the app runs on the replay plane, plays recorded
+answers, and shows the RECORDED badge. `pnpm dev` serves only the web app, so the client's `/api/health`
+check gets no health answer and it stays on replay.
+
+The gates every change must pass: `pnpm typecheck && pnpm lint && pnpm test`.
+
+## Deploy
+`vercel.json` hands the build to the root `vercel-build` script: `pnpm build` writes the static
+app to `apps/web/dist`, then `scripts/vercel-output.mjs` bundles each `api/*.ts` function with its
+`@sr/*` imports into one file and writes the Vercel Build Output (`.vercel/output`). A deploy with
+no variables set runs on replay. To go live, set the server variables listed in
+[`.env.example`](.env.example) in the Vercel project, with `SR_PLANE=live`.
 
 ## How it is built
 Shadowrunner is built **spec-first with Kiro**. Everything Kiro reads lives in [`.kiro/`](.kiro):
