@@ -28,7 +28,7 @@
   - [x] 5.3 Failure states per code (quota → gallery, refused_likeness, refused_content, upstream retry, bad_input field focus), input kept for retry; reveal moment with reduced-motion twin; store result in the library.
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6_
 
-- [ ] 6. Replay gallery
+- [x] 6. Replay gallery
   - `Gallery.tsx` listing `assets/replay/characters/*/rig.json` (all `fictional: true`, `source: "replay"`), adopt-into-library, reachable from quota state and empty library.
   - _Requirements: 4.1, 4.2, 4.3_
 

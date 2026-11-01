@@ -10,6 +10,8 @@ import { ForgePanel, type ForgeDraft } from "./forge/ForgePanel";
 import { ForgeProgress } from "./forge/ForgeProgress";
 import { recordOf } from "./forge/keep";
 import { useForgeJob } from "./forge/useForgeJob";
+import { Gallery } from "./gallery/Gallery";
+import type { GalleryEntry } from "./gallery/entries";
 import { useLibrary } from "./library/useLibrary";
 import { Workbench, type Tab } from "./Workbench";
 import styles from "./CreatorPage.module.css";
@@ -39,7 +41,7 @@ export function CreatorPage() {
   const [tab, setTab] = useState<Tab>("looks");
   const [revealed, setRevealed] = useState<{ id: string; name: string; jobId: string } | undefined>(undefined);
   const [keepError, setKeepError] = useState<string | undefined>(undefined);
-  const [, setGalleryOpen] = useState(false);
+  const [galleryOpen, setGalleryOpen] = useState(false);
 
   // A finished forge goes into the library once, then onto the stage with the reveal.
   const kept = useRef<string | undefined>(undefined);
@@ -80,11 +82,23 @@ export function CreatorPage() {
       </div>
     );
 
+  const inLibrary = new Set(library.entries.flatMap((e) => (e.kind === "ok" ? [e.record.id] : [])));
+  const adopt = async (entry: GalleryEntry): Promise<void> => {
+    await add(await entry.load());
+    setGalleryOpen(false);
+  };
+  const gallery = <Gallery inLibrary={inLibrary} onAdopt={adopt} onClose={() => setGalleryOpen(false)} />;
+  const onTab = (next: Tab): void => {
+    setGalleryOpen(false);
+    setTab(next);
+  };
+
   const active = library.active;
   if (active === undefined) {
     return (
       <div className={styles.creator} data-page="creator">
         <p className={styles.state}>{library.status === "loading" ? "Opening the library…" : "No character to show."}</p>
+        {library.status !== "loading" && <div className={styles.sheet}>{gallery}</div>}
       </div>
     );
   }
@@ -95,8 +109,9 @@ export function CreatorPage() {
       record={active}
       library={library}
       tab={tab}
-      onTab={setTab}
+      onTab={onTab}
       forge={forge}
+      {...(galleryOpen ? { sheet: gallery } : {})}
       {...(stageOverlay === undefined ? {} : { stageOverlay })}
       {...(reveal === undefined ? {} : { revealKey: reveal.jobId })}
       {...(isRecorded(active.rig) ? { badge: <span className={styles.recorded}>RECORDED</span> } : {})}

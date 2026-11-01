@@ -33,6 +33,8 @@ export interface WorkbenchProps {
   onTab: (tab: Tab) => void;
   /** The FORGE NEW sheet. */
   forge?: ReactNode;
+  /** Shown in the sheet instead of the open tab (the replay gallery). */
+  sheet?: ReactNode;
   /** Over the stage (forge progress); the face stays underneath. */
   stageOverlay?: ReactNode;
   /** Label on the stage (RECORDED). */
@@ -83,7 +85,7 @@ function TabList({ tab, onTab }: { tab: Tab; onTab: (tab: Tab) => void }) {
   );
 }
 
-export function Workbench({ record, library, tab, onTab, forge, stageOverlay, badge, revealKey, below }: WorkbenchProps) {
+export function Workbench({ record, library, tab, onTab, forge, sheet, stageOverlay, badge, revealKey, below }: WorkbenchProps) {
   const [look, dispatch] = useReducer(lookReducer, record.look);
   const [gesture, fireGesture] = useGesturePulse();
   const [lastGesture, setLastGesture] = useState<string | undefined>(undefined);
@@ -160,8 +162,9 @@ export function Workbench({ record, library, tab, onTab, forge, stageOverlay, ba
         <div className={styles.panel}>
           <TabList tab={tab} onTab={onTab} />
           <div className={styles.sheet} role="tabpanel" id="creator-sheet" aria-labelledby={`tab-${tab}`} tabIndex={0}>
-            {tab === "looks" && <LooksPane rig={record.rig} look={look} dispatch={dispatch} />}
-            {tab === "face" && (
+            {sheet}
+            {sheet === undefined && tab === "looks" && <LooksPane rig={record.rig} look={look} dispatch={dispatch} />}
+            {sheet === undefined && tab === "face" && (
               <FacePane
                 look={look}
                 onEmotion={onEmotion}
@@ -171,8 +174,8 @@ export function Workbench({ record, library, tab, onTab, forge, stageOverlay, ba
                 speakNote="A recorded line from the replay show, in the Clerk voice."
               />
             )}
-            {tab === "voice" && <VoicePane voice={record.voice} onVoice={onVoice} onSpeak={speaker.toggle} speaking={speaker.line !== undefined} />}
-            {tab === "forge" && forge}
+            {sheet === undefined && tab === "voice" && <VoicePane voice={record.voice} onVoice={onVoice} onSpeak={speaker.toggle} speaking={speaker.line !== undefined} />}
+            {sheet === undefined && tab === "forge" && forge}
           </div>
         </div>
         {below}
