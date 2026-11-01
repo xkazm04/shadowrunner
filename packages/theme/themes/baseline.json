@@ -42,5 +42,7 @@
   "size-text": "type.md",
   "size-text-lg": "type.lg",
   "size-display": "type.xl",
-  "size-headline": "type.xxl"
+  "size-headline": "type.xxl",
+  "catacomb-tunnel": "mist.300",
+  "catacomb-flame": "mist.50"
 }

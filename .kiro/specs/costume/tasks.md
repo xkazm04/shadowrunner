@@ -31,7 +31,7 @@
   - [ ] 5.2 CH 9 per `r1/sealed-c.html`.
   - _Requirements: 6.1-6.3, 7.1, 7.2_
 
-- [ ] 6. The stage: candles of the catacomb (air lane)
+- [x] 6. The stage: candles of the catacomb (air lane)
   - _Requirements: 8.1-8.4_
 
 - [ ] 7. Integration

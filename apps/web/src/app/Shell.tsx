@@ -4,6 +4,7 @@
 // page the sealed door; a page whose spec has not landed yet is a placeholder in the same frame.
 // The frame's bar carries the channel strip (costume 1.3); Forge new (/creator/new) is framed too.
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { ChannelStrip } from "./ChannelStrip";
 import { buildKeymap, GLOBAL_BINDINGS, stepChannel, useHotkeys, type KeyAction } from "./keys";
 import { ChannelFrame } from "../channels/ChannelFrame";
 import { Daemon } from "../channels/Daemon";
@@ -231,11 +232,15 @@ export function ShellView({
         {page === undefined ? (
           <NoSignal path={path} />
         ) : onStage ? (
-          // COSTUME HOOK (air lane, costume task 6): the stage carries the strip as
-          // <ChannelStrip variant="stage" current={page.id} daemonLost={lost} open={…} /> (./ChannelStrip),
-          // hidden for capture; hand it to AirPage here (e.g. a `strip` prop) and bind C / Esc to `open`.
+          // COSTUME HOOK (air lane, costume task 6): the stage carries the channel strip, hidden for
+          // capture; AirPage holds it open on C and closes it on Esc before Esc leaves the page.
           <Suspense fallback={<section data-page="air" aria-label={page.title}>{badge}</section>}>
-            <AirPage plane={plane} badge={badge} controls={toggle} />
+            <AirPage
+              plane={plane}
+              badge={badge}
+              controls={toggle}
+              strip={(open) => <ChannelStrip variant="stage" current={page.id} daemonLost={lost} open={open} />}
+            />
           </Suspense>
         ) : onSet ? (
           <LandingPage plane={plane} badge={badge} controls={toggle} daemonSample={sample} />
