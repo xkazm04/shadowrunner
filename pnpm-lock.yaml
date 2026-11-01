@@ -93,7 +93,11 @@ importers:
 
   packages/avatar: {}
 
-  packages/engine: {}
+  packages/engine:
+    dependencies:
+      '@sr/rig':
+        specifier: workspace:*
+        version: link:../rig
 
   packages/forge:
     dependencies:

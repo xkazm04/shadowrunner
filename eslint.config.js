@@ -25,14 +25,15 @@ const PACKAGES = ["rig", "avatar", "forge", "engine", "theme"];
 
 /**
  * structure.md layering: apps/web -> packages/*; api/ -> packages/*; packages/rig -> nothing;
- * packages/avatar -> rig; packages/forge -> rig; no package imports apps/ (or api/).
- * Anything not listed is disallowed, so engine and theme may import no other member.
+ * packages/avatar -> rig; packages/forge -> rig; packages/engine -> rig; no package imports apps/
+ * (or api/). Anything not listed is disallowed, so theme may import no other member.
  */
 const LAYERING = [
   { from: "web", to: PACKAGES },
   { from: "api", to: PACKAGES },
   { from: "avatar", to: ["rig"] },
   { from: "forge", to: ["rig"] },
+  { from: "engine", to: ["rig"] },
 ];
 
 const NO_UNKNOWN_AS = {

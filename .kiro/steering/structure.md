@@ -21,7 +21,8 @@ var/                 all runtime output (git-ignored)
 ```
 
 - Layering: `apps/web` -> `packages/*`; `api/` -> `packages/*`; `packages/rig` depends on
-  nothing; `packages/avatar` -> `rig`; `packages/forge` -> `rig`. No package imports `apps/`.
+  nothing; `packages/avatar` -> `rig`; `packages/forge` -> `rig`; `packages/engine` -> `rig` (types: `Emotion`,
+  `Gesture`; director decision 2026-11-01). No package imports `apps/`.
 - One owner per noun: the Rig type lives only in `packages/rig`.
 - Stay inside the file scope of the task you were given. If a task needs a file outside it,
   stop and say so.
