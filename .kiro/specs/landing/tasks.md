@@ -10,10 +10,10 @@
   - Round 4 brief (verbatim): "1. Menu bottom bar 2. column with title/description/on air sign - I would delete whole column and move stats into top header row. Then we can have more space to redesign other idea 3. TV screen does not fit angle of generated image very well"
   - _Requirements: 1.1, 1.2_
 
-- [ ] 1. Tokens, fonts and plates
-  - [ ] 1.1 Add the new roles (design.md "Tokens") to `roles.json`, `halloween.json` (values from the reference) and `baseline.json`; theme and contrast tests stay green. Add contrast pairs for the new roles: `paper-ink` and `paper-ink-signal` on `paper` at 4.5:1 (16 px chat text, not the 3:1 large-label rule that `signal-*` uses), and `phosphor` text on the glass at 4.5:1.
-  - [ ] 1.2 Self-host Barlow Semi Condensed, Inter and Courier Prime through `@fontsource`, and bind them to `font-display`, `font-body` and `font-type`.
-  - [ ] 1.3 Convert the stills used (`cellar-wide`, `crt-frontal`, `root-pile`, `root-eye`, `paper`) to WebP under `assets/plates/`, each at most 300 KB at 1920 wide. Provenance is already in `docs/provenance.md`.
+- [x] 1. Tokens, fonts and plates
+  - [x] 1.1 Add the new roles (design.md "Tokens") to `roles.json`, `halloween.json` (values from the reference) and `baseline.json`; theme and contrast tests stay green. Add contrast pairs for the new roles: `paper-ink` and `paper-ink-signal` on `paper` at 4.5:1 (16 px chat text, not the 3:1 large-label rule that `signal-*` uses), and `phosphor` text on the glass at 4.5:1.
+  - [x] 1.2 Self-host Barlow Semi Condensed, Inter and Courier Prime through `@fontsource`, and bind them to `font-display`, `font-body` and `font-type`.
+  - [x] 1.3 Convert the stills used (`cellar-wide`, `crt-frontal`, `root-pile`, `root-eye`, `paper`) to WebP under `assets/plates/`, each at most 300 KB at 1920 wide. Provenance is already in `docs/provenance.md`.
   - _Requirements: 4.1, 9.5, 9.6_
 
 - [ ] 2. Manifest channels and keymap (amends m0-spine)
@@ -30,7 +30,7 @@
 
 - [ ] 5. The set and the glass
   - [ ] 5.1 `superellipse.ts` with its property test.
-  - [ ] 5.2 `Set.tsx` and `Glass.tsx`: CRT plate, superellipse clip, `<AvatarCanvas>` inside, phosphor grade, glare, rim shadow, lower third, hover caption. Requires `avatar-renderer`.
+  - [ ] 5.2 (Contrast: the glass has no role. Back the lower third with a translucent `surface-0` band so `phosphor` text reaches 4.5:1 there, and measure it in the visual test, not only against surface tokens.) `Set.tsx` and `Glass.tsx`: CRT plate, superellipse clip, `<AvatarCanvas>` inside, phosphor grade, glare, rim shadow, lower third, hover caption. Requires `avatar-renderer`.
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
 
 - [ ] 6. Gourds and legend
@@ -38,6 +38,7 @@
   - _Requirements: 5.1, 5.2, 5.4, 5.5_
 
 - [ ] 7. Chat strip
+  - Paper contrast has no margin (landing task 1 measured signal ink 4.79:1 on the median paper, 4.40:1 on the darkest 10%). Keep the `paper.webp` texture at 0.24 opacity or less over the `paper` role, do not port the reference's darkening `.paper::after` gradient under text, and add a component test that the text box has the `paper` role as its opaque background.
   - `ChatStrip.tsx` with `chatScript.ts` (replay lines from the reference), typed in line by line, with a top fade mask that never renders under the header. On live, reads the engine stream once `voice-and-air` lands.
   - _Requirements: 6.1, 6.2, 6.3_
 
