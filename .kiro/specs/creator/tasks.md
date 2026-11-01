@@ -22,10 +22,10 @@
   - [x] 4.3 Component tests: palette change re-renders the stage look, toggles write `hidden`, gesture prop fires once per press.
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6_
 
-- [ ] 5. Forge panel
-  - [ ] 5.1 `forge/image.ts` validation and downscale with tests.
-  - [ ] 5.2 `ForgePanel.tsx` + `useForgeJob.ts`: form, staged progress with elapsed time, poll/backoff/timeout, resume by jobId from sessionStorage, disabled-while-running.
-  - [ ] 5.3 Failure states per code (quota → gallery, refused_likeness, refused_content, upstream retry, bad_input field focus), input kept for retry; reveal moment with reduced-motion twin; store result in the library.
+- [x] 5. Forge panel
+  - [x] 5.1 `forge/image.ts` validation and downscale with tests.
+  - [x] 5.2 `ForgePanel.tsx` + `useForgeJob.ts`: form, staged progress with elapsed time, poll/backoff/timeout, resume by jobId from sessionStorage, disabled-while-running.
+  - [x] 5.3 Failure states per code (quota → gallery, refused_likeness, refused_content, upstream retry, bad_input field focus), input kept for retry; reveal moment with reduced-motion twin; store result in the library.
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6_
 
 - [ ] 6. Replay gallery

@@ -6,7 +6,8 @@ import { defaultLook, type Gesture } from "@sr/rig";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { elapse, mount, type Mounted } from "../../app/testDom";
-import { Workbench } from "../CreatorPage";
+import { useState } from "react";
+import { Workbench, type Tab } from "../Workbench";
 import type { CharacterRecord } from "../library/libraryStore";
 import type { Library } from "../library/useLibrary";
 import { testRig } from "../testFixtures";
@@ -43,6 +44,11 @@ function library(): Library & { saved: unknown[] } {
   };
 }
 
+function Bench({ library }: { library: Library }) {
+  const [tab, setTab] = useState<Tab>("looks");
+  return <Workbench record={record()} library={library} tab={tab} onTab={setTab} />;
+}
+
 const last = (): AvatarCanvasProps => {
   const props = renders.at(-1);
   if (props === undefined) throw new Error("the stage never rendered a face");
@@ -68,7 +74,7 @@ beforeEach(async () => {
   vi.useFakeTimers();
   renders.length = 0;
   lib = library();
-  view = await mount(<Workbench record={record()} library={lib} />);
+  view = await mount(<Bench library={lib} />);
   await act(async () => {
     await vi.advanceTimersByTimeAsync(0);
   });

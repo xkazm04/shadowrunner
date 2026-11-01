@@ -1,0 +1,283 @@
+/* The FORGE NEW sheet (ForgePanel, ForgeProgress), after the reference's `.field`, `.chip`,
+   `.btn.red`, `.note`, `.stamp` and `#layerTick`. It sits on the parchment sheet, so ink is
+   `paper-ink` and the alarm is `paper-ink-signal`; the progress card over the stage is dark glass. */
+
+.forge {
+  display: grid;
+  gap: var(--sr-space-4);
+}
+
+.form {
+  display: grid;
+  gap: var(--sr-space-3);
+}
+
+.fieldset {
+  display: grid;
+  gap: var(--sr-space-4);
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.fieldset:disabled {
+  opacity: 0.55;
+}
+
+.row {
+  display: grid;
+  gap: var(--sr-space-2);
+}
+
+.heading {
+  color: var(--sr-paper-ink);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.field {
+  box-sizing: border-box;
+  inline-size: 100%;
+  min-block-size: 5.5rem;
+  padding: var(--sr-space-2) var(--sr-space-3);
+  border: thin solid color-mix(in srgb, var(--sr-paper-ink) 55%, transparent);
+  border-radius: var(--sr-radius-1);
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--sr-face-glow) 60%, transparent),
+    color-mix(in srgb, var(--sr-face-glow) 60%, transparent)
+  );
+  color: var(--sr-paper-ink);
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text);
+  line-height: 1.4;
+  resize: vertical;
+}
+
+.field::placeholder {
+  color: var(--sr-paper-ink);
+  opacity: 0.6;
+}
+
+.field[aria-invalid="true"],
+.file[aria-invalid="true"] {
+  outline: 0.1875rem solid var(--sr-paper-ink-signal);
+  outline-offset: 0.125rem;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sr-space-2);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sr-space-2);
+}
+
+.chip {
+  min-block-size: 2.25rem;
+  padding: 0 var(--sr-space-3);
+  border: thin solid color-mix(in srgb, var(--sr-paper-ink) 45%, transparent);
+  border-radius: var(--sr-radius-pill);
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--sr-face-glow) 45%, transparent),
+    color-mix(in srgb, var(--sr-face-glow) 45%, transparent)
+  );
+  color: var(--sr-paper-ink);
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text);
+  cursor: pointer;
+}
+
+.count {
+  color: var(--sr-paper-ink);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+}
+
+.file {
+  color: var(--sr-paper-ink);
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text);
+}
+
+.picked {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sr-space-3);
+  color: var(--sr-paper-ink);
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text);
+  font-weight: 600;
+}
+
+.note {
+  margin: 0;
+  color: var(--sr-paper-ink);
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text);
+  line-height: 1.4;
+  opacity: 0.86;
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sr-space-3);
+}
+
+.button {
+  min-block-size: 2.75rem;
+  padding: 0 var(--sr-space-4);
+  border: thin solid var(--sr-surface-0);
+  border-radius: var(--sr-radius-1);
+  background-image: linear-gradient(var(--sr-surface-3), var(--sr-surface-0));
+  color: var(--sr-text-strong);
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.signal {
+  border-color: var(--sr-signal-onair);
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--sr-signal-onair) 85%, var(--sr-surface-0)),
+    color-mix(in srgb, var(--sr-signal-onair) 45%, var(--sr-surface-0))
+  );
+}
+
+/* A failure: a red-inked notice pinned to the sheet. */
+.failure {
+  display: grid;
+  gap: var(--sr-space-2);
+  padding: var(--sr-space-3) var(--sr-space-4);
+  border: 0.125rem solid var(--sr-paper-ink-signal);
+  border-radius: var(--sr-radius-1);
+  color: var(--sr-paper-ink);
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text);
+}
+
+.failure h3 {
+  margin: 0;
+  color: var(--sr-paper-ink-signal);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-lg);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.failure p {
+  margin: 0;
+  line-height: 1.4;
+}
+
+.detail {
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+}
+
+.done {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sr-space-3);
+  padding: var(--sr-space-3) var(--sr-space-4);
+  border: 0.125rem solid var(--sr-paper-ink);
+  border-radius: var(--sr-radius-1);
+  color: var(--sr-paper-ink);
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text);
+  font-weight: 600;
+}
+
+/* Staged progress. Inherits its ink: paper ink on the sheet, text on the stage card. */
+.progress {
+  display: grid;
+  gap: var(--sr-space-3);
+}
+
+.now {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sr-space-3);
+  margin: 0;
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text-lg);
+  font-weight: 700;
+}
+
+.elapsed {
+  font-family: var(--sr-font-type);
+  font-variant-numeric: tabular-nums;
+}
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sr-space-1) var(--sr-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text);
+  line-height: 1.35;
+}
+
+.steps li {
+  opacity: 0.72;
+}
+
+.steps li::before {
+  content: "·  ";
+}
+
+.steps li[data-step="done"] {
+  opacity: 1;
+}
+
+.steps li[data-step="done"]::before {
+  content: "✓  ";
+}
+
+.steps li[data-step="now"] {
+  font-weight: 700;
+  opacity: 1;
+}
+
+.steps li[data-step="now"]::before {
+  content: "▸  ";
+}
+
+.field:focus-visible,
+.chip:focus-visible,
+.button:focus-visible,
+.file:focus-visible {
+  outline: 0.1875rem solid var(--sr-paper-ink-signal);
+  outline-offset: 0.125rem;
+}
+
+@media (width <= 40rem) {
+  .steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

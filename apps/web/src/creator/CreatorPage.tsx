@@ -1,121 +1,105 @@
-// CH 3 · Forge: the creator page (spec creator). Regions: the stage (the face, the largest
-// region), the controls (tabbed: LOOKS | FACE) and, from later tasks, the forge and the library.
-import { resolveGesture, type Emotion, type Look } from "@sr/rig";
-import { useCallback, useEffect, useReducer, useRef, useState } from "react";
-import { FacePane, LooksPane } from "./customize/Customize";
-import { gestureLabel, useGesturePulse } from "./customize/GestureBar";
-import { lookReducer } from "./customize/lookReducer";
-import type { CharacterRecord } from "./library/libraryStore";
-import { useLibrary, useRigAssets, type Library } from "./library/useLibrary";
-import { Stage, useSpeaker } from "./Stage";
+// CH 3 · Forge: the creator page (spec creator). It owns what outlives one character: the library,
+// the forge job (it keeps running across tab and character switches), the forge draft, the open
+// tab and the reveal of a freshly forged character. Workbench renders the regions.
+import type { Rig } from "@sr/rig";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { usePlane, type Plane } from "../app/plane";
+import { createHttpForgeClient, type ForgeClient } from "./forgeClient";
+import { createReplayForgeClient, failOf } from "./forgeClient.replay";
+import { ForgePanel, type ForgeDraft } from "./forge/ForgePanel";
+import { ForgeProgress } from "./forge/ForgeProgress";
+import { recordOf } from "./forge/keep";
+import { useForgeJob } from "./forge/useForgeJob";
+import { useLibrary } from "./library/useLibrary";
+import { Workbench, type Tab } from "./Workbench";
 import styles from "./CreatorPage.module.css";
 
-type Tab = "looks" | "face";
-const TABS: readonly { id: Tab; label: string }[] = [
-  { id: "looks", label: "LOOKS" },
-  { id: "face", label: "FACE" },
-];
-
-/** How long after the last change a look is written to the library. */
-export const SAVE_DELAY_MS = 400;
-
-export function Workbench({ record, library }: { record: CharacterRecord; library: Library }) {
-  const [look, dispatch] = useReducer(lookReducer, record.look);
-  const [tab, setTab] = useState<Tab>("looks");
-  const [gesture, fireGesture] = useGesturePulse();
-  const [lastGesture, setLastGesture] = useState<string | undefined>(undefined);
-  const { assets, failed } = useRigAssets(record);
-  const speaker = useSpeaker((line) => {
-    if (line.reply.gesture !== undefined) fireGesture(line.reply.gesture);
-  });
-
-  // Keep the look: written shortly after the last change, only when it differs from the stored one.
-  const stored = useRef<Look>(record.look);
-  useEffect(() => {
-    if (look === stored.current) return undefined;
-    const timer = setTimeout(() => {
-      stored.current = look;
-      void library.saveLook(record.id, look);
-    }, SAVE_DELAY_MS);
-    return () => clearTimeout(timer);
-  }, [look, record.id, library]);
-
-  const onGesture = useCallback(
-    (g: Parameters<typeof fireGesture>[0]) => {
-      fireGesture(g);
-      setLastGesture(gestureLabel(g));
-    },
-    [fireGesture],
-  );
-
-  const onEmotion = (emotion: Emotion) => {
-    dispatch({ type: "emotion", emotion });
-    const g = resolveGesture({ ...look, emotion });
-    if (g !== undefined) onGesture(g);
-  };
-
-  const motion = speaker.line !== undefined ? `Speaking · ${speaker.line.reply.emotion}` : gesture !== undefined && lastGesture !== undefined ? `Gesture · ${lastGesture}` : `${look.emotion === "neutral" ? "Idle" : look.emotion} · blinking`;
-
-  return (
-    <div className={styles.creator} data-page="creator">
-      <div className={styles.stageRegion}>
-        <Stage
-          rig={record.rig}
-          look={look}
-          name={record.rig.name}
-          motion={failed ? "The face could not be drawn" : motion}
-          {...(assets === undefined ? {} : { assets })}
-          {...(gesture === undefined ? {} : { gesture })}
-          {...(speaker.audio === undefined ? {} : { audio: speaker.audio })}
-          {...(speaker.line === undefined ? {} : { subtitle: speaker.line.reply.line })}
-        >
-          {assets === undefined && <p className={styles.state}>{failed ? "This character's images could not be read." : "Lighting the face…"}</p>}
-        </Stage>
-      </div>
-      <div className={styles.controlsRegion}>
-        <div className={styles.tabs} role="tablist" aria-label="Controls">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              role="tab"
-              id={`tab-${t.id}`}
-              aria-controls={`pane-${t.id}`}
-              aria-selected={tab === t.id}
-              tabIndex={tab === t.id ? 0 : -1}
-              className={styles.tab}
-              onClick={() => setTab(t.id)}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-        <div className={styles.sheet} role="tabpanel" id={`pane-${tab}`} aria-labelledby={`tab-${tab}`}>
-          {tab === "looks" && <LooksPane rig={record.rig} look={look} dispatch={dispatch} />}
-          {tab === "face" && (
-            <FacePane
-              look={look}
-              onEmotion={onEmotion}
-              onGesture={onGesture}
-              onSpeak={speaker.toggle}
-              speaking={speaker.line !== undefined}
-              speakNote="A recorded line from the replay show, in the Clerk voice."
-            />
-          )}
-        </div>
-      </div>
-    </div>
-  );
+/**
+ * The forge client for this plane. Replay forges in the browser (`?forge=fail:<code>` seeds a
+ * failure); live goes to /api/forge. A job id minted by the replay client is always polled by it,
+ * so a job started before health answered still finishes after the plane resolves to live.
+ */
+export function planeClient(plane: Plane, search: string): ForgeClient {
+  const fail = failOf(search);
+  const replay = createReplayForgeClient(fail === undefined ? {} : { fail });
+  if (plane === "replay") return replay;
+  const http = createHttpForgeClient();
+  return { start: http.start, poll: (jobId) => (jobId.startsWith("replay_") ? replay.poll(jobId) : http.poll(jobId)) };
 }
+
+/** A character from the replay plane (a recorded forge or the gallery): labelled RECORDED. */
+export const isRecorded = (rig: Rig): boolean => rig.source === "replay" || rig.id.startsWith("replay-");
 
 export function CreatorPage() {
   const library = useLibrary();
-  if (library.active === undefined) {
+  const plane = usePlane();
+  const client = useMemo(() => planeClient(plane, typeof window === "undefined" ? "" : window.location.search), [plane]);
+  const job = useForgeJob(client);
+  const [draft, setDraft] = useState<ForgeDraft>({ prompt: "" });
+  const [tab, setTab] = useState<Tab>("looks");
+  const [revealed, setRevealed] = useState<{ id: string; name: string; jobId: string } | undefined>(undefined);
+  const [keepError, setKeepError] = useState<string | undefined>(undefined);
+  const [, setGalleryOpen] = useState(false);
+
+  // A finished forge goes into the library once, then onto the stage with the reveal.
+  const kept = useRef<string | undefined>(undefined);
+  const add = library.add;
+  const state = job.state;
+  useEffect(() => {
+    if (state.phase !== "done" || kept.current === state.jobId) return;
+    kept.current = state.jobId;
+    setKeepError(undefined);
+    recordOf(state.rig, state.assets)
+      .then(async (record) => {
+        await add(record);
+        setRevealed({ id: record.id, name: record.rig.name, jobId: state.jobId });
+      })
+      .catch(() => setKeepError("The new character's images could not be kept. Forge again."));
+  }, [state, add]);
+
+  const forge = (
+    <ForgePanel
+      job={job}
+      draft={draft}
+      onDraft={setDraft}
+      onOpenGallery={() => setGalleryOpen(true)}
+      doneNote={
+        keepError ?? (revealed === undefined ? "Keeping the new character…" : `Revealed: ${revealed.name}. It is in your library; dress it in LOOKS.`)
+      }
+    />
+  );
+
+  const running = job.state.phase === "running" ? job.state : undefined;
+  const stageOverlay =
+    running === undefined ? undefined : (
+      <div className={styles.forging}>
+        {running.portraitUrl !== undefined && <img className={styles.portrait} src={running.portraitUrl} alt="The new portrait, before it is cut" />}
+        <div className={styles.forgingCard}>
+          <ForgeProgress status={running.status} elapsedMs={job.elapsedMs} />
+        </div>
+      </div>
+    );
+
+  const active = library.active;
+  if (active === undefined) {
     return (
       <div className={styles.creator} data-page="creator">
         <p className={styles.state}>{library.status === "loading" ? "Opening the library…" : "No character to show."}</p>
       </div>
     );
   }
-  return <Workbench key={library.active.id} record={library.active} library={library} />;
+  const reveal = revealed?.id === active.id ? revealed : undefined;
+  return (
+    <Workbench
+      key={`${active.id}@${active.createdAt}`}
+      record={active}
+      library={library}
+      tab={tab}
+      onTab={setTab}
+      forge={forge}
+      {...(stageOverlay === undefined ? {} : { stageOverlay })}
+      {...(reveal === undefined ? {} : { revealKey: reveal.jobId })}
+      {...(isRecorded(active.rig) ? { badge: <span className={styles.recorded}>RECORDED</span> } : {})}
+    />
+  );
 }
