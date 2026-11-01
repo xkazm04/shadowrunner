@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { mount, type Mounted } from "../../app/testDom";
 import { loadReplayJobs } from "../replayJobs";
 import { testJob } from "../testFixtures";
-import { entryOfJob, loadGallery, type GalleryEntry } from "./entries";
+import { entryOfJob, loadCast, loadGallery, type GalleryEntry } from "./entries";
 import { Gallery } from "./Gallery";
 
 let view: Mounted | undefined;
@@ -20,6 +20,14 @@ async function settle(): Promise<void> {
 }
 
 describe("gallery entries", () => {
+  it("the gallery's default cast names every character once (no second, recorded Malakor)", async () => {
+    const cast = await loadCast();
+    const names = cast.map((e) => e.name);
+    expect(new Set(names).size).toBe(names.length);
+    expect(cast.filter((e) => e.slug === "malakor")).toHaveLength(1);
+    expect(cast[0]?.origin).toBe("hand-rigged");
+  });
+
   it("lists Malakor and every committed recorded job, each a fictional rig", async () => {
     const entries = await loadGallery();
     const jobs = await loadReplayJobs();
@@ -46,6 +54,15 @@ describe("gallery entries", () => {
 
 describe("<Gallery>", () => {
   const entries: GalleryEntry[] = [entryOfJob(testJob("ghost-a")), { ...entryOfJob(testJob("ghost-b")), name: "Ghost B" }];
+
+  it("by default lists each character once, the hand-rigged Malakor and no recorded twin", async () => {
+    view = await mount(<Gallery inLibrary={new Set()} onAdopt={async () => undefined} onClose={() => undefined} />);
+    await settle();
+    await settle();
+    const labels = [...view.container.querySelectorAll<HTMLButtonElement>("li button")].map((b) => b.getAttribute("aria-label") ?? "");
+    expect(labels.length).toBeGreaterThan(1);
+    expect(labels.filter((l) => l.includes("Malakor"))).toHaveLength(1);
+  });
 
   it("adopts a character, and marks one already in the library", async () => {
     const onAdopt = vi.fn(async () => undefined);

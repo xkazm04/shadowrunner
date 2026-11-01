@@ -6,7 +6,7 @@
 // the stage from here.
 import type { LayerKind } from "@sr/rig";
 import { useEffect, useState } from "react";
-import { loadGallery, type GalleryEntry } from "./entries";
+import { loadCast, type GalleryEntry } from "./entries";
 import styles from "./Gallery.module.css";
 
 export interface GalleryProps {
@@ -35,7 +35,7 @@ export function showsOffLine(entry: Pick<GalleryEntry, "showsOff" | "kinds">): s
   return entry.showsOff ?? entry.kinds.map((k) => KIND_LABEL[k]).join(" · ");
 }
 
-export function Gallery({ inLibrary, onAdopt, onShow, onClose, load = loadGallery }: GalleryProps) {
+export function Gallery({ inLibrary, onAdopt, onShow, onClose, load = loadCast }: GalleryProps) {
   const [entries, setEntries] = useState<GalleryEntry[] | undefined>(undefined);
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState<string | undefined>(undefined);
