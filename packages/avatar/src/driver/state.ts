@@ -27,7 +27,7 @@ import { seedRng, uniform } from "./rng.js";
 export type Gaze = "host" | "content" | "chat";
 
 export interface DriverInputs {
-  /** Audio RMS 0..1 (0 when no audio). */
+  /** Speech level 0..1 from `attachAudio` (`speechLevel` of the RMS; 0 when no audio). */
   level: number;
   gaze: Gaze;
   /** Edge-triggered: present only on the frame it starts. */

@@ -1,7 +1,7 @@
 // Audio level tap (task 2, req 4.1) against a fake AudioContext: no Web Audio in node.
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { attachAudio, LEVEL_FFT_SIZE, rms } from "../audio/level.js";
+import { attachAudio, LEVEL_FFT_SIZE, rms, SPEECH_FLOOR, SPEECH_GAIN } from "../audio/level.js";
 
 /** A fake node that records its connections. */
 class FakeNode {
@@ -76,8 +76,8 @@ describe("attachAudio", () => {
     const analyser = ctx.analysers[0];
     expect(analyser?.fftSize).toBe(LEVEL_FFT_SIZE);
     expect(source.connections).toEqual([analyser]);
-    ctx.signal = [0.25, -0.25];
-    expect(tap.level()).toBeCloseTo(0.25, 6);
+    ctx.signal = [0.1, -0.1];
+    expect(tap.level()).toBeCloseTo((0.1 - SPEECH_FLOOR) * SPEECH_GAIN, 6);
     ctx.signal = [0];
     expect(tap.level()).toBe(0);
   });
