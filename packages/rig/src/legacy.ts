@@ -20,8 +20,8 @@ export interface LegacyImport {
   warnings: LegacyWarning[];
 }
 
-/** Used when no spec is given: Malakor's own colours from his m8.spec.json. */
-export const DEFAULT_LEGACY_PALETTE: Palette = { glow: "#d9731f", eye: "#ff9e38", rim: "#ff9e38", mouth: "#33d9c7" };
+/** Used when no spec is given: Malakor's own colours from his m8.spec.json (mapped as below). */
+export const DEFAULT_LEGACY_PALETTE: Palette = { glow: "#33d9c7", eye: "#33d9c7", rim: "#ff9e38", mouth: "#33d9c7" };
 
 interface Mapping {
   kind: LayerKind;
@@ -70,7 +70,13 @@ function toHex(value: unknown): string | undefined {
   return `#${channels.map((c) => Math.round(c * 255).toString(16).padStart(2, "0")).join("")}`;
 }
 
-/** spec.colors: line_glow -> glow, line_core -> rim and eye, mouth -> mouth. Paths start at `spec`. */
+/**
+ * spec.colors -> palette (rig-core task 7, director ruling 2026-11-01): the eye light `mouth` (teal)
+ * -> `eye`, `glow` and `mouth`; `line_core` (the orange monocle line) -> `rim`. The renderer
+ * multiplies eye texels by `palette.eye`, so an orange eye colour turned the teal eyes green.
+ * `line_glow` is still required (the m8 spec shape) but no longer feeds the palette. Paths start
+ * at `spec`.
+ */
 function specPalette(spec: unknown, errors: RigError[]): Palette | undefined {
   const colors = isRecord(spec) ? spec.colors : undefined;
   if (!isRecord(colors)) {
@@ -86,7 +92,7 @@ function specPalette(spec: unknown, errors: RigError[]): Palette | undefined {
   const core = read("line_core");
   const mouth = read("mouth");
   if (glow === undefined || core === undefined || mouth === undefined) return undefined;
-  return { glow, eye: core, rim: core, mouth };
+  return { glow: mouth, eye: mouth, rim: core, mouth };
 }
 
 /** A legacy depth in [0, 1], or undefined (absent, or warned about and dropped). */
