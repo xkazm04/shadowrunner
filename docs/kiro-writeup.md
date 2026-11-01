@@ -22,7 +22,7 @@
 `product.md`, `tech.md`, `structure.md` always included; custom agents load them via `resources`.
 
 ## Custom agents
-`sr-builder` (Claude Opus 5.5 at xhigh effort; write allow-list; deny rules protect the contract,
+`sr-builder` (Claude Opus 5.5 at high effort; write allow-list; deny rules protect the contract,
 steering and git), `sr-reviewer` (Claude Sonnet 5.5 at high effort, a different model from the
 builder so the review is not self-grading; read-only verdict per acceptance criterion).
 Workspace effort defaults live in `.kiro/settings/cli.json` (`chat.modelDefaults`).

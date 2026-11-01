@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Orchestration entry point: Claude Code (the director) hands ONE spec task to Kiro CLI.
-#   scripts/kiro-task.sh <spec> <task-id> [--model claude-opus-5.5] [--effort xhigh] [--review] [--note "extra brief"]
+#   scripts/kiro-task.sh <spec> <task-id> [--model claude-opus-5.5] [--effort high] [--review] [--note "extra brief"]
 # Kiro implements it as the sr-builder agent (deny rules protect the spec contract, steering, git);
 # --review adds a read-only sr-reviewer pass. Every run is logged under var/kiro-runs/ as JSONL
 # (stream-json) so the director can audit it and docs/kiro-log.md can cite it.
 set -euo pipefail
 spec="$1"; task="$2"; shift 2
-model="claude-opus-5.5"; effort="xhigh"; review=0; note=""
+model="claude-opus-5.5"; effort="high"; review=0; note=""
 while [ $# -gt 0 ]; do case "$1" in
   --model) model="$2"; shift 2;; --effort) effort="$2"; shift 2;; --review) review=1; shift;; --note) note="$2"; shift 2;;
   *) echo "unknown arg $1" >&2; exit 2;; esac; done
