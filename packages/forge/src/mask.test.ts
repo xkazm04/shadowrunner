@@ -3,7 +3,17 @@
 // independent of the scanline sweep and distance transform under test.
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { KEY_CORNER_PATCH, KEY_LO_MIN, cornerKeyLo, luma, lumaKey, rasterizeMask } from "./mask.js";
+import {
+  KEY_CORNER_PATCH,
+  KEY_LO_MIN,
+  type Mask,
+  cornerKeyLo,
+  dilateMask,
+  featherMask,
+  luma,
+  lumaKey,
+  rasterizeMask,
+} from "./mask.js";
 import type { Polygon, Rgba } from "./types.js";
 
 /** Winding number at (px, py): signed crossings strictly right of the point, edges half-open in y. */
@@ -190,5 +200,53 @@ describe("cornerKeyLo (ruling 2)", () => {
     const small = ground(20, 12, 3);
     paint(small, 10, 6, 20); // centre pixel, inside every clipped patch
     expect(cornerKeyLo(small)).toBeCloseTo(24, 9);
+  });
+});
+
+// Task 4 (seams): the shape helpers cutAll uses to reach under the parts in front.
+const arbShape: fc.Arbitrary<Mask> = arbCanvas.chain(({ width, height }) =>
+  fc
+    .array(fc.integer({ min: 0, max: 6 }), { minLength: width * height, maxLength: width * height })
+    .map((draws) => ({ width, height, data: Uint8ClampedArray.from(draws, (n) => (n === 0 ? 200 : 0)) })),
+);
+
+/** Brute force: distance from pixel i to the nearest non-zero pixel centre of the shape. */
+function nearest(shape: Mask, i: number): number {
+  const x = i % shape.width;
+  const y = Math.floor(i / shape.width);
+  let best = Infinity;
+  shape.data.forEach((a, j) => {
+    if (a !== 0) best = Math.min(best, Math.hypot((j % shape.width) - x, Math.floor(j / shape.width) - y));
+  });
+  return best;
+}
+
+describe("featherMask, dilateMask", () => {
+  it("property: featherMask of a hard polygon raster is rasterizeMask", () => {
+    fc.assert(
+      fc.property(arbCase, ({ width, height, poly, feather }) => {
+        expect(featherMask(rasterizeMask(poly, width, height, 0), feather)).toEqual(rasterizeMask(poly, width, height, feather));
+      }),
+      { numRuns: 200 },
+    );
+  });
+
+  it("property: dilateMask is 255 exactly within `radius` of the shape", () => {
+    fc.assert(
+      fc.property(arbShape, arbFeather, (shape, radius) => {
+        const grown = dilateMask(shape, radius);
+        grown.data.forEach((a, i) => expect(a).toBe(nearest(shape, i) <= radius ? 255 : 0));
+      }),
+      { numRuns: 150 },
+    );
+  });
+
+  it("are empty for an empty shape and reject bad arguments", () => {
+    const empty: Mask = { width: 5, height: 4, data: new Uint8ClampedArray(20) };
+    expect(Array.from(dilateMask(empty, 3).data).every((a) => a === 0)).toBe(true);
+    expect(Array.from(featherMask(empty, 3).data).every((a) => a === 0)).toBe(true);
+    expect(() => featherMask(empty, -1)).toThrow(RangeError);
+    expect(() => dilateMask(empty, Number.NaN)).toThrow(RangeError);
+    expect(() => dilateMask({ width: 0, height: 4, data: new Uint8ClampedArray(0) }, 1)).toThrow(RangeError);
   });
 });

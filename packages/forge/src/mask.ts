@@ -130,6 +130,10 @@ function squaredDistances(inside: Uint8Array, width: number, x0: number, y0: num
   return d;
 }
 
+function checkFeather(feather: number, where: string): void {
+  if (!Number.isFinite(feather) || feather < 0) throw new RangeError(`${where}: bad feather ${feather}`);
+}
+
 /**
  * Polygon (canvas px, [x, y]) -> alpha mask (requirement 4.1, ruling 3). Pixels whose centre is
  * outside the polygon (non-zero rule) are 0. Inside, alpha is 255 * d / feather, capped at 255,
@@ -139,8 +143,24 @@ function squaredDistances(inside: Uint8Array, width: number, x0: number, y0: num
  */
 export function rasterizeMask(poly: Polygon, width: number, height: number, feather: number): Mask {
   checkSize(width, height, "rasterizeMask");
-  if (!Number.isFinite(feather) || feather < 0) throw new RangeError(`rasterizeMask: bad feather ${feather}`);
-  const inside = fillNonZero(poly, width, height);
+  checkFeather(feather, "rasterizeMask");
+  return featherInside(fillNonZero(poly, width, height), width, height, feather);
+}
+
+/**
+ * The same inward feather as `rasterizeMask`, over a shape given as a mask: every non-zero pixel
+ * is inside. Used for shapes that are not one polygon (a part grown under its neighbours).
+ */
+export function featherMask(shape: Mask, feather: number): Mask {
+  checkSize(shape.width, shape.height, "featherMask");
+  checkFeather(feather, "featherMask");
+  const inside = new Uint8Array(shape.data.length);
+  for (let i = 0; i < inside.length; i++) if ((shape.data[i] ?? 0) !== 0) inside[i] = 1;
+  return featherInside(inside, shape.width, shape.height, feather);
+}
+
+/** `inside` (1 = inside) -> 255 inside, feathered inward over `feather` px; 0 outside. */
+function featherInside(inside: Uint8Array, width: number, height: number, feather: number): Mask {
   const mask = emptyMask(width, height);
   let minX = width;
   let minY = height;
@@ -171,6 +191,54 @@ export function rasterizeMask(poly: Polygon, width: number, height: number, feat
       // An inside centre is >= 1 px from any outside centre, so a partial pixel is never 0.
       if (d < feather) mask.data[at] = Math.max(1, Math.floor((255 * d) / feather));
     }
+  }
+  return mask;
+}
+
+/**
+ * Squared distance from each pixel of a window around the shape (bbox + `radius` + 1) to the
+ * nearest non-zero pixel centre of `shape`; pixels beyond the window are further than `radius`.
+ * Undefined for an empty shape.
+ */
+function distancesToShape(shape: Mask, radius: number): { x0: number; y0: number; w: number; h: number; d2: Float64Array } | undefined {
+  const { width, height, data } = shape;
+  const outside = new Uint8Array(data.length);
+  let minX = width;
+  let minY = height;
+  let maxX = -1;
+  let maxY = -1;
+  for (let i = 0; i < data.length; i++) {
+    if ((data[i] ?? 0) === 0) {
+      outside[i] = 1;
+      continue;
+    }
+    const x = i % width;
+    const y = (i - x) / width;
+    minX = Math.min(minX, x);
+    maxX = Math.max(maxX, x);
+    minY = Math.min(minY, y);
+    maxY = Math.max(maxY, y);
+  }
+  if (maxX < 0) return undefined;
+  const margin = Math.ceil(radius) + 1;
+  const x0 = Math.max(0, minX - margin);
+  const y0 = Math.max(0, minY - margin);
+  const w = Math.min(width, maxX + margin + 1) - x0;
+  const h = Math.min(height, maxY + margin + 1) - y0;
+  return { x0, y0, w, h, d2: squaredDistances(outside, width, x0, y0, w, h) };
+}
+
+/** 255 on every pixel whose centre is within `radius` px of a non-zero pixel centre of `shape`, else 0. */
+export function dilateMask(shape: Mask, radius: number): Mask {
+  checkSize(shape.width, shape.height, "dilateMask");
+  checkFeather(radius, "dilateMask");
+  const mask = emptyMask(shape.width, shape.height);
+  const dist = distancesToShape(shape, radius);
+  if (dist === undefined) return mask;
+  const { x0, y0, w, h, d2 } = dist;
+  const r2 = radius * radius;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) if ((d2[y * w + x] ?? Infinity) <= r2) mask.data[(y0 + y) * shape.width + x0 + x] = 255;
   }
   return mask;
 }

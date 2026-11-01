@@ -1,8 +1,9 @@
 // Cutting (forge-pipeline requirements 4.3, 4.4, 4.5; design.md "Cut algorithm"; director
-// rulings 2 and 4). Parts are cut front to back. Each pixel holds 255 units of alpha: a part
-// takes at most what the parts in front of it left, so no two layers share an opaque core.
+// rulings 2 and 4; task 4 seams). Parts are cut front to back. A part loses every pixel where a
+// part in front is fully opaque, so no two layers share an opaque core, and it reaches a few px
+// under its neighbours in front, so their soft edges sit over it instead of over the ground.
 // Pure: plain arrays in, fresh images out.
-import { KEY_HI, type Mask, cornerKeyLo, lumaKey, rasterizeMask } from "./mask.js";
+import { KEY_HI, type Mask, cornerKeyLo, dilateMask, featherMask, lumaKey, rasterizeMask } from "./mask.js";
 import { toCanvas } from "./parts.js";
 import type { Part, PartName, Polygon, Rgba } from "./types.js";
 
@@ -128,12 +129,36 @@ export function hoodShare(head: Polygon, hat: Polygon, width: number, height: nu
 }
 
 /**
- * Parts -> layers (requirement 4.4, design.md "Cut algorithm", rulings 2 and 4). In CUT_ORDER:
- * rasterize the part (feathered); for crown, hair and accessory multiply by
+ * How far a part grows under the parts in front of it (task 4 seams): far enough that its own
+ * feather band ends inside their opaque cores, so it is opaque under their whole feather band.
+ * 0 for a hard cut, which has no partial edges.
+ */
+export function seamReach(feather: number): number {
+  return feather > 0 ? 2 * Math.ceil(feather) + 2 : 0;
+}
+
+/**
+ * The shape a part is cut from: its own polygon, grown by `reach` px into the polygons in front of
+ * it (`front`), never into the ground. Feathering this shape keeps the part opaque under the soft
+ * edges of its neighbours in front, while its own silhouette against the ground stays soft.
+ */
+function underFront(own: Mask, front: Mask, reach: number): Mask {
+  if (reach === 0) return own;
+  const grown = dilateMask(own, reach).data;
+  const data = own.data.slice();
+  for (let i = 0; i < data.length; i++) if (grown[i] === 255 && front.data[i] === 255) data[i] = 255;
+  return { width: own.width, height: own.height, data };
+}
+
+/**
+ * Parts -> layers (requirement 4.4, design.md "Cut algorithm", rulings 2 and 4, task 4 seams).
+ * In CUT_ORDER: take the part's polygon grown `seamReach(feather)` px into the parts already cut
+ * in front of it, and feather it inward; for crown, hair and accessory multiply by
  * `lumaKey(cornerKeyLo(portrait), KEY_HI)`; for a hood (head more than HOOD_SHARE inside the hat)
- * take the head, eye and jaw masks out of the hat; then keep at most the alpha the parts in front
- * left at each pixel. Head and torso are cut from `options.plate` when given. A part name that
- * repeats keeps its first polygon (parseParts already drops repeats).
+ * take the head, eye and jaw masks out of the hat; then drop every pixel where a part in front is
+ * fully opaque. So opaque cores never overlap, and where a front part's edge is partly transparent
+ * the part behind it is opaque: the stack composites back to the source with no dark seam. Head and torso are cut from `options.plate` when given. A part name that repeats
+ * keeps its first polygon (parseParts already drops repeats).
  */
 export function cutAll(portrait: Rgba, parts: readonly Part[], options: CutOptions = {}): CutResult {
   const { width, height } = portrait;
@@ -143,26 +168,25 @@ export function cutAll(portrait: Rgba, parts: readonly Part[], options: CutOptio
 
   const polys = new Map<PartName, Polygon>();
   for (const part of parts) if (!polys.has(part.name)) polys.set(part.name, toCanvas(part.poly, width, height));
-  const rasters = new Map<PartName, Mask>();
-  const raster = (name: PartName, poly: Polygon): Mask => {
-    const cached = rasters.get(name) ?? rasterizeMask(poly, width, height, feather);
-    rasters.set(name, cached);
-    return cached;
-  };
 
   const keyLo = Math.min(cornerKeyLo(portrait), KEY_HI - 1);
   let key: Mask | undefined;
   const head = polys.get("head");
   const hat = polys.get("hat");
   const hood = head !== undefined && hat !== undefined && hoodShare(head, hat, width, height) > HOOD_SHARE;
+  const reach = seamReach(feather);
 
-  const taken = new Uint8ClampedArray(width * height);
+  /** Hard union of the polygons already cut (the parts in front), 255 inside. */
+  const front: Mask = { width, height, data: new Uint8ClampedArray(width * height) };
+  /** 1 where a part in front is fully opaque: nothing behind may keep alpha there. */
+  const core = new Uint8Array(width * height);
   const layers: CutPart[] = [];
   const empty: PartName[] = [];
   for (const name of CUT_ORDER) {
     const poly = polys.get(name);
     if (poly === undefined) continue;
-    const m = raster(name, poly).data.slice();
+    const own = rasterizeMask(poly, width, height, 0);
+    const m = featherMask(underFront(own, front, reach), feather).data;
     if (KEYED_PARTS.includes(name)) {
       key ??= lumaKey(portrait, keyLo, KEY_HI);
       for (let i = 0; i < m.length; i++) m[i] = Math.round(((m[i] ?? 0) * (key.data[i] ?? 0)) / 255);
@@ -171,14 +195,14 @@ export function cutAll(portrait: Rgba, parts: readonly Part[], options: CutOptio
       for (const yielded of HOOD_YIELDS) {
         const other = polys.get(yielded);
         if (other === undefined) continue;
-        const o = raster(yielded, other).data;
+        const o = rasterizeMask(other, width, height, feather).data;
         for (let i = 0; i < m.length; i++) m[i] = Math.min(m[i] ?? 0, 255 - (o[i] ?? 0));
       }
     }
     for (let i = 0; i < m.length; i++) {
-      const kept = Math.min(m[i] ?? 0, 255 - (taken[i] ?? 0));
-      m[i] = kept;
-      taken[i] = (taken[i] ?? 0) + kept;
+      if (core[i] === 1) m[i] = 0;
+      else if (m[i] === 255) core[i] = 1;
+      if (own.data[i] !== 0) front.data[i] = 255;
     }
     const cut = cutLayer(PLATE_PARTS.includes(name) ? plate : portrait, { width, height, data: m });
     if (cut === undefined) empty.push(name);

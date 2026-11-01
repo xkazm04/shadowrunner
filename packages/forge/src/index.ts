@@ -10,3 +10,5 @@ export * from "./image.js";
 export * from "./parts.js";
 export * from "./mask.js";
 export * from "./cut.js";
+export * from "./fill.js";
+export * from "./palette.js";

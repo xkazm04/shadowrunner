@@ -1,11 +1,11 @@
-// forge-pipeline task 3.2: cutLayer, cutAll (requirements 4.3, 4.4; rulings 2 and 4).
+// forge-pipeline task 3.2: cutLayer, cutAll (requirements 4.3, 4.4; rulings 2 and 4); the reach under\n// parts in front comes from task 4 (seams, checked in seams.test.ts).
 // Synthetic images only; no network. The hood golden uses the polygons the 2026-11-01 spike
 // recorded for the Announcer of Dead Air, whose hood came back as `hat` and contains the face.
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import announcer from "../test/fixtures/spike-announcer-of-dead-air-parts.json";
-import { CUT_ORDER, type CutPart, HOOD_SHARE, bboxOfMask, cutAll, cutLayer, hoodShare } from "./cut.js";
-import { type Mask, rasterizeMask } from "./mask.js";
+import { CUT_FEATHER, CUT_ORDER, type CutPart, HOOD_SHARE, bboxOfMask, cutAll, cutLayer, hoodShare, seamReach } from "./cut.js";
+import { type Mask, dilateMask, rasterizeMask } from "./mask.js";
 import { parseParts, toCanvas } from "./parts.js";
 import { PART_NAMES, type Part, type PartName, type Polygon, type Rgba } from "./types.js";
 
@@ -86,7 +86,7 @@ const arbPortrait: fc.Arbitrary<Rgba> = fc.uint8Array({ minLength: SIZE * SIZE, 
 );
 
 describe("cutAll", () => {
-  it("property: cores are disjoint; alpha at a pixel sums to at most 255 across layers", () => {
+  it("property: cores are disjoint; behind a fully opaque pixel no layer keeps any alpha", () => {
     fc.assert(
       fc.property(arbParts, arbPortrait, (parts, portrait) => {
         const { layers } = cutAll(portrait, parts);
@@ -94,9 +94,8 @@ describe("cutAll", () => {
         for (let y = 0; y < SIZE; y++) {
           for (let x = 0; x < SIZE; x++) {
             const at = layers.map((l) => alphaAt(l, x, y));
-            const cores = at.filter((a) => a === 255).length;
-            const sum = at.reduce((s, a) => s + a, 0);
-            if (cores > 1 || sum > 255) shared.push(`(${x}, ${y}): ${cores} cores, alpha sum ${sum}`);
+            const first = at.indexOf(255);
+            if (first >= 0 && at.some((a, k) => k > first && a > 0)) shared.push(`(${x}, ${y}): ${at.join(" ")}`);
           }
         }
         expect(shared).toEqual([]);
@@ -105,7 +104,7 @@ describe("cutAll", () => {
     );
   });
 
-  it("property: layers come out front to back, never exceed their own polygon's mask, and ignore input order", () => {
+  it("property: layers come out front to back, reach past their own polygon only under parts in front, and ignore input order", () => {
     fc.assert(
       fc.property(arbParts, (parts) => {
         const portrait = positional(SIZE, SIZE);
@@ -114,12 +113,23 @@ describe("cutAll", () => {
         expect(names.sort()).toEqual(parts.map((p) => p.name).sort());
         const order = result.layers.map((l) => CUT_ORDER.indexOf(l.name));
         expect(order).toEqual([...order].sort((a, b) => a - b));
+        const raster = (part: Part | undefined, feather: number): Mask =>
+          rasterizeMask(toCanvas(part?.poly ?? [], SIZE, SIZE), SIZE, SIZE, feather);
+        const hard = (part: Part): Mask => raster(part, 0);
         for (const layer of result.layers) {
           const part = parts.find((p) => p.name === layer.name);
-          const own = rasterizeMask(toCanvas(part?.poly ?? [], SIZE, SIZE), SIZE, SIZE, 3);
-          let over = 0;
-          for (let i = 0; i < SIZE * SIZE; i++) if (alphaAt(layer, i % SIZE, Math.floor(i / SIZE)) > (own.data[i] ?? 0)) over++;
-          expect(over, layer.name).toBe(0);
+          const own = raster(part, 0);
+          const feathered = raster(part, CUT_FEATHER);
+          const near = dilateMask(own, seamReach(CUT_FEATHER));
+          const front = parts.filter((p) => CUT_ORDER.indexOf(p.name) < CUT_ORDER.indexOf(layer.name)).map(hard);
+          let stray = 0;
+          for (let i = 0; i < SIZE * SIZE; i++) {
+            if (alphaAt(layer, i % SIZE, Math.floor(i / SIZE)) <= (feathered.data[i] ?? 0)) continue;
+            // Extra alpha inside its own polygon comes from a band pushed under a neighbour.
+            if (own.data[i] !== 0) continue;
+            if (near.data[i] !== 255 || !front.some((m) => m.data[i] !== 0)) stray++;
+          }
+          expect(stray, layer.name).toBe(0);
         }
         const reversed = cutAll(portrait, [...parts].reverse());
         expect({ ...reversed, layers: reversed.layers.map(digest) }).toEqual({ ...result, layers: result.layers.map(digest) });
@@ -289,14 +299,14 @@ describe("hoods (ruling 4)", () => {
           },
           {
             "bbox": [
-              379,
-              598,
-              285,
-              177,
+              378,
+              590,
+              288,
+              185,
             ],
             "name": "jaw",
-            "opaque": 11799,
-            "partial": 1928,
+            "opaque": 13181,
+            "partial": 725,
           },
           {
             "bbox": [
@@ -306,8 +316,8 @@ describe("hoods (ruling 4)", () => {
               288,
             ],
             "name": "head",
-            "opaque": 65303,
-            "partial": 3803,
+            "opaque": 69051,
+            "partial": 0,
           },
           {
             "bbox": [
@@ -317,8 +327,8 @@ describe("hoods (ruling 4)", () => {
               338,
             ],
             "name": "torso",
-            "opaque": 158341,
-            "partial": 6434,
+            "opaque": 159144,
+            "partial": 5730,
           },
         ],
         "share": 1,

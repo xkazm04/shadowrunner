@@ -27,12 +27,13 @@
   - [x] 3.2 `cut.ts`: `cutLayer`, `cutAll` in the design order with core subtraction; property: cores disjoint.
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
 
-- [ ] 4. Fill fallback and palette
+- [x] 4. Fill fallback and palette
   - From the task 3 review: (a) a real-image test - decode the committed `assets/characters/malakor/rig/portrait.png`, run `cornerKeyLo` and `cutAll` with `test/fixtures/m8-parts.json`, assert every part yields a non-empty layer and the crown keeps its dark facets (opaque pixel count above a floor); (b) seams - adjacent layers (head/torso, jaw/head) must composite back to the plate without a dark line: property that re-compositing all layers over the plate changes no pixel's luma by more than 8 along shared edges; fix by feathering outward into the layer behind if it fails.
   - `fill.ts` `blurExtend` (iterative masked blur outward from the hole edge); `palette.ts` `samplePalette`; tests on synthetic images.
   - _Requirements: 5.3, 6.3_
 
 - [ ] 5. Assemble
+  - Director rulings from the task 4 review (2026-11-01): (a) open jaw must not show a hole: when `cutAll` gets `plate`, the plate-sourced layers (head, torso) are NOT reduced by the cores of parts the fill removed (jaw, eyes, monocle, accessory); test that the head layer is opaque under the jaw polygon on the m8 fixture. (b) `samplePalette` never falls back to a fixed colour: when no eye pixels qualify, derive from the head region's dominant saturated hue, and return a `palette_fallback` warning that `assembleRig` surfaces. (c) add a seam property for a plain hat on a head (hat above, head polygon not inside it).
   - `assemble.ts`: anchors, depth defaults, follows, background layer, `fictional: true`; property: output always passes `validateRig`; golden: Malakor portrait + m8 parts -> valid rig.
   - _Requirements: 6.1, 6.2, 6.3, 6.4_
 
