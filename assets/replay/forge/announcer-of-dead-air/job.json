@@ -1,0 +1,199 @@
+{
+  "slug": "announcer-of-dead-air",
+  "name": "Announcer of Dead Air",
+  "fictional": true,
+  "source": "forge spike 2026-11-01: gemini-3-pro-image portrait (preset 5) + recorded gemini-3.8-flash parts",
+  "prompt": "A tall hooded announcer whose face is a void of soft darkness: only two round eyes of violet phosphor and a wide mouth of flickering static-white teeth on a separate lower jaw. A deep hood of heavy black felt, frayed at the edge. Above the hood floats a broken ring of rusted antenna rods crackling with violet sparks. A collar of old microphone mesh.",
+  "promptSha256": "ef53e901c96c20c4597f18af09cb01dad6d1239029bb1e827cfc2b53c3f3efa2",
+  "portrait": "portrait.jpg",
+  "fill": "fallback",
+  "timings": {
+    "portraitMs": 15949,
+    "partsMs": 19648,
+    "cutMs": 2181
+  },
+  "steps": [
+    {
+      "status": "queued",
+      "holdMs": 1500
+    },
+    {
+      "status": "portrait",
+      "holdMs": 1994
+    },
+    {
+      "status": "segmenting",
+      "holdMs": 2456
+    },
+    {
+      "status": "cutting",
+      "holdMs": 1500
+    },
+    {
+      "status": "filling",
+      "holdMs": 1500
+    },
+    {
+      "status": "done"
+    }
+  ],
+  "warnings": [],
+  "rig": {
+    "version": 1,
+    "id": "replay-announcer-of-dead-air",
+    "name": "Announcer of Dead Air",
+    "width": 1024,
+    "height": 1024,
+    "source": "forge",
+    "fictional": true,
+    "palette": {
+      "glow": "#7f53cc",
+      "eye": "#b593f0",
+      "rim": "#b593f0",
+      "mouth": "#1a1326"
+    },
+    "layers": [
+      {
+        "name": "background",
+        "z": 1,
+        "kind": "static",
+        "file": "background.png",
+        "bbox": [
+          0,
+          0,
+          1024,
+          1024
+        ],
+        "anchor": [
+          512,
+          512
+        ],
+        "depth": 0
+      },
+      {
+        "name": "torso",
+        "z": 2,
+        "kind": "body",
+        "file": "torso.png",
+        "bbox": [
+          35,
+          678,
+          978,
+          338
+        ],
+        "anchor": [
+          523.776,
+          837.12
+        ],
+        "depth": 0.3
+      },
+      {
+        "name": "head",
+        "z": 3,
+        "kind": "head",
+        "file": "head.png",
+        "bbox": [
+          342,
+          327,
+          347,
+          448
+        ],
+        "anchor": [
+          515.5840000000001,
+          615.424
+        ],
+        "depth": 0.6
+      },
+      {
+        "name": "jaw",
+        "z": 4,
+        "kind": "jaw",
+        "file": "jaw.png",
+        "bbox": [
+          378,
+          590,
+          288,
+          185
+        ],
+        "anchor": [
+          522.24,
+          595.968
+        ],
+        "follow": "head",
+        "depth": 0.62
+      },
+      {
+        "name": "crown",
+        "z": 5,
+        "kind": "crown",
+        "file": "crown.png",
+        "bbox": [
+          166,
+          26,
+          679,
+          251
+        ],
+        "anchor": [
+          504.832,
+          151.55200000000002
+        ],
+        "follow": "head",
+        "depth": 0.65
+      },
+      {
+        "name": "hat",
+        "z": 6,
+        "kind": "accessory",
+        "file": "hat.png",
+        "bbox": [
+          146,
+          143,
+          741,
+          705
+        ],
+        "anchor": [
+          529.9123606314138,
+          512.9803685968543
+        ],
+        "follow": "head",
+        "depth": 0.75
+      },
+      {
+        "name": "eye_r",
+        "z": 7,
+        "kind": "eye",
+        "file": "eye_r.png",
+        "bbox": [
+          391,
+          421,
+          82,
+          84
+        ],
+        "anchor": [
+          433.11235834936923,
+          463.5761171691255
+        ],
+        "follow": "head",
+        "depth": 0.7
+      },
+      {
+        "name": "eye_l",
+        "z": 8,
+        "kind": "eye",
+        "file": "eye_l.png",
+        "bbox": [
+          563,
+          420,
+          80,
+          85
+        ],
+        "anchor": [
+          602.575982888572,
+          463.079140354451
+        ],
+        "follow": "head",
+        "depth": 0.7
+      }
+    ]
+  }
+}

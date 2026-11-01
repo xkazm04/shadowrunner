@@ -9,6 +9,7 @@ import { geminiFromEnv, type GeminiClient } from "./gemini.js";
 import { MemoryJobStore, isJobId, jobStoreFor, newJobId, type JobStore } from "./jobstore.js";
 import { planeFromRequest, type Env } from "./plane.js";
 import { checkAndCharge, clientIp, type Quota } from "./quota.js";
+import { bundledReplay } from "./forge-replay.js";
 import { runStep, startJob, uploadMime, type StepContext } from "./forge-steps.js";
 
 /** A step that started less than this long ago is still running in another invocation. */
@@ -120,16 +121,10 @@ function context(deps: ForgeDeps, store: JobStore<ForgeJob>, ip: string): StepCo
   };
 }
 
-/** Until the recorded forges exist (task 8), the replay plane answers `upstream` and spends nothing. */
-export const NO_REPLAY: ForgeReplay = {
-  post: async () => Response.json(errorBody("upstream", "Recorded forges are not available yet."), { status: 502, headers: NO_STORE }),
-  get: async () => Response.json(errorBody("upstream", "Recorded forges are not available yet."), { status: 502, headers: NO_STORE }),
-};
-
 /** Process-wide memory store for `pnpm dev` without KV/Blob (it must outlive one request). */
 const memory = new MemoryJobStore<ForgeJob>();
 
-export function defaultForgeDeps(env: Env = process.env, replay: ForgeReplay = NO_REPLAY): ForgeDeps {
+export function defaultForgeDeps(env: Env = process.env, replay: ForgeReplay = bundledReplay): ForgeDeps {
   return {
     env,
     gemini: () => geminiFromEnv(env),

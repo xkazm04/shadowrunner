@@ -1,0 +1,181 @@
+{
+  "slug": "lantern-warden",
+  "name": "The Lantern Warden",
+  "fictional": true,
+  "source": "forge spike 2026-11-01: gemini-3-pro-image portrait (preset 1) + recorded gemini-3.8-flash parts",
+  "prompt": "A watchman whose head is a rotting carved gourd, mottled orange and moss-green, flecked with white mould. Two triangular eye holes burn with steady amber candlelight. The lower rind is cut as a separate hinged jaw with ragged carved teeth, lit from inside. A wide-brimmed, moth-eaten felt hat sits low. Shoulders in a damp oilcloth coat with a brass lantern hook at the collar.",
+  "promptSha256": "3c7fb2b5e8eea0b7cd07e8969858236df6bf7cbae0586142a8b252cecb89f2bd",
+  "portrait": "portrait.jpg",
+  "fill": "fallback",
+  "timings": {
+    "portraitMs": 14962,
+    "partsMs": 17073,
+    "cutMs": 2115
+  },
+  "steps": [
+    {
+      "status": "queued",
+      "holdMs": 1500
+    },
+    {
+      "status": "portrait",
+      "holdMs": 1870
+    },
+    {
+      "status": "segmenting",
+      "holdMs": 2134
+    },
+    {
+      "status": "cutting",
+      "holdMs": 1500
+    },
+    {
+      "status": "filling",
+      "holdMs": 1500
+    },
+    {
+      "status": "done"
+    }
+  ],
+  "warnings": [],
+  "rig": {
+    "version": 1,
+    "id": "replay-lantern-warden",
+    "name": "The Lantern Warden",
+    "width": 1024,
+    "height": 1024,
+    "source": "forge",
+    "fictional": true,
+    "palette": {
+      "glow": "#d99626",
+      "eye": "#ffb943",
+      "rim": "#ffb943",
+      "mouth": "#261c0a"
+    },
+    "layers": [
+      {
+        "name": "background",
+        "z": 1,
+        "kind": "static",
+        "file": "background.png",
+        "bbox": [
+          0,
+          0,
+          1024,
+          1024
+        ],
+        "anchor": [
+          512,
+          512
+        ],
+        "depth": 0
+      },
+      {
+        "name": "torso",
+        "z": 2,
+        "kind": "body",
+        "file": "torso.png",
+        "bbox": [
+          47,
+          524,
+          931,
+          498
+        ],
+        "anchor": [
+          512.512,
+          770.048
+        ],
+        "depth": 0.3
+      },
+      {
+        "name": "head",
+        "z": 3,
+        "kind": "head",
+        "file": "head.png",
+        "bbox": [
+          311,
+          267,
+          398,
+          396
+        ],
+        "anchor": [
+          511.48799999999994,
+          512
+        ],
+        "depth": 0.6
+      },
+      {
+        "name": "jaw",
+        "z": 4,
+        "kind": "jaw",
+        "file": "jaw.png",
+        "bbox": [
+          349,
+          485,
+          333,
+          178
+        ],
+        "anchor": [
+          515.5840000000001,
+          484.352
+        ],
+        "follow": "head",
+        "depth": 0.62
+      },
+      {
+        "name": "hat",
+        "z": 5,
+        "kind": "accessory",
+        "file": "hat.png",
+        "bbox": [
+          177,
+          55,
+          661,
+          343
+        ],
+        "anchor": [
+          537.7845610731937,
+          226.72152271122616
+        ],
+        "follow": "head",
+        "depth": 0.75
+      },
+      {
+        "name": "eye_r",
+        "z": 6,
+        "kind": "eye",
+        "file": "eye_r.png",
+        "bbox": [
+          392,
+          316,
+          67,
+          69
+        ],
+        "anchor": [
+          426.8440170940171,
+          358.625641025641
+        ],
+        "follow": "head",
+        "depth": 0.7
+      },
+      {
+        "name": "eye_l",
+        "z": 7,
+        "kind": "eye",
+        "file": "eye_l.png",
+        "bbox": [
+          562,
+          313,
+          69,
+          70
+        ],
+        "anchor": [
+          596.0560538116592,
+          355.4934773746433
+        ],
+        "follow": "head",
+        "depth": 0.7
+      }
+    ]
+  }
+}

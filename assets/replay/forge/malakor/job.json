@@ -1,0 +1,198 @@
+{
+  "slug": "malakor",
+  "name": "Arch-Lich Malakor",
+  "fictional": true,
+  "source": "committed Malakor portrait (pre-existing art) + recorded gemini-3.8-flash parts, 2026-11-01",
+  "prompt": "Arch-Lich Malakor",
+  "promptSha256": "494d718ba270348a76019ee42402d3be7ededb6118b30dae3498936d49a4c637",
+  "portrait": "portrait.png",
+  "fill": "fallback",
+  "timings": {
+    "partsMs": 17312,
+    "cutMs": 1744
+  },
+  "steps": [
+    {
+      "status": "queued",
+      "holdMs": 1500
+    },
+    {
+      "status": "portrait",
+      "holdMs": 1500
+    },
+    {
+      "status": "segmenting",
+      "holdMs": 2164
+    },
+    {
+      "status": "cutting",
+      "holdMs": 1500
+    },
+    {
+      "status": "filling",
+      "holdMs": 1500
+    },
+    {
+      "status": "done"
+    }
+  ],
+  "warnings": [],
+  "rig": {
+    "version": 1,
+    "id": "replay-malakor",
+    "name": "Arch-Lich Malakor",
+    "width": 1024,
+    "height": 1024,
+    "source": "forge",
+    "fictional": true,
+    "palette": {
+      "glow": "#5fc89e",
+      "eye": "#a8ebd0",
+      "rim": "#a8ebd0",
+      "mouth": "#13261f"
+    },
+    "layers": [
+      {
+        "name": "background",
+        "z": 1,
+        "kind": "static",
+        "file": "background.png",
+        "bbox": [
+          0,
+          0,
+          1024,
+          1024
+        ],
+        "anchor": [
+          512,
+          512
+        ],
+        "depth": 0
+      },
+      {
+        "name": "torso",
+        "z": 2,
+        "kind": "body",
+        "file": "torso.png",
+        "bbox": [
+          7,
+          453,
+          837,
+          445
+        ],
+        "anchor": [
+          425.984,
+          675.328
+        ],
+        "depth": 0.3
+      },
+      {
+        "name": "head",
+        "z": 3,
+        "kind": "head",
+        "file": "head.png",
+        "bbox": [
+          332,
+          152,
+          371,
+          470
+        ],
+        "anchor": [
+          514.048,
+          550.912
+        ],
+        "depth": 0.6
+      },
+      {
+        "name": "jaw",
+        "z": 4,
+        "kind": "jaw",
+        "file": "jaw.png",
+        "bbox": [
+          376,
+          454,
+          272,
+          168
+        ],
+        "anchor": [
+          512,
+          453.632
+        ],
+        "follow": "head",
+        "depth": 0.62
+      },
+      {
+        "name": "crown",
+        "z": 5,
+        "kind": "crown",
+        "file": "crown.png",
+        "bbox": [
+          252,
+          7,
+          531,
+          315
+        ],
+        "anchor": [
+          518.656,
+          164.352
+        ],
+        "follow": "head",
+        "depth": 0.65
+      },
+      {
+        "name": "monocle",
+        "z": 6,
+        "kind": "accessory",
+        "file": "monocle.png",
+        "bbox": [
+          559,
+          276,
+          144,
+          145
+        ],
+        "anchor": [
+          632.2228230726566,
+          348.41819190238493
+        ],
+        "follow": "head",
+        "depth": 0.75
+      },
+      {
+        "name": "eye_r",
+        "z": 7,
+        "kind": "eye",
+        "file": "eye_r.png",
+        "bbox": [
+          350,
+          286,
+          126,
+          107
+        ],
+        "anchor": [
+          411.3168445042992,
+          340.2912566041645
+        ],
+        "follow": "head",
+        "depth": 0.7
+      },
+      {
+        "name": "eye_l",
+        "z": 8,
+        "kind": "eye",
+        "file": "eye_l.png",
+        "bbox": [
+          564,
+          290,
+          114,
+          107
+        ],
+        "anchor": [
+          621.9086711711711,
+          343.19268018018016
+        ],
+        "follow": "head",
+        "depth": 0.7
+      }
+    ]
+  }
+}

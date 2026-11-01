@@ -50,6 +50,6 @@
   - [x] 7.2 Tests with a fake Gemini client: happy path reaches `done` with a valid rig; `refused_likeness`; `quota` before any call; upstream garbage -> `upstream`; no secret or raw upstream text in responses.
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 5.1, 5.2, 7.1, 7.4, 7.6_
 
-- [ ] 8. Replay plane
+- [x] 8. Replay plane
   - Record 4 pre-forged jobs into `assets/replay/forge/<slug>/` (from the spike outputs, marked `fictional: true`, provenance in `docs/provenance.md`); replay `POST` picks by prompt hash, `GET` steps statuses with 1.5-3 s latency; test that replay makes zero fetches.
   - _Requirements: 7.5_

@@ -1,0 +1,181 @@
+{
+  "slug": "understudy",
+  "name": "The Understudy",
+  "fictional": true,
+  "source": "forge spike 2026-11-01: gemini-3-pro-image portrait (preset 3) + recorded gemini-3.8-flash parts",
+  "prompt": "A theatre marionette loose of its strings: cracked ivory porcelain face, faded rose cheeks, glass eyes with a dim carmine glow. The jaw is a separate hinged wooden piece, two straight seams running down from the mouth corners. A small tarnished brass bell hangs on a ribbon across the brow. A deep crimson velvet theatre coat with gold piping and a white ruff.",
+  "promptSha256": "d5b2ad77808db4c21b8594a3c3a6ceb82805a8c56a7adca8b2e3273daf6ca8af",
+  "portrait": "portrait.jpg",
+  "fill": "fallback",
+  "timings": {
+    "portraitMs": 15381,
+    "partsMs": 13701,
+    "cutMs": 1664
+  },
+  "steps": [
+    {
+      "status": "queued",
+      "holdMs": 1500
+    },
+    {
+      "status": "portrait",
+      "holdMs": 1923
+    },
+    {
+      "status": "segmenting",
+      "holdMs": 1713
+    },
+    {
+      "status": "cutting",
+      "holdMs": 1500
+    },
+    {
+      "status": "filling",
+      "holdMs": 1500
+    },
+    {
+      "status": "done"
+    }
+  ],
+  "warnings": [],
+  "rig": {
+    "version": 1,
+    "id": "replay-understudy",
+    "name": "The Understudy",
+    "width": 1024,
+    "height": 1024,
+    "source": "forge",
+    "fictional": true,
+    "palette": {
+      "glow": "#9b2435",
+      "eye": "#b64051",
+      "rim": "#b64051",
+      "mouth": "#260d11"
+    },
+    "layers": [
+      {
+        "name": "background",
+        "z": 1,
+        "kind": "static",
+        "file": "background.png",
+        "bbox": [
+          0,
+          0,
+          1024,
+          1024
+        ],
+        "anchor": [
+          512,
+          512
+        ],
+        "depth": 0
+      },
+      {
+        "name": "torso",
+        "z": 2,
+        "kind": "body",
+        "file": "torso.png",
+        "bbox": [
+          95,
+          566,
+          842,
+          450
+        ],
+        "anchor": [
+          516.096,
+          790.528
+        ],
+        "depth": 0.3
+      },
+      {
+        "name": "head",
+        "z": 3,
+        "kind": "head",
+        "file": "head.png",
+        "bbox": [
+          294,
+          81,
+          422,
+          571
+        ],
+        "anchor": [
+          504.832,
+          603.136
+        ],
+        "depth": 0.6
+      },
+      {
+        "name": "jaw",
+        "z": 4,
+        "kind": "jaw",
+        "file": "jaw.png",
+        "bbox": [
+          436,
+          526,
+          149,
+          126
+        ],
+        "anchor": [
+          510.46399999999994,
+          526.336
+        ],
+        "follow": "head",
+        "depth": 0.62
+      },
+      {
+        "name": "accessory",
+        "z": 5,
+        "kind": "accessory",
+        "file": "accessory.png",
+        "bbox": [
+          327,
+          172,
+          375,
+          92
+        ],
+        "anchor": [
+          525.3530786696941,
+          200.10571657539737
+        ],
+        "follow": "head",
+        "depth": 0.75
+      },
+      {
+        "name": "eye_r",
+        "z": 6,
+        "kind": "eye",
+        "file": "eye_r.png",
+        "bbox": [
+          375,
+          338,
+          85,
+          53
+        ],
+        "anchor": [
+          417.22727272727275,
+          366.33991429445973
+        ],
+        "follow": "head",
+        "depth": 0.7
+      },
+      {
+        "name": "eye_l",
+        "z": 7,
+        "kind": "eye",
+        "file": "eye_l.png",
+        "bbox": [
+          559,
+          338,
+          85,
+          53
+        ],
+        "anchor": [
+          601.0078845581672,
+          365.5235049092532
+        ],
+        "follow": "head",
+        "depth": 0.7
+      }
+    ]
+  }
+}
