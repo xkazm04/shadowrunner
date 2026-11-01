@@ -45,10 +45,10 @@
   - `ChatStrip.tsx` with `chatScript.ts` (replay lines from the reference), typed in line by line, with a top fade mask that never renders under the header. On live, reads the engine stream once `voice-and-air` lands.
   - _Requirements: 6.1, 6.2, 6.3_
 
-- [ ] 8. Daemon lost and motion
-  - [ ] 8.1 `daemon.ts` state table with fake-timer tests (fast-check over health sequences). Wire the `daemon-sample` action (key `D`, today a no-op in `Shell.tsx`) to the sample toggle only when `usePlane()` is `replay`; test that `D` changes nothing on live.
-  - [ ] 8.2 Choreography: fold to dot, NO CARRIER, gourds going out one by one, the eye that keeps burning and follows with no lag, relight sweep.
-  - [ ] 8.3 `fx/` dust, flicker and typing as a lazy chunk behind `data-motion`; the reduced-motion static twin; an intro that can be skipped within 4 s and never pulls the visitor back.
+- [x] 8. Daemon lost and motion
+  - [x] 8.1 `daemon.ts` state table with fake-timer tests (fast-check over health sequences). Wire the `daemon-sample` action (key `D`, today a no-op in `Shell.tsx`) to the sample toggle only when `usePlane()` is `replay`; test that `D` changes nothing on live.
+  - [x] 8.2 Choreography: fold to dot, NO CARRIER, gourds going out one by one, the eye that keeps burning and follows with no lag, relight sweep.
+  - [x] 8.3 `fx/` dust, flicker and typing as a lazy chunk behind `data-motion`; the reduced-motion static twin; an intro that can be skipped within 4 s and never pulls the visitor back.
   - _Requirements: 4.4, 4.5, 7.1, 7.2, 7.3, 7.4, 9.2, 9.3_
 
 - [ ] 9. Channels behind the set

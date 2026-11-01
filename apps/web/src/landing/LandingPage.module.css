@@ -14,3 +14,67 @@
   block-size: auto;
   min-block-size: 0;
 }
+
+/* Dust through the tube's light (fx/dust.ts draws it; rendered with motion only). */
+.dust {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
+/* ---------- the intro: the set warms up (LandingPage.tsx useIntro, 3.5 s at most) ----------
+   The room comes up out of the dark from 0.35 s, the broadcast's chrome joins from 2.6 s, as in
+   the reference. Any key or click removes [data-intro] and everything is at rest at once. */
+
+.shade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-color: var(--sr-surface-0);
+  animation: warm 2.4s ease 0.35s both;
+}
+
+@keyframes warm {
+  from {
+    opacity: 0.97;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+.landing[data-intro] :global(:is([data-status-bar], [data-chat], [data-legend], [data-channel])) {
+  animation: join 0.9s ease 2.6s both;
+}
+
+@keyframes join {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shade {
+    display: none;
+  }
+
+  .landing[data-intro] :global(:is([data-status-bar], [data-chat], [data-legend], [data-channel])) {
+    animation: none;
+  }
+}
+
+:global([data-motion="reduced"]) .shade {
+  display: none;
+}
+
+:global([data-motion="reduced"]) .landing[data-intro] :global(:is([data-status-bar], [data-chat], [data-legend], [data-channel])) {
+  animation: none;
+}

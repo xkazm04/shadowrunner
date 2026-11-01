@@ -111,6 +111,8 @@ export interface ShellViewProps {
   theme: ThemeName;
   motion: Motion;
   gotoOpen: boolean;
+  /** The replay-only daemon sample (key D): the set plays the daemon-lost state. */
+  daemonSample?: boolean;
   onToggleTheme: () => void;
   onCloseGoto: () => void;
 }
@@ -144,7 +146,17 @@ function ThemeToggle({ theme, onToggle, icon = false }: { theme: ThemeName; onTo
 }
 
 /** Pure render of the shell for a given route and settings (rendered directly by tests). */
-export function ShellView({ path, page, plane, theme, motion, gotoOpen, onToggleTheme, onCloseGoto }: ShellViewProps) {
+export function ShellView({
+  path,
+  page,
+  plane,
+  theme,
+  motion,
+  gotoOpen,
+  daemonSample = false,
+  onToggleTheme,
+  onCloseGoto,
+}: ShellViewProps) {
   const onSet = page?.id === "landing";
   const badge = plane === "replay" && <RecordedBadge />;
   // On the set the toggle is an icon button in the status bar (spec landing task 5.0).
@@ -187,7 +199,7 @@ export function ShellView({ path, page, plane, theme, motion, gotoOpen, onToggle
         ) : page.status === "sealed" ? (
           <SealedDoor page={page} />
         ) : onSet ? (
-          <LandingPage plane={plane} badge={badge} controls={toggle} />
+          <LandingPage plane={plane} badge={badge} controls={toggle} daemonSample={plane === "replay" && daemonSample} />
         ) : (
           <Placeholder page={page} />
         )}
@@ -202,6 +214,7 @@ export function Shell() {
   const [theme, toggleTheme] = useTheme();
   const { motion } = usePreferences();
   const [gotoOpen, setGotoOpen] = useState(false);
+  const [daemonSample, setDaemonSample] = useState(false);
   const closeGoto = useCallback(() => setGotoOpen(false), []);
 
   useEffect(() => {
@@ -234,11 +247,14 @@ export function Shell() {
           toggleTheme();
           return true;
         case "daemon-sample":
-          // Reserved for the replay-only daemon sample toggle (spec landing); unhandled until then.
-          return false;
+          // A sample of the daemon-lost state, on replay only (landing requirement 2.5). On live
+          // the key is not ours: the daemon's state is the real one.
+          if (plane !== "replay") return false;
+          setDaemonSample((on) => !on);
+          return true;
       }
     },
-    [page, gotoOpen, toggleTheme],
+    [page, plane, gotoOpen, toggleTheme],
   );
   useHotkeys(KEYMAP, onAction);
 
@@ -250,6 +266,7 @@ export function Shell() {
       theme={theme}
       motion={motion}
       gotoOpen={gotoOpen}
+      daemonSample={daemonSample}
       onToggleTheme={toggleTheme}
       onCloseGoto={closeGoto}
     />

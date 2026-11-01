@@ -12,7 +12,7 @@
   overflow: visible;
   pointer-events: none;
   mix-blend-mode: screen;
-  opacity: calc(var(--light) * 0.8);
+  opacity: calc(var(--glow) * 0.8);
 }
 
 .dotCore {
@@ -33,7 +33,7 @@
 }
 
 /* The pumpkin: a 310x310 box at (-26, 604), partly off the left and bottom edges. */
-/* --light comes from the room (Room.module.css), shared with the thrown dots. */
+/* --glow (the room's --light times its flicker) comes from the room (Room.module.css), shared with the thrown dots. */
 .spiral {
   position: absolute;
   inset-block-start: 67.11%;
@@ -61,11 +61,11 @@
 }
 
 .base {
-  filter: brightness(calc(0.34 + var(--light) * 0.5)) saturate(calc(0.55 + var(--light) * 0.4)) blur(0.075rem);
+  filter: brightness(calc(0.34 + var(--glow) * 0.5)) saturate(calc(0.55 + var(--glow) * 0.4)) blur(0.075rem);
 }
 
 .hot {
   mix-blend-mode: screen;
-  opacity: var(--light);
+  opacity: var(--glow);
   filter: brightness(1.1) contrast(3) saturate(1.3) blur(0.0375rem);
 }
