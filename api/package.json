@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@sr/engine": "workspace:*"
+    "@sr/engine": "workspace:*",
+    "@vercel/blob": "2.8.2"
   }
 }

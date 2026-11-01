@@ -37,10 +37,10 @@
   - `assemble.ts`: anchors, depth defaults, follows, background layer, `fictional: true`; property: output always passes `validateRig`; golden: Malakor portrait + m8 parts -> valid rig.
   - _Requirements: 6.1, 6.2, 6.3, 6.4_
 
-- [ ] 6. Server: Gemini client, quota, job store
-  - [ ] 6.1 `api/_lib/gemini.ts` (injectable fetch, timeouts, model ids from env), `errors.ts`.
-  - [ ] 6.2 `api/_lib/quota.ts` + `costs.ts` (shared with voice-and-air) with memory and KV backends; tests for per-IP and global USD caps.
-  - [ ] 6.3 `api/_lib/jobstore.ts`: `MemoryJobStore`, `RedisBlobJobStore` (Upstash KV + Vercel Blob), selection by plane/env; `api/cron/forge-gc.ts`.
+- [x] 6. Server: Gemini client, quota, job store
+  - [x] 6.1 `api/_lib/gemini.ts` (injectable fetch, timeouts, model ids from env), `errors.ts`.
+  - [x] 6.2 `api/_lib/quota.ts` + `costs.ts` (shared with voice-and-air) with memory and KV backends; tests for per-IP and global USD caps.
+  - [x] 6.3 `api/_lib/jobstore.ts`: `MemoryJobStore`, `RedisBlobJobStore` (Upstash KV + Vercel Blob), selection by plane/env; `api/cron/forge-gc.ts`.
   - _Requirements: 7.2, 7.3, 7.6_
 
 - [ ] 7. Forge endpoints and steps
