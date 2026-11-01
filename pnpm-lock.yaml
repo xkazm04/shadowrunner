@@ -65,9 +65,15 @@ importers:
       '@fontsource/inter':
         specifier: ^5.3.0
         version: 5.3.0
+      '@sr/avatar':
+        specifier: workspace:*
+        version: link:../../packages/avatar
       '@sr/engine':
         specifier: workspace:*
         version: link:../../packages/engine
+      '@sr/rig':
+        specifier: workspace:*
+        version: link:../../packages/rig
       '@sr/theme':
         specifier: workspace:*
         version: link:../../packages/theme

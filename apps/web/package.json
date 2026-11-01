@@ -12,7 +12,9 @@
     "@fontsource/barlow-semi-condensed": "^5.3.0",
     "@fontsource/courier-prime": "^5.3.0",
     "@fontsource/inter": "^5.3.0",
+    "@sr/avatar": "workspace:*",
     "@sr/engine": "workspace:*",
+    "@sr/rig": "workspace:*",
     "@sr/theme": "workspace:*",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"

@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en" data-theme="halloween">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Avatar bench</title>
+    <!-- avatar-renderer task 6 (req 7.3): frame-time bench, served by `vite` only, never in the app
+         bundle (vite build reads index.html alone). Query: ?mode=2d forces the canvas2D fallback,
+         ?jaw=0..1 and ?t=s freeze a Drive for screenshots, ?seconds=n sets the run length (10), ?react=1 mounts <AvatarCanvas>. -->
+    <style>
+      body { margin: 0; background: var(--sr-surface-0); color: var(--sr-text); font: var(--sr-size-text) / 1.4 var(--sr-font-mono); }
+      main { display: grid; grid-template-columns: minmax(0, 1fr) 22rem; gap: var(--sr-space-4); padding: var(--sr-space-4); }
+      #stage { width: 100%; aspect-ratio: 1; }
+      #stage canvas { display: block; width: 100%; height: 100%; }
+      #stage .face { width: 100%; height: 100%; }
+      pre { margin: 0; white-space: pre-wrap; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div id="stage"><canvas id="avatar"></canvas></div>
+      <pre id="result">loading Malakor...</pre>
+    </main>
+    <script type="module" src="./avatar.ts"></script>
+  </body>
+</html>

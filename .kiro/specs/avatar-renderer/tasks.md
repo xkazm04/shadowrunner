@@ -33,6 +33,6 @@
   - `react/AvatarCanvas.tsx`: owns canvas, renderer, driver, rAF loop; `drive` override; reads `prefers-reduced-motion` and `[data-motion]`; gesture prop edge-triggers; cancels loop and disposes on unmount. Test with React Testing Library + the GL stub.
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 5.3_
 
-- [ ] 6. Bench page
+- [x] 6. Bench page
   - `apps/web/bench/avatar.html` + `avatar.ts`: Malakor idle 10 s, prints median/p95 frame time and `info()`; excluded from the app bundle. Record the measurement in `docs/kiro-log.md`.
   - _Requirements: 7.3_
