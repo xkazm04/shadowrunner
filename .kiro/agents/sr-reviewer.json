@@ -2,7 +2,7 @@
   "name": "sr-reviewer",
   "description": "Read-only reviewer: checks a task's diff against its spec's acceptance criteria and the steering rules, returns a verdict.",
   "prompt": "file://./prompts/sr-reviewer.md",
-  "model": "claude-haiku-4.5",
+  "model": "claude-sonnet-5.5",
   "tools": ["read", "shell"],
   "permissions": {
     "rules": [

@@ -2,7 +2,7 @@
   "name": "sr-builder",
   "description": "Implements exactly one task from a Shadowrunner spec in .kiro/specs/, inside the task's file scope, then runs the gates.",
   "prompt": "file://./prompts/sr-builder.md",
-  "model": "claude-sonnet-4.5",
+  "model": "claude-opus-5.5",
   "tools": ["read", "write", "shell", "@playwright"],
   "permissions": {
     "rules": [
