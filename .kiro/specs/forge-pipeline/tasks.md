@@ -1,6 +1,6 @@
 # Implementation plan: forge-pipeline
 
-- [ ] 0. Wire contract stub (director, build-order step 3; may run before the spike because it is types only)
+- [x] 0. Wire contract stub (director, build-order step 3; may run before the spike because it is types only)
   - `packages/forge/src/wire.ts` exactly per design.md "Contracts (wire names)": `ForgeRequest`, `ForgeStatus`, `JobView`, `ForgeErrorCode`, types only. Export it as the `@sr/forge/wire` subpath in `packages/forge/package.json`; a type-level test that the creator-side import compiles.
   - _Requirements: 7.1_
 

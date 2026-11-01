@@ -95,7 +95,11 @@ importers:
 
   packages/engine: {}
 
-  packages/forge: {}
+  packages/forge:
+    dependencies:
+      '@sr/rig':
+        specifier: workspace:*
+        version: link:../rig
 
   packages/rig: {}
 
