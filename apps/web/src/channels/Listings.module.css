@@ -1,369 +1,387 @@
-/* CH 4 Cellar Listings (Listings.tsx), after the reference's `#gpage`, `.mast`, `.listing`, `.vac`
-   and `.gbtn` rules: a parchment page, slightly turned, on the frame's dark room. Literal colours
-   are roles: the page is `paper`, the ink `paper-ink`, the red time line `paper-ink-signal`.
-   Contrast (as the chat strip, landing task 7): the page is opaque `paper` and the texture is a
-   screen at 0.24, so it can only lighten and both inks keep their token contrast. */
+/* CH 4, the wall of sets (Listings.tsx), after `r1/characters-c.html`: the cellar's brick in the
+   dark, the colour a warmed set throws across it, the wall of sets on its shelves, and the
+   newspaper clipping pinned beside it (WallClipping.tsx). The sets themselves are
+   WallSet.module.css. Literal colours are `wall-*` roles; the clipping's inks are `wall-clip-ink`
+   and `wall-clip-signal` on the `wall-clip` paper (contrast pairs in packages/theme). The spill's
+   position, colour and strength are registered properties the page writes from a ref, so the
+   light glides from set to set. */
+
+@property --wall-sx {
+  syntax: "<percentage>";
+  inherits: true;
+  initial-value: 50%;
+}
+
+@property --wall-sy {
+  syntax: "<percentage>";
+  inherits: true;
+  initial-value: 45%;
+}
+
+@property --wall-sa {
+  syntax: "<percentage>";
+  inherits: true;
+  initial-value: 0%;
+}
+
+@property --wall-sc {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: transparent;
+}
 
 .page {
   position: relative;
+  z-index: 0;
   display: grid;
-  grid-template-areas:
-    "mast mast"
-    "listing later"
-    "slots later";
-  grid-template-rows: auto auto 1fr;
-  grid-template-columns: 1.25fr 1fr;
-  gap: var(--sr-space-6);
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) 25rem;
+  gap: var(--sr-space-3) var(--sr-space-5);
+  align-self: stretch;
   box-sizing: border-box;
-  inline-size: min(78.75rem, 100%);
-  padding: var(--sr-space-6);
-  overflow: hidden;
-  border-radius: var(--sr-radius-1);
-  background-color: var(--sr-paper);
-  color: var(--sr-paper-ink);
+  inline-size: 100%;
+  block-size: max(34rem, calc(100dvh - 8.25rem));
+  color: var(--sr-text);
   font-family: var(--sr-font-body);
-  font-size: var(--sr-size-text);
-  line-height: 1.45;
-  transform: rotate(-0.4deg);
-  filter: drop-shadow(0 1.875rem 2.5rem color-mix(in srgb, var(--sr-surface-0) 85%, transparent));
+  transition:
+    --wall-sx 0.8s ease,
+    --wall-sy 0.8s ease,
+    --wall-sa 0.8s ease,
+    --wall-sc 0.8s ease;
 }
 
-.page::before {
+.room,
+.spill,
+.vignette {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.room {
+  background-image: url("../../../../assets/plates/cellar-wide.webp");
+  background-position: center;
+  background-size: cover;
+  filter: brightness(0.22) saturate(0.5) contrast(1.1);
+}
+
+.spill {
+  background-image: radial-gradient(
+    28% 38% at var(--wall-sx) var(--wall-sy),
+    color-mix(in srgb, var(--wall-sc) var(--wall-sa), transparent),
+    transparent 72%
+  );
+  mix-blend-mode: screen;
+}
+
+.vignette {
+  background-image: radial-gradient(110% 90% at 40% 50%, transparent 45%, color-mix(in srgb, var(--sr-surface-0) 85%, transparent));
+}
+
+.title {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--sr-text-muted);
+  font-family: var(--sr-font-display);
+  font-size: var(--sr-size-text-sm);
+  font-weight: 800;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}
+
+.title span {
+  color: var(--sr-text-strong);
+}
+
+/* The wall: four sets a row, the big set two by two in the middle, channel 9 two wide. */
+.wall {
+  position: relative;
+  display: grid;
+  grid-template-rows: 1fr 1fr 0.9fr;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: 0.9fr;
+  grid-auto-flow: row dense;
+  gap: var(--sr-space-3);
+  min-block-size: 0;
+  padding-block-start: var(--sr-space-5);
+}
+
+/* A shelf board under each row but the last (absolute, so it takes no cell). */
+.shelf {
+  position: absolute;
+  inset-block-end: -0.8125rem;
+  inset-inline: -0.5rem;
+  z-index: 0;
+  grid-column: 1 / -1;
+  block-size: 0.625rem;
+  border-radius: var(--sr-radius-1);
+  background-image: linear-gradient(var(--sr-wall-shelf-hi), var(--sr-wall-shelf-lo));
+  box-shadow: var(--sr-wall-shadow-shelf);
+}
+
+/* The clipping: torn newsprint, pinned and slightly turned. */
+.clip {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-self: center;
+  max-block-size: 100%;
+  min-block-size: 0;
+  filter: drop-shadow(0 1.25rem 1.875rem color-mix(in srgb, var(--sr-surface-0) 80%, transparent));
+  transform: rotate(1deg);
+}
+
+.paper {
+  position: relative;
+  box-sizing: border-box;
+  min-block-size: 0;
+  overflow: auto;
+  padding: var(--sr-space-6) var(--sr-space-5) var(--sr-space-5);
+  background-image: radial-gradient(120% 90% at 30% 10%, var(--sr-wall-clip-hi), var(--sr-wall-clip) 55%, var(--sr-wall-clip-lo));
+  color: var(--sr-wall-clip-ink);
+  clip-path: polygon(
+    0 1%,
+    9% 0,
+    24% 0.8%,
+    41% 0.1%,
+    58% 0.9%,
+    76% 0,
+    92% 0.7%,
+    100% 0,
+    99.4% 34%,
+    100% 70%,
+    99.5% 100%,
+    80% 99.2%,
+    61% 100%,
+    40% 99.3%,
+    20% 100%,
+    0.4% 99.4%,
+    0 66%,
+    0.6% 33%
+  );
+}
+
+.paper::before {
   content: "";
   position: absolute;
   inset: 0;
   pointer-events: none;
   background-image: url("../../../../assets/plates/paper.webp");
-  background-position: center;
-  background-size: cover;
-  filter: contrast(1.4);
-  mix-blend-mode: screen;
-  opacity: 0.24;
+  background-size: 100% 100%;
+  mix-blend-mode: multiply;
+  opacity: 0.14;
 }
 
-.page > * {
+.paper > * {
   position: relative;
 }
 
-.page h1,
-.page h2,
-.page h3 {
-  margin: 0;
-  color: var(--sr-paper-ink);
+.tack {
+  position: absolute;
+  inset-block-start: 0.625rem;
+  inset-inline-start: 50%;
+  inline-size: 1rem;
+  block-size: 1rem;
+  border-radius: var(--sr-radius-pill);
+  background-image: radial-gradient(circle at 35% 30%, var(--sr-wall-tack-hi), var(--sr-wall-tack-lo));
+  box-shadow: var(--sr-wall-shadow-tack);
+  transform: translateX(-50%);
+}
+
+.mast {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-block-end: var(--sr-space-3);
+  padding-block-end: var(--sr-space-2);
+  border-block-end: 0.25rem double var(--sr-wall-clip-ink);
+}
+
+.mast b {
   font-family: var(--sr-font-display);
-  font-weight: 800;
+  font-size: var(--sr-wall-size-name);
+  font-weight: 900;
   line-height: 1;
 }
 
-:where(.page p) {
-  margin: 0;
-}
-
-/* The masthead: title left, the night's line right, over a double rule. */
-.mast {
-  display: flex;
-  grid-area: mast;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--sr-space-4);
-  padding-block-end: var(--sr-space-3);
-  border-block-end: 0.25rem double var(--sr-paper-ink);
-}
-
-.mast h1 {
-  font-size: var(--sr-size-headline);
-  letter-spacing: -0.01em;
-}
-
-.mast p {
+.mast span {
   font-family: var(--sr-font-type);
-  font-size: var(--sr-size-text);
+  font-size: var(--sr-size-text-sm);
   font-weight: 700;
   letter-spacing: 0.08em;
-  line-height: 1.3;
   text-align: end;
 }
 
-.listing {
-  display: grid;
-  grid-area: listing;
-  grid-template-columns: 15.625rem 1fr;
-  gap: var(--sr-space-5);
-  align-content: start;
-}
-
-.listing figure {
+.paper p {
   margin: 0;
 }
 
-.listing img {
-  display: block;
-  inline-size: 100%;
-  block-size: auto;
-  aspect-ratio: 1;
-  object-fit: cover;
-  border: 0.1875rem solid var(--sr-paper-ink);
-  filter: grayscale(0.55) sepia(0.35) contrast(1.15);
-}
-
-.listing figcaption {
-  margin-block-start: var(--sr-space-2);
-  font-size: var(--sr-size-text);
-  line-height: 1.3;
-}
-
-.time,
-.slotTime {
+.paper .slot {
+  margin-block-end: var(--sr-space-2);
   font-family: var(--sr-font-type);
-  font-size: var(--sr-size-text-lg);
+  font-size: var(--sr-size-text);
   font-weight: 700;
-  letter-spacing: 0.08em;
-  line-height: 1;
+  letter-spacing: 0.1em;
 }
 
-.time {
-  color: var(--sr-paper-ink-signal);
+.paper .now {
+  color: var(--sr-wall-clip-signal);
 }
 
-.listing h2 {
-  margin-block: var(--sr-space-2) var(--sr-space-1);
+.paper h2 {
+  margin: 0 0 var(--sr-space-2);
+  font-family: var(--sr-font-display);
   font-size: var(--sr-size-display);
+  font-weight: 900;
+  line-height: 0.92;
 }
 
-.role {
+.paper .epithet {
   margin-block-end: var(--sr-space-3);
+  font-family: var(--sr-font-old);
   font-size: var(--sr-size-text-lg);
   font-style: italic;
-  line-height: 1.3;
+  line-height: 1.25;
 }
 
-.blurb {
+.paper .blurb {
   margin-block-end: var(--sr-space-3);
-  font-size: var(--sr-size-text-lg);
-  line-height: 1.5;
+  font-size: var(--sr-size-text);
+  line-height: 1.55;
 }
 
-.listing dl {
+.spec {
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: var(--sr-space-1) var(--sr-space-4);
+  gap: var(--sr-space-1) var(--sr-space-3);
   margin: 0 0 var(--sr-space-4);
+  padding: var(--sr-space-2) 0;
+  border-block: 0.0625rem solid color-mix(in srgb, var(--sr-wall-clip-ink) 40%, transparent);
+  font-size: var(--sr-size-text-sm);
 }
 
-.listing dl div {
+.spec div {
   display: contents;
 }
 
-.listing dt {
+.spec dt {
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
   font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
-.listing dd {
+.spec dd {
   margin: 0;
+  line-height: 1.4;
 }
 
 .actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--sr-space-2);
-}
-
-/* The programme's buttons: ink-filled, or outlined (alt). Two classes, over `.shell a`. */
-.page .button {
-  display: inline-flex;
-  align-items: center;
-  margin-block-start: var(--sr-space-2);
-  padding: var(--sr-space-3) var(--sr-space-4);
-  border: thin solid var(--sr-paper-ink);
-  border-radius: var(--sr-radius-1);
-  background-color: var(--sr-paper-ink);
-  color: var(--sr-paper);
-  font-size: var(--sr-size-text-lg);
-  font-weight: 600;
-  line-height: 1;
-  text-decoration: none;
-}
-
-.page .alt {
-  background-color: transparent;
-  color: var(--sr-paper-ink);
-}
-
-.page .button:focus-visible {
-  outline: medium solid var(--sr-paper-ink-signal);
-  outline-offset: var(--sr-space-1);
-}
-
-/* Later tonight (landing task 12): the rest of the cast as programme entries, a still beside each. */
-.later {
-  display: grid;
-  grid-area: later;
-  align-content: start;
   gap: var(--sr-space-3);
-  min-inline-size: 0;
 }
 
-.page .laterTitle {
-  padding-block-end: var(--sr-space-2);
-  border-block-end: thin solid var(--sr-paper-ink);
-  font-family: var(--sr-font-type);
-  font-size: var(--sr-size-text-lg);
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.tuning {
-  font-style: italic;
-}
-
-.entries {
-  display: grid;
-  gap: var(--sr-space-4);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.entry {
-  display: grid;
-  grid-template-areas:
-    "still head"
-    "still text";
-  grid-template-rows: auto 1fr;
-  grid-template-columns: 7rem minmax(0, 1fr);
-  gap: var(--sr-space-1) var(--sr-space-4);
-  align-items: start;
-  padding-block-end: var(--sr-space-4);
-  border-block-end: 0.125rem dotted color-mix(in srgb, var(--sr-paper-ink) 45%, var(--sr-paper));
-}
-
-.entry:last-child {
-  padding-block-end: 0;
-  border-block-end: 0;
-}
-
-.still {
-  display: block;
-  grid-area: still;
-  inline-size: 100%;
-  block-size: auto;
-  aspect-ratio: 1;
-  object-fit: cover;
-  border: 0.1875rem solid var(--sr-paper-ink);
-  background-color: var(--sr-surface-0);
-}
-
-.entryHead {
-  display: grid;
-  grid-area: head;
-  gap: var(--sr-space-1);
-  min-inline-size: 0;
-}
-
-.entryText {
-  display: grid;
-  grid-area: text;
-  justify-items: start;
-  gap: var(--sr-space-1);
-  min-inline-size: 0;
-}
-
-.entry h3 {
-  font-size: var(--sr-size-display);
-}
-
-.hook {
-  font-size: var(--sr-size-text);
-  font-style: italic;
-  line-height: 1.4;
-}
-
-.shows {
-  font-size: var(--sr-size-text);
-  line-height: 1.4;
-}
-
-.shows b {
-  font-family: var(--sr-font-type);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.entry .button {
-  margin-block-start: var(--sr-space-1);
+.paper .btn {
+  display: inline-flex;
   padding: var(--sr-space-2) var(--sr-space-3);
-  font-size: var(--sr-size-text);
-}
-
-/* The unclaimed hours and the sealed channel, under Malakor. */
-.slots {
-  display: flex;
-  grid-area: slots;
-  flex-direction: column;
-  align-self: start;
-  gap: var(--sr-space-4);
-}
-
-.vacant {
-  padding: var(--sr-space-4) var(--sr-space-5);
-  border: 0.125rem dashed color-mix(in srgb, var(--sr-paper-ink) 60%, var(--sr-paper));
-  border-radius: var(--sr-radius-1);
-}
-
-.vacant h3 {
-  margin-block: var(--sr-space-2);
+  border: 0.125rem solid var(--sr-wall-clip-ink);
+  color: var(--sr-wall-clip-ink);
+  font-family: var(--sr-font-display);
   font-size: var(--sr-size-text-lg);
   font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
 }
 
-.vacant p:not(.slotTime) {
-  line-height: 1.45;
-}
-
-.sealed {
-  background-image: repeating-linear-gradient(
-    -45deg,
-    color-mix(in srgb, var(--sr-paper-ink) 6%, transparent) 0 0.625rem,
-    transparent 0.625rem 1.25rem
+.paper .btn:hover {
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--sr-wall-clip-ink) 10%, transparent),
+    color-mix(in srgb, var(--sr-wall-clip-ink) 10%, transparent)
   );
 }
 
-@media (max-width: 60rem) {
+.paper .btn:focus-visible {
+  outline: 0.1875rem solid var(--sr-wall-clip-signal);
+  outline-offset: 0.1875rem;
+}
+
+.paper .solid {
+  background-color: var(--sr-wall-clip-ink);
+  color: var(--sr-wall-clip-hi);
+}
+
+.paper .solid:hover {
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--sr-wall-clip-signal) 40%, var(--sr-wall-clip-ink)),
+    color-mix(in srgb, var(--sr-wall-clip-signal) 40%, var(--sr-wall-clip-ink))
+  );
+}
+
+.paper .hint {
+  margin-block-start: var(--sr-space-3);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+}
+
+.swap {
+  transition: opacity 0.25s ease;
+}
+
+.changing {
+  opacity: 0;
+}
+
+@media (max-width: 85rem) {
   .page {
-    grid-template-areas:
-      "mast"
-      "listing"
-      "later"
-      "slots";
-    grid-template-rows: none;
-    grid-template-columns: 1fr;
-    padding: var(--sr-space-5);
-    transform: none;
+    grid-template-columns: minmax(0, 1fr) 22.5rem;
   }
 }
 
-@media (max-width: 36rem) {
-  .listing {
-    grid-template-columns: 1fr;
+@media (max-height: 47.5rem) {
+  .paper {
+    padding: var(--sr-space-5) var(--sr-space-4) var(--sr-space-4);
   }
 
-  .listing figure {
-    max-inline-size: 15.625rem;
+  .paper .blurb {
+    margin-block-end: var(--sr-space-2);
+    font-size: var(--sr-size-text-sm);
   }
 
-  /* On a phone the name sits beside the still and the rest runs the full width under both. */
-  .entry {
-    grid-template-areas:
-      "still head"
-      "text text";
-    grid-template-columns: 5.5rem minmax(0, 1fr);
-    gap: var(--sr-space-2) var(--sr-space-3);
-    align-items: center;
+  .spec {
+    gap: 0 var(--sr-space-3);
+  }
+}
+
+/* Narrow: the clipping under the wall, two sets a row. */
+@media (max-width: 60rem) {
+  .page {
+    grid-template-rows: none;
+    grid-template-columns: minmax(0, 1fr);
+    block-size: auto;
   }
 
-  .entry h3 {
-    font-size: var(--sr-size-text-lg);
+  .wall {
+    grid-template-rows: none;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: auto;
   }
+
+  .shelf {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page,
+  .swap {
+    transition: none;
+  }
+}
+
+:global([data-motion="reduced"]) .page,
+:global([data-motion="reduced"]) .swap {
+  transition: none;
 }

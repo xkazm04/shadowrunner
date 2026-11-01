@@ -64,32 +64,27 @@ describe("ChannelFrame", () => {
 
 describe("Listings (CH 4)", () => {
   const html = renderToString(<Listings />);
-  it("is the Cellar Listings with Malakor on now and the vacant hours", () => {
+  it("is the Cellar Listings wall with Malakor's set on now and his listing pinned", () => {
     expect(html).toContain('data-page="characters"');
-    expect(html).toMatch(/<h1 id="page-title">Cellar Listings<\/h1>/);
+    expect(html).toMatch(/<h1 id="page-title"[^>]*><span>Cellar Listings<\/span>/);
+    expect(html).toContain('aria-label="03:00, Arch-Lich Malakor, on air now"');
     expect(html).toContain("03:00 · ON AIR NOW · CH 2");
-    expect(html).toContain("Arch-Lich Malakor");
-    expect(html).toContain("Later tonight");
-    expect(html).toContain("04:00 · VACANT");
-    expect(html).toContain("CH 9 · SEALED");
-    expect(html).toMatch(/<img[^>]*alt="Portrait of Arch-Lich Malakor \(stylised\)"/);
+    expect(html).toContain('data-phase="dark"');
   });
 
-  it("links every call to action to its channel's path from the manifest", () => {
+  it("links the listing's calls to action to their channels' paths from the manifest", () => {
     expect(html).toMatch(/href="\/creator\?character=malakor"[^>]*>Open in the Forge · CH 3</);
     expect(html).toMatch(/href="\/"[^>]*>Watch · CH 2</);
-    expect(html).toMatch(/href="\/creator"[^>]*>Forge a character · CH 3</);
-    expect(html).toMatch(/href="\/sealed"[^>]*>Tune to 9</);
   });
 
-  it("sets its text on opaque paper, with the texture as a screen at 0.24 or less", () => {
+  it("sets the clipping's inks on the wall-clip paper, with the texture multiplied at 0.14", () => {
     const css = fs.readFileSync(new URL("./Listings.module.css", import.meta.url), "utf8");
-    const pageRule = css.match(/\n\.page \{[^}]*\}/)?.[0] ?? "";
-    expect(pageRule).toContain("background-color: var(--sr-paper);");
-    expect(pageRule).toContain("color: var(--sr-paper-ink);");
-    const texture = css.match(/\.page::before \{[^}]*\}/)?.[0] ?? "";
-    expect(texture).toContain("mix-blend-mode: screen;");
-    expect(Number(texture.match(/opacity: ([\d.]+);/)?.[1])).toBeLessThanOrEqual(0.24);
+    const paper = css.match(/\n\.paper \{[^}]*\}/)?.[0] ?? "";
+    expect(paper).toContain("var(--sr-wall-clip)");
+    expect(paper).toContain("color: var(--sr-wall-clip-ink);");
+    const texture = css.match(/\.paper::before \{[^}]*\}/)?.[0] ?? "";
+    expect(texture).toContain("mix-blend-mode: multiply;");
+    expect(Number(texture.match(/opacity: ([\d.]+);/)?.[1])).toBeLessThanOrEqual(0.14);
   });
 });
 

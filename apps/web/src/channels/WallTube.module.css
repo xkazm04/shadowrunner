@@ -1,0 +1,185 @@
+/* CH 4, what the tubes show and the sign above the big set (WallSet.tsx, WallLive.tsx), after
+   `r1/characters-c.html` `.rigbox`, `.osd`, `.sub`, `.onair`, `.vac` and `.tape`: the live tube's
+   renderer box, its on-screen corners and captions; the ON AIR sign, dark until the page's
+   `data-phase` lights it; the vacant hour's static; channel 9's tape. Literal colours, shadows
+   and glows are `wall-*` roles. */
+
+/* The live tube: the renderer over his still; the still goes once the canvas is up. */
+.rigBox {
+  position: absolute;
+  inset-block-start: -3%;
+  inset-inline-start: 50%;
+  display: block;
+  block-size: 112%;
+  aspect-ratio: 1;
+  transform: translateX(-50%);
+}
+
+.rig {
+  position: absolute;
+  inset: 0;
+}
+
+.osd {
+  position: absolute;
+  inset-block-start: 7%;
+  inset-inline-start: 7%;
+  z-index: 5;
+  color: var(--sr-wall-osd);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-shadow: var(--sr-wall-glow-osd);
+}
+
+.osdRight {
+  inset-inline: auto 7%;
+}
+
+.sub {
+  position: absolute;
+  inset-inline: 9%;
+  inset-block-end: 6%;
+  z-index: 5;
+  padding: var(--sr-space-1) var(--sr-space-2);
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--sr-wall-tube) 72%, transparent),
+    color-mix(in srgb, var(--sr-wall-tube) 72%, transparent)
+  );
+  color: var(--sr-text-strong);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+  line-height: 1.35;
+  text-align: center;
+}
+
+.onair {
+  position: absolute;
+  inset-block-start: -0.125rem;
+  inset-inline-start: 50%;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: var(--sr-space-2);
+  padding: var(--sr-space-1) var(--sr-space-3);
+  border: 0.0625rem solid var(--sr-wall-onair-off-line);
+  border-radius: var(--sr-radius-1);
+  background-color: var(--sr-wall-onair-off-bg);
+  box-shadow: var(--sr-wall-shadow-onair);
+  color: var(--sr-wall-onair-off-ink);
+  font-family: var(--sr-font-display);
+  font-size: var(--sr-size-text-lg);
+  font-weight: 900;
+  letter-spacing: 0.2em;
+  white-space: nowrap;
+  transform: translate(-50%, -50%);
+}
+
+[data-phase="lit"] .onair,
+[data-phase="idle"] .onair {
+  border-color: var(--sr-wall-onair-lit-line);
+  background-color: var(--sr-wall-onair-lit-bg);
+  box-shadow: var(--sr-wall-shadow-onair-lit);
+  color: var(--sr-wall-onair-lit-ink);
+  text-shadow: var(--sr-wall-glow-onair);
+}
+
+[data-phase="lit"] .onair {
+  animation: on-flick 1.3s steps(1, end) both;
+}
+
+@keyframes on-flick {
+  0% {
+    opacity: 0.3;
+  }
+
+  10% {
+    opacity: 1;
+  }
+
+  16% {
+    opacity: 0.4;
+  }
+
+  24%,
+  100% {
+    opacity: 1;
+  }
+}
+
+/* 09:00: nothing scheduled, so the set hisses. */
+.snow {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  opacity: 0.55;
+  filter: contrast(1.2);
+}
+
+.msg {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  color: var(--sr-text-strong);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-align: center;
+  text-shadow: var(--sr-wall-shadow-text);
+}
+
+.msg span {
+  padding: var(--sr-space-1) var(--sr-space-2);
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--sr-wall-tube) 65%, transparent),
+    color-mix(in srgb, var(--sr-wall-tube) 65%, transparent)
+  );
+}
+
+.tape {
+  position: absolute;
+  inset-block-start: 22%;
+  inset-inline: -10%;
+  z-index: 6;
+  display: grid;
+  place-items: center;
+  block-size: 22%;
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--sr-wall-tape) 92%, transparent),
+    color-mix(in srgb, var(--sr-wall-tape) 92%, transparent)
+  );
+  color: var(--sr-wall-tape-ink);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  filter: drop-shadow(0 0.125rem 0.375rem color-mix(in srgb, var(--sr-wall-tube) 60%, transparent));
+  transform: rotate(-8deg);
+}
+
+.tapeTwo {
+  inset-block-start: 58%;
+  opacity: 0.9;
+  transform: rotate(5deg);
+}
+
+@media (max-height: 47.5rem) {
+  .sub {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onair {
+    animation: none !important;
+  }
+}
+
+:global([data-motion="reduced"]) .onair {
+  animation: none !important;
+}
