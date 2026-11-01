@@ -39,3 +39,10 @@
 - [x] 8. Apply the contest winner's art direction (The Harvest Floor; after `landing` tasks 1, 2 and 9)
   - Restyle the regions to `ch-forge-1600x900.png` using only role tokens the `landing` spec adds: `ChannelFrame`, the stage on the left, the parchment tab panel (LOOKS | FACE | VOICE | FORGE NEW) and the two channel actions. No behaviour or test changes.
   - _Requirements: 6.1, 6.2_
+
+- [ ] 9. The cast up front (owner request 2026-11-01: "involve them into the app")
+  - The library seeds the whole cast on first run: Arch-Lich Malakor (hand-rigged, selected, undeletable) plus every fictional replay forge job (today the Lantern Warden, the Understudy, the Announcer of Dead Air, Sister Vesper, the Moth Widow), derived from the recorded jobs like the gallery, so a new job joins without code. Existing libraries get the missing cast added once (a seed version), never duplicates, never overwriting a user's edited look. Seeded presets may be deleted (only Malakor is protected); the gallery can re-adopt them.
+  - Deep link `/creator?character=<slug>` selects that character (used by CH 4).
+  - Gallery: show every card without hunting - a grid of portrait cards that fits the panel (scroll only as a fallback), each card naming the layer kinds it shows off.
+  - Tests: seed adds the cast once and is idempotent across reloads; old libraries are topped up; deep link selects; gallery lists all jobs. Visual proof: /creator at 1600x900 and 390x844 with the full library strip, the gallery grid, and two presets dressed (palette + emotion).
+  - _Requirements: 3.1, 4.1_
