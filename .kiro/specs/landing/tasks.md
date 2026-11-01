@@ -11,7 +11,7 @@
   - _Requirements: 1.1, 1.2_
 
 - [ ] 1. Tokens, fonts and plates
-  - [ ] 1.1 Add the new roles (design.md "Tokens") to `roles.json`, `halloween.json` (values from the reference) and `baseline.json`; theme and contrast tests stay green.
+  - [ ] 1.1 Add the new roles (design.md "Tokens") to `roles.json`, `halloween.json` (values from the reference) and `baseline.json`; theme and contrast tests stay green. Add contrast pairs for the new roles: `paper-ink` and `paper-ink-signal` on `paper` at 4.5:1 (16 px chat text, not the 3:1 large-label rule that `signal-*` uses), and `phosphor` text on the glass at 4.5:1.
   - [ ] 1.2 Self-host Barlow Semi Condensed, Inter and Courier Prime through `@fontsource`, and bind them to `font-display`, `font-body` and `font-type`.
   - [ ] 1.3 Convert the stills used (`cellar-wide`, `crt-frontal`, `root-pile`, `root-eye`, `paper`) to WebP under `assets/plates/`, each at most 300 KB at 1920 wide. Provenance is already in `docs/provenance.md`.
   - _Requirements: 4.1, 9.5, 9.6_
