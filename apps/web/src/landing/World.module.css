@@ -1,0 +1,19 @@
+/* The stage fills the space it is given; the world inside is laid out in world units and scaled
+   as one transform (World.tsx), so every length below the world is a world length. */
+
+.stage {
+  position: relative;
+  overflow: hidden;
+  inline-size: 100%;
+  block-size: 100dvh;
+  background-color: var(--sr-surface-0);
+}
+
+.world {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  overflow: hidden;
+  transform-origin: 0 0;
+  background-color: var(--sr-surface-0);
+}

@@ -1,0 +1,68 @@
+/* The eye gourd. A 220x220 box at (1300, 592) of the 1600x900 world; 110x110 at (310, 418)
+   of the 420x910 portrait world. The reference put the portrait box at x 318, so it ran 8 world
+   px past the right edge; here it ends flush at 420. The candle behind the slit is ember; the
+   pupil is surface-0. */
+
+.eye {
+  position: absolute;
+  inset-block-start: 65.78%;
+  inset-inline-start: 81.25%;
+  inline-size: 13.75%;
+  block-size: 24.44%;
+  pointer-events: none;
+}
+
+:global([data-world="portrait"]) .eye {
+  inset-block-start: 45.93%;
+  inset-inline-start: 73.81%;
+  inline-size: 26.19%;
+  block-size: 12.09%;
+}
+
+/* Only the mask's alpha counts, so its opaque stop can be any opaque role. */
+.gourd {
+  position: absolute;
+  inset: 0;
+  background-image: url("../../../../assets/plates/root-eye.webp");
+  background-size: 100% 100%;
+  filter: brightness(0.62) saturate(0.85);
+  mask-image: radial-gradient(ellipse 39% 38% at 50% 51%, var(--sr-surface-0) 80%, transparent 100%);
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  overflow: visible;
+}
+
+.core {
+  fill: var(--sr-ember);
+  opacity: 0.28;
+}
+
+.pupil {
+  fill: var(--sr-surface-0);
+}
+
+.glow {
+  mix-blend-mode: screen;
+  opacity: 0.42;
+}
+
+.glowCore {
+  stop-color: var(--sr-ember);
+  stop-opacity: 1;
+}
+
+.glowMid {
+  stop-color: var(--sr-ember);
+  stop-opacity: 0.55;
+}
+
+/* ember, not accent: accent is the UI's focus colour and is cold in baseline. */
+.glowEdge {
+  stop-color: var(--sr-ember);
+  stop-opacity: 0;
+}

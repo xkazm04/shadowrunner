@@ -1,0 +1,28 @@
+import { renderToString } from "react-dom/server";
+import { describe, expect, it } from "vitest";
+import { LandingPage } from "./LandingPage";
+
+describe("LandingPage (static)", () => {
+  it("puts the room inside the world, with the throw, the eye and the spiral in reference order", () => {
+    const html = renderToString(<LandingPage />);
+    const at = (needle: string) => {
+      const i = html.indexOf(needle);
+      expect(i, needle).toBeGreaterThan(-1);
+      return i;
+    };
+    const order = ['data-page="landing"', "data-world=", "data-room", "_throw", "_eye", "_spiral", "_vignette"].map(at);
+    expect(order).toEqual([...order].sort((a, b) => a - b));
+  });
+
+  it("lays the status bar over the room, inside the world, on channel 2 with the daemon online", () => {
+    const html = renderToString(<LandingPage controls={<button type="button">Theme</button>} />);
+    const world = html.indexOf("data-world=");
+    const room = html.indexOf("data-room");
+    const status = html.indexOf("data-status-bar");
+    expect(world).toBeGreaterThan(-1);
+    expect(status).toBeGreaterThan(room);
+    expect(html).toContain('data-daemon="online"');
+    expect(html).toContain("2 · On air");
+    expect(html.indexOf(">Theme</button>")).toBeGreaterThan(status);
+  });
+});

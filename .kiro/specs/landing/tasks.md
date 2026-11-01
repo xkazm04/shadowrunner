@@ -20,15 +20,17 @@
   - Add `channel` and `subtitle` to `PageDef`. Add the `daemon` and `sealed` pages and the channel table from design.md. Keys `2 3 4 6 9`, `←`/`→`, `Esc` and `D` (replay only) are derived from the manifest. Keymap test.
   - _Requirements: 5.3, 8.1_
 
-- [ ] 3. World and room (static)
+- [x] 3. World and room (static)
   - `World.tsx` (1600x900 scale-to-fit, 420x910 portrait below 0.78), `Room.tsx`, `Spiral.tsx` and `Eye.tsx` without motion. The composition matches `R4-1-1600x900-load.png` and `R4-1-390x844-load.png`.
   - _Requirements: 4.1, 4.2, 4.3, 9.1_
 
-- [ ] 4. Status bar
+- [x] 4. Status bar
+  - Layout (from the task 3 review): on the landing, the status bar IS the header. It sits inside the world as an overlay like the reference, the shell's own header is not rendered on `/`, and the world uses the full viewport (scale 1.0 at 1600x900, 390 px wide at 390x844). Other channels keep the shell header until `ChannelFrame` (task 9). Fix `.shell { min-height: 100vh }` overriding `.onSet { block-size: 100dvh }` on mobile (toolbar clipping). Keep the RECORDED badge and theme toggle reachable on `/` (they move into the status bar).
   - `StatusBar.tsx` bound to `usePlane()` and health: ON AIR lamp, viewers, channel, live-since clock or dead-air timer, daemon pill. Component test for both health states.
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
 
 - [ ] 5. The set and the glass
+  - [ ] 5.0 (from the task 4 review, director decisions 2026-11-01) Add a `radius-pill` role (`roles.json`, both themes) and use it for the ON AIR lamp and the daemon pill. Token font steps (20/16/14) are accepted over the reference's 21/18/19. Portrait header compacts to two rows like `R4-1-390x844-load.png` (at most 96 world px): row 1 wordmark + pill, row 2 lamp, viewers, channel, `since 03:00`; the RECORDED badge becomes a small tag after the wordmark and the theme toggle an icon button with an accessible name. Place the set directly below the header.
   - [ ] 5.1 `superellipse.ts` with its property test.
   - [ ] 5.2 (Contrast: the glass has no role. Back the lower third with a translucent `surface-0` band so `phosphor` text reaches 4.5:1 there, and measure it in the visual test, not only against surface tokens.) `Set.tsx` and `Glass.tsx`: CRT plate, superellipse clip, `<AvatarCanvas>` inside, phosphor grade, glare, rim shadow, lower third, hover caption. Requires `avatar-renderer`.
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_

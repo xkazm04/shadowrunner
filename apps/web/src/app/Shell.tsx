@@ -3,6 +3,7 @@
 // status "sealed" renders the sealed door and its line of lore instead.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { buildKeymap, GLOBAL_BINDINGS, stepChannel, useHotkeys, type KeyAction } from "./keys";
+import { LandingPage } from "../landing/LandingPage";
 import { channelPages, PAGES, type PageDef } from "./pages";
 import { usePlane, type Plane } from "./plane";
 import { handleLinkClick, navigate, useRoute } from "./router";
@@ -91,7 +92,10 @@ function NoSignal({ path }: { path: string }) {
   );
 }
 
-/** Lives in the shell header, outside every page, so no page can drop it (requirement 4.2). */
+/**
+ * Rendered by the shell, so no page can forget it (requirement 4.2): in the shell header, or on
+ * the set handed to the landing's status bar, which is the header there (spec landing task 4).
+ */
 function RecordedBadge() {
   return (
     <p className={styles.recorded} data-badge="recorded" title="Replay plane: recorded answers, no live calls">
@@ -111,45 +115,72 @@ export interface ShellViewProps {
   onCloseGoto: () => void;
 }
 
-/** Pure render of the shell for a given route and settings (rendered directly by tests). */
-export function ShellView({ path, page, plane, theme, motion, gotoOpen, onToggleTheme, onCloseGoto }: ShellViewProps) {
+function ThemeToggle({ theme, onToggle }: { theme: ThemeName; onToggle: () => void }) {
   const next = nextTheme(theme);
   return (
-    <div data-shell data-motion={motion} data-plane={plane} className={styles.shell}>
-      <header className={styles.header}>
-        <a href="/" className={styles.brand} onClick={(event) => handleLinkClick(event, "/")}>
-          Shadowrunner
-        </a>
-        {plane === "replay" && <RecordedBadge />}
-        <nav aria-label="Channels" className={styles.nav}>
-          <ul>
-            {NAV_ORDER.map((p) => (
-              <li key={p.id}>
-                <PageLink page={p} current={p.id === page?.id} />
-              </li>
-            ))}
-          </ul>
-        </nav>
-        <button
-          type="button"
-          className={styles.toggle}
-          onClick={onToggleTheme}
-          aria-label={`Theme: ${THEME_LABEL[theme]}. Switch to ${THEME_LABEL[next]}`}
-        >
-          Theme: {THEME_LABEL[theme]} {themeKey && <kbd>{themeKey}</kbd>}
-        </button>
-        {gotoKey && (
-          <span>
-            Go to <kbd>{gotoKey}</kbd>
-          </span>
-        )}
-      </header>
+    <button
+      type="button"
+      className={styles.toggle}
+      onClick={onToggle}
+      aria-label={`Theme: ${THEME_LABEL[theme]}. Switch to ${THEME_LABEL[next]}`}
+    >
+      Theme: {THEME_LABEL[theme]} {themeKey && <kbd>{themeKey}</kbd>}
+    </button>
+  );
+}
+
+/** Pure render of the shell for a given route and settings (rendered directly by tests). */
+export function ShellView({ path, page, plane, theme, motion, gotoOpen, onToggleTheme, onCloseGoto }: ShellViewProps) {
+  const onSet = page?.id === "landing";
+  const badge = plane === "replay" && <RecordedBadge />;
+  const toggle = <ThemeToggle theme={theme} onToggle={onToggleTheme} />;
+  return (
+    <div
+      data-shell
+      data-motion={motion}
+      data-plane={plane}
+      className={onSet ? `${styles.shell} ${styles.onSet}` : styles.shell}
+    >
+      {/* On the set the landing's status bar is the header; the shell hands it the badge and toggle. */}
+      {!onSet && (
+        <header className={styles.header}>
+          <a href="/" className={styles.brand} onClick={(event) => handleLinkClick(event, "/")}>
+            Shadowrunner
+          </a>
+          {badge}
+          <nav aria-label="Channels" className={styles.nav}>
+            <ul>
+              {NAV_ORDER.map((p) => (
+                <li key={p.id}>
+                  <PageLink page={p} current={p.id === page?.id} />
+                </li>
+              ))}
+            </ul>
+          </nav>
+          {toggle}
+          {gotoKey && (
+            <span>
+              Go to <kbd>{gotoKey}</kbd>
+            </span>
+          )}
+        </header>
+      )}
       {gotoOpen && <GoTo current={page} onClose={onCloseGoto} />}
-      <main className={styles.main}>
+      <main className={onSet ? styles.set : styles.main}>
         {page === undefined ? (
           <NoSignal path={path} />
         ) : page.status === "sealed" ? (
           <SealedDoor page={page} />
+        ) : onSet ? (
+          <LandingPage
+            plane={plane}
+            controls={
+              <>
+                {badge}
+                {toggle}
+              </>
+            }
+          />
         ) : (
           <Placeholder page={page} />
         )}
