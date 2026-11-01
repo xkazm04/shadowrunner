@@ -1,0 +1,8 @@
+/* Seeded fault: --sr-radius-2 is not a role (the landing task 6 bug). A comment naming
+   var(--sr-not-a-role) must be ignored, so only line 7 may be reported. */
+.box {
+  padding: var(--sr-space-2);
+  color: var(--sr-text);
+  border: thin solid var(--sr-line);
+  border-radius: var(--sr-radius-2);
+}

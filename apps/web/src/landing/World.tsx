@@ -16,6 +16,33 @@ export const WORLD_SIZE: Readonly<Record<WorldLayout, { width: number; height: n
 /** Below this stage aspect (width / height) the portrait world is used. */
 export const PORTRAIT_BELOW = 0.78;
 
+/**
+ * The status bar's block size in world px (StatusBar.module.css: 7.333% of 900, 10.55% of 910).
+ * Portrait is two rows at most (landing task 5.0, R4-1-390x844-load.png).
+ */
+export const HEADER_HEIGHT: Readonly<Record<WorldLayout, number>> = { landscape: 66, portrait: 96 };
+
+/** Top edge of the cabinet in the plate's px (superellipse.ts PLATE; the reference's plate mask). */
+export const CABINET_TOP = 138;
+
+export interface PlatePlacement {
+  /** Plate px to world px. */
+  scale: number;
+  /** World position of the plate's top-left corner. */
+  x: number;
+  y: number;
+}
+
+/**
+ * Where the set (task 5.2) stands: the reference's plate transforms. Both centre the plate on the
+ * world (within 2 px); portrait maps plate (599, 135) to world (210, 118). Either way the cabinet
+ * starts directly below the header: 7 world px in landscape, 22 in portrait.
+ */
+export const SET_PLATE: Readonly<Record<WorldLayout, PlatePlacement>> = {
+  landscape: { scale: 1.09, x: 147, y: -77 },
+  portrait: { scale: 0.53, x: 210 - 599 * 0.53, y: 118 - 135 * 0.53 },
+};
+
 export interface WorldFit {
   layout: WorldLayout;
   width: number;

@@ -92,6 +92,21 @@ describe("Shell", () => {
     expect(view(undefined, { path: "/cellar/door" })).toContain("Nothing is broadcast at /cellar/door.");
   });
 
+  it("on the set, the theme toggle is an icon button named by its label, and the badge tags the wordmark", () => {
+    const landing = PAGES.find((p) => p.id === "landing");
+    const html = view(landing, { theme: "baseline" });
+    const button = html.match(/<button[^>]*data-toggle="theme"[^>]*>(.*?)<\/button>/);
+    expect(button?.[0]).toContain('aria-label="Theme: Baseline. Switch to Halloween"');
+    expect(button?.[1]).toMatch(/^<svg[^>]*aria-hidden="true"/);
+    // No visible text but the key hint: the name comes from aria-label.
+    expect(button?.[1]?.replace(/<svg.*<\/svg>/, "")).toBe("<kbd>T</kbd>");
+    expect(html.indexOf(">Shadowrunner</a>")).toBeLessThan(html.indexOf('data-badge="recorded"'));
+    expect(html.indexOf('data-badge="recorded"')).toBeLessThan(html.indexOf("data-lamp"));
+    // Off the set the toggle keeps its words.
+    const creator = PAGES.find((p) => p.id === "creator");
+    expect(view(creator, { theme: "baseline" })).toMatch(/data-toggle="theme"[^>]*>Theme: Baseline <kbd>/);
+  });
+
   it("names the active theme on the toggle and mirrors the motion preference", () => {
     const html = view(PAGES[0], { theme: "baseline", motion: "reduced" });
     expect(html).toContain("Theme: Baseline");

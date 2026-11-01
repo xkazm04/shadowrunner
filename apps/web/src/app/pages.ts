@@ -23,7 +23,7 @@ export const PAGES: readonly PageDef[] = [
   { id: "landing", title: "On air", path: "/", hotkey: "2", status: "live", channel: 2, subtitle: "the cellar set" },
   {
     id: "creator",
-    title: "The Forge",
+    title: "Forge",
     path: "/creator",
     hotkey: "3",
     status: "live",

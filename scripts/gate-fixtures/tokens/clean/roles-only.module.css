@@ -1,0 +1,7 @@
+/* Control: every token is a role in packages/theme/roles.json. */
+.box {
+  padding: var(--sr-space-2);
+  color: var(--sr-text);
+  border: thin solid var(--sr-line);
+  border-radius: var(--sr-radius-1);
+}
