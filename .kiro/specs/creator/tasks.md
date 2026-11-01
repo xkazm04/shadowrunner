@@ -10,10 +10,10 @@
   - [x] 2.2 `forgeReducer.ts` + fast-check properties (forward-only status order, terminal states, failed keeps request).
   - _Requirements: 1.1, 1.2, 1.3, 1.5, 3.2, 3.4_
 
-- [ ] 3. Library store
-  - [ ] 3.1 `library/assets.ts` (dataUrl ↔ Blob, Blob → ImageBitmap).
-  - [ ] 3.2 `library/libraryStore.ts` on IndexedDB `sr-library`/`characters` with in-memory fallback; every read through `validateRig`.
-  - [ ] 3.3 `library/seed.ts` seeding Malakor from `assets/characters/malakor/`; tests with `fake-indexeddb` (seed, damaged record, delete refused for seeded, fallback notice).
+- [x] 3. Library store
+  - [x] 3.1 `library/assets.ts` (dataUrl ↔ Blob, Blob → ImageBitmap).
+  - [x] 3.2 `library/libraryStore.ts` on IndexedDB `sr-library`/`characters` with in-memory fallback; every read through `validateRig`.
+  - [x] 3.3 `library/seed.ts` seeding Malakor from `assets/characters/malakor/`; tests with `fake-indexeddb` (seed, damaged record, delete refused for seeded, fallback notice).
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
 
 - [ ] 4. Customize panel and stage
