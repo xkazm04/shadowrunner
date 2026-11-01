@@ -1,0 +1,271 @@
+/* The Forge's signal column (MoodDial, SignalCards), after `r1/creator-b.html` `.right`: the mood dial's bakelite knob
+   and its ten emotions, the gesture and voice keys, "speak a line" and its transcript, the channel
+   actions. Literal colours are roles: panels surface-1 over surface-0, the pointer and pressed keys
+   face-glow on paper-ink, amber accent, the red action signal-onair. */
+
+/* ---- the signal column ---- */
+.signal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sr-space-3);
+  min-block-size: 0;
+  overflow: auto;
+}
+
+.card {
+  box-sizing: border-box;
+  border: thin solid color-mix(in srgb, var(--sr-line) 70%, transparent);
+  background-image: linear-gradient(var(--sr-surface-1), var(--sr-surface-0));
+  clip-path: inset(0 round 0.625rem);
+  padding: var(--sr-space-3);
+}
+
+.dial {
+  position: relative;
+  inline-size: 18.75rem;
+  max-inline-size: 100%;
+  block-size: 12.5rem;
+  margin: 0 auto;
+}
+
+.knob {
+  position: absolute;
+  inset-block-start: calc(50% - 3.25rem);
+  inset-inline-start: calc(50% - 3.25rem);
+  inline-size: 6.5rem;
+  block-size: 6.5rem;
+  border-radius: var(--sr-radius-pill);
+  outline: 0.375rem solid var(--sr-surface-0);
+  background-image:
+    repeating-conic-gradient(color-mix(in srgb, var(--sr-surface-0) 35%, transparent) 0 4deg, transparent 4deg 10deg),
+    radial-gradient(circle at 40% 32%, color-mix(in srgb, var(--sr-ember) 28%, var(--sr-surface-2)), var(--sr-surface-0) 70%);
+  filter: drop-shadow(0 0.625rem 0.75rem var(--sr-surface-0));
+  cursor: pointer;
+  transition: transform 0.45s cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+
+/* The pointer. */
+.knob::before {
+  content: "";
+  position: absolute;
+  inset-block-start: 0.5rem;
+  inset-inline-start: calc(50% - 0.125rem);
+  inline-size: 0.25rem;
+  block-size: 1.875rem;
+  border-radius: var(--sr-radius-1);
+  background-color: var(--sr-face-glow);
+  filter: drop-shadow(0 0 0.375rem var(--sr-accent));
+}
+
+.knobFace {
+  position: absolute;
+  inset-block-start: calc(50% + 5.1rem);
+  inset-inline-start: 50%;
+  color: var(--sr-text);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.emo {
+  position: absolute;
+  padding: 0 var(--sr-space-2);
+  border: 0;
+  border-radius: var(--sr-radius-1);
+  background-color: transparent;
+  color: var(--sr-text);
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text-sm);
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+}
+
+.emo:hover {
+  color: var(--sr-text-strong);
+}
+
+.emo[aria-pressed="true"] {
+  background-color: var(--sr-face-glow);
+  color: var(--sr-paper-ink);
+  font-weight: 700;
+}
+
+.gestures,
+.voices {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sr-space-2);
+}
+
+.voices {
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--sr-space-1);
+}
+
+.key {
+  min-block-size: 2.25rem;
+  padding: var(--sr-space-1);
+  border: thin solid var(--sr-line);
+  border-radius: var(--sr-radius-1);
+  background-color: var(--sr-surface-2);
+  color: var(--sr-text-strong);
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text-sm);
+  cursor: pointer;
+}
+
+.key:hover {
+  border-color: var(--sr-accent);
+}
+
+.key[aria-pressed="true"] {
+  border-color: var(--sr-face-glow);
+  background-color: var(--sr-face-glow);
+  color: var(--sr-paper-ink);
+  font-weight: 700;
+}
+
+.voiceNote {
+  margin: var(--sr-space-2) 0;
+  color: var(--sr-text);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+}
+
+.speak {
+  inline-size: 100%;
+  padding: var(--sr-space-2);
+  border: thin solid var(--sr-accent);
+  border-radius: var(--sr-radius-1);
+  background-color: transparent;
+  color: var(--sr-face-glow);
+  font-family: var(--sr-font-display);
+  font-size: var(--sr-size-text);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.transcript {
+  min-block-size: 1.25rem;
+  margin: var(--sr-space-2) 0 0;
+  color: var(--sr-text-strong);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+  line-height: 1.4;
+}
+
+.actions {
+  display: grid;
+  gap: var(--sr-space-2);
+  margin-block-start: auto;
+}
+
+.action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sr-space-3);
+  border: thin solid var(--sr-line);
+  border-radius: var(--sr-radius-1);
+  background-color: var(--sr-surface-1);
+  color: var(--sr-text-strong);
+  font-family: var(--sr-font-display);
+  font-size: var(--sr-size-text-lg);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.action:hover {
+  border-color: var(--sr-face-glow);
+}
+
+.air {
+  border-color: var(--sr-signal-onair);
+  background-image: linear-gradient(color-mix(in srgb, var(--sr-signal-onair) 62%, var(--sr-surface-0)), color-mix(in srgb, var(--sr-signal-onair) 44%, var(--sr-surface-0)));
+}
+
+.action kbd {
+  padding: 0 var(--sr-space-1);
+  border: thin solid color-mix(in srgb, var(--sr-text-strong) 40%, transparent);
+  border-radius: var(--sr-radius-1);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+}
+
+.key:focus-visible,
+.knob:focus-visible,
+.speak:focus-visible,
+.action:focus-visible {
+  outline: 0.1875rem solid var(--sr-accent);
+  outline-offset: 0.125rem;
+}
+
+.cardTitle {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 0 0 var(--sr-space-2);
+  color: var(--sr-text);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+  font-weight: 700;
+  letter-spacing: 0.22em;
+}
+
+.cardTitle small {
+  color: var(--sr-text-muted);
+  font-size: var(--sr-size-text-sm);
+  font-weight: 400;
+  letter-spacing: 0.06em;
+}
+
+@media (max-height: 50rem) {
+  .dial {
+    zoom: 0.78;
+  }
+
+  .gestures {
+    grid-template-columns: repeat(6, 1fr);
+    gap: var(--sr-space-1);
+  }
+
+  .signal {
+    gap: var(--sr-space-2);
+  }
+
+  .card {
+    padding: var(--sr-space-2) var(--sr-space-3);
+  }
+
+  .actions {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .action {
+    padding: var(--sr-space-2) var(--sr-space-3);
+    font-size: var(--sr-size-text);
+  }
+}
+
+@media (max-width: 70rem) {
+  .signal {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+    overflow: visible;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .knob {
+    transition: none;
+  }
+}
+
+:global([data-motion="reduced"]) .knob {
+  transition: none;
+}

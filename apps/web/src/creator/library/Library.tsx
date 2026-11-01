@@ -3,7 +3,7 @@
 // listed but never rendered, the private-mode notice, and the way to the replay gallery.
 // Since creator task 9 the whole cast lives here, so the strip is a grid of portrait tiles that
 // shows every character at once (it wraps rather than scrolls).
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { CharacterRecord, LibraryEntry, RemoveResult } from "./libraryStore";
 import { thumbnailOf } from "./thumbnail";
 import styles from "./Library.module.css";
@@ -16,6 +16,8 @@ export interface LibraryProps {
   onSelect: (id: string) => void;
   onRemove: (id: string) => Promise<RemoveResult>;
   onOpenGallery: () => void;
+  /** The strip's last slot (the Forge's "+ Forge new"). */
+  extra?: ReactNode;
 }
 
 function Thumb({ record }: { record: CharacterRecord }) {
@@ -36,7 +38,7 @@ function Thumb({ record }: { record: CharacterRecord }) {
   );
 }
 
-export function Library({ entries, activeId, persistent, status, onSelect, onRemove, onOpenGallery }: LibraryProps) {
+export function Library({ entries, activeId, persistent, status, onSelect, onRemove, onOpenGallery, extra }: LibraryProps) {
   const [confirming, setConfirming] = useState<string | undefined>(undefined);
   const [refused, setRefused] = useState<string | undefined>(undefined);
   const count = entries.filter((e) => e.kind === "ok").length;
@@ -115,6 +117,7 @@ export function Library({ entries, activeId, persistent, status, onSelect, onRem
             </li>
           );
         })}
+        {extra !== undefined && <li className={styles.item}>{extra}</li>}
       </ul>
     </section>
   );

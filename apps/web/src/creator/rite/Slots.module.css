@@ -1,0 +1,102 @@
+/* Forge new, the empty layer slots (RiteRail), after `r2/creator-a.html` `.lrow`: dashed and
+   waiting, pulsing when the forge finds their part, filled with the cut-out when the knife lands.
+   Rows and the rail are the Forge's (glass/Anatomy.module.css). */
+
+/* ---- the slots ---- */
+.slotThumb {
+  display: grid;
+  place-items: center;
+  inline-size: 2.5rem;
+  block-size: 2.5rem;
+  overflow: hidden;
+  box-sizing: border-box;
+  border: thin dashed color-mix(in srgb, var(--sr-text) 25%, transparent);
+  border-radius: var(--sr-radius-1);
+  background-color: var(--sr-surface-0);
+}
+
+.slotThumb img {
+  max-inline-size: 2.25rem;
+  max-block-size: 2.25rem;
+  animation: land 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+@keyframes land {
+  from {
+    opacity: 0;
+    transform: translateY(-0.625rem) scale(0.8);
+  }
+}
+
+.slotName {
+  min-inline-size: 0;
+  overflow: hidden;
+  color: var(--sr-text-muted);
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text-sm);
+  line-height: 1.2;
+  text-overflow: ellipsis;
+}
+
+.slotName small {
+  display: block;
+  color: var(--sr-text-muted);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+}
+
+.slot[data-slot="found"] .slotName {
+  color: var(--sr-text);
+}
+
+.slot[data-slot="found"] .slotThumb {
+  border-color: var(--sr-face-glow);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% {
+    border: thin dashed color-mix(in srgb, var(--sr-face-glow) 15%, transparent);
+  }
+}
+
+.slot[data-slot="cut"] {
+  background-image: linear-gradient(color-mix(in srgb, var(--sr-accent) 7%, transparent), color-mix(in srgb, var(--sr-accent) 7%, transparent));
+}
+
+.slot[data-slot="cut"] .slotThumb {
+  border-style: solid;
+  border-color: var(--sr-line);
+  background-image: repeating-conic-gradient(var(--sr-surface-2) 0 25%, var(--sr-surface-0) 0 50%);
+  background-size: 0.625rem 0.625rem;
+}
+
+.slot[data-slot="cut"] .slotName {
+  color: var(--sr-text-strong);
+}
+
+.slot[data-slot="cut"] .slotName small {
+  color: var(--sr-ember);
+}
+
+.recipe {
+  margin: auto 0 0;
+  padding: var(--sr-space-3) var(--sr-space-1) 0;
+  border-block-start: thin solid var(--sr-line);
+  color: var(--sr-text-muted);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+  line-height: 1.45;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slotThumb img,
+  .slot[data-slot="found"] .slotThumb {
+    animation: none;
+  }
+}
+
+:global([data-motion="reduced"]) .slotThumb img,
+:global([data-motion="reduced"]) .slot[data-slot="found"] .slotThumb {
+  animation: none;
+}

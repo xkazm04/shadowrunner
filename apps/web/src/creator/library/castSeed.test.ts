@@ -176,7 +176,11 @@ describe("seedCast over any history of visits, deletes, edits and adoptions (pro
             await seedCast(store, members);
             offered = new Set([...offered, ...members.map((m) => m.id)]);
           } else if (o.kind === "delete") {
-            if ((await store.remove(o.id)) === "deleted" && offered.has(o.id)) deletedAfterSeen.add(o.id);
+            if ((await store.remove(o.id)) === "deleted") {
+              // The record and its look are gone; only a member the cast already offered stays gone.
+              looks.delete(o.id);
+              if (offered.has(o.id)) deletedAfterSeen.add(o.id);
+            }
           } else if (o.kind === "edit") {
             const emotion = looks.get(o.id) === "grim" ? "smug" : "grim";
             if (await store.saveLook(o.id, { ...defaultLook(testRig(o.id)), emotion })) looks.set(o.id, emotion);
@@ -198,7 +202,13 @@ describe("seedCast over any history of visits, deletes, edits and adoptions (pro
           for (const m of offered) expect(ids.includes(m) || deletedAfterSeen.has(m)).toBe(true);
         }
       }),
-      { numRuns: 150 },
+      {
+        numRuns: 150,
+        // seed 996271493: a look edited on a character deleted before the cast ever offered it. The
+        // seed rightly places that member fresh on a later visit (it was never in the ledger), so
+        // the deleted record's look is gone with it, not "overwritten".
+        examples: [[[{ kind: "adopt", id: "replay-b" }, { kind: "edit", id: "replay-b" }, { kind: "delete", id: "replay-b" }, { kind: "visit", cast: 3 }]]],
+      },
     );
   });
 });

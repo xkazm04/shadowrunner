@@ -30,6 +30,21 @@ export interface ReplayJob {
   /** Layer.file -> URL. */
   assets: Record<string, string>;
   fill?: "edit" | "fallback";
+  /** How long each model step took on the live run that was recorded (job.json `timings`), ms. */
+  live?: Partial<Record<ForgeStatus, number>>;
+}
+
+/** job.json `timings` keys -> the status whose model work they measured. */
+const LIVE_KEYS: Readonly<Record<string, ForgeStatus>> = { portraitMs: "portrait", partsMs: "segmenting", cutMs: "cutting", fillMs: "filling" };
+
+function liveOf(value: unknown): Partial<Record<ForgeStatus, number>> | undefined {
+  if (!isRecord(value)) return undefined;
+  const out: Partial<Record<ForgeStatus, number>> = {};
+  for (const [key, status] of Object.entries(LIVE_KEYS)) {
+    const ms = value[key];
+    if (typeof ms === "number" && Number.isFinite(ms) && ms >= 0) out[status] = ms;
+  }
+  return Object.keys(out).length === 0 ? undefined : out;
 }
 
 const ORDER: readonly ForgeStatus[] = ["queued", "portrait", "segmenting", "cutting", "filling", "done"];
@@ -69,6 +84,8 @@ export function replayJobOf(value: unknown, files: Readonly<Record<string, strin
   const job: ReplayJob = { slug: value.slug, name: value.name, steps, portraitUrl, rig: rig.value, assets };
   if (typeof value.prompt === "string" && value.prompt !== "") job.prompt = value.prompt;
   if (value.fill === "edit" || value.fill === "fallback") job.fill = value.fill;
+  const live = liveOf(value.timings);
+  if (live !== undefined) job.live = live;
   return job;
 }
 
