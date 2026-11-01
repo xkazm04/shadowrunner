@@ -1,6 +1,6 @@
 import { describe, expectTypeOf, it } from "vitest";
 import type { Emotion, Gesture } from "@sr/rig";
-import type { ChatMsg, Engine, EngineReply, EngineRequest, Persona, VoiceId } from "@sr/engine";
+import { EMOTIONS, GESTURES, type ChatMsg, type Engine, type EngineReply, type EngineRequest, type Persona, type VoiceId } from "@sr/engine";
 
 // Compile-time checks: `pnpm typecheck` fails if the wire contract drifts from design.md.
 describe("engine wire contract (design.md, Contracts)", () => {
@@ -36,5 +36,12 @@ describe("engine wire contract (design.md, Contracts)", () => {
       beat: number;
       seed?: number;
     }>();
+  });
+});
+
+describe("runtime emotion and gesture lists", () => {
+  it("cover the @sr/rig unions exactly", () => {
+    expectTypeOf<(typeof EMOTIONS)[number]>().toEqualTypeOf<Emotion>();
+    expectTypeOf<(typeof GESTURES)[number]>().toEqualTypeOf<Gesture>();
   });
 });

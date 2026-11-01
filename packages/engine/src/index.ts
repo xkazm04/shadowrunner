@@ -17,3 +17,7 @@ export {
   type PickResult,
   type PickState,
 } from "./picker.js";
+export type { ShowBeat, ShowScript } from "./types.js";
+export { EMOTIONS, GESTURES } from "./types.js";
+export { isEmotion, isGesture, parseShow, parseShowJson } from "./validate.js";
+export { beatIndex, scriptedReply, ScriptedEngine } from "./scripted.js";

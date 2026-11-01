@@ -1,8 +1,8 @@
 # Implementation plan: voice-and-air
 
-- [ ] 1. Engine contract and scripted engine
+- [x] 1. Engine contract and scripted engine
   - [x] 1.1 `types.ts`, `voices.ts`, `picker.ts` with properties (never self, never twice).
-  - [ ] 1.2 Write `assets/replay/shows/malakor-night.json` (fictional audience of ~40 messages, ~24 beats in Malakor's voice from `assets/characters/malakor/bible.md`, generic beats for visitors); `scripted.ts` with the determinism property.
+  - [x] 1.2 Write `assets/replay/shows/malakor-night.json` (fictional audience of ~40 messages, ~24 beats in Malakor's voice from `assets/characters/malakor/bible.md`, generic beats for visitors); `scripted.ts` with the determinism property.
   - _Requirements: 1.1, 1.2_
 
 - [ ] 2. Anthropic engine
