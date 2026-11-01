@@ -77,7 +77,10 @@ describe("assembleRig", () => {
             const kind = PART_KIND[source?.name ?? "head"];
             expect(layer.kind).toBe(kind);
             expect(layer.depth).toBe(DEFAULT_DEPTH[kind]);
-            expect(layer.bbox).toEqual(source?.bbox);
+            // Task 10: a keyed part may grow to its polygon's bbox; the cut always fits inside.
+            const [sx, sy, sw, sh] = source?.bbox ?? [0, 0, 0, 0];
+            const [lx, ly, lw, lh] = layer.bbox;
+            expect(lx <= sx && ly <= sy && lx + lw >= sx + sw && ly + lh >= sy + sh).toBe(true);
             expect(layer.follow).toBe(hasHead && HEAD_FOLLOWERS.includes(kind) ? "head" : undefined);
             expect(Number.isFinite(layer.anchor[0]) && Number.isFinite(layer.anchor[1])).toBe(true);
           }
@@ -117,11 +120,15 @@ describe("assembleRig", () => {
     for (const layer of layers) {
       const image = decoded(files[`${layer.name}.png`]);
       expect([image.width, image.height]).toEqual([layer.image.width, layer.image.height]);
-      expect(image.data.join(",")).toBe(layer.image.data.join(","));
+      // Same pixels, except where task 10 made a pixel over the painted background opaque.
+      const changed = Array.from({ length: image.width * image.height }, (_, i) => i).filter((i) =>
+        [0, 1, 2, 3].some((c) => image.data[i * 4 + c] !== layer.image.data[i * 4 + c]),
+      );
+      expect(changed.filter((i) => image.data[i * 4 + 3] !== 255)).toEqual([]);
     }
   });
 
-  it("draws the whole plate as the background (task 9) and surfaces palette_fallback", () => {
+  it("draws the plate as the background, painted out under the moving layers (task 10), and surfaces palette_fallback", () => {
     const portrait: Rgba = { width: 64, height: 64, data: new Uint8ClampedArray(64 * 64 * 4).fill(255) };
     const plate: Rgba = { width: 64, height: 64, data: new Uint8ClampedArray(64 * 64 * 4) };
     for (let i = 0; i < 64 * 64; i++) plate.data.set([6, 5, 9, 255], i * 4);
@@ -132,7 +139,9 @@ describe("assembleRig", () => {
     const background = decoded(result.value.files["background.png"]);
     expect(Array.from(background.data.subarray(0, 4))).toEqual([6, 5, 9, 255]);
     expect(Array.from(background.data.subarray(-4))).toEqual([6, 5, 9, 255]);
-    expect(background.data.join(",")).toBe(plate.data.join(","));
+    // Outside the head (canvas 13..51) the plate as is; deep under the head the outlier is painted out.
+    for (const [x, y] of [[0, 0], [5, 40], [60, 12], [11, 11]] as const) expect(Array.from(background.data.subarray((y * 64 + x) * 4, (y * 64 + x) * 4 + 4))).toEqual([6, 5, 9, 255]);
+    expect(Array.from(background.data.subarray((30 * 64 + 31) * 4, (30 * 64 + 31) * 4 + 4))).toEqual([6, 5, 9, 255]);
     expect(result.value.warnings.map((w) => w.code)).toEqual(["palette_fallback"]);
     expect(() => assembleRig(parts, [], { id: "x", name: "X", portrait, plate: { ...plate, width: 32 } })).toThrow(RangeError);
   });
@@ -237,7 +246,7 @@ describe("golden: Malakor portrait + m8 parts -> a valid rig (task 5)", () => {
             "bbox": [
               252,
               7,
-              531,
+              533,
               315,
             ],
             "follow": "head",

@@ -63,7 +63,7 @@
   - Tick 7.1 once 2.1 and 2.4 as amended hold.
   - _Requirements: 2.1, 2.4, 5.1, 6.1, 7.5_
 
-- [ ] 10. No ghost edges on head turn (director ruling from the task 9 build, 2026-11-01)
+- [x] 10. No ghost edges on head turn (director ruling from the task 9 build, 2026-11-01)
   - Adopt the builder's counter-proposal: inside the opaque cores of every moving layer (head, crown, hair, hat, accessory, eyes, monocle, jaw), eroded by 2 px, the `background` layer is painted with `blurExtend` from the surrounding ground instead of the portrait, so the rest view is unchanged (luma within 2.5 of the portrait, as now) and a turned head (yaw 10 degrees, about 12 px of travel) reveals ground, not a second copy of the head or crown.
   - Golden: render each replay job at rest and at the gaze "chat" yaw through `poseLayers`; at the yaw pose no pixel within 16 px outside the head/crown silhouette may match the moved layer's edge (measure a doubled-edge score and assert it is below a threshold proven against the task 9 output). Rebuild all 6 replay jobs offline (no paid call) and refresh the before/after grid.
   - _Requirements: 6.1_

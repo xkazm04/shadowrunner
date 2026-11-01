@@ -11,7 +11,7 @@
     "portraitMs": 15106,
     "partsMs": 19759,
     "fillMs": 17846,
-    "cutMs": 2711
+    "cutMs": 3531
   },
   "steps": [
     {
@@ -129,9 +129,9 @@
         "kind": "crown",
         "file": "hair.png",
         "bbox": [
-          41,
+          24,
           70,
-          960,
+          984,
           524
         ],
         "anchor": [

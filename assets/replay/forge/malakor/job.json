@@ -9,7 +9,7 @@
   "fill": "fallback",
   "timings": {
     "partsMs": 17312,
-    "cutMs": 1579
+    "cutMs": 2233
   },
   "steps": [
     {
@@ -129,7 +129,7 @@
         "bbox": [
           252,
           7,
-          531,
+          533,
           315
         ],
         "anchor": [

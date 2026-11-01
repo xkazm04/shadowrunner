@@ -9,6 +9,8 @@ export interface CompositePose {
   jaw?: number;
   /** Canvas px per unit of layer depth moved right (head yaw parallax; may be negative). */
   parallax?: number;
+  /** Per layer name, a move in canvas px that replaces the two above (e.g. from `poseLayers`). */
+  offsets?: Readonly<Record<string, readonly [number, number]>>;
 }
 
 /**
@@ -44,6 +46,8 @@ export function compositeRig(rig: Pick<Rig, "width" | "height" | "layers">, imag
 }
 
 function offsetOf(layer: Layer, pose: CompositePose): [number, number] {
+  const given = pose.offsets?.[layer.name];
+  if (given !== undefined) return [Math.round(given[0]), Math.round(given[1])];
   const dx = Math.round((pose.parallax ?? 0) * (layer.depth ?? 0));
   return [dx, layer.kind === "jaw" ? Math.round(pose.jaw ?? 0) : 0];
 }

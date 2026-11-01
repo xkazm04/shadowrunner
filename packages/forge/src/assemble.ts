@@ -4,6 +4,7 @@ import { DEFAULT_DEPTH, type Layer, type LayerKind, RIG_VERSION, type Result, ty
 import { CUT_ORDER, type CutPart } from "./cut.js";
 import { encodePng } from "./image.js";
 import { rasterizeMask } from "./mask.js";
+import { backgroundOf } from "./background.js";
 import { samplePalette, type PaletteWarning } from "./palette.js";
 import { PART_KIND, toCanvas } from "./parts.js";
 import type { Part, PartName, Rgba } from "./types.js";
@@ -87,7 +88,8 @@ function anchorOf(kind: LayerKind, layer: CutPart, part: Part | undefined, width
  * Parts + cut layers (as `cutAll` returns them) -> Rig (requirements 6.1-6.4). The rig has
  * `version: 1`, `source: "forge"`, `fictional: true`, the portrait's size and a palette sampled
  * from the portrait (`samplePalette`; its warnings are passed on). Layers: BACKGROUND_LAYER
- * (static, z BACKGROUND_Z, the whole plate, so no pixel the parts leave uncovered is ever black), then the cut layers
+ * (static, z BACKGROUND_Z, the plate with the moving layers' cores painted out by `backgroundOf`
+ * (task 10), so no pixel the parts leave uncovered is ever black and a turned head shows no copy), then the cut layers
  * back to front (reverse CUT_ORDER) at z 2, 3, ...; each is named after its part, has the kind
  * from PART_KIND, the default depth for that kind, the anchor from `anchorOf`, and the file
  * `<name>.png`. Jaw, eye, accessory and crown layers follow "head"; when no head layer is given
@@ -103,14 +105,16 @@ export function assembleRig(parts: readonly Part[], layers: readonly CutPart[], 
   const { palette, warnings: paletteWarnings } = samplePalette(meta.portrait, parts);
   const warnings: AssembleWarning[] = [...paletteWarnings];
   const hasHead = layers.some((l) => l.name === HEAD);
-  const order = [...layers].sort((a, b) => CUT_ORDER.indexOf(b.name) - CUT_ORDER.indexOf(a.name));
+  // Task 10: the background is painted under the moving layers, which may become opaque there.
+  const painted = backgroundOf(plate, [...layers].sort((a, b) => CUT_ORDER.indexOf(a.name) - CUT_ORDER.indexOf(b.name)), parts);
+  const order = [...painted.layers].reverse();
   if (!hasHead && order.some((l) => HEAD_FOLLOWERS.includes(PART_KIND[l.name]))) {
     warnings.push({ code: "no_head_layer", message: "no head layer; jaw, eyes, accessories and crown follow nothing" });
   }
 
   const files: Record<string, Uint8Array> = {};
   const background = `${BACKGROUND_LAYER}.png`;
-  files[background] = encodePng(plate);
+  files[background] = encodePng(painted.background);
   const rigLayers: Layer[] = [
     { name: BACKGROUND_LAYER, z: BACKGROUND_Z, kind: "static", file: background, bbox: [0, 0, width, height], anchor: [width / 2, height / 2], depth: DEFAULT_DEPTH.static },
   ];

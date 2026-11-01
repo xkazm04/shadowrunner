@@ -173,7 +173,7 @@ Before/after grid: `docs/decisions/0003-forge-task9-composites.jpg` (251 KB; "be
 composite with the jaw open 3%, "after" the replay job with the jaw open 6%).
 
 **Seen and not fixed:**
-- **Ghost edges when the head turns.** The background is the whole plate, so it still holds the
+- **Ghost edges when the head turns** (fixed in task 10, below). The background is the whole plate, so it still holds the
   head and crown where they were at rest. With the head turned 10 degrees (gaze "chat"), the head
   moves about 11 px and the crown about 12 px, and their edges show a doubled copy (clearest on
   Malakor's crown shards). Idle drift (4 degrees, about 4 px) shows little. Counter-proposal: paint
@@ -182,6 +182,31 @@ composite with the jaw open 3%, "after" the replay job with the jaw open 6%).
   uncovered still keep their plate pixels.
 - At the full drop (0.06 x height) a small jaw, such as the Moth Widow's chin, travels far and the
   fur the edit painted shows as a dark band a little wider than the mouth.
+
+## Task 10: no ghost edges on head turn (2026-11-01)
+Director ruling: adopt the counter-proposal above. `background.ts` `backgroundOf` (used by
+`assembleRig`):
+- The solid area is every pixel where a moving layer (all but the torso) has alpha >= 96, plus the
+  whole polygon of a keyed moving part (crown, hair, accessory). The polygon matters: Malakor's dark
+  shard facets fall under the luma key, so they sat in the background and stayed behind as half a
+  shard when the crown moved.
+- Inside the solid area eroded by 2 px, the background is `blurExtend`ed (12 passes) from the
+  surface outside everything the moving layers touch. Painting it from the eroded ring instead
+  smeared the head's own edge inward, which reads as another head.
+- The rest view is unchanged. Where a painted pixel has no opaque layer over it, the most solid
+  moving layer there is made opaque with the colour the plate and the layers behind it showed.
+  Rest composites against the portrait: max luma difference 0.0 (Malakor, Lantern, Vesper, Moth),
+  1.0 (Understudy), 2.5 (Announcer), as in task 9.
+
+**Golden** (`api/_tests/forge-replay-turn.test.ts`): each committed replay job is posed through
+`poseLayers` at the gaze "chat" yaw (10 degrees, no gesture). In the strip the head, crown and hat
+vacate, the test counts pixels where the turned picture repeats the rest picture within 6 luma,
+counting only pixels that stand out from the ground by more than 16. The task 9 jobs score
+0.90-1.00, and the test was run red against them. The task 10 jobs score 0.19-0.40, under the
+limit of 0.5. What remains is the 2 px erosion band and the soft edge, an echo a few px wide that
+did not show by eye. All 6 jobs were rebuilt offline (no paid call). Grid:
+`docs/decisions/0003-forge-task10-composites.jpg` (345 KB). Columns: portrait, rest, jaw open 6%,
+then task 9 and task 10 with the head turned 10 degrees and the jaw half open, zoomed.
 
 ## Malakor parts-only run (fixture `m8-parts.json`)
 Director ruling (a) of the task 2 review: the parts fixture for the Malakor golden test is a
