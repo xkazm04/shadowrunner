@@ -25,7 +25,7 @@
   - [x] 3.5 `gl/renderer.ts`: `createRenderer`, `setLook` without context recreation, `dispose` frees everything; exact-count test (draws = visible layers + 4 per frame, uploads once).
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 7.1, 7.2_
 
-- [ ] 4. Canvas2D fallback and context loss
+- [x] 4. Canvas2D fallback and context loss
   - `canvas2d/renderer.ts` with the same interface; `createRenderer` falls back when `webgl2` is null or throws, and on `webglcontextlost`; test via stub that `info().mode === "2d"`.
   - _Requirements: 2.1, 2.2, 2.3_
 
