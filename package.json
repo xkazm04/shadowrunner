@@ -8,8 +8,8 @@
     "node": ">=22.12.0"
   },
   "scripts": {
-    "dev": "pnpm --filter @sr/web dev",
-    "build": "pnpm --filter @sr/web build",
+    "dev": "pnpm --filter @sr/theme build && pnpm --filter @sr/web dev",
+    "build": "pnpm --filter @sr/theme build && pnpm --filter @sr/web build",
     "typecheck": "tsc -b",
     "lint": "eslint . && stylelint \"{apps,packages}/**/*.module.css\" --allow-empty-input && node scripts/line-cap.mjs",
     "test": "vitest run",

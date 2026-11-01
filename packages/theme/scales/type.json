@@ -1,0 +1,13 @@
+{
+  "type": {
+    "sm": "0.875rem",
+    "md": "1rem",
+    "lg": "1.25rem",
+    "xl": "2.5rem"
+  },
+  "font": {
+    "serif": "ui-serif, Georgia, serif",
+    "sans": "system-ui, sans-serif",
+    "mono": "ui-monospace, monospace"
+  }
+}

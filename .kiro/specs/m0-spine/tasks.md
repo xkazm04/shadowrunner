@@ -13,10 +13,10 @@
   - [x] 2.4 `scripts/gate-fixtures/` with one seeded violation per rule (any, as-unknown-as, boundary breach, hex in CSS module, 401-line file) and `pnpm test:gates` asserting each one fails.
   - _Requirements: 1.3, 1.5_
 
-- [ ] 3. Theme package
-  - [ ] 3.1 `scales/*.json`, `roles.json` with the initial roles from design.md, `themes/baseline.json` and `themes/halloween.json` (provisional halloween values: near-black soot surfaces, nicotine-paper text, sodium-orange bulb accent, phosphor-green ok, signal red on-air).
-  - [ ] 3.2 `build.mjs` emitting `dist/{baseline,halloween}.css`; `pnpm build` runs it before the app.
-  - [ ] 3.3 Tests: every role bound in every theme (failing message names the role); WCAG AA contrast for text/surface pairs; baseline sets `haunt-*` to zero.
+- [x] 3. Theme package
+  - [x] 3.1 `scales/*.json`, `roles.json` with the initial roles from design.md, `themes/baseline.json` and `themes/halloween.json` (provisional halloween values: near-black soot surfaces, nicotine-paper text, sodium-orange bulb accent, phosphor-green ok, signal red on-air).
+  - [x] 3.2 `build.mjs` emitting `dist/{baseline,halloween}.css`; `pnpm build` runs it before the app.
+  - [x] 3.3 Tests: every role bound in every theme (failing message names the role); WCAG AA contrast for text/surface pairs; baseline sets `haunt-*` to zero.
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
 
 - [ ] 4. App shell from one manifest

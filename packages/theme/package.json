@@ -3,7 +3,12 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "scripts": {
+    "build": "node --experimental-strip-types --disable-warning=ExperimentalWarning build.mjs"
+  },
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./baseline.css": "./dist/baseline.css",
+    "./halloween.css": "./dist/halloween.css"
   }
 }
