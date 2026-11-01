@@ -1,0 +1,348 @@
+/* The on-air stage (voice-and-air 5.3). Role tokens only: the theme CSS rebinds every value
+   under [data-theme]. The cellar: soot walls, one candle-warm pool of light behind the face, a
+   bulb on its cord, fog along the floor. The face is the hero; the ON AIR lightbox is the
+   brightest fill on screen while on air (air.test.tsx checks the fills against the tokens).
+   Landscape: the set on the left, the chat column on the right. Portrait: the set on top. */
+
+.stage {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, 26%);
+  flex: 1 1 auto;
+  min-block-size: 0;
+  overflow: hidden;
+  background-color: var(--sr-surface-0);
+  background-image:
+    radial-gradient(
+      ellipse 46% 62% at 37% 46%,
+      color-mix(in srgb, var(--sr-ember) 10%, var(--sr-surface-1)),
+      var(--sr-surface-1) 45%,
+      var(--sr-surface-0) 100%
+    );
+  color: var(--sr-text);
+  font-family: var(--sr-font-body);
+}
+
+/* The room behind everything: the cellar plate (the set's own photograph, held far back and
+   dark so the face stays the brightest, sharpest thing), the bulb and the floor fog. */
+.room {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(
+      ellipse 40% 55% at 37% 48%,
+      color-mix(in srgb, var(--sr-surface-0) 55%, transparent),
+      color-mix(in srgb, var(--sr-surface-0) 80%, transparent) 70%,
+      color-mix(in srgb, var(--sr-surface-0) 92%, transparent)
+    ),
+    url("../../../../assets/plates/cellar-wide.webp");
+  background-position: center;
+  background-size: cover;
+}
+
+/* The bulb hangs over the face: a cord, a warm glass, a halo. */
+.bulb {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 9%;
+  inline-size: 0;
+  block-size: 9rem;
+  border-inline-start: thin solid var(--sr-line);
+}
+
+.bulb::after {
+  position: absolute;
+  inset-block-end: -1.4rem;
+  inset-inline-start: -0.7rem;
+  inline-size: 1.4rem;
+  block-size: 1.7rem;
+  border-radius: var(--sr-radius-pill);
+  background-image: radial-gradient(
+    circle at 50% 40%,
+    color-mix(in srgb, var(--sr-ember) 55%, var(--sr-surface-0)),
+    color-mix(in srgb, var(--sr-ember) 30%, var(--sr-surface-0)) 70%
+  );
+  filter: drop-shadow(0 0 1.2rem color-mix(in srgb, var(--sr-ember) 45%, transparent));
+  content: "";
+}
+
+/* Fog along the floor; its density is --sr-haunt-fog (zero in the baseline theme). */
+.fog {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: 0;
+  block-size: 42%;
+  background-image: linear-gradient(transparent, color-mix(in srgb, var(--sr-text-muted) 26%, transparent));
+  opacity: var(--sr-haunt-fog);
+}
+
+/* The set: the top row, the face, the captions. */
+.set {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-block-size: 0;
+  padding: var(--sr-space-4) var(--sr-space-5) var(--sr-space-5);
+}
+
+.top {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--sr-space-4);
+}
+
+.lampRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sr-space-3);
+}
+
+/* The lightbox glass. Lit: the brightest fill on the stage, dark text at AA on it. */
+.lamp {
+  margin: 0;
+  padding: var(--sr-space-2) var(--sr-space-4);
+  border-radius: var(--sr-radius-1);
+  font-family: var(--sr-font-display);
+  font-size: var(--sr-size-text-lg);
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.lamp[data-lit="on"] {
+  background-color: var(--sr-signal-onair);
+  color: var(--sr-surface-0);
+  filter: drop-shadow(0 0 1rem color-mix(in srgb, var(--sr-signal-onair) 60%, transparent));
+}
+
+.lamp[data-lit="off"] {
+  background-color: var(--sr-surface-2);
+  color: var(--sr-text-muted);
+  outline: thin solid var(--sr-line);
+}
+
+/* The VOICE tally: a red dot like a studio mic tally, lit only while the voice sounds. */
+.tally {
+  display: flex;
+  align-items: center;
+  gap: var(--sr-space-2);
+  margin: 0;
+  color: var(--sr-text-muted);
+  font-family: var(--sr-font-mono);
+  font-size: var(--sr-size-text-sm);
+  letter-spacing: 0.12em;
+}
+
+.tallyDot {
+  inline-size: 0.7rem;
+  block-size: 0.7rem;
+  border-radius: var(--sr-radius-pill);
+  background-color: var(--sr-surface-3);
+  outline: thin solid var(--sr-line);
+}
+
+.tally[data-lit="on"] {
+  color: var(--sr-text);
+}
+
+.tally[data-lit="on"] .tallyDot {
+  background-image: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--sr-signal-onair) 85%, var(--sr-surface-0)),
+    color-mix(in srgb, var(--sr-signal-onair) 60%, var(--sr-surface-0))
+  );
+  outline-color: var(--sr-signal-onair);
+}
+
+.slate {
+  min-inline-size: 0;
+}
+
+.name {
+  margin: 0;
+  color: var(--sr-text-strong);
+  font-family: var(--sr-font-display);
+  font-size: var(--sr-size-text-lg);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.from {
+  margin: 0;
+  color: var(--sr-text-muted);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+  font-style: italic;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: var(--sr-space-3);
+  margin-inline-start: auto;
+}
+
+/* The face takes the rest of the set, square, as large as it fits. */
+.faceWell {
+  display: grid;
+  flex: 1 1 auto;
+  place-items: center;
+  min-block-size: 0;
+  container-type: size;
+}
+
+/* The portrait's cut edges (sides and the torso's bottom) fade into the room. A mask reads
+   only alpha, so the token's colour does not matter. */
+.face {
+  inline-size: min(100cqw, 100cqh);
+  block-size: min(100cqw, 100cqh);
+  mask-image:
+    linear-gradient(to right, transparent, var(--sr-surface-0) 14%, var(--sr-surface-0) 86%, transparent),
+    linear-gradient(var(--sr-surface-0) 74%, transparent 98%);
+  mask-composite: intersect;
+}
+
+.faceNote {
+  margin: 0;
+  color: var(--sr-text-muted);
+  font-family: var(--sr-font-type);
+}
+
+/* Captions: a lower third under the face (never over the mouth), on a dark plate. The block
+   keeps its room while empty, so the face does not jump between lines. */
+.captions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: var(--sr-space-1);
+  min-block-size: 8.5rem;
+  margin-inline: auto;
+  inline-size: min(100%, 60rem);
+}
+
+.captions > p {
+  margin: 0;
+}
+
+.line,
+.notice {
+  padding: var(--sr-space-3) var(--sr-space-4);
+  border-radius: var(--sr-radius-1);
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--sr-surface-0) 86%, transparent),
+    color-mix(in srgb, var(--sr-surface-0) 86%, transparent)
+  );
+  color: var(--sr-text-strong);
+  font-size: var(--sr-size-text-lg);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.speaker {
+  color: var(--sr-accent);
+  font-family: var(--sr-font-display);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.answering,
+.captionOnly {
+  align-self: flex-start;
+  padding: var(--sr-space-1) var(--sr-space-3);
+  border-radius: var(--sr-radius-1);
+  background-color: var(--sr-surface-1);
+  color: var(--sr-text);
+  font-size: var(--sr-size-text-sm);
+}
+
+.answeringUser {
+  color: var(--sr-text-strong);
+  font-weight: 700;
+}
+
+.captionOnly {
+  color: var(--sr-text-muted);
+  font-family: var(--sr-font-mono);
+}
+
+.soundOn {
+  position: absolute;
+  inset-block-start: 4.5rem;
+  inset-inline-end: var(--sr-space-5);
+  z-index: 1;
+  padding: var(--sr-space-2) var(--sr-space-4);
+  border: thin solid var(--sr-accent);
+  border-radius: var(--sr-radius-1);
+  background-color: var(--sr-surface-2);
+  color: var(--sr-text-strong);
+  font: inherit;
+  cursor: pointer;
+}
+
+.soundOn:focus-visible {
+  outline: medium solid var(--sr-accent);
+  outline-offset: var(--sr-space-1);
+}
+
+/* A broadcast frame is wide: the caption reads from across a room. */
+@media (min-width: 75rem) {
+  .line {
+    zoom: 1.25;
+  }
+}
+
+/* Portrait (a phone): the set on top, the chat below it. */
+@media (orientation: portrait) {
+  .stage {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 64%) minmax(0, 1fr);
+    background-image: radial-gradient(
+      ellipse 70% 40% at 50% 30%,
+      color-mix(in srgb, var(--sr-ember) 10%, var(--sr-surface-1)),
+      var(--sr-surface-1) 45%,
+      var(--sr-surface-0) 100%
+    );
+  }
+
+  .set {
+    padding: var(--sr-space-3) var(--sr-space-3) var(--sr-space-2);
+  }
+
+  .top {
+    flex-wrap: wrap;
+    gap: var(--sr-space-2) var(--sr-space-3);
+  }
+
+  .slate {
+    order: 3;
+    flex: 1 0 100%;
+  }
+
+  .bulb {
+    inset-block-start: 3rem;
+    inset-inline-start: 91%;
+    block-size: 5rem;
+  }
+
+  .captions {
+    min-block-size: 6rem;
+  }
+
+  .line {
+    font-size: var(--sr-size-text);
+  }
+
+  .soundOn {
+    inset-block-start: var(--sr-space-3);
+    inset-inline-end: var(--sr-space-3);
+  }
+}

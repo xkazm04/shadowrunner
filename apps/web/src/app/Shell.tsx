@@ -2,7 +2,7 @@
 // from the page manifest (pages.ts). Channels behind the set open in the ChannelFrame (spec
 // landing task 9): CH 4 the listings, CH 6 the daemon, a "sealed" page the sealed door; a page
 // whose spec has not landed yet (CH 3 until creator task 8) is a placeholder in the same frame.
-import { useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { buildKeymap, GLOBAL_BINDINGS, stepChannel, useHotkeys, type KeyAction } from "./keys";
 import { ChannelFrame } from "../channels/ChannelFrame";
 import { Daemon } from "../channels/Daemon";
@@ -15,6 +15,9 @@ import { useHealth, usePlane, type Health, type Plane } from "./plane";
 import { handleLinkClick, navigate, useRoute } from "./router";
 import styles from "./Shell.module.css";
 import { nextTheme, usePreferences, useTheme, type Motion, type ThemeName } from "./theme";
+
+/** The on-air stage (voice-and-air 5.3), loaded on first visit to /air: the renderer stays off the set. */
+const AirPage = lazy(() => import("../air/AirPage"));
 
 /** Built once at load: a manifest clash throws here, before anything renders. */
 const KEYMAP = buildKeymap(PAGES);
@@ -166,21 +169,23 @@ export function ShellView({
   onCloseGoto,
 }: ShellViewProps) {
   const onSet = page?.id === "landing";
+  // The stage is full screen like the set (a stream's browser source): no shell header.
+  const onStage = page?.id === "air";
   // A channel behind the set: its frame is the header (back control, breadcrumb, badge, toggle).
   const framed = !onSet && page?.channel !== undefined;
   const sample = plane === "replay" && daemonSample;
   const badge = plane === "replay" && <RecordedBadge />;
   // On the set the toggle is an icon button in the status bar (spec landing task 5.0).
-  const toggle = <ThemeToggle theme={theme} onToggle={onToggleTheme} icon={onSet} />;
+  const toggle = <ThemeToggle theme={theme} onToggle={onToggleTheme} icon={onSet || onStage} />;
   return (
     <div
       data-shell
       data-motion={motion}
       data-plane={plane}
-      className={onSet ? `${styles.shell} ${styles.onSet}` : styles.shell}
+      className={onSet || onStage ? `${styles.shell} ${styles.onSet}` : styles.shell}
     >
       {/* On the set the landing's status bar is the header; the shell hands it the badge and toggle. */}
-      {!onSet && !framed && (
+      {!onSet && !onStage && !framed && (
         <header className={styles.header}>
           <a href="/" className={styles.brand} onClick={(event) => handleLinkClick(event, "/")}>
             Shadowrunner
@@ -204,9 +209,13 @@ export function ShellView({
         </header>
       )}
       {gotoOpen && <GoTo current={page} onClose={onCloseGoto} />}
-      <main className={onSet ? styles.set : framed ? styles.channel : styles.main}>
+      <main className={onSet || onStage ? styles.set : framed ? styles.channel : styles.main}>
         {page === undefined ? (
           <NoSignal path={path} />
+        ) : onStage ? (
+          <Suspense fallback={<section data-page="air" aria-label={page.title}>{badge}</section>}>
+            <AirPage plane={plane} badge={badge} controls={toggle} />
+          </Suspense>
         ) : onSet ? (
           <LandingPage plane={plane} badge={badge} controls={toggle} daemonSample={sample} />
         ) : framed ? (

@@ -40,6 +40,9 @@ describe("Shell", () => {
         // On the set the status bar is the header: the badge sits in it, before the pill.
         expect(badge).toBeGreaterThan(recorded.indexOf("data-status-bar"));
         expect(badge).toBeLessThan(recorded.indexOf('role="status"'));
+      } else if (page?.id === "air") {
+        // The stage is full screen (no shell header): the badge is on the stage itself.
+        expect(badge).toBeGreaterThan(recorded.indexOf('data-page="air"'));
       } else if (page?.channel !== undefined) {
         // Behind the set the channel frame is the header: the badge sits in its bar.
         expect(badge).toBeGreaterThan(recorded.indexOf("data-channel-frame"));
@@ -62,9 +65,14 @@ describe("Shell", () => {
     for (const page of PAGES.filter((p) => p.id !== "landing")) {
       const other = view(page);
       expect(other).not.toContain("data-status-bar");
-      // Channels behind the set open in their frame; the stage (off the dial) keeps the header.
-      if (page.channel === undefined) expect(other).toContain('aria-label="Channels"');
-      else expect(other).toContain(`data-channel-frame="${page.id}"`);
+      // Channels behind the set open in their frame; the stage (off the dial) is full screen, for
+      // a stream's browser source, with no shell header at all.
+      if (page.id === "air") {
+        expect(other).not.toContain('aria-label="Channels"');
+        expect(other).not.toContain("<header");
+        continue;
+      }
+      expect(other).toContain(`data-channel-frame="${page.id}"`);
       expect(other.match(/<header/g)).toHaveLength(1);
     }
   });
@@ -86,13 +94,16 @@ describe("Shell", () => {
 
   it("navigation lists every manifest page with its key, and marks the current one", () => {
     const current = PAGES.find((p) => p.id === "air");
-    const html = view(current);
+    const html = view(current, { gotoOpen: true });
     for (const page of PAGES) {
       expect(html).toContain(`href="${page.path}"`);
       expect(html).toContain(`<kbd>${page.hotkey}</kbd>`);
     }
     expect(html.match(/aria-current="page"/g)).toHaveLength(1);
     expect(html).toMatch(/href="\/air" aria-current="page"/);
+    // Where the shell header shows (no signal), it lists every page too.
+    const nowhere = view(undefined);
+    for (const page of PAGES) expect(nowhere).toContain(`href="${page.path}"`);
   });
 
   it("shows no signal for a path outside the manifest", () => {

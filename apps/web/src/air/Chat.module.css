@@ -1,0 +1,130 @@
+/* The stage's chat column (voice-and-air 5.3): the audience, the character's replies (accent
+   name), the visitor's own messages (signal-ok name), the message being answered outlined, and
+   the visitor's input. Role tokens only. Landscape: a column at the right; portrait: below. */
+
+.chat {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-block-size: 0;
+  border-inline-start: thin solid var(--sr-line);
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--sr-surface-1) 92%, transparent),
+    color-mix(in srgb, var(--sr-surface-0) 92%, transparent)
+  );
+}
+
+.chatTitle {
+  margin: 0;
+  padding: var(--sr-space-4) var(--sr-space-4) var(--sr-space-2);
+  color: var(--sr-text-muted);
+  font-family: var(--sr-font-display);
+  font-size: var(--sr-size-text);
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.messages {
+  flex: 1 1 auto;
+  min-block-size: 0;
+  margin: 0;
+  padding: 0 var(--sr-space-4) var(--sr-space-3);
+  overflow-y: auto;
+  list-style: none;
+  font-size: var(--sr-size-text);
+  line-height: 1.45;
+}
+
+.message {
+  padding: var(--sr-space-1) var(--sr-space-2);
+  border-radius: var(--sr-radius-1);
+  overflow-wrap: anywhere;
+}
+
+.user {
+  color: var(--sr-text-muted);
+  font-weight: 700;
+}
+
+.text {
+  color: var(--sr-text);
+}
+
+.message[data-kind="self"] .user {
+  color: var(--sr-accent);
+}
+
+.message[data-kind="self"] .text {
+  color: var(--sr-text-strong);
+}
+
+.message[data-kind="visitor"] .user {
+  color: var(--sr-signal-ok);
+}
+
+.message[data-answered] {
+  background-color: var(--sr-surface-3);
+  outline: thin solid var(--sr-accent);
+}
+
+.compose {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sr-space-1);
+  padding: var(--sr-space-3) var(--sr-space-4) var(--sr-space-4);
+  border-block-start: thin solid var(--sr-line);
+}
+
+.composeLabel {
+  color: var(--sr-text-muted);
+  font-size: var(--sr-size-text-sm);
+}
+
+.composeRow {
+  display: flex;
+  gap: var(--sr-space-2);
+}
+
+.input {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  padding: var(--sr-space-2) var(--sr-space-3);
+  border: thin solid var(--sr-line);
+  border-radius: var(--sr-radius-1);
+  background-color: var(--sr-surface-0);
+  color: var(--sr-text-strong);
+  font: inherit;
+}
+
+.input::placeholder {
+  color: var(--sr-text-muted);
+}
+
+.send {
+  padding: var(--sr-space-2) var(--sr-space-4);
+  border: thin solid var(--sr-line);
+  border-radius: var(--sr-radius-1);
+  background-color: var(--sr-surface-3);
+  color: var(--sr-text-strong);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.input:focus-visible,
+.send:focus-visible {
+  outline: medium solid var(--sr-accent);
+  outline-offset: var(--sr-space-1);
+}
+
+@media (orientation: portrait) {
+  .chat {
+    border-inline-start: 0;
+    border-block-start: thin solid var(--sr-line);
+  }
+
+  .chatTitle {
+    padding-block-start: var(--sr-space-2);
+  }
+}
