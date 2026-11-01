@@ -104,11 +104,40 @@ export function parseShow(value: unknown): ShowScript | undefined {
 
 /** Decodes and validates show JSON text (the file under assets/replay/shows/). */
 export function parseShowJson(text: string): ShowScript | undefined {
-  let value: unknown;
+  return parseShow(decodeJson(text));
+}
+
+/** Decodes JSON text from outside; undefined when it is not JSON (undefined is never valid JSON). */
+export function decodeJson(text: string): unknown {
   try {
-    value = JSON.parse(text);
+    const value: unknown = JSON.parse(text);
+    return value;
   } catch {
     return undefined;
   }
-  return parseShow(value);
+}
+
+/** The parts of a Messages API response body the engine reads. */
+export interface MessagesResponse {
+  /** Concatenated `text` blocks. */
+  text: string;
+  stopReason?: string;
+}
+
+/** Validates a Messages API response body; undefined when it has no content array. */
+export function parseMessagesResponse(text: string): MessagesResponse | undefined {
+  const value = decodeJson(text);
+  if (!isObject(value) || !Array.isArray(value.content)) return undefined;
+  let out = "";
+  for (const block of value.content) {
+    if (isObject(block) && block.type === "text" && typeof block.text === "string") out += block.text;
+  }
+  const stop = value.stop_reason;
+  return typeof stop === "string" ? { text: out, stopReason: stop } : { text: out };
+}
+
+/** Decodes JSON text that must be an object; undefined for anything else. */
+export function decodeJsonObject(text: string): Readonly<Record<string, unknown>> | undefined {
+  const value = decodeJson(text);
+  return isObject(value) ? value : undefined;
 }

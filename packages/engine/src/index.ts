@@ -21,3 +21,28 @@ export type { ShowBeat, ShowScript } from "./types.js";
 export { EMOTIONS, GESTURES } from "./types.js";
 export { isEmotion, isGesture, parseShow, parseShowJson } from "./validate.js";
 export { beatIndex, scriptedReply, ScriptedEngine } from "./scripted.js";
+export { decodeJson, parseMessagesResponse, type MessagesResponse } from "./validate.js";
+export { EngineError, MAX_LINE_CHARS, parseReply, REPLY_SCHEMA, trimLine, type EngineErrorCode } from "./schema.js";
+export {
+  limitChat,
+  MAX_CHAT_CHARS,
+  MAX_CHAT_MESSAGES,
+  MAX_USER_CHARS,
+  personaPrompt,
+  quoteChat,
+  turnPrompt,
+} from "./persona.js";
+export {
+  ANTHROPIC_VERSION,
+  AnthropicEngine,
+  buildMessagesBody,
+  DEFAULT_ENGINE_MODEL,
+  ENGINE_MAX_TOKENS,
+  engineModel,
+  MESSAGES_URL,
+  type AnthropicEngineOptions,
+  type EngineEnv,
+  type FetchInit,
+  type FetchLike,
+  type FetchResponse,
+} from "./anthropic.js";
