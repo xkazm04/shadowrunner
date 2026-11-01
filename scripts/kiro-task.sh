@@ -23,7 +23,7 @@ node scripts/kiro-report.mjs "$run/build.jsonl" "$run/report.txt" 2>/dev/null ||
 head -n 3 "$run/report.txt" 2>/dev/null || true
 if [ "$review" = 1 ]; then
   kiro-cli chat --v3 --agent sr-reviewer --no-interactive --trust-workspace --trust-all-tools \
-    --model claude-sonnet-5.5 --effort high "Review task $task of spec '$spec' against the working-tree diff." > "$run/review.txt" 2>&1 || true
+    --model claude-sonnet-5.5 --effort high "Review task $task of spec '$spec' against the working-tree diff. The builder's own final report (claims to verify, not to trust) is in $run/report.txt." > "$run/review.txt" 2>&1 || true
   grep -E "^VERDICT:" "$run/review.txt" || echo "[kiro-task] reviewer gave no verdict"
 fi
 tail -n 1 var/kiro-runs/gates.jsonl 2>/dev/null > "$run/gates.json" || true
