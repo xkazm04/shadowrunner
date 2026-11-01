@@ -19,6 +19,8 @@ echo "[kiro-task] $spec#$task model=$model effort=$effort -> $run"
 kiro-cli chat --v3 --agent sr-builder --no-interactive --trust-workspace --trust-all-tools \
   --model "$model" --effort "$effort" --output-format stream-json "$prompt" > "$run/build.jsonl" 2> "$run/build.err" || echo "[kiro-task] builder exit=$?" | tee -a "$run/build.err"
 git status --short > "$run/after.status" 2>/dev/null || true
+node scripts/kiro-report.mjs "$run/build.jsonl" "$run/report.txt" 2>/dev/null || true
+head -n 3 "$run/report.txt" 2>/dev/null || true
 if [ "$review" = 1 ]; then
   kiro-cli chat --v3 --agent sr-reviewer --no-interactive --trust-workspace --trust-all-tools \
     --model claude-sonnet-5.5 --effort high "Review task $task of spec '$spec' against the working-tree diff." > "$run/review.txt" 2>&1 || true
