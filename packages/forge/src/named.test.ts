@@ -43,6 +43,18 @@ describe("parseParts v2", () => {
     expect(paths).toEqual(["$.parts[1].name", "$.parts[2].name", "$.parts[3].role", "$.parts[4].key"]);
   });
 
+  it("task 3: reads a jaw's drop and glow and the file's cut style; rejects them out of range or off a jaw", () => {
+    const ok = parseParts({ version: 2, cut: { feather: 0, cell: 7 }, parts: [entry("face", "head"), entry("lips", "jaw", { drop: 0.014, glow: "#ffd60a" })] });
+    expect(ok.ok && ok.value.cut).toEqual({ feather: 0, cell: 7 });
+    expect(ok.ok && ok.value.named?.[1]).toEqual({ name: "lips", role: "jaw", box_2d: box, poly, drop: 0.014, glow: "#ffd60a" });
+    const bad = errorsOf({
+      version: 2,
+      cut: { feather: 9, cell: 0 },
+      parts: [entry("face", "head", { drop: 0.02 }), entry("lips", "jaw", { drop: 0.2, glow: "yellow" }), entry("gem", "pulse", { glow: "#ffffff" })],
+    }).map((e) => e.path);
+    expect(bad).toEqual(["$.cut.feather", "$.cut.cell", "$.parts[0].drop", "$.parts[1].drop", "$.parts[1].glow", "$.parts[2].glow"]);
+  });
+
   it("rejects unknown follows, self follows and cycles", () => {
     expect(errorsOf(file(entry("face", "head"), entry("a", "jaw", { follow: "nobody" })))).toEqual([{ path: "$.parts[1].follow", message: "must name another part of this file" }]);
     expect(errorsOf(file(entry("face", "head"), entry("a", "jaw", { follow: "a" })))[0]?.path).toBe("$.parts[1].follow");

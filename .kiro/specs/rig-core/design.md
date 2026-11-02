@@ -30,6 +30,8 @@ export interface Layer {
   depth?: number;             // 0..1, default by kind (static 0, body .3, head .6, jaw .62, eye .7, accessory .75, crown .65)
   visible?: false;            // present only when hidden by default
   motion?: Motion;            // amended by cast-forge (req 1): own float and/or pulse
+  drop?: number;              // amended by cast-forge task 3: jaw layers only, travel at jawOpen 1 as a
+                              // fraction of height in [0.005, 0.1], default 0.06 (bad_shape at $.layers[i].drop)
 }
 // Amended by cast-forge (design.md "Motion"); additive, the rig stays version 1. Ranges, checked by
 // validateRig as bad_shape at $.layers[i].motion.<field>, every error reported: amp x in
@@ -76,8 +78,9 @@ For each layer (z order): base position = bbox top-left. Head yaw/pitch in degre
 ±22 / ±12, the clamp Overlord measured for 2.5D artefacts): parallax offset `dx = yaw/22 * 0.04
 * width * depth`, `dy = pitch/12 * 0.03 * height * depth`. Followers inherit the parent's gesture translation,
 rotation and scale about the parent's anchor, but their parallax comes from their own depth only
-(not added to the parent's). Jaw: a drop of `jawOpen * 0.06 * height` along the head's down axis,
-applied after the parent transform and capped at `0.06 * height` canvas px; it is not inherited by
+(not added to the parent's). Jaw: a drop of `jawOpen * drop * height` along the head's down axis (`drop` the
+layer's own, 0.06 when omitted; amended by cast-forge task 3), applied after the parent transform and
+capped at `drop * height` canvas px; it is not inherited by
 the jaw's followers. Blink in [0,1] scales
 `eye` layers' y-scale by `1 - 0.9 * blink`. Gestures add a short additive offset curve over
 `t` (nod: pitch +6° sine 400 ms; tilt: rotation 5°; lean_in: scale 1.04; recoil: scale .96 and

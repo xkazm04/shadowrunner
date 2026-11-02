@@ -39,7 +39,7 @@ function grown<L extends NamedLayer>(layer: L, box: Bbox): L {
 }
 
 /**
- * Task 10. The solid area: every pixel where a moving layer (all but the torso) has alpha >=
+ * Task 10. The solid area: every pixel where a moving layer (every cut layer, the torso too) has alpha >=
  * SOLID_ALPHA, plus the whole polygon of a keyed moving part (crown, hair, accessory), whose dark
  * facets the luma key took out and which would otherwise stay behind as a static copy. Inside that
  * area eroded by BACKGROUND_ERODE px the background is `blurExtend`ed from the surface outside all
@@ -54,9 +54,11 @@ export function backgroundOf<L extends NamedLayer>(plate: Rgba, layers: readonly
   const named = asNamed(parts);
   const roles = new Map<string, PartRole>();
   for (const part of named) if (!roles.has(part.name)) roles.set(part.name, part.role);
+  // Cast-forge task 3: the torso moves too (parallax at body depth), so it is painted out like the
+  // rest; before, a turned bust showed the plate's static copy of its outline as a double edge.
   const isMoving = (layer: L): boolean => {
     const role = roles.get(layer.name);
-    return role === undefined ? layer.name !== "torso" : ROLE_KIND[role] !== "body";
+    return role === undefined || ROLE_KIND[role] !== "static";
   };
   const keyed = new Map<string, Mask>();
   for (const part of named) {

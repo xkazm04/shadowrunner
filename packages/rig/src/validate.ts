@@ -4,7 +4,9 @@
 // on shape-valid input. Every error found is collected.
 // The returned Rig is a fresh object holding only contract fields.
 // Layer.motion (cast-forge req 1.2) is read by validateMotion.ts; its shape and range faults are
-// `bad_shape` at `$.layers[i].motion.<field>`, every one reported.
+// `bad_shape` at `$.layers[i].motion.<field>`, every one reported. Layer.drop (cast-forge task 3)
+// is `bad_shape` at `$.layers[i].drop` when out of [JAW_DROP_MIN, JAW_DROP_MAX] or not on a jaw.
+import { JAW_DROP_MAX, JAW_DROP_MIN } from "./pose.js";
 import type { Result } from "./result.js";
 import { RIG_VERSION, type Layer, type LayerKind, type Palette, type Rig } from "./types.js";
 import { readMotion, type MotionCanvas } from "./validateMotion.js";
@@ -56,6 +58,7 @@ const isTrue = (value: unknown): value is true => value === true;
 const isFalse = (value: unknown): value is false => value === false;
 const isDepth = (value: unknown): value is number => isFinite(value) && value >= 0 && value <= 1;
 const isDimension = (value: unknown): value is number => isInteger(value) && value > 0;
+const isDrop = (value: unknown): value is number => isFinite(value) && value >= JAW_DROP_MIN && value <= JAW_DROP_MAX;
 
 /** Right and bottom edges may overshoot the canvas by this much (float bboxes from the forge). */
 const EDGE_TOLERANCE = 1e-6;
@@ -149,6 +152,8 @@ class Reader {
     const follow = this.optional(value, "follow", path, isString, "a layer name", named);
     const depth = this.optional(value, "depth", path, isDepth, "a number in [0, 1]", named);
     const visible = this.optional(value, "visible", path, isFalse, "false (omit the field when visible)", named);
+    const drop = this.optional(value, "drop", path, isDrop, `a number in [${JAW_DROP_MIN}, ${JAW_DROP_MAX}]`, named);
+    if (drop !== undefined && kind !== undefined && kind !== "jaw") this.fail(`${path}.drop`, `only a jaw layer has a drop, this one is ${kind}`, named);
     const read = readMotion(value.motion, `${path}.motion`, canvas);
     for (const problem of read.problems) this.fail(problem.path, problem.message.slice(problem.path.length + 2), named);
     const motion = read.motion;
@@ -167,6 +172,7 @@ class Reader {
       ...(depth === undefined ? {} : { depth }),
       ...(visible === undefined ? {} : { visible }),
       ...(motion === undefined ? {} : { motion }),
+      ...(drop === undefined ? {} : { drop }),
     };
   }
 

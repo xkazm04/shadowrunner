@@ -21,6 +21,7 @@ One section per decomposed character (cast-forge requirement 3.4): what broke, w
      `var/cast-forge/<slug>-parts.png`
   5. `node scripts/cast-forge.mjs <slug>`, open `var/cast-forge/<slug>.png` and the per-pose PNGs
      `var/cast-forge/<slug>-{rest,jaw,left,right,t0,t1}.png` at full size; iterate.
+  4b. (task 3) give the jaw part a `drop` (a lips-only human jaw about 0.012-0.02; omit for a skull) and a `glow` if the mouth glows; for hard-edged pixel art set `cut: { feather: 0, cell: <px> }` and trace ground-meeting parts at least one cell out; mark small parts on a flat field `fill: "extend"`.
   6. add the slug to `CAST` in `packages/forge/src/cast.golden.test.ts`.
      and to `SLUGS` in `api/_tests/forge-replay.test.ts` (it pins the recorded job list).
   7. If a web replay test then sees one job fewer than the folder holds, the vitest module cache
@@ -57,3 +58,52 @@ One section per decomposed character (cast-forge requirement 3.4): what broke, w
 - A worn object on the chest follows `torso`; a floating finial follows the object it tops.
 - Floating pieces are the thin ends that stand free against the background (finials, shards),
   not pieces cut out of a connected filigree.
+
+## Mouth hardening (task 3, from the director's review of Cardia's sheet)
+**What broke**
+- JAW OPEN dropped Cardia's whole chin 61 px (the fixed `JAW_DROP`, a skull's 0.06 x height) onto a
+  soft grey-black smear (task 9's `MOUTH_SHADE` ramp): wrong size and wrong style for any human face.
+- The jaw's lifted region grew 6 px *up* too, so an open jaw would carry a sliver of the upper lip.
+- On a turn, the trailing shoulder showed a double edge (the plate's static copy of the torso's
+  outline: only the moving layers above the torso were painted out of the background); painting the
+  torso out then exposed the head/torso seam as a dark line (cores are disjoint, so the torso had
+  nothing under the head's edge).
+
+**What became code**
+- `Layer.drop` (rig-core amended): per-jaw travel, `[0.005, 0.1]`, default 0.06; `NamedPart.drop`.
+- `mouth.ts`: `liftedJaw` (no growth above the lip line), the jaw layer cleared above its lip line in
+  `cutNamed`, `paintCavity` (hard lens from the lip line, flat dark tones of the lip's own colour,
+  optional accent glow `NamedPart.glow`), replacing `shadeMouthIn` for named parts.
+- `backgroundOf` paints under the torso too; `cutNamed` lets a plate part reach `parallaxBacking` px
+  under the plate part in front of it.
+- Seeded faults red: pose ignores `drop`; validate accepts `drop` on a non-jaw; cavity not clipped to
+  the lifted region; jaw not cleared above the lip; smooth shade instead of the cavity (golden on
+  Cardia); no backing; backing unbounded.
+
+**What became a decomposition-prompt rule**
+- A human jaw is the lower lip (plus chin only for a skull or a puppet jaw): its top edge is the lip
+  line, its width the mouth's width; set its drop to about 0.012-0.02 of the height.
+- Name the mouth's glow on the jaw (`glow`) when the character's mouth glows; do not plan a separate
+  mouth-light part.
+
+## The Redactor (16-bit pixel art)
+**What broke**
+- A feathered cut (3 px) smears the hard cluster edges of pixel art.
+- A 60-point outline of a stair-stepped silhouette cuts cells off; they stayed on the background as
+  white slivers beside the turned head.
+- The fill edit drew realistic eyes behind the spectacles (a style drift inside a lifted region).
+- The mouth glow placed per column made a W; a glow layer following a floating bar would not bob with
+  it (float is not inherited).
+
+**What became code** (`packages/forge`)
+- `PartsV2.cut` `{ feather, cell }`: a hard cut per style, and the cavity stepped on the art's cell.
+- `NamedPart.fill: "extend"` and `plateNamed`: a part's plate from the surface around it, not the edit.
+- The cavity's glow lies flat along the bottom of the full opening.
+- Seeded fault red: `plateNamed` ignoring `fill: "extend"`; parse tests for drop, glow, fill and cut.
+
+**What became a decomposition-prompt rule**
+- Pixel art: ask for a hard cut and the cell size; trace parts on the ground at least one cell out.
+- A glowing edge on a floating part is the same part (float + pulse), not a follower.
+- Eyes behind dark glasses are the pupils; the lenses stay on the head (a blink narrows the pupil).
+- A hanging pendant swings without its chain; the chain stays on the torso.
+- Small parts on a flat field (pupils in a lens) are filled by extension, not by the edit.

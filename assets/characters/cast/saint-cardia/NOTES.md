@@ -10,7 +10,7 @@ Style: faceted gothic painting (contest supporting-cast A/6 style-3). Portrait 1
 | eye_r, eye_l | eye_r, eye_l | head | - | edit difference in each eye box, opened, convex hull, +2 px |
 | cage | accessory | torso | - | edit difference on the chest |
 | crown | crown | head | - | edit difference over the crown box, band region opened (see below) |
-| jaw | jaw | head | - | darkest row between the lips down to a quadratic fitted to the chin edge |
+| jaw | jaw | head | drop 0.016 (16 px) | task 3, lips only: the lower lip, from the lip line (a quadratic through the darkest rows between the lips) down through the lip's red (R - B > 18) |
 | head | head | - | - | figure above the hood hem, crown taken out, traced 4 px onto the ground |
 | torso | torso | - | - | figure below the hem, 8 px under the head, traced 4 px onto the ground |
 
@@ -40,11 +40,13 @@ Rebuild: `node scripts/cast/recipes/saint-cardia.mjs` (parts.json and the overla
 4. **Chin.** The chin edge on faceted shading is noisy; a robust quadratic fit gives a clean line.
 
 ## Still wrong (honest state)
-- **Open jaw** reads as a soft dark smudge, not a hard-edged mouth: the mouth shade (`MOUTH_SHADE`)
-  is a smooth ramp, which suits painterly presets better than a faceted face. Full drop (61 px)
-  also slides the chin over the collar's neck line.
-- A small step remains at each shoulder corner when the head turns (the parallax seam, now hidden
-  in the corner).
+- ~~Open jaw reads as a soft dark smudge~~ (fixed in task 3): the jaw is now the lower lip only,
+  dropping 16 px, and the forge paints a hard-edged lens of dark lip-coloured tones under it
+  (`paintCavity`). The lens's corners show a little of the fill plate (skin) between the lips.
+- The shoulder-corner seam (task 3): the double edge on the trailing shoulder (the plate's static
+  copy of the robe's outline) is gone, the background is painted under the torso now; the dark line
+  along the hood's hem is covered by the torso reaching `parallaxBacking` px under the head. A small
+  notch remains at each hood tip at 15 deg yaw, inherent in two rigid layers at different depths.
 - Floating finials show a 1-3 px dark gap above the crown at the top of their bob (intended as
   levitation; may read as detached).
 - The review compositor draws no rotation (spires' 1.5 deg sway) and no blink; blink was not

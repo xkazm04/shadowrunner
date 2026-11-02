@@ -15,7 +15,8 @@ packages/avatar/                 passes reduced motion as "still"; pulse tint re
 packages/forge/src/types.ts      PartRole, NamedPart, PartsV2
 packages/forge/src/parts.ts      parseParts accepts v1 (ten names) and v2 (named parts); ROLE_KIND table
 packages/forge/src/cut.ts        cutAll over named parts (order below)
-packages/forge/src/assemble.ts   role -> kind, follow, motion into the rig
+packages/forge/src/assemble.ts   role -> kind, follow, motion (and a jaw's drop) into the rig
+packages/forge/src/mouth.ts      liftedJaw, paintCavity: the mouth an open jaw reveals (task 3)
 packages/forge/src/brief.ts      CharacterBrief, parseBrief, BRIEF_PROMPT, portraitPromptFromBrief, partsPromptFromBrief
 scripts/cast-forge.mjs           offline: cast/<slug> -> replay job + review sheet (shares code with forge-replay.mjs)
 assets/characters/cast/<slug>/   portrait.png, brief.json, parts.json, fill.png?, NOTES.md
@@ -69,6 +70,36 @@ Cut order, front to back: `float`, `pulse`, `eye_l`/`eye_r`/`eye`, `monocle`, `a
 loses the pixels an earlier part took). Every non-plate part is lifted from the plate and the plate is
 filled behind it (edit when available, `blurExtend` otherwise), as `FILL_PARTS` does today.
 A v1 file parses to the same `Part[]` it does today: no existing test changes behaviour.
+
+## Mouth, jaw travel and seams (amended by cast-forge task 3)
+The fixed `JAW_DROP` (0.06 x height) is a skull's gape; on Cardia it dropped her whole chin 61 px onto
+a soft grey smear (task 9's `MOUTH_SHADE` ramp). Now:
+- **Jaw travel per layer.** `Layer.drop` (rig-core amended, `docs/rig-format.md`): jaw layers only,
+  `[0.005, 0.1]` of height, default 0.06, so every existing rig is unchanged. `NamedPart.drop` (jaw
+  role) becomes it. A lips-only jaw wants about 0.012-0.02.
+- **Lip line.** A jaw's lifted region is its polygon grown `JAW_GROW` px down and sideways but never
+  above its top edge (`liftedJaw`), and its cut layer is cleared above that edge, so the jaw's top is
+  the lip line, hard, and an open jaw carries no sliver of the upper lip.
+- **Cavity (a plate treatment).** `paintCavity` paints the head's surface under the jaw, inside its
+  lifted region (so the rest view never shows it): for each column of the jaw, from the lip line down
+  `drop px * (1 - u^2)` (`u` across the jaw, -1..1), a lens pointed at the corners and as deep as the
+  drop in the middle. Tones are flat, never blended: a shadow band under the upper lip (7% of the lip's
+  mean colour), the deep tone (16%, hue kept), and with the jaw part's `glow` ("#rrggbb", characters
+  whose mouth glows) a flat band of the accent over the lower middle of the full opening. The corners
+  of the gap show the fill plate. A layer was rejected: a cavity layer behind the jaw would need its own
+  follow and depth and could slide against the head on a turn; painted into the head's surface it
+  moves with the head by construction.
+- **Cut style.** `PartsV2.cut` `{ feather?: 0..8, cell?: 1..32 }`: `feather: 0` is a hard cut (pixel
+  art: no smeared cluster edges), `cell` the art's pixel size, on which the cavity steps.
+- **Fill per part.** `NamedPart.fill: "extend"` (lifted parts) paints the plate behind it from the
+  surface around it, not from the edit (`plateNamed`): a pupil in a dark lens, where the edit draws a
+  new eye.
+- **Seams on a turn.** The background is painted out under the torso too (it moves at body depth;
+  the plate's static copy of its outline showed as a double edge), and a plate part reaches
+  `parallaxBacking` px (the most head and torso part at full yaw or pitch, 13 px at 1024) under the
+  plate part in front of it, so a turned head shows torso at the seam, not painted-out ground. The
+  v1 `cutAll` path is unchanged (presets keep their recorded jobs); task 11 moves live jobs onto
+  `cutNamed`.
 
 ## How a character is decomposed (requirement 3, offline, by the builder)
 1. Read `brief.json` (the parts plan the contest seat wrote) and look at `portrait.png`. The plan is a

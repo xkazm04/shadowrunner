@@ -5,10 +5,11 @@ import { validateRig } from "@sr/rig";
 import { describe, expect, it } from "vitest";
 import { assembleRig } from "./assemble.js";
 import { compositeRig } from "./composite.js";
-import { type NamedCutPart, cutNamed, liftedNamed } from "./cutNamed.js";
+import { type NamedCutPart, cutNamed, liftedNamed, parallaxBacking, plateNamed } from "./cutNamed.js";
+import { dilateMask, rasterizeMask } from "./mask.js";
 import { fallbackFill, composePlate } from "./plate.js";
 import { cutOrderNamed, isLifted } from "./named.js";
-import { PART_ROLES } from "./parts.js";
+import { PART_ROLES, toCanvas } from "./parts.js";
 import type { NamedPart, PartRole, Rgba } from "./types.js";
 
 const SIZE = 32;
@@ -54,7 +55,7 @@ function coreOf(layer: NamedCutPart): Set<number> {
 }
 
 describe("cutNamed", () => {
-  it("property: cores are disjoint (on a plate, only a lifted core may overlap a plate part's), in cut order", () => {
+  it("property: cores are disjoint (on a plate, a lifted core may overlap a plate part's, and a plate part may back the plate part in front of it), in cut order", () => {
     fc.assert(
       fc.property(arbNamed, arbImage, fc.boolean(), (parts, portrait, filled) => {
         const plate = filled ? composePlate(portrait, fallbackFill(portrait, liftedNamed(parts, SIZE, SIZE)), liftedNamed(parts, SIZE, SIZE)) : undefined;
@@ -69,7 +70,7 @@ describe("cutNamed", () => {
           result.layers.slice(i + 1).forEach((b, k) => {
             const pa = byName.get(a.name);
             const pb = byName.get(b.name);
-            if (filled && pa !== undefined && pb !== undefined && isLifted(pa) !== isLifted(pb)) return;
+            if (filled && pa !== undefined && pb !== undefined && (isLifted(pa) !== isLifted(pb) || (!isLifted(pa) && !isLifted(pb)))) return;
             const other = cores[i + 1 + k] ?? new Set<number>();
             for (const px of cores[i] ?? []) expect(other.has(px), `${a.name} and ${b.name} share an opaque pixel`).toBe(false);
           });
@@ -77,6 +78,61 @@ describe("cutNamed", () => {
       }),
       { numRuns: 60 },
     );
+  });
+
+  it("property: on a plate, a plate part overlaps the plate part in front of it only within parallaxBacking px of its own polygon", () => {
+    const backing = parallaxBacking(SIZE, SIZE);
+    fc.assert(
+      fc.property(arbPoly, arbPoly, arbImage, (headPoly, torsoPoly, portrait) => {
+        const parts: NamedPart[] = [
+          { name: "face", role: "head", box_2d: [0, 0, 1000, 1000], poly: headPoly },
+          { name: "body", role: "torso", box_2d: [0, 0, 1000, 1000], poly: torsoPoly },
+        ];
+        const lifted = liftedNamed(parts, SIZE, SIZE);
+        const result = cutNamed(portrait, parts, { plate: composePlate(portrait, fallbackFill(portrait, lifted), lifted) });
+        const face = result.layers.find((l) => l.name === "face");
+        const body = result.layers.find((l) => l.name === "body");
+        if (face === undefined || body === undefined) return;
+        const near = dilateMask(rasterizeMask(toCanvas(torsoPoly, SIZE, SIZE), SIZE, SIZE, 0), backing).data;
+        const bodyCore = coreOf(body);
+        for (const px of coreOf(face)) if (bodyCore.has(px)) expect(near[px], `overlap at ${px} is past the backing`).toBe(255);
+      }),
+      { numRuns: 80 },
+    );
+  });
+
+  it("on a plate, the torso is opaque under the head for parallaxBacking px above their seam (a turned head shows torso, not a gap)", () => {
+    const size = 400;
+    const backing = parallaxBacking(size, size);
+    const parts: NamedPart[] = [
+      { name: "face", role: "head", box_2d: [0, 0, 1000, 1000], poly: [[100, 250], [100, 750], [500, 750], [500, 250]] },
+      { name: "body", role: "torso", box_2d: [0, 0, 1000, 1000], poly: [[500, 100], [500, 900], [1000, 900], [1000, 100]] },
+    ];
+    const portrait: Rgba = { width: size, height: size, data: new Uint8ClampedArray(size * size * 4).fill(200) };
+    for (let i = 3; i < portrait.data.length; i += 4) portrait.data[i] = 255;
+    const lifted = liftedNamed(parts, size, size);
+    const body = cutNamed(portrait, parts, { plate: composePlate(portrait, fallbackFill(portrait, lifted), lifted) }).layers.find((l) => l.name === "body");
+    expect(backing).toBeGreaterThanOrEqual(4);
+    expect(body).toBeDefined();
+    if (body === undefined) return;
+    const [bx, by, bw] = body.bbox;
+    const alpha = (x: number, y: number): number => body.image.data[((y - by) * bw + x - bx) * 4 + 3] ?? 0;
+    for (let y = 200 - backing; y < 200; y++) expect(alpha(200, y), `torso alpha at (200, ${y})`).toBe(255);
+  });
+
+  it("plateNamed: a part with fill extend is painted from around it, the others from the edit", () => {
+    const size = 64;
+    const flat = (v: number): Rgba => ({ width: size, height: size, data: new Uint8ClampedArray(size * size * 4).map((_, i) => (i % 4 === 3 ? 255 : v)) });
+    const square = (y0: number, x0: number): [number, number][] => [[y0, x0], [y0, x0 + 150], [y0 + 150, x0 + 150], [y0 + 150, x0]];
+    const parts: NamedPart[] = [
+      { name: "face", role: "head", box_2d: [0, 0, 1000, 1000], poly: square(0, 0).map(([y, x]) => [y * 6, x * 6]) },
+      { name: "pupil", role: "eye", box_2d: [0, 0, 1000, 1000], poly: square(200, 200), fill: "extend" },
+      { name: "gem", role: "accessory", box_2d: [0, 0, 1000, 1000], poly: square(650, 650) },
+    ];
+    const plate = plateNamed(flat(100), parts, flat(250));
+    const at = (y: number, x: number): number => plate.data[(Math.round((y * size) / 1000) * size + Math.round((x * size) / 1000)) * 4] ?? 0;
+    expect(at(275, 275)).toBe(100);
+    expect(at(725, 725)).toBe(250);
   });
 
   it("lifts every non-plate part: on a plate, a lifted layer is opaque over its whole polygon unless a part in front took it", () => {

@@ -5,9 +5,14 @@ import { motionAt, poseLayers, validateRig } from "@sr/rig";
 import { describe, expect, it } from "vitest";
 import cardiaJob from "../../../assets/replay/forge/saint-cardia/job.json";
 import cardiaParts from "../../../assets/characters/cast/saint-cardia/parts.json";
+import redactorJob from "../../../assets/replay/forge/the-redactor/job.json";
+import redactorParts from "../../../assets/characters/cast/the-redactor/parts.json";
 import { parseParts } from "./parts.js";
 
-const CAST = [{ slug: "saint-cardia", job: cardiaJob as unknown, parts: cardiaParts as unknown }];
+const CAST = [
+  { slug: "saint-cardia", job: cardiaJob as unknown, parts: cardiaParts as unknown },
+  { slug: "the-redactor", job: redactorJob as unknown, parts: redactorParts as unknown },
+];
 
 describe.each(CAST)("cast rig $slug", ({ job, parts }) => {
   const rig = validateRig((job as { rig: unknown }).rig);

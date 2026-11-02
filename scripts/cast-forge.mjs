@@ -1,7 +1,7 @@
 // Builds one cast character's replay job OFFLINE (cast-forge requirement 3.2, task 2.2):
 //   node scripts/cast-forge.mjs <slug>
 // Reads assets/characters/cast/<slug>/{portrait.png, parts.json (PartsV2), fill.jpg|fill.png?,
-// brief.json} and runs the real pipeline (scripts/forge-lib.mjs: liftedNamed + composePlate with
+// brief.json} and runs the real pipeline (scripts/forge-lib.mjs: plateNamed with
 // the fill edit, or the pure fallback; cutNamed; assembleRig). No network, no key.
 // Writes assets/replay/forge/<slug>/ (job.json + portrait + layer PNGs, the presets' shape,
 // `fictional: true`) and two review images:
@@ -37,7 +37,7 @@ if (named === undefined) throw new Error(`cast-forge: ${slug}: parts.json must b
 const fillFile = ["fill.jpg", "fill.png"].map((f) => join(DIR, f)).find((f) => existsSync(f));
 const edit = fillFile === undefined ? undefined : resize(readImage(forge, fillFile), portrait.width, portrait.height);
 
-const { cut, assembled, cutMs } = runPipeline(pipeline, { portrait, named, edit, id: `replay-${slug}`, name: brief.name });
+const { cut, assembled, cutMs } = runPipeline(pipeline, { portrait, named, style: parsed.value.cut, edit, id: `replay-${slug}`, name: brief.name });
 if (cut.empty.length > 0) throw new Error(`cast-forge: ${slug}: parts with no layer: ${cut.empty.join(", ")}`);
 
 const timings = { cutMs };

@@ -2,9 +2,9 @@
 // parseParts takes an already-decoded value; it never sees raw text and never JSON.parses.
 // Anything off-contract is rejected with code `upstream`. Error messages name the JSON path and
 // the rule broken, never the offending value, so no raw upstream text can leak through them.
-import { type LayerKind, type Result, readMotion } from "@sr/rig";
+import { JAW_DROP_MAX, JAW_DROP_MIN, type LayerKind, type Result, readMotion } from "@sr/rig";
 import { followOf, headNameOf } from "./named.js";
-import { PART_NAMES, type NamedPart, type Part, type PartName, type PartRole, type Polygon } from "./types.js";
+import { PART_NAMES, type CutStyle, type NamedPart, type Part, type PartName, type PartRole, type Polygon } from "./types.js";
 import type { ForgeErrorCode } from "./wire.js";
 
 /** design.md "PART_KIND": which Rig layer kind each part becomes (requirement 3.4). */
@@ -64,6 +64,8 @@ export interface ParsedParts {
   warnings: PartsWarning[];
   /** v2 only: the named parts, in file order (repeats dropped). */
   named?: NamedPart[];
+  /** v2 only, when the file gives one: how the parts are cut (CutStyle). */
+  cut?: CutStyle;
 }
 
 type Fields = Record<string, unknown>;
@@ -184,6 +186,7 @@ export function v1View(named: readonly NamedPart[]): Part[] {
   return out;
 }
 
+const HEX = /^#[0-9a-fA-F]{6}$/;
 const isRole = (value: unknown): value is PartRole => typeof value === "string" && (PART_ROLES as readonly string[]).includes(value);
 const NAME_RULE = `must match ${PART_NAME_PATTERN.source} and not be ${RESERVED_PART_NAMES.join(", ")}`;
 
@@ -193,7 +196,7 @@ function namedPart(value: unknown, path: string, errors: PartsError[]): NamedPar
     return undefined;
   }
   const before = errors.length;
-  const { name, role, follow, key } = value;
+  const { name, role, follow, key, drop, glow, fill } = value;
   const nameOk = typeof name === "string" && PART_NAME_PATTERN.test(name) && !RESERVED_PART_NAMES.includes(name);
   if (!nameOk) errors.push({ code: "upstream", path: `${path}.name`, message: NAME_RULE });
   if (!isRole(role)) errors.push({ code: "upstream", path: `${path}.role`, message: `must be one of ${PART_ROLES.join(", ")}` });
@@ -201,6 +204,14 @@ function namedPart(value: unknown, path: string, errors: PartsError[]): NamedPar
   const points = poly(value.poly, `${path}.poly`, errors);
   if (follow !== undefined && typeof follow !== "string") errors.push({ code: "upstream", path: `${path}.follow`, message: "must be a part name when present" });
   if (key !== undefined && typeof key !== "boolean") errors.push({ code: "upstream", path: `${path}.key`, message: "must be a boolean when present" });
+  const dropOk = drop === undefined || (typeof drop === "number" && drop >= JAW_DROP_MIN && drop <= JAW_DROP_MAX);
+  if (!dropOk) errors.push({ code: "upstream", path: `${path}.drop`, message: `must be a number in [${JAW_DROP_MIN}, ${JAW_DROP_MAX}] when present` });
+  if (glow !== undefined && (typeof glow !== "string" || !HEX.test(glow))) errors.push({ code: "upstream", path: `${path}.glow`, message: "must be a \"#rrggbb\" colour when present" });
+  for (const field of ["drop", "glow"] as const) {
+    if (value[field] !== undefined && role !== "jaw") errors.push({ code: "upstream", path: `${path}.${field}`, message: "is only for a part with role jaw" });
+  }
+  const fillOk = fill === undefined || ((fill === "edit" || fill === "extend") && role !== "head" && role !== "torso");
+  if (!fillOk) errors.push({ code: "upstream", path: `${path}.fill`, message: "must be \"edit\" or \"extend\", on a lifted part (not head or torso), when present" });
   const motion = readMotion(value.motion, `${path}.motion`, { width: MOTION_CANVAS, height: MOTION_CANVAS });
   for (const problem of motion.problems) {
     errors.push({ code: "upstream", path: problem.path, message: "is out of range or the wrong shape (cast-forge design.md Motion)" });
@@ -214,7 +225,25 @@ function namedPart(value: unknown, path: string, errors: PartsError[]): NamedPar
     ...(typeof follow === "string" ? { follow } : {}),
     ...(motion.motion === undefined ? {} : { motion: motion.motion }),
     ...(typeof key === "boolean" ? { key } : {}),
+    ...(typeof drop === "number" ? { drop } : {}),
+    ...(typeof glow === "string" ? { glow } : {}),
+    ...(fill === "edit" || fill === "extend" ? { fill } : {}),
   };
+}
+
+const inRange = (value: unknown, lo: number, hi: number): value is number => typeof value === "number" && Number.isInteger(value) && value >= lo && value <= hi;
+
+/** A v2 file's `cut`: feather an integer 0..8, cell an integer 1..32, both optional. */
+function cutStyle(value: unknown, errors: PartsError[]): CutStyle | undefined {
+  if (value === undefined) return undefined;
+  if (!isRecord(value)) {
+    errors.push({ code: "upstream", path: "$.cut", message: "must be an object { feather?, cell? } when present" });
+    return undefined;
+  }
+  const { feather, cell } = value;
+  if (feather !== undefined && !inRange(feather, 0, 8)) errors.push({ code: "upstream", path: "$.cut.feather", message: "must be an integer 0..8 when present" });
+  if (cell !== undefined && !inRange(cell, 1, 32)) errors.push({ code: "upstream", path: "$.cut.cell", message: "must be an integer 1..32 when present" });
+  return { ...(inRange(feather, 0, 8) ? { feather } : {}), ...(inRange(cell, 1, 32) ? { cell } : {}) };
 }
 
 /**
@@ -265,6 +294,7 @@ function parseNamed(json: Fields): Result<ParsedParts, PartsError[]> {
     warnings.push({ path: "$.parts", message: `has more than ${MAX_NAMED_PARTS} parts; kept the first ${MAX_NAMED_PARTS}` });
   }
   const errors: PartsError[] = [];
+  const cut = cutStyle(json.cut, errors);
   const named: { part: NamedPart; at: number }[] = [];
   const firstAt = new Map<string, number>();
   list.slice(0, MAX_NAMED_PARTS).forEach((item: unknown, i) => {
@@ -284,7 +314,7 @@ function parseNamed(json: Fields): Result<ParsedParts, PartsError[]> {
   }
   if (errors.length > 0) return { ok: false, errors };
   const parts = named.map((n) => n.part);
-  return { ok: true, value: { parts: v1View(parts), warnings, named: parts } };
+  return { ok: true, value: { parts: v1View(parts), warnings, named: parts, ...(cut === undefined ? {} : { cut }) } };
 }
 
 /** Model polygon ([y, x], 0..1000) -> canvas pixels ([x, y]) for a width x height canvas. */

@@ -58,6 +58,7 @@ Four colours, each `#rrggbb`:
 | `depth` | number | no | Parallax depth in `[0, 1]`, from 0 (background) to 1 (nearest). When omitted, the default for the kind applies. |
 | `visible` | `false` | no | Present only when the layer is hidden by default. Never written as `true`. |
 | `motion` | Motion | no | The layer's own float and/or pulse (see "Motion"). Omitted when the layer has none. Amended by cast-forge; the format stays version 1. |
+| `drop` | number | no | `jaw` layers only: the drop at `jawOpen = 1` as a fraction of `height`, in `[0.005, 0.1]`. Omitted means 0.06 (a skull's gape); a human mouth wants about 0.012-0.02. On any other kind, or out of range, it is `bad_shape` at `$.layers[i].drop`. Amended by cast-forge task 3; the format stays version 1. |
 
 ### Layer files
 
@@ -245,8 +246,9 @@ One per drawn layer, in `z` order. A layer is drawn unless it is named in `look.
   do not add their parent's parallax, so the shift is monotonic in depth across every layer.
 - **Follow.** A follower inherits its parent's gesture translation, rotation and scale about the
   parent's anchor. Parallax and the jaw drop are not inherited.
-- **Jaw.** Each `jaw` layer drops by `jawOpen * 0.06 * height` canvas px along the head's down axis
-  (it turns with a tilt). The length is not scaled by gestures, so it never exceeds `0.06 * height`.
+- **Jaw.** Each `jaw` layer drops by `jawOpen * drop * height` canvas px along the head's down axis
+  (it turns with a tilt), `drop` being the layer's own (0.06 when omitted; cast-forge task 3). The
+  length is not scaled by gestures, so it never exceeds `drop * height`.
   Followers of a jaw do not move with the drop; a jaw that follows a jaw drops by its own amount
   only. No other kind moves with `jawOpen`.
 - **Blink.** `eye` layers scale y by `1 - 0.9 * blink`.

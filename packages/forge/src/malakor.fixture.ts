@@ -32,6 +32,13 @@ export function malakorPortrait(): Rgba {
   return decoded.value;
 }
 
+/** An `?inline` image import (a base64 data: URL) as RGBA; throws when it does not decode. */
+export function inlineImage(dataUrl: string): Rgba {
+  const decoded = decodeImage(unbase64(dataUrl.slice(dataUrl.indexOf(",") + 1)));
+  if (!decoded.ok) throw new Error(decoded.errors.message);
+  return decoded.value;
+}
+
 /** A recorded parts fixture, through parseParts; throws when it does not parse. */
 export function partsOf(json: unknown): Part[] {
   const parsed = parseParts(json);

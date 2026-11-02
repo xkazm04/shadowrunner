@@ -1,7 +1,8 @@
 // Rig v1 wire contract (.kiro/specs/rig-core/design.md, "Data model").
 // This file is the ONLY declaration of these types; docs/rig-format.md describes the same contract.
 // Optional fields are omitted when absent, never null.
-// Layer.motion (FloatMotion, PulseMotion) is amended by cast-forge (req 1); Rig stays version 1.
+// Layer.motion (FloatMotion, PulseMotion) is amended by cast-forge (req 1) and Layer.drop by
+// cast-forge task 3; Rig stays version 1.
 
 export const RIG_VERSION = 1 as const;
 
@@ -35,6 +36,12 @@ export interface Layer {
   visible?: false;
   /** Motion of its own (cast-forge req 1): float and/or pulse. Omitted when the layer has none. */
   motion?: Motion;
+  /**
+   * Jaw layers only (cast-forge task 3): the drop at `jawOpen = 1` as a fraction of rig height, in
+   * [JAW_DROP_MIN, JAW_DROP_MAX]. Omitted means JAW_DROP (0.06, sized for a skull); a human mouth
+   * wants about 0.012-0.02.
+   */
+  drop?: number;
 }
 
 /**

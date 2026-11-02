@@ -39,6 +39,7 @@ function wireLayer(layer: Layer): Layer {
     ...(layer.depth === undefined ? {} : { depth: layer.depth }),
     ...(layer.visible === undefined ? {} : { visible: layer.visible }),
     ...(layer.motion === undefined ? {} : { motion: wireMotion(layer.motion) }),
+    ...(layer.drop === undefined ? {} : { drop: layer.drop }),
   };
 }
 

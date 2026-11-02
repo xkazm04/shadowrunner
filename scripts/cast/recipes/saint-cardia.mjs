@@ -6,7 +6,7 @@
 //   having removed the crown; each finial is the crown above the knot where its tracery joins.
 // - cage: the edit difference on the chest; heart: the saturated red inside the cage.
 // - eyes: the edit difference in each eye's box (the fill painted the eyes out).
-// - jaw: the lip line (darkest row between the lips) down to the chin edge (sharpest dark-going step).
+// - jaw: the lower lip (task 3): the lip line (darkest row between the lips) down through the lip's red.
 // - head: the figure above the collar rim, the crown taken out; torso: the figure below the rim.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -57,13 +57,21 @@ const eye = (box) => grow(polyMask(W, H, hull(keepBig(open(clip(edit, box), 1)))
 const eyeR = eye([412, 352, 500, 404]);
 const eyeL = eye([524, 352, 612, 404]);
 
-// Jaw: lip line to chin edge.
+// Jaw (task 3, lips only): the lower lip, from the lip line (darkest row between the lips) down
+// through the lip's red (R - B above LIP_RB), so an open mouth drops the lip, not the whole chin.
+const LIP_RB = 18;
 const lip = profile(portrait, 470, 557, () => 470, () => 496, "min");
-const chinAt = fitQuadratic(profile(portrait, 452, 574, () => 515, () => 575, "edge"));
-const chin = [];
-for (let x = 576; x >= 448; x -= 8) chin.push([x, chinAt(x) + 2]);
-const jawPoly = [...lip.filter((_, i) => i % 3 === 0), [560, lip[lip.length - 1][1] + 6], ...chin, [466, lip[0][1] + 6]];
-const jaw = polyMask(W, H, jawPoly);
+const lipAt = new Map(lip.map(([x, y]) => [x, y]));
+const lipRed = where(W, H, (i, x, y) => lipAt.has(x) && y >= lipAt.get(x) && y < 504 && portrait.data[i * 4] - portrait.data[i * 4 + 2] > LIP_RB);
+const lipMask = keepBig(close(lipRed, 2));
+// The jaw's top edge is the lip line, smoothed (a quadratic through the darkest rows), so the
+// cavity an open mouth shows has a clean upper edge; each column runs down to the lip's last red.
+const lipFit = fitQuadratic(lip);
+const redBottom = new Map();
+lipMask.data.forEach((v, i) => v && redBottom.set(i % W, Math.max(redBottom.get(i % W) ?? 0, Math.floor(i / W))));
+const jaw = where(W, H, (_i, x, y) => redBottom.has(x) && y >= Math.round(lipFit(x)) && y <= redBottom.get(x) + 1);
+/** The lips' own travel at full open, a fraction of height (task 3: Malakor's 0.06 is a skull's gape). */
+const JAW_TRAVEL = 0.016;
 
 const figure = figureMask(portrait, 24);
 // Head and torso meet along the hood's hem: up the collar's sides to its rim, and out along the
@@ -95,7 +103,7 @@ const parts = {
     part("eye_l", "eye_l", eyeL, {}, false),
     part("cage", "accessory", cage, { follow: "torso" }),
     part("crown", "crown", crown),
-    part("jaw", "jaw", jaw, {}, false),
+    part("jaw", "jaw", jaw, { drop: JAW_TRAVEL }, false),
     part("head", "head", head),
     part("torso", "torso", torso),
   ],

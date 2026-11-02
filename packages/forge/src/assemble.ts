@@ -95,7 +95,8 @@ function anchorOf(kind: LayerKind, layer: NamedLayer, part: Pick<Part, "poly"> |
  * its own target, and when the head has no layer a `no_head_layer` warning says so. Depth: the
  * kind's default, except that a part with an explicit follow takes its target's depth (a heart on
  * the chest moves with the chest, not ahead of it). Motion (`motionOf`) is scaled from
- * MOTION_CANVAS px to the portrait. The rig is passed through validateRig; its errors are returned
+ * MOTION_CANVAS px to the portrait. A jaw part's `drop` becomes its layer's
+ * `drop` (cast-forge task 3). The rig is passed through validateRig; its errors are returned
  * as they are.
  */
 export function assembleRig(parts: readonly Part[] | readonly NamedPart[], layers: readonly NamedLayer[], meta: AssembleMeta): Result<AssembledRig, RigError[]> {
@@ -184,6 +185,7 @@ export function assembleRig(parts: readonly Part[] | readonly NamedPart[], layer
       ...(follow === undefined ? {} : { follow }),
       depth: depthOf(layer.name),
       ...(motion === undefined ? {} : { motion: scaleMotion(motion, width, height, MOTION_CANVAS) }),
+      ...(kind === "jaw" && part?.drop !== undefined ? { drop: part.drop } : {}),
     });
   });
   if (headless) warnings.push({ code: "no_head_layer", message: "no head layer; jaw, eyes, accessories and crown follow nothing" });

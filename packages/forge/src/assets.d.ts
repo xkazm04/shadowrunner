@@ -4,6 +4,10 @@ declare module "*.png?inline" {
   const dataUrl: string;
   export default dataUrl;
 }
+declare module "*.jpg?inline" {
+  const dataUrl: string;
+  export default dataUrl;
+}
 
 // `?raw` turns a committed text file into a string (a recorded model reply, byte for byte).
 declare module "*.txt?raw" {

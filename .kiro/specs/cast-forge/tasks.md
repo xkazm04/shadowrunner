@@ -19,7 +19,11 @@
   - [x] 2.3 Decompose `saint-cardia`; NOTES.md; ledger section; hardening.
   - _Requirements: 2.1-2.3, 3.1-3.4_
 
-- [ ] 3. Decompose `the-redactor` (pixel art) and harden
+- [x] 3. Decompose `the-redactor` (pixel art) and harden
+  - Mouth hardening first (director's review of Cardia's sheet): per-layer jaw travel `Layer.drop`, a
+    hard-edged mouth cavity painted from the lip line (`mouth.ts`), the jaw's top edge is the lip line;
+    Cardia re-cut with a lips-only jaw (drop 0.016). Turn seams: background painted under the torso,
+    `parallaxBacking`. Pixel art: `PartsV2.cut` (feather 0, cell 7), `fill: "extend"` per part.
 - [ ] 4. Decompose `vicar-of-the-lure` (stained glass) and harden
 - [ ] 5. Decompose `reveille` (brass and neon) and harden
 - [ ] 6. Decompose `the-tallyman` (low-poly) and harden

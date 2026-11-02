@@ -54,10 +54,29 @@ export interface NamedPart {
   motion?: Motion;
   /** Luma-key the polygon; omitted means the role's default (`defaultKey`). */
   key?: boolean;
+  /** Jaw role only (cast-forge task 3): the jaw's travel as a fraction of height, the rig layer's `drop`. */
+  drop?: number;
+  /** Jaw role only: "#rrggbb", an inner glow in the mouth cavity (`paintCavity`). */
+  glow?: string;
+  /**
+   * Lifted parts only (cast-forge task 3): how the plate behind it is filled. "extend" paints it
+   * from the surface around it (`blurExtend`), not from the image edit: for a small part on a flat
+   * field (a pupil in a dark lens), where an edit would paint something new. Omitted means "edit".
+   */
+  fill?: "edit" | "extend";
+}
+
+/** How a v2 file's parts are cut, per art style (cast-forge task 3). */
+export interface CutStyle {
+  /** Feather in canvas px, 0..8; 0 is a hard cut (pixel art). Omitted means CUT_FEATHER. */
+  feather?: number;
+  /** The art's own pixel size in canvas px, 1..32 (pixel art): the mouth cavity steps on it. */
+  cell?: number;
 }
 
 /** A v2 parts file (cast-forge design.md "Named parts"). */
 export interface PartsV2 {
   version: 2;
   parts: NamedPart[];
+  cut?: CutStyle;
 }

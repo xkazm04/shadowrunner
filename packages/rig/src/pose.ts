@@ -14,7 +14,8 @@
 // - Rulings of 2026-11-01 (req 4.3, 4.4): followers inherit only the gesture part of the parent's
 //   transform (translation, rotation, scale about the parent's anchor). Parallax comes from the
 //   layer's own depth, and the jaw drop is the jaw layer's own: a fixed canvas-px length along the
-//   inherited down axis, unscaled by gestures and not passed on to the jaw's followers.
+//   inherited down axis, unscaled by gestures and not passed on to the jaw's followers. Its length
+//   at full open is the layer's own `drop` (cast-forge task 3) times rig height, JAW_DROP when absent.
 // - Layer motion (cast-forge req 1.3, motion.ts) comes last: the float turns the layer about its
 //   posed anchor and moves it in canvas px, after the inherited follow transform, parallax and jaw
 //   drop, and is not passed on to followers; the pulse multiplies the tint. `Drive.still`
@@ -30,8 +31,11 @@ export const PITCH_LIMIT_DEG = 12;
 export const YAW_SHIFT = 0.04;
 /** Parallax at full pitch for depth 1, as a fraction of rig height. */
 export const PITCH_SHIFT = 0.03;
-/** Jaw drop at `jawOpen = 1`, as a fraction of rig height. */
+/** Jaw drop at `jawOpen = 1`, as a fraction of rig height, for a jaw layer with no `drop` of its own. */
 export const JAW_DROP = 0.06;
+/** The range of a jaw layer's own `drop` (cast-forge task 3): a pursed lip up to a skull's gape. */
+export const JAW_DROP_MIN = 0.005;
+export const JAW_DROP_MAX = 0.1;
 /** Eye y-scale at `blink = 1` is `1 - BLINK_SQUASH`. */
 export const BLINK_SQUASH = 0.9;
 /** Length of every gesture curve, seconds. */
@@ -151,7 +155,8 @@ interface Frame {
   /** Parallax shift per unit depth, canvas px. */
   perDepthX: number;
   perDepthY: number;
-  jawY: number;
+  /** `jawOpen` (clamped) times rig height: a jaw drops this times its own `drop` fraction. */
+  jawPx: number;
   gesture: Peak;
   liftY: number;
   squash: number;
@@ -164,7 +169,7 @@ function frameOf(rig: Rig, drive: Drive): Frame {
   return {
     perDepthX: (yaw / YAW_LIMIT_DEG) * YAW_SHIFT * rig.width,
     perDepthY: (pitch / PITCH_LIMIT_DEG) * PITCH_SHIFT * rig.height,
-    jawY: clamp(drive.jawOpen, 0, 1) * JAW_DROP * rig.height,
+    jawPx: clamp(drive.jawOpen, 0, 1) * rig.height,
     gesture,
     liftY: gesture.lift * rig.height,
     squash: 1 - BLINK_SQUASH * clamp(drive.blink, 0, 1),
@@ -187,7 +192,7 @@ function gestureLocalOf(layer: Layer, frame: Frame, gestured: boolean): Sim {
  */
 function finalOf(layer: Layer, gesture: Sim, frame: Frame): Sim {
   const depth = layer.depth ?? DEFAULT_DEPTH[layer.kind];
-  const drop = layer.kind === "jaw" ? frame.jawY : 0;
+  const drop = layer.kind === "jaw" ? frame.jawPx * (layer.drop ?? JAW_DROP) : 0;
   return {
     ...gesture,
     tx: gesture.tx + frame.perDepthX * depth - Math.sin(gesture.rot) * drop,

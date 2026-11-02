@@ -26,17 +26,16 @@ export function readImage(forge, path) {
 
 /**
  * The real pipeline on recorded inputs. v1 `parts` go through the server's `plateFor`, `cutAll`
- * and `assembleRig`; v2 `named` parts through `liftedNamed` + `composePlate` (the edit, else the
- * pure `fallbackFill`), `cutNamed` and `assembleRig`. Throws when the rig is invalid.
+ * and `assembleRig`; v2 `named` parts through `plateNamed` (the edit, else, or per part, the
+ * pure `fallbackFill`), `cutNamed` (with the file's CutStyle `style`) and `assembleRig`. Throws when the rig is invalid.
  */
-export function runPipeline({ forge, steps }, { portrait, parts, named, edit, id, name }) {
+export function runPipeline({ forge, steps }, { portrait, parts, named, style, edit, id, name }) {
   const started = performance.now();
   let plate;
   let cut;
   if (named !== undefined) {
-    const lifted = forge.liftedNamed(named, portrait.width, portrait.height);
-    plate = forge.composePlate(portrait, edit ?? forge.fallbackFill(portrait, lifted), lifted);
-    cut = forge.cutNamed(portrait, named, { plate });
+    plate = forge.plateNamed(portrait, named, edit);
+    cut = forge.cutNamed(portrait, named, { plate, ...(style ?? {}) });
   } else {
     plate = steps.plateFor(portrait, parts, edit);
     cut = forge.cutAll(portrait, parts, { plate });

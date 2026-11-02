@@ -8,7 +8,7 @@
   "portrait": "portrait.png",
   "fill": "edit",
   "timings": {
-    "cutMs": 3063
+    "cutMs": 3459
   },
   "steps": [
     {
@@ -75,9 +75,9 @@
         "file": "torso.png",
         "bbox": [
           74,
-          603,
+          585,
           871,
-          421
+          439
         ],
         "anchor": [
           509.44,
@@ -108,17 +108,18 @@
         "kind": "jaw",
         "file": "jaw.png",
         "bbox": [
-          440,
-          465,
-          144,
-          87
+          471,
+          475,
+          88,
+          30
         ],
         "anchor": [
-          512,
-          474.112
+          515.072,
+          475.136
         ],
         "follow": "head",
-        "depth": 0.62
+        "depth": 0.62,
+        "drop": 0.016
       },
       {
         "name": "crown",

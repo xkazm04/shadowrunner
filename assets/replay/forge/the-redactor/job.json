@@ -1,0 +1,225 @@
+{
+  "slug": "the-redactor",
+  "name": "The Redactor",
+  "fictional": true,
+  "source": "cast-forge offline build: Codex CLI built-in image generation (codex-cli 0.160.0) portrait (contest supporting-cast, entry B/6 style-3, 2026-11-02); named parts measured from pixels; fill Codex CLI image edit",
+  "prompt": "a strict censor who blocks bad words, but make it funny",
+  "promptSha256": "104dc8e8a25d50570aa862181ad47d607fec42520f6fa67fc7fd2d31975e2fb6",
+  "portrait": "portrait.png",
+  "fill": "edit",
+  "timings": {
+    "cutMs": 3131
+  },
+  "steps": [
+    {
+      "status": "queued",
+      "holdMs": 1500
+    },
+    {
+      "status": "portrait",
+      "holdMs": 1500
+    },
+    {
+      "status": "segmenting",
+      "holdMs": 1500
+    },
+    {
+      "status": "cutting",
+      "holdMs": 1500
+    },
+    {
+      "status": "filling",
+      "holdMs": 1500
+    },
+    {
+      "status": "done"
+    }
+  ],
+  "warnings": [],
+  "rig": {
+    "version": 1,
+    "id": "replay-the-redactor",
+    "name": "The Redactor",
+    "width": 1024,
+    "height": 1024,
+    "source": "forge",
+    "fictional": true,
+    "palette": {
+      "glow": "#d9d803",
+      "eye": "#fffe05",
+      "rim": "#fffe05",
+      "mouth": "#262601"
+    },
+    "layers": [
+      {
+        "name": "background",
+        "z": 1,
+        "kind": "static",
+        "file": "background.png",
+        "bbox": [
+          0,
+          0,
+          1024,
+          1024
+        ],
+        "anchor": [
+          512,
+          512
+        ],
+        "depth": 0
+      },
+      {
+        "name": "torso",
+        "z": 2,
+        "kind": "body",
+        "file": "torso.png",
+        "bbox": [
+          139,
+          541,
+          744,
+          472
+        ],
+        "anchor": [
+          510.976,
+          783.36
+        ],
+        "depth": 0.3
+      },
+      {
+        "name": "head",
+        "z": 3,
+        "kind": "head",
+        "file": "head.png",
+        "bbox": [
+          178,
+          6,
+          670,
+          636
+        ],
+        "anchor": [
+          513.024,
+          623.616
+        ],
+        "depth": 0.6
+      },
+      {
+        "name": "jaw",
+        "z": 4,
+        "kind": "jaw",
+        "file": "jaw.png",
+        "bbox": [
+          463,
+          547,
+          105,
+          83
+        ],
+        "anchor": [
+          515.5840000000001,
+          546.816
+        ],
+        "follow": "head",
+        "depth": 0.62,
+        "drop": 0.0205078125
+      },
+      {
+        "name": "inkstamp",
+        "z": 5,
+        "kind": "accessory",
+        "file": "inkstamp.png",
+        "bbox": [
+          467,
+          839,
+          89,
+          126
+        ],
+        "anchor": [
+          511.7948625180897,
+          914.9426555716353
+        ],
+        "follow": "torso",
+        "depth": 0.3,
+        "motion": {
+          "float": {
+            "amp": [
+              2,
+              0.5
+            ],
+            "freq": 0.35,
+            "rot_deg": 2.5,
+            "phase": 0.42
+          }
+        }
+      },
+      {
+        "name": "eye_l",
+        "z": 6,
+        "kind": "eye",
+        "file": "eye_l.png",
+        "bbox": [
+          575,
+          378,
+          14,
+          12
+        ],
+        "anchor": [
+          582.1513157894736,
+          384.0657894736842
+        ],
+        "follow": "head",
+        "depth": 0.7
+      },
+      {
+        "name": "eye_r",
+        "z": 7,
+        "kind": "eye",
+        "file": "eye_r.png",
+        "bbox": [
+          435,
+          378,
+          14,
+          12
+        ],
+        "anchor": [
+          442.02317880794703,
+          384.08940397350995
+        ],
+        "follow": "head",
+        "depth": 0.7
+      },
+      {
+        "name": "censor_bar",
+        "z": 8,
+        "kind": "accessory",
+        "file": "censor_bar.png",
+        "bbox": [
+          190,
+          18,
+          646,
+          111
+        ],
+        "anchor": [
+          511.79482378215175,
+          73.92390988794054
+        ],
+        "follow": "head",
+        "depth": 0.75,
+        "motion": {
+          "float": {
+            "amp": [
+              0,
+              6
+            ],
+            "freq": 0.22,
+            "rot_deg": 0.6,
+            "phase": 0.397
+          },
+          "pulse": {
+            "amp": 0.35,
+            "freq": 0.45,
+            "phase": 0.397
+          }
+        }
+      }
+    ]
+  }
+}
