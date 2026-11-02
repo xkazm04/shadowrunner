@@ -59,9 +59,15 @@ export interface DescribeProps {
   onNext: () => void;
   /** Why the description cannot go on yet. */
   blocked?: string;
+  /** cast-forge 4.3: ask for a brief from the words (offered while there is no picture). */
+  onBrief?: () => void;
+  /** Why the words cannot be briefed yet. */
+  briefBlocked?: string;
+  /** The handshake: the brief card, or the ask in flight, or its failure. */
+  brief?: ReactNode;
 }
 
-export function Describe({ draft, onDraft, busy, refusal, onTryRealFace, onNext, blocked }: DescribeProps) {
+export function Describe({ draft, onDraft, busy, refusal, onTryRealFace, onNext, blocked, onBrief, briefBlocked, brief }: DescribeProps) {
   const promptId = useId();
   const fileId = useId();
   const [reading, setReading] = useState(false);
@@ -94,36 +100,41 @@ export function Describe({ draft, onDraft, busy, refusal, onTryRealFace, onNext,
         aria-invalid={refusal?.code === "bad_input" && draft.image === undefined ? true : undefined}
         onChange={(event) => onDraft({ ...draft, prompt: event.currentTarget.value })}
       />
-      <span className={styles.lbl}>OR START FROM</span>
-      <div className={styles.chips} role="group" aria-label="Examples">
-        {EXAMPLES.map((ex) => (
-          <button key={ex.label} type="button" onClick={() => onDraft({ ...draft, prompt: ex.text })}>
-            {ex.label}
-          </button>
-        ))}
-      </div>
-      <div className={styles.drop}>
-        {draft.image === undefined ? (
-          <label className={styles.dropKey} htmlFor={fileId}>
-            {reading ? "Reading the drawing…" : "Bring a drawing"}
-            <small>{imageError ?? "png · jpg · webp up to 5 MB"}</small>
-            <input id={fileId} className={styles.file} type="file" accept={ACCEPT_ATTR} onChange={(event) => void onFile(event.currentTarget.files?.[0])} />
-          </label>
-        ) : (
-          <button type="button" className={styles.dropKey} onClick={() => onDraft({ prompt: draft.prompt })}>
-            {draft.image.name}
-            <small>
-              {draft.image.width} × {draft.image.height} · press to remove
-            </small>
-          </button>
-        )}
-        {onTryRealFace !== undefined && (
-          <button type="button" className={styles.dropKey} onClick={onTryRealFace}>
-            A photo of a real face?
-            <small>see what happens</small>
-          </button>
-        )}
-      </div>
+      {/* With a brief on the table the examples and the drawing step aside, so the card fits. */}
+      {brief === undefined && (
+        <>
+          <span className={styles.lbl}>OR START FROM</span>
+          <div className={styles.chips} role="group" aria-label="Examples">
+            {EXAMPLES.map((ex) => (
+              <button key={ex.label} type="button" onClick={() => onDraft({ ...draft, prompt: ex.text })}>
+                {ex.label}
+              </button>
+            ))}
+          </div>
+          <div className={styles.drop}>
+            {draft.image === undefined ? (
+              <label className={styles.dropKey} htmlFor={fileId}>
+                {reading ? "Reading the drawing…" : "Bring a drawing"}
+                <small>{imageError ?? "png · jpg · webp up to 5 MB"}</small>
+                <input id={fileId} className={styles.file} type="file" accept={ACCEPT_ATTR} onChange={(event) => void onFile(event.currentTarget.files?.[0])} />
+              </label>
+            ) : (
+              <button type="button" className={styles.dropKey} onClick={() => onDraft({ prompt: draft.prompt })}>
+                {draft.image.name}
+                <small>
+                  {draft.image.width} × {draft.image.height} · press to remove
+                </small>
+              </button>
+            )}
+            {onTryRealFace !== undefined && (
+              <button type="button" className={styles.dropKey} onClick={onTryRealFace}>
+                A photo of a real face?
+                <small>see what happens</small>
+              </button>
+            )}
+          </div>
+        </>
+      )}
       {refusal !== undefined && (
         <div className={styles.refuse} role="alert" data-failure={refusal.code}>
           <b>{FAILURE_COPY[refusal.code].title}</b>
@@ -133,6 +144,12 @@ export function Describe({ draft, onDraft, busy, refusal, onTryRealFace, onNext,
           </span>
         </div>
       )}
+      {brief ??
+        (onBrief !== undefined && draft.image === undefined && (
+          <button type="button" className={styles.next} disabled={briefBlocked !== undefined} onClick={onBrief}>
+            Brief it <small>{briefBlocked ?? "a character brief to approve"}</small>
+          </button>
+        ))}
       <button type="button" className={styles.next} disabled={blocked !== undefined} onClick={onNext}>
         Bind it <small>{blocked ?? "archetype · voice · palette"}</small>
       </button>

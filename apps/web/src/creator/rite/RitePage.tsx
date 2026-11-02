@@ -4,12 +4,16 @@
 // palette), Forge (the job, driven by the forge client: on replay a recorded job on its recorded
 // holds, on live a real job) and Wake (the face lit and talking, then handed to /creator with it
 // selected). The empty layer slots fill as the job's statuses arrive.
+// cast-forge 4.3, the handshake: words are first briefed (BriefCard in mark I); only the approved
+// brief is drawn (`mode: "brief"`). A drawing still goes straight to Bind and Forge.
 import { VOICES } from "@sr/engine";
-import type { ForgeErrorCode } from "@sr/forge/wire";
+import { parseBrief } from "@sr/forge/brief";
+import type { CharacterBrief, ForgeErrorCode, ForgeRequest } from "@sr/forge/wire";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { usePlane } from "../../app/plane";
 import { handleLinkClick } from "../../app/router";
 import { lookReducer, type LookAction } from "../customize/lookReducer";
+import { briefClientFor, type BriefClient } from "../briefClient";
 import type { ForgeClient } from "../forgeClient";
 import { parseReplayJobId } from "../forgeClient.replay";
 import { recordOf } from "../forge/keep";
@@ -25,6 +29,7 @@ import { useSpeaker } from "../useSpeaker";
 import anatomy from "../glass/Anatomy.module.css";
 import signal from "../glass/Signal.module.css";
 import keys from "./ForgeWake.module.css";
+import { Handshake } from "./BriefCard";
 import { BindMark, Describe, Marks } from "./Marks";
 import { ForgeMark, STEP_VERB, WakeMark } from "./ForgeWake";
 import { planeClient, withSeededStart } from "./planeClient";
@@ -32,11 +37,14 @@ import { ARCHETYPES, bound, DESCRIBE_CODES, PALETTES, requestOf, type Bind, type
 import { clockText, markOf, progressIn, RUN_STEPS, secText, slotsAt, startOf, type Mark, type RunStep } from "./riteClock";
 import { Developing, Tape } from "./RiteGlass";
 import { RiteRail } from "./RiteRail";
+import { useBrief } from "./useBrief";
 import styles from "./Rite.module.css";
 
 export interface RitePageProps {
   /** Default: the client for the plane. */
   client?: ForgeClient;
+  /** Default: the brief client for the plane. */
+  briefer?: BriefClient;
   /** Default: the committed recordings. */
   jobs?: () => Promise<readonly ReplayJob[]>;
   library?: UseLibraryOptions;
@@ -76,11 +84,13 @@ function handoffOf(id: string): string {
   return `/creator${url.search}`;
 }
 
-export function RitePage({ client: given, jobs = loadReplayJobs, library: libraryOptions = {} }: RitePageProps) {
+export function RitePage({ client: given, briefer: givenBriefer, jobs = loadReplayJobs, library: libraryOptions = {} }: RitePageProps) {
   const plane = usePlane();
   const seeded = useRef<ForgeErrorCode | undefined>(undefined);
   const client = useMemo(() => withSeededStart(given ?? planeClient(plane, window.location.search), () => seeded.current, { jobs }), [given, plane, jobs]);
   const job = useForgeJob(client);
+  const handshake = useBrief(useMemo(() => givenBriefer ?? briefClientFor(plane), [givenBriefer, plane]));
+  const drawn = useRef<CharacterBrief | undefined>(undefined);
   const library = useLibrary(libraryOptions);
   const [draft, setDraft] = useState<ForgeDraft>({ prompt: "" });
   const [bind, setBind] = useState<Bind>({});
@@ -128,7 +138,8 @@ export function RitePage({ client: given, jobs = loadReplayJobs, library: librar
     setKeepError(undefined);
     recordOf(state.rig, state.assets)
       .then(async (record) => {
-        const dressed = bound(record, bind);
+        const named = drawn.current === undefined ? record : { ...record, rig: { ...record.rig, name: drawn.current.name } };
+        const dressed = bound(named, bind);
         await add(dressed);
         setKept(dressed);
       })
@@ -163,14 +174,26 @@ export function RitePage({ client: given, jobs = loadReplayJobs, library: librar
   const at = markOf(state.phase, chosen, describeFailure === undefined ? "forge" : "describe");
   useEffect(() => setManual(undefined), [at]);
   const busy = state.phase === "running" || job.starting;
-  const asked = requestOf(draft, bind);
+  // Words are briefed first (cast-forge 4.3); a drawing is drawn as it is.
+  const words = requestOf({ prompt: draft.prompt }, bind);
+  const hs = handshake.state;
+  const approved = hs.phase === "ready" ? parseBrief(hs.brief) : undefined;
+  const asked: { ok: true; request: ForgeRequest } | { ok: false; message: string } =
+    draft.image !== undefined ? requestOf(draft, bind) : approved?.ok ? { ok: true, request: { mode: "brief", brief: approved.value } } : { ok: false, message: words.ok ? "approve the brief first" : words.message };
   const blocked = asked.ok ? undefined : asked.message;
+  const briefBlocked = words.ok ? undefined : words.message;
+  const askBrief = (): void => {
+    if (words.ok && words.request.prompt !== undefined) handshake.ask(words.request.prompt);
+  };
 
-  const forge = (): void => {
-    if (!asked.ok) return;
+  const draw = (request: ForgeRequest): void => {
     seeded.current = undefined;
     setKept(undefined);
-    job.start(asked.request);
+    drawn.current = request.brief;
+    job.start(request);
+  };
+  const forge = (): void => {
+    if (asked.ok) draw(asked.request);
   };
   const tryRealFace = (): void => {
     seeded.current = "refused_likeness";
@@ -184,6 +207,7 @@ export function RitePage({ client: given, jobs = loadReplayJobs, library: librar
   };
   const again = (): void => {
     job.reset();
+    handshake.reset();
     setKept(undefined);
     setChosen(0);
     woke.current = undefined;
@@ -227,7 +251,7 @@ export function RitePage({ client: given, jobs = loadReplayJobs, library: librar
   const typed = useTyped(speaker.line?.reply.line);
   const pal = bind.palette === undefined ? undefined : PALETTES[bind.palette];
   const summaries = [
-    draft.image !== undefined ? `a drawing: ${draft.image.name}` : draft.prompt.trim() === "" ? "words or a drawing" : draft.prompt.trim(),
+    draft.image !== undefined ? `a drawing: ${draft.image.name}` : hs.phase === "ready" ? `brief: ${hs.brief.name} · ${hs.brief.parts.length} parts` : draft.prompt.trim() === "" ? "words or a drawing" : draft.prompt.trim(),
     [bind.archetype === undefined ? undefined : ARCHETYPES[bind.archetype], bind.voice === undefined ? undefined : VOICES[bind.voice].label.split(":")[0], pal?.[0]].filter(Boolean).join(" · ") || "archetype · voice · palette",
     failure !== undefined ? `stopped · ${failure.code}` : step === undefined || step === "done" ? (total === undefined ? "a real job" : `${replay?.steps.length ?? 0} recorded stages`) : `${STEP_VERB[step]} · ${clockText(elapsed)}`,
     kept === undefined ? "hand the face to the glass" : `${kept.rig.name} is awake`,
@@ -308,6 +332,11 @@ export function RitePage({ client: given, jobs = loadReplayJobs, library: librar
                 setManual(undefined);
               }}
               {...(blocked === undefined ? {} : { blocked })}
+              onBrief={askBrief}
+              {...(briefBlocked === undefined ? {} : { briefBlocked })}
+              {...(hs.phase === "idle"
+                ? {}
+                : { brief: <Handshake state={hs} busy={busy} onEdit={handshake.edit} onDraw={(brief) => draw({ mode: "brief", brief })} onAgain={askBrief} /> })}
             />,
             <BindMark key="b" bind={bind} onBind={setBind} busy={busy} recorded={recorded} onForge={forge} {...(blocked === undefined ? {} : { blocked })} />,
             <ForgeMark

@@ -15,6 +15,8 @@ export const COST_USD = {
   classify: 0.005,
   /** One spoken line (Gemini TTS, at most 300 characters). */
   voiceLine: 0.005,
+  /** One character brief (cast-forge 4.1; Anthropic Messages API, up to 3000 tokens), including a re-ask. */
+  brief: 0.03,
   /** One chat-engine reply (Anthropic Messages API, max_tokens 300). */
   engineReply: 0.003,
 } as const;

@@ -3,6 +3,7 @@
 // function invocation. Server step order is parts -> fill -> cut -> assemble; the statuses the client
 // sees move forward through queued -> portrait -> segmenting -> cutting -> filling -> done:
 //   POST, mode prompt   portrait (final image model)                      -> segmenting
+//   POST, mode brief    portrait from the approved brief (cast-forge 4.3)  -> segmenting
 //   POST, mode image    likeness/content check, upload kept               -> portrait
 //   GET  portrait       restyle the upload into the house style           -> segmenting
 //   GET  segmenting     parts (a malformed reply is re-asked once, on the next GET) -> cutting
@@ -23,6 +24,7 @@ import {
   parseLikenessJson,
   parsePartsJson,
   portraitPrompt,
+  portraitPromptFromBrief,
   restylePrompt,
   sniffImage,
   type ForgeErrorCode,
@@ -109,9 +111,10 @@ async function readJobImage(ctx: StepContext, url: string | undefined, mime: Por
  */
 export async function startJob(job: ForgeJob, upload: { bytes: Uint8Array; mime: PortraitMime } | undefined, ctx: StepContext): Promise<ForgeJob> {
   return guarded(job, async () => {
-    if (job.mode === "prompt") {
+    if (job.mode === "prompt" || job.mode === "brief") {
       job.status = "portrait";
-      const image = await timed(job, "portrait", ctx.now, () => ctx.gemini.generateImage(portraitPrompt(job.prompt ?? "")));
+      const prompt = job.brief === undefined ? portraitPrompt(job.prompt ?? "") : portraitPromptFromBrief(job.brief);
+      const image = await timed(job, "portrait", ctx.now, () => ctx.gemini.generateImage(prompt));
       await savePortrait(job, image, ctx);
       return;
     }
@@ -231,7 +234,7 @@ async function cutAndAssemble(job: ForgeJob, ctx: StepContext): Promise<void> {
     const plate = plateFor(portrait, parts, edit);
     // A plate/portrait size mismatch throws RangeError in cutAll/assembleRig; `guarded` maps it to upstream.
     const cut = cutAll(portrait, parts, { plate });
-    return assembleRig(parts, cut.layers, { id: `forge-${job.jobId.slice(0, 12)}`, name: "Forged character", portrait, plate });
+    return assembleRig(parts, cut.layers, { id: `forge-${job.jobId.slice(0, 12)}`, name: job.brief?.name ?? "Forged character", portrait, plate });
   });
   if (!assembled.ok) {
     console.warn(`forge: rig invalid: ${assembled.errors.map((e) => e.code).join(", ")}`);

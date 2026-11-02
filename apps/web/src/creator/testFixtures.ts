@@ -1,5 +1,9 @@
 // Test-only fixtures for the creator (never imported by app code, so never bundled).
+import { briefFromRecorded } from "@sr/forge/brief";
+import type { CharacterBrief } from "@sr/forge/wire";
 import type { Rig } from "@sr/rig";
+import tallyman from "../../../../assets/characters/cast/the-tallyman/brief.json";
+import cardia from "../../../../assets/characters/cast/saint-cardia/brief.json";
 import type { ReplayJob } from "./replayJobs";
 
 /** A small valid fictional rig with one of each kind the customize panel cares about. */
@@ -51,3 +55,12 @@ export function testJob(slug = "test-ghost"): ReplayJob {
 /** A 1x1 transparent PNG. */
 export const PIXEL_PNG =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+
+/** Two recorded cast briefs, adapted (saint-cardia first, so it is the fallback). */
+export function testBriefs(): CharacterBrief[] {
+  return [cardia, tallyman].flatMap((raw) => {
+    const r = briefFromRecorded(raw);
+    if (!r.ok) throw new Error("a recorded cast brief no longer adapts");
+    return [r.value];
+  });
+}

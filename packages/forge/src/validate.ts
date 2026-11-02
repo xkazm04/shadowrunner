@@ -5,8 +5,9 @@
 // Messages name the rule broken, never the offending value, so upstream text cannot leak.
 import { type Result, validateRig } from "@sr/rig";
 import { FORGE_STEPS, type ForgeJob, type ForgeStep, type PortraitMime } from "./job.js";
+import { parseBrief, type BriefError } from "./brief.js";
 import { parseParts, type ParsedParts, type PartsError } from "./parts.js";
-import type { ForgeErrorCode, ForgeRequest, ForgeStatus } from "./wire.js";
+import type { BriefRequest, CharacterBrief, ForgeErrorCode, ForgeRequest, ForgeStatus } from "./wire.js";
 
 /** Upper bound of the user's text in a request (the prompt uses at most MAX_CHARACTER_TEXT of it). */
 export const MAX_REQUEST_PROMPT = 2000;
@@ -60,7 +61,39 @@ export function parseForgeRequest(text: string): Result<ForgeRequest, RequestErr
     }
     return { ok: true, value: { mode: "image", imageBase64: data } };
   }
+  if (body.mode === "brief") {
+    const brief = parseBrief(body.brief);
+    if (!brief.ok) return badInput(`The brief is not valid: ${briefProblem(brief.errors)}.`);
+    return { ok: true, value: { mode: "brief", brief: brief.value } };
+  }
   return badInput("Unknown forge mode.");
+}
+
+/** The first broken rule of a brief, for a bad_input message (a path and a rule, never a value). */
+export const briefProblem = (errors: readonly BriefError[]): string => (errors[0] === undefined ? "unknown" : `${errors[0].path} ${errors[0].message}`);
+
+/** The POST /api/forge/brief body: a non-blank `request` of at most MAX_REQUEST_PROMPT characters. */
+export function parseBriefRequest(text: string): Result<BriefRequest, RequestError> {
+  const decoded = decode(text);
+  if (!decoded.ok || !isRecord(decoded.value)) return badInput("The request is not a JSON object.");
+  const request = decoded.value.request;
+  if (typeof request !== "string" || request.trim() === "") return badInput("Describe the character.");
+  if (request.length > MAX_REQUEST_PROMPT) return badInput(`Keep the description under ${MAX_REQUEST_PROMPT} characters.`);
+  return { ok: true, value: { request: request.trim() } };
+}
+
+export interface BriefJsonError {
+  /** True when the answer is not JSON at all. */
+  syntax: boolean;
+  errors: BriefError[];
+}
+
+/** The brief model's answer: one strict JSON.parse, then `parseBrief`. */
+export function parseBriefJson(text: string): Result<CharacterBrief, BriefJsonError> {
+  const decoded = decode(text);
+  if (!decoded.ok) return { ok: false, errors: { syntax: true, errors: [{ path: "$", message: "is not valid JSON" }] } };
+  const parsed = parseBrief(decoded.value);
+  return parsed.ok ? parsed : { ok: false, errors: { syntax: false, errors: parsed.errors } };
 }
 
 export interface PartsJsonError {
@@ -128,7 +161,7 @@ export function parseForgeJob(text: string): ForgeJob | undefined {
   const decoded = decode(text);
   if (!decoded.ok || !isRecord(decoded.value)) return undefined;
   const j = decoded.value;
-  if (!isString(j.jobId) || (j.plane !== "replay" && j.plane !== "live") || (j.mode !== "prompt" && j.mode !== "image")) return undefined;
+  if (!isString(j.jobId) || (j.plane !== "replay" && j.plane !== "live") || (j.mode !== "prompt" && j.mode !== "image" && j.mode !== "brief")) return undefined;
   if (!isStatus(j.status) || !isCount(j.createdAt)) return undefined;
   if (!optional(j.stepStartedAt, isCount) || !optional(j.prompt, isString) || !optional(j.uploadUrl, isString)) return undefined;
   if (!optional(j.uploadMime, isMime) || !optional(j.portraitUrl, isString) || !optional(j.portraitMime, isMime)) return undefined;
@@ -144,6 +177,12 @@ export function parseForgeJob(text: string): ForgeJob | undefined {
   if (isCount(j.partsAsks)) job.partsAsks = j.partsAsks;
   if (isString(j.plateUrl)) job.plateUrl = j.plateUrl;
   if (j.fill === "edit" || j.fill === "fallback") job.fill = j.fill;
+  if (j.brief !== undefined) {
+    const brief = parseBrief(j.brief);
+    if (!brief.ok) return undefined;
+    job.brief = brief.value;
+  }
+  if (j.mode === "brief" && job.brief === undefined) return undefined;
   if (j.parts !== undefined) {
     const parts = parseParts(j.parts);
     if (!parts.ok) return undefined;

@@ -10,3 +10,9 @@ declare module "*.txt?raw" {
   const text: string;
   export default text;
 }
+
+// `?raw` of a spec file: a test pins a prompt to the design.md text it is quoted from.
+declare module "*.md?raw" {
+  const text: string;
+  export default text;
+}

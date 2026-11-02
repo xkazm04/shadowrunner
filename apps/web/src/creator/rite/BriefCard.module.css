@@ -1,0 +1,222 @@
+/* The handshake card (cast-forge 4.3) inside mark I: a paper-dark slip that develops in, the
+   accent swatch (the brief's own colour data, `--lamp` / `--lamp-2`), the RECORDED tag, the name
+   and style fields and the parts list with role and motion. Literal colours are roles: amber
+   accent for focus, face-glow for the name, signal-warn for a broken rule. The list scrolls on its
+   own so the rite's column still fits a short screen. */
+
+/* The card takes the column's width; its long one-line texts never widen the rite. */
+.card {
+  contain: inline-size;
+  margin-block-start: var(--sr-space-2);
+  padding: var(--sr-space-2) var(--sr-space-3) var(--sr-space-3);
+  border: thin solid color-mix(in srgb, var(--sr-accent) 40%, var(--sr-line));
+  border-radius: var(--sr-radius-1);
+  background-image: linear-gradient(var(--sr-surface-2), var(--sr-surface-0));
+  animation: brief-develop 0.5s ease-out both;
+}
+
+@keyframes brief-develop {
+  from {
+    opacity: 0;
+    filter: blur(0.25rem);
+  }
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: var(--sr-space-2);
+  min-inline-size: 0;
+}
+
+.swatch {
+  flex: none;
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+  border: thin solid var(--sr-line);
+  border-radius: var(--sr-radius-pill);
+  background-image: radial-gradient(circle at 38% 34%, var(--lamp) 52%, transparent 54%), linear-gradient(135deg, var(--lamp-2), var(--sr-surface-0));
+  filter: drop-shadow(0 0 0.375rem var(--lamp));
+}
+
+.arch {
+  flex: 1;
+  min-inline-size: 0;
+  overflow: hidden;
+  color: var(--sr-text);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tag {
+  padding: 0 var(--sr-space-1);
+  border: thin solid var(--sr-signal-warn);
+  border-radius: var(--sr-radius-1);
+  color: var(--sr-signal-warn);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.input,
+.role,
+.motion {
+  box-sizing: border-box;
+  min-inline-size: 0;
+  padding: var(--sr-space-1) var(--sr-space-2);
+  border: thin solid var(--sr-line);
+  border-radius: var(--sr-radius-1);
+  background-color: var(--sr-surface-0);
+  color: var(--sr-text-strong);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+}
+
+.input {
+  display: block;
+  inline-size: 100%;
+}
+
+.input:first-of-type {
+  color: var(--sr-face-glow);
+  font-family: var(--sr-font-display);
+  font-size: var(--sr-size-text-lg);
+}
+
+.hook,
+.why {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  margin: var(--sr-space-1) 0 0;
+  color: var(--sr-text);
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text-sm);
+  line-height: 1.4;
+}
+
+.why {
+  color: var(--sr-text-muted);
+}
+
+.parts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sr-space-1);
+  max-block-size: 12rem;
+  margin: 0;
+  padding: 0 var(--sr-space-1) 0 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.part {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: "name name drop" "role motion motion";
+  min-inline-size: 0;
+  gap: var(--sr-space-1);
+  padding: var(--sr-space-1) var(--sr-space-2);
+  border-inline-start: thin solid var(--sr-line);
+  background-color: var(--sr-surface-1);
+}
+
+.part[data-role="float"],
+.part[data-role="pulse"] {
+  border-inline-start-color: var(--sr-accent);
+}
+
+.pname {
+  grid-area: name;
+  min-inline-size: 0;
+  overflow: hidden;
+  color: var(--sr-text-strong);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pname small {
+  margin-inline-start: var(--sr-space-2);
+  color: var(--sr-text-muted);
+  font-size: var(--sr-size-text-sm);
+}
+
+.drop {
+  grid-area: drop;
+  padding: 0 var(--sr-space-2);
+  border: thin solid transparent;
+  border-radius: var(--sr-radius-1);
+  background-color: transparent;
+  color: var(--sr-text);
+  font-size: var(--sr-size-text);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.drop:hover {
+  border-color: var(--sr-line);
+}
+
+.role {
+  grid-area: role;
+}
+
+.motion {
+  grid-area: motion;
+  inline-size: 100%;
+}
+
+.asking {
+  margin: var(--sr-space-2) 0 0;
+  color: var(--sr-text);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+}
+
+.keys {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: var(--sr-space-2);
+}
+
+.keys button {
+  flex-wrap: wrap;
+  column-gap: var(--sr-space-2);
+  row-gap: 0;
+}
+
+.card:focus-visible {
+  outline: 0.1875rem solid var(--sr-accent);
+  outline-offset: 0.125rem;
+}
+
+.problem {
+  margin: var(--sr-space-2) 0 0;
+  color: var(--sr-signal-warn);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+}
+
+.input:focus-visible,
+.role:focus-visible,
+.motion:focus-visible,
+.drop:focus-visible {
+  outline: 0.1875rem solid var(--sr-accent);
+  outline-offset: 0.0625rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    animation: none;
+  }
+}
+
+:global([data-motion="reduced"]) .card {
+  animation: none;
+}

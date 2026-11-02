@@ -4,7 +4,7 @@
 // unions are closed: if a type widens, the directive becomes unused and typecheck fails.
 import type { Rig } from "@sr/rig";
 import { describe, expectTypeOf, it } from "vitest";
-import type { ForgeErrorCode, ForgeRequest, ForgeStatus, JobView } from "@sr/forge/wire";
+import type { BriefResponse, CharacterBrief, ForgeErrorCode, ForgeRequest, ForgeStatus, JobView } from "@sr/forge/wire";
 import type * as root from "@sr/forge";
 
 describe("@sr/forge/wire", () => {
@@ -20,11 +20,12 @@ describe("@sr/forge/wire", () => {
     >();
   });
 
-  it("ForgeRequest is the POST /api/forge body", () => {
+  it("ForgeRequest is the POST /api/forge body (cast-forge 4.3 adds mode brief)", () => {
     expectTypeOf<ForgeRequest>().toEqualTypeOf<{
-      mode: "prompt" | "image";
+      mode: "prompt" | "image" | "brief";
       prompt?: string;
       imageBase64?: string;
+      brief?: CharacterBrief;
     }>();
     const prompt: ForgeRequest = { mode: "prompt", prompt: "a lich in a moth-eaten robe" };
     const image: ForgeRequest = { mode: "image", imageBase64: "iVBORw0KGgo=" };
@@ -58,5 +59,7 @@ describe("@sr/forge/wire", () => {
     expectTypeOf<root.ForgeRequest>().toEqualTypeOf<ForgeRequest>();
     expectTypeOf<root.ForgeStatus>().toEqualTypeOf<ForgeStatus>();
     expectTypeOf<root.ForgeErrorCode>().toEqualTypeOf<ForgeErrorCode>();
+    expectTypeOf<root.CharacterBrief>().toEqualTypeOf<CharacterBrief>();
+    expectTypeOf<root.BriefResponse>().toEqualTypeOf<BriefResponse>();
   });
 });
