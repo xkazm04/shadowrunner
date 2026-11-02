@@ -267,7 +267,8 @@ describe("poseLayers properties", () => {
   });
 
   it("followers keep their offset from the parent at yaw 0 (rotated and scaled with it)", () => {
-    const still = arbDriveWith(GESTURES.filter((g) => g !== "nod")).map((d): Drive => ({ ...d, headYaw: 0, headPitch: 0, jawOpen: 0 }));
+    // `still`: a layer's own float (cast-forge, Malakor's shards) moves it off the follow offset by design.
+    const still = arbDriveWith(GESTURES.filter((g) => g !== "nod")).map((d): Drive => ({ ...d, headYaw: 0, headPitch: 0, jawOpen: 0, still: true }));
     const scene = arbAnyRig(2).chain((rig) => fc.tuple(fc.constant(allVisible(rig)), still));
     fc.assert(
       fc.property(scene, ([rig, drive]) => {

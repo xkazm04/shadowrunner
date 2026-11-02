@@ -3,8 +3,11 @@
 // text. Shape is checked first (`bad_shape`, naming the JSON path); the semantic checks run only
 // on shape-valid input. Every error found is collected.
 // The returned Rig is a fresh object holding only contract fields.
+// Layer.motion (cast-forge req 1.2) is read by validateMotion.ts; its shape and range faults are
+// `bad_shape` at `$.layers[i].motion.<field>`, every one reported.
 import type { Result } from "./result.js";
 import { RIG_VERSION, type Layer, type LayerKind, type Palette, type Rig } from "./types.js";
+import { readMotion, type MotionCanvas } from "./validateMotion.js";
 
 export const RIG_ERROR_CODES = [
   "bbox_out_of_bounds",
@@ -126,7 +129,7 @@ class Reader {
     return { glow, eye, rim, mouth };
   }
 
-  layer(value: unknown, path: string): Layer | undefined {
+  layer(value: unknown, path: string, canvas: MotionCanvas): Layer | undefined {
     if (!isRecord(value)) return this.fail(path, got(value, "a layer object"));
     const before = this.errors.length;
     const raw = value.name;
@@ -146,6 +149,9 @@ class Reader {
     const follow = this.optional(value, "follow", path, isString, "a layer name", named);
     const depth = this.optional(value, "depth", path, isDepth, "a number in [0, 1]", named);
     const visible = this.optional(value, "visible", path, isFalse, "false (omit the field when visible)", named);
+    const read = readMotion(value.motion, `${path}.motion`, canvas);
+    for (const problem of read.problems) this.fail(problem.path, problem.message.slice(problem.path.length + 2), named);
+    const motion = read.motion;
     if (this.errors.length > before) return undefined;
     if (name === undefined || z === undefined || kind === undefined || file === undefined) return undefined;
     if (x === undefined || y === undefined || w === undefined || h === undefined) return undefined;
@@ -160,10 +166,11 @@ class Reader {
       ...(follow === undefined ? {} : { follow }),
       ...(depth === undefined ? {} : { depth }),
       ...(visible === undefined ? {} : { visible }),
+      ...(motion === undefined ? {} : { motion }),
     };
   }
 
-  layers(value: unknown, path: string): Layer[] | undefined {
+  layers(value: unknown, path: string, canvas: MotionCanvas): Layer[] | undefined {
     if (!Array.isArray(value)) {
       return this.fail(path, got(value, "an array of layers"));
     }
@@ -171,7 +178,7 @@ class Reader {
     const layers: Layer[] = [];
     // A plain loop, not .map: holes in a sparse array must be visited and reported.
     for (let i = 0; i < items.length; i += 1) {
-      const layer = this.layer(items[i], `${path}[${i}]`);
+      const layer = this.layer(items[i], `${path}[${i}]`, canvas);
       if (layer !== undefined) layers.push(layer);
     }
     return layers.length === items.length ? layers : undefined;
@@ -188,7 +195,8 @@ class Reader {
     const source = this.required(value, "source", "$", isSource, `one of ${Object.keys(SOURCES).join(", ")}`);
     const fictional = this.optional(value, "fictional", "$", isTrue, "true (omit the field when not fictional)");
     const palette = this.palette(value.palette, "$.palette");
-    const layers = this.layers(value.layers, "$.layers");
+    const canvas = { ...(width === undefined ? {} : { width }), ...(height === undefined ? {} : { height }) };
+    const layers = this.layers(value.layers, "$.layers", canvas);
     if (this.errors.length > before) return undefined;
     if (version === undefined || id === undefined || name === undefined || width === undefined || height === undefined) return undefined;
     if (source === undefined || palette === undefined || layers === undefined) return undefined;

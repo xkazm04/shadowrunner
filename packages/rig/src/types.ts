@@ -1,6 +1,7 @@
 // Rig v1 wire contract (.kiro/specs/rig-core/design.md, "Data model").
 // This file is the ONLY declaration of these types; docs/rig-format.md describes the same contract.
 // Optional fields are omitted when absent, never null.
+// Layer.motion (FloatMotion, PulseMotion) is amended by cast-forge (req 1); Rig stays version 1.
 
 export const RIG_VERSION = 1 as const;
 
@@ -32,6 +33,39 @@ export interface Layer {
   depth?: number;
   /** Present only when the layer is hidden by default. */
   visible?: false;
+  /** Motion of its own (cast-forge req 1): float and/or pulse. Omitted when the layer has none. */
+  motion?: Motion;
+}
+
+/**
+ * A bob and sway about the layer's own anchor (cast-forge design "Motion"), with
+ * `w = 2*pi*(freq*t + phase)`: translation `(amp[0]*sin(w), amp[1]*sin(w + pi/2))` canvas px and
+ * rotation `rot_deg*sin(w + pi)` degrees, after the inherited follow transform, not inherited.
+ */
+export interface FloatMotion {
+  /** Canvas px; x in [0, 0.05 * width], y in [0, 0.05 * height]. */
+  amp: [x: number, y: number];
+  /** Hz, in [0.02, 2]. */
+  freq: number;
+  /** Degrees, in [0, 15]; omitted means 0. */
+  rot_deg?: number;
+  /** Cycles, in [0, 1); omitted means 0. */
+  phase?: number;
+}
+
+/** A light-gain oscillation: the layer's tint is multiplied by `1 + amp*(0.5 + 0.5*sin(w))`. */
+export interface PulseMotion {
+  /** In [0, 1]. */
+  amp: number;
+  /** Hz, in [0.02, 2]. */
+  freq: number;
+  /** Cycles, in [0, 1); omitted means 0. */
+  phase?: number;
+}
+
+export interface Motion {
+  float?: FloatMotion;
+  pulse?: PulseMotion;
 }
 
 export interface Rig {

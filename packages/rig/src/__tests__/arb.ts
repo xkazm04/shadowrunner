@@ -3,7 +3,7 @@
 // Coordinates are multiples of 1/4 px so bbox sums are exact in binary floating point, and no
 // generator yields -0 (JSON writes it as 0, which would break deep equality after a round trip).
 import fc from "fast-check";
-import type { Layer, LayerKind, Palette, Rig } from "../types.js";
+import type { FloatMotion, Layer, LayerKind, Motion, Palette, PulseMotion, Rig } from "../types.js";
 
 export const LAYER_KINDS: readonly LayerKind[] = ["static", "body", "head", "jaw", "eye", "accessory", "crown"];
 export const SOURCES: readonly Rig["source"][] = ["forge", "replay", "import"];
@@ -37,6 +37,26 @@ function arbCoord(size: number): fc.Arbitrary<number> {
 
 type LayerBody = Omit<Layer, "name" | "z" | "follow">;
 
+/** `i / steps` of the way from `min` to `max` (both included), on a grid: no -0, exact ends. */
+const grid = (min: number, max: number, steps = 1000): fc.Arbitrary<number> =>
+  fc.integer({ min: 0, max: steps }).map((i) => (i === steps ? max : min + ((max - min) * i) / steps));
+/** Phase in [0, 1). */
+export const arbPhase: fc.Arbitrary<number> = fc.integer({ min: 0, max: 9999 }).map((i) => i / 10_000);
+export const arbFreq: fc.Arbitrary<number> = grid(0.02, 2);
+
+/** In-range float for a `width` x `height` canvas (cast-forge design "Motion"), ends included. */
+export function arbFloat(width: number, height: number): fc.Arbitrary<FloatMotion> {
+  return fc.record(
+    { amp: fc.tuple(grid(0, 0.05 * width), grid(0, 0.05 * height)), freq: arbFreq, rot_deg: grid(0, 15), phase: arbPhase },
+    { requiredKeys: ["amp", "freq"] },
+  );
+}
+export const arbPulse: fc.Arbitrary<PulseMotion> = fc.record({ amp: grid(0, 1), freq: arbFreq, phase: arbPhase }, { requiredKeys: ["amp", "freq"] });
+
+export function arbMotion(width: number, height: number): fc.Arbitrary<Motion> {
+  return fc.record({ float: arbFloat(width, height), pulse: arbPulse }, { requiredKeys: [] });
+}
+
 // Built once: fc.stringMatching is costly to construct, and rigArb rebuilds per-canvas parts
 // inside `chain` for every sample.
 const arbKind = fc.constantFrom(...LAYER_KINDS);
@@ -67,9 +87,10 @@ const arbRigHead = fc.record(
   { requiredKeys: ["id", "name", "source", "palette"] },
 );
 
-function arbLayerBody(width: number, height: number): fc.Arbitrary<LayerBody> {
+function arbLayerBody(width: number, height: number, motion: boolean): fc.Arbitrary<LayerBody> {
   return fc.record(
     {
+      ...(motion ? { motion: arbMotion(width, height) } : {}),
       kind: arbKind,
       file: arbFile,
       bbox: fc.tuple(arbSpan(width), arbSpan(height)).map(([[x, w], [y, h]]): Layer["bbox"] => [x, y, w, h]),
@@ -86,6 +107,8 @@ const range = (n: number): number[] => Array.from({ length: n }, (_, i) => i);
 export interface RigArbOptions {
   minLayers?: number;
   maxLayers?: number;
+  /** Layers may carry an in-range `motion` (cast-forge); off by default. */
+  motion?: boolean;
 }
 
 /**
@@ -93,7 +116,7 @@ export interface RigArbOptions {
  * graph (a layer only follows a layer of strictly lower rank in a random ranking, so parents can
  * appear before or after their followers in `layers`).
  */
-export function rigArb({ minLayers = 0, maxLayers = 10 }: RigArbOptions = {}): fc.Arbitrary<Rig> {
+export function rigArb({ minLayers = 0, maxLayers = 10, motion = false }: RigArbOptions = {}): fc.Arbitrary<Rig> {
   const canvas = fc.record({ width: fc.integer({ min: 1, max: 4096 }), height: fc.integer({ min: 1, max: 4096 }) });
   return fc.tuple(canvas, fc.uniqueArray(arbLayerName, { minLength: minLayers, maxLength: maxLayers })).chain(
     ([{ width, height }, names]) => {
@@ -101,7 +124,7 @@ export function rigArb({ minLayers = 0, maxLayers = 10 }: RigArbOptions = {}): f
       return fc
         .record({
           zs: fc.uniqueArray(fc.integer({ min: -1000, max: 1000 }), { minLength: n, maxLength: n }),
-          bodies: fc.array(arbLayerBody(width, height), { minLength: n, maxLength: n }),
+          bodies: fc.array(arbLayerBody(width, height, motion), { minLength: n, maxLength: n }),
           follows: fc.array(fc.option(fc.nat(), { nil: undefined }), { minLength: n, maxLength: n }),
           ranking: fc.shuffledSubarray(range(n), { minLength: n, maxLength: n }),
           head: arbRigHead,

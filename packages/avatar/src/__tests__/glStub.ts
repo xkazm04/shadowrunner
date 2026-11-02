@@ -102,12 +102,15 @@ export interface Ctx2dStub {
   transforms: number[][];
   /** `globalAlpha` at each `drawImage`. */
   alphas: number[];
+  /** `filter` at each `drawImage` ("none" when never set). */
+  filters: string[];
 }
 
 export function createCtx2dStub(): Ctx2dStub {
   const counts = new Map<string, number>();
   const transforms: number[][] = [];
   const alphas: number[] = [];
+  const filters: string[] = [];
   const props: Record<string | symbol, unknown> = { globalAlpha: 1 };
   const target: object = {};
   const ctx = new Proxy(target, {
@@ -118,6 +121,7 @@ export function createCtx2dStub(): Ctx2dStub {
         counts.set(prop, (counts.get(prop) ?? 0) + 1);
         if (prop === "setTransform") transforms.push(args.map(Number));
         if (prop === "drawImage") alphas.push(Number(props.globalAlpha));
+        if (prop === "drawImage") filters.push(typeof props.filter === "string" ? props.filter : "none");
       };
     },
     set(_t, prop, value) {
@@ -125,7 +129,7 @@ export function createCtx2dStub(): Ctx2dStub {
       return true;
     },
   });
-  return { ctx: stand<CanvasRenderingContext2D>(ctx), counts, count: (name) => counts.get(name) ?? 0, transforms, alphas };
+  return { ctx: stand<CanvasRenderingContext2D>(ctx), counts, count: (name) => counts.get(name) ?? 0, transforms, alphas, filters };
 }
 
 export interface CanvasStub {

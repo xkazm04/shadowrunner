@@ -15,6 +15,11 @@
 //   transform (translation, rotation, scale about the parent's anchor). Parallax comes from the
 //   layer's own depth, and the jaw drop is the jaw layer's own: a fixed canvas-px length along the
 //   inherited down axis, unscaled by gestures and not passed on to the jaw's followers.
+// - Layer motion (cast-forge req 1.3, motion.ts) comes last: the float turns the layer about its
+//   posed anchor and moves it in canvas px, after the inherited follow transform, parallax and jaw
+//   drop, and is not passed on to followers; the pulse multiplies the tint. `Drive.still`
+//   (reduced motion) zeroes both.
+import { motionAt } from "./motion.js";
 import type { Gesture, Layer, LayerKind, Look, Rig } from "./types.js";
 
 /** Head yaw clamp, degrees (the range Overlord measured for 2.5D artefacts). */
@@ -61,6 +66,8 @@ export interface Drive {
   /** 0..1 (clamped); 1 = eyes shut. */
   blink: number;
   gesture?: GestureCue;
+  /** Reduced motion: layer float and pulse are zero (cast-forge req 1.3). Omitted means false. */
+  still?: boolean;
 }
 
 export interface LayerPose {
@@ -224,6 +231,16 @@ function tintOf(kind: LayerKind, gesture: Peak): number {
   return eye * (EMISSIVE.has(kind) ? 1 + gesture.glowTint : 1);
 }
 
+/** `sim` followed, in canvas space, by a rotation about the layer's posed anchor and a move. */
+function withFloat(layer: Layer, sim: Sim, rotation: number, dx: number, dy: number): Sim {
+  if (rotation === 0 && dx === 0 && dy === 0) return sim;
+  const [ax, ay] = layer.anchor;
+  const [px, py] = apply(sim, ax, ay);
+  const turned: Sim = { ...sim, rot: sim.rot + rotation, tx: 0, ty: 0 };
+  const [rx, ry] = apply(turned, ax, ay);
+  return { ...turned, tx: px + dx - rx, ty: py + dy - ry };
+}
+
 /** Per visible layer, in `z` order (ties keep rig order), the pose for this frame. */
 export function poseLayers(rig: Rig, look: Look, drive: Drive): LayerPose[] {
   const frame = frameOf(rig, drive);
@@ -234,7 +251,9 @@ export function poseLayers(rig: Rig, look: Look, drive: Drive): LayerPose[] {
     .filter(({ layer }) => layer.visible !== false && !hidden.has(layer.name))
     .sort((a, b) => a.layer.z - b.layer.z || a.index - b.index)
     .map(({ layer }): LayerPose => {
-      const sim = finalOf(layer, worlds.get(layer.name)?.sim ?? IDENTITY, frame);
+      const motion = motionAt(layer.motion, drive.t, drive.still === true);
+      const posed = finalOf(layer, worlds.get(layer.name)?.sim ?? IDENTITY, frame);
+      const sim = withFloat(layer, posed, motion.rotation, motion.dx, motion.dy);
       const [bx, by] = layer.bbox;
       const [ax, ay] = layer.anchor;
       const [px, py] = apply(sim, ax, ay);
@@ -246,7 +265,7 @@ export function poseLayers(rig: Rig, look: Look, drive: Drive): LayerPose[] {
         scale: [sim.k, sim.k * squash],
         rotation: sim.rot,
         opacity: 1,
-        tint: tintOf(layer.kind, frame.gesture),
+        tint: tintOf(layer.kind, frame.gesture) * motion.gain,
       };
     });
 }

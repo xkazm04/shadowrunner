@@ -8,6 +8,8 @@
 // - Reduced-motion gesture cuts (req 5.3) are made by posing the running gesture at the peak of
 //   rig-core's envelope (`t = startedAt + GESTURE_DURATION_S / 2`) for its whole duration, so the
 //   pose jumps to the gesture, holds, and jumps back; rig-core's curve itself is untouched.
+// - Reduced motion also reaches rig-core as `Drive.still` (cast-forge req 1.3), so layer float and
+//   pulse hold at rest; the override Drive gets it too, so a screenshot under reduced motion is still.
 // - Reduced motion is on when `prefers-reduced-motion: reduce` matches OR the nearest `data-motion`
 //   attribute (the shell's) says "reduced".
 import { GESTURE_DURATION_S, type Drive, type Gesture } from "@sr/rig";
@@ -50,6 +52,11 @@ export function cutGesture(drive: Drive, reducedMotion: boolean): Drive {
   return { ...drive, t: cue.startedAt + GESTURE_DURATION_S / 2 };
 }
 
+/** Under reduced motion, the Drive says `still` (no layer float or pulse); otherwise it is unchanged. */
+export function stillUnder(drive: Drive, reducedMotion: boolean): Drive {
+  return reducedMotion && drive.still !== true ? { ...drive, still: true } : drive;
+}
+
 /** Advances the driver one frame and returns the Drive to pose with. */
 export function advanceFrame(state: DriverState, inputs: FrameInputs): Frame {
   const next = step(state, inputs.dt, {
@@ -60,5 +67,5 @@ export function advanceFrame(state: DriverState, inputs: FrameInputs): Frame {
     ...(inputs.lookAt === undefined ? {} : { lookAt: inputs.lookAt }),
   });
   const drive = inputs.drive ?? toDrive(next);
-  return { state: next, drive: cutGesture(drive, inputs.reducedMotion) };
+  return { state: next, drive: stillUnder(cutGesture(drive, inputs.reducedMotion), inputs.reducedMotion) };
 }

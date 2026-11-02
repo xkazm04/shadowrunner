@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 import layersJson from "../../../../assets/characters/malakor/rig/layers.json";
 import specJson from "../../../../assets/characters/malakor/rig/m8.spec.json";
 import { importLegacyLayers, type LegacyImport } from "../legacy.js";
+import { phaseFromName } from "../motion.js";
+import { poseLayers } from "../pose.js";
 import { serializeRig } from "../serialize.js";
 import { parseRigJson } from "../validate.js";
 
@@ -71,5 +73,41 @@ describe("Malakor golden import", () => {
   it("survives a serialize -> parse round trip unchanged", () => {
     const { rig } = malakor();
     expect(parseRigJson(serializeRig(rig))).toEqual({ ok: true, value: rig });
+  });
+
+  // cast-forge req 1.4. The design says 13 floats; Malakor's layers.json and m8.spec.json carry 11
+  // (shard_c plus five pairs), and those are the ones that float.
+  it("keeps the legacy float curves on all 11 shards and the pulse on the monocle, with name-hash phases", () => {
+    const { rig } = malakor();
+    const legacy = new Map(layersJson.layers.map((l) => [l.name, l]));
+    const floats = rig.layers.filter((l) => l.motion?.float !== undefined);
+    const pulses = rig.layers.filter((l) => l.motion?.pulse !== undefined);
+    expect(floats.map((l) => l.name).sort()).toEqual([...SHARDS].sort());
+    expect(pulses.map((l) => l.name)).toEqual(["monocle"]);
+    for (const layer of floats) {
+      const source = legacy.get(layer.name);
+      expect(source && "float" in source ? source.float : undefined).toBeDefined();
+      if (source === undefined || !("float" in source)) continue;
+      expect(layer.motion).toEqual({ float: { ...source.float, phase: phaseFromName(layer.name) } });
+    }
+    expect(rig.layers.find((l) => l.name === "monocle")?.motion).toEqual({ pulse: { amp: 0.12, freq: 0.13, phase: phaseFromName("monocle") } });
+    expect(new Set(floats.map((l) => l.motion?.float?.phase)).size).toBe(floats.length);
+  });
+
+  it("takes the curves from m8.spec.json when layers.json lacks them", () => {
+    const bare = { ...layersJson, layers: layersJson.layers.map((l) => Object.fromEntries(Object.entries(l).filter(([k]) => k !== "float" && k !== "pulse"))) };
+    const result = importLegacyLayers(bare, specJson);
+    if (!result.ok) throw new Error("import failed");
+    expect(result.value.rig).toEqual(malakor().rig);
+  });
+
+  it("floats in the app: shards are elsewhere 1 s apart, and still under reduced motion", () => {
+    const { rig } = malakor();
+    const look = { palette: rig.palette, hidden: [], emotion: "neutral" as const };
+    const at = (t: number, still?: true) => new Map(poseLayers(rig, look, { t, headYaw: 0, headPitch: 0, jawOpen: 0, blink: 0, ...(still ? { still } : {}) }).map((p) => [p.name, p]));
+    const [a, b] = [at(3), at(4)];
+    for (const shard of SHARDS) expect(Math.hypot((a.get(shard)?.x ?? 0) - (b.get(shard)?.x ?? 0), (a.get(shard)?.y ?? 0) - (b.get(shard)?.y ?? 0))).toBeGreaterThan(0.05);
+    expect(a.get("monocle")?.tint).not.toBeCloseTo(b.get("monocle")?.tint ?? 0, 6);
+    expect(at(3, true)).toEqual(at(4, true));
   });
 });

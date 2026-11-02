@@ -2,10 +2,27 @@
 // contract order (types.ts), optional fields omitted when undefined, and fields outside the
 // contract dropped. It never writes `null`: a non-finite number (which JSON.stringify would turn
 // into null) throws a RangeError instead.
-import type { Layer, Palette, Rig } from "./types.js";
+import type { Layer, Motion, Palette, Rig } from "./types.js";
 
 function wirePalette(palette: Palette): Palette {
   return { glow: palette.glow, eye: palette.eye, rim: palette.rim, mouth: palette.mouth };
+}
+
+function wireMotion(motion: Motion): Motion {
+  const { float, pulse } = motion;
+  return {
+    ...(float === undefined
+      ? {}
+      : {
+          float: {
+            amp: [float.amp[0], float.amp[1]],
+            freq: float.freq,
+            ...(float.rot_deg === undefined ? {} : { rot_deg: float.rot_deg }),
+            ...(float.phase === undefined ? {} : { phase: float.phase }),
+          },
+        }),
+    ...(pulse === undefined ? {} : { pulse: { amp: pulse.amp, freq: pulse.freq, ...(pulse.phase === undefined ? {} : { phase: pulse.phase }) } }),
+  };
 }
 
 function wireLayer(layer: Layer): Layer {
@@ -21,6 +38,7 @@ function wireLayer(layer: Layer): Layer {
     ...(layer.follow === undefined ? {} : { follow: layer.follow }),
     ...(layer.depth === undefined ? {} : { depth: layer.depth }),
     ...(layer.visible === undefined ? {} : { visible: layer.visible }),
+    ...(layer.motion === undefined ? {} : { motion: wireMotion(layer.motion) }),
   };
 }
 

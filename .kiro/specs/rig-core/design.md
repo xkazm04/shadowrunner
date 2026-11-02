@@ -29,7 +29,15 @@ export interface Layer {
   follow?: string;            // parent layer name
   depth?: number;             // 0..1, default by kind (static 0, body .3, head .6, jaw .62, eye .7, accessory .75, crown .65)
   visible?: false;            // present only when hidden by default
+  motion?: Motion;            // amended by cast-forge (req 1): own float and/or pulse
 }
+// Amended by cast-forge (design.md "Motion"); additive, the rig stays version 1. Ranges, checked by
+// validateRig as bad_shape at $.layers[i].motion.<field>, every error reported: amp x in
+// [0, 0.05*width], y in [0, 0.05*height] px; freq in [0.02, 2] Hz; rot_deg in [0, 15]; phase in [0, 1);
+// pulse amp in [0, 1].
+export interface FloatMotion { amp: [x: number, y: number]; freq: number; rot_deg?: number; phase?: number }
+export interface PulseMotion { amp: number; freq: number; phase?: number }
+export interface Motion { float?: FloatMotion; pulse?: PulseMotion }
 export interface Rig {
   version: typeof RIG_VERSION;
   id: string;                 // slug
@@ -55,6 +63,11 @@ export interface Look { palette: Palette; hidden: string[]; emotion: Emotion; ge
 | eye | eye | `follow: "head"` |
 | pulse (monocle) | accessory | `follow: "head"` |
 | shard_* names | crown | `follow: "head"` |
+
+Motion (amended by cast-forge): legacy `float {amp, freq, rot_deg}` and `pulse {amp, freq}` (from
+the layer, else the m8 spec element of the same name) become `motion.float` / `motion.pulse`, with
+`phase` from an FNV-1a hash of the layer name (stable, so shards never move in lockstep); a curve
+outside the ranges is dropped with a warning. Malakor: 11 floating shards and the pulsing monocle.
 Colours: `spec.colors.line_glow -> glow`, `line_core -> rim`, `mouth -> mouth` and `eye` (the teal eye light; director ruling 2026-11-01, rig-core task 7);
 0..1 floats -> `#rrggbb`. Missing spec -> a fixed Malakor-like default palette.
 
@@ -68,7 +81,9 @@ applied after the parent transform and capped at `0.06 * height` canvas px; it i
 the jaw's followers. Blink in [0,1] scales
 `eye` layers' y-scale by `1 - 0.9 * blink`. Gestures add a short additive offset curve over
 `t` (nod: pitch +6° sine 400 ms; tilt: rotation 5°; lean_in: scale 1.04; recoil: scale .96 and
-dy -1%; glare: eye tint gain 1.6; flare: glow gain 2.0).
+dy -1%; glare: eye tint gain 1.6; flare: glow gain 2.0). Layer motion (amended by cast-forge, its design.md "Motion")
+comes last: float about the layer's own anchor after the follow transform, not inherited; pulse
+multiplies the tint; `Drive.still` (reduced motion) zeroes both.
 
 ## Emotion table
 | emotion | eyeGain | brow | default gesture |

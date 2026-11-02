@@ -57,6 +57,7 @@ Four colours, each `#rrggbb`:
 | `follow` | string | no | Name of a parent layer. The layer inherits the parent's gesture translation, rotation and scale about the parent's anchor, but not its parallax or jaw drop (see "Pose"). Must name an existing layer, with no cycles. |
 | `depth` | number | no | Parallax depth in `[0, 1]`, from 0 (background) to 1 (nearest). When omitted, the default for the kind applies. |
 | `visible` | `false` | no | Present only when the layer is hidden by default. Never written as `true`. |
+| `motion` | Motion | no | The layer's own float and/or pulse (see "Motion"). Omitted when the layer has none. Amended by cast-forge; the format stays version 1. |
 
 ### Layer files
 
@@ -82,7 +83,29 @@ Anything else is `bad_shape` at `$.layers[i].file`.
 | `accessory` | 0.75 |
 | `crown` | 0.65 |
 
-## Legacy import
+### Motion
+
+Amended by cast-forge (`.kiro/specs/cast-forge/design.md`, "Motion"). Additive: a rig without
+`motion` behaves exactly as before, and `version` stays `1`.
+
+| field | type | required | range | meaning |
+|---|---|---|---|---|
+| `float` | FloatMotion | no | | A bob and sway about the layer's own anchor. |
+| `float.amp` | `[x, y]` | yes | x in `[0, 0.05 * width]`, y in `[0, 0.05 * height]` | Canvas px. |
+| `float.freq` | number | yes | `[0.02, 2]` | Hz. |
+| `float.rot_deg` | number | no | `[0, 15]` | Degrees; omitted means 0. |
+| `float.phase` | number | no | `[0, 1)` | Cycles; omitted means 0. |
+| `pulse` | PulseMotion | no | | A light-gain oscillation. |
+| `pulse.amp` | number | yes | `[0, 1]` | Gain amplitude. |
+| `pulse.freq` | number | yes | `[0.02, 2]` | Hz. |
+| `pulse.phase` | number | no | `[0, 1)` | Cycles; omitted means 0. |
+
+A motion with neither curve (`{}`) is valid and does nothing. Any field outside its range, or of
+the wrong type, is `bad_shape` at `$.layers[i].motion.<field>` (for example
+`$.layers[3].motion.float.amp[1]` or `$.layers[3].motion.pulse.freq`); every fault is reported.
+Fields outside the contract are dropped. Builders give sibling floats different phases so a set of
+parts never moves in lockstep.
+
 
 `importLegacyLayers(json, spec?)` (`packages/rig/src/legacy.ts`) converts an Overlord-era
 `layers.json` with `rig_type: "glow"`, plus an optional `m8.spec.json`, into a Rig with
@@ -105,8 +128,14 @@ a valid Rig. It returns `{ rig, warnings }`, where each warning is `{ layer, mes
   warning and is dropped, so the kind default applies.
 - **Skipped layers.** A legacy layer with no `file` (such as Malakor's `mouth_glow`) has no image
   and is skipped with a warning.
-- **Dropped fields.** Numeric follow weights, float and pulse curves, gains, blend modes and other
-  Overlord-only fields are not carried over.
+- **Motion** (amended by cast-forge). A legacy `float {amp, freq, rot_deg}` and `pulse {amp, freq}`
+  are kept as `motion.float` and `motion.pulse`, taken from the layer, or else from the
+  `spec.elements` entry of the same name. Each gets `phase` from the FNV-1a hash of the layer name
+  (`phaseFromName`, on a 1/1000 grid in `[0, 1)`), so the import is stable and sibling shards never
+  move in lockstep. A curve outside the ranges above is dropped with a warning. Malakor imports 11
+  floating shards and a pulsing monocle.
+- **Dropped fields.** Numeric follow weights, gains, blend modes and other Overlord-only fields are
+  not carried over.
 - **Colours.** From `spec.colors` (0..1 RGB triples, rounded to `#rrggbb`): the eye light `mouth`
   (Malakor's teal) -> `eye` and `mouth`; `line_glow` -> `glow`; `line_core` (the orange monocle
   line) -> `rim`. The renderer multiplies eye texels by `palette.eye`, so the eye colour must be the
@@ -189,6 +218,7 @@ The per-frame input from the avatar driver.
 | `jawOpen` | number | yes | 0..1, clamped. |
 | `blink` | number | yes | 0..1, clamped; 1 = eyes shut. |
 | `gesture` | `{ name: Gesture, startedAt: number }` | no | The running gesture; `startedAt` is in seconds on the same clock as `t`. |
+| `still` | boolean | no | Reduced motion: layer float and pulse are zero. The avatar sets it whenever reduced motion is on. |
 
 `GESTURE_DURATION_S` is `0.4`: every gesture curve runs for 0.4 s from `startedAt`, shaped as a
 half-sine `sin(pi * elapsed / 0.4)` that peaks halfway at the design value. Outside that window the
@@ -220,6 +250,13 @@ One per drawn layer, in `z` order. A layer is drawn unless it is named in `look.
   Followers of a jaw do not move with the drop; a jaw that follows a jaw drops by its own amount
   only. No other kind moves with `jawOpen`.
 - **Blink.** `eye` layers scale y by `1 - 0.9 * blink`.
+- **Motion** (amended by cast-forge). With `w = 2*pi*(freq*t + phase)`, a float adds, after the
+  inherited follow transform, the parallax and the jaw drop, a canvas-px translation
+  `(amp[0]*sin(w), amp[1]*sin(w + pi/2))` and a rotation of `rot_deg*sin(w + pi)` degrees about the
+  layer's posed anchor. It is not inherited by the layer's followers. A pulse multiplies the tint by
+  `1 + amp*(0.5 + 0.5*sin(w))`. Both are pure functions of `t` (`motionAt` in
+  `packages/rig/src/motion.ts`), and both are zero when `drive.still` is true. The WebGL2 renderer
+  multiplies the tint into the layer colour; the canvas2D fallback draws it as a `brightness()` filter.
 - **Gestures**, at their peak: `nod` adds 6° of pitch; `tilt` rotates the head 5°; `lean_in`
   scales the head by 1.04; `recoil` scales it by 0.96 and lifts it by 1% of height; `glare` sets
   the eye tint to 1.6; `flare` sets the tint of the emissive kinds (`eye`, `crown`, `accessory`)

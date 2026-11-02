@@ -7,7 +7,7 @@
     and `brief.json` (the seat's character.json with the chosen style only, plus provenance).
   - _Requirements: 3.1_
 
-- [ ] 1. Motion in the rig format
+- [x] 1. Motion in the rig format
   - `Motion` on `Layer`, validate, serialize, `poseLayers`, legacy import keeps Malakor's curves, avatar
     renderer (GL and canvas2d) shows float and pulse, reduced motion still; rig-format.md and rig-core
     design amended. Malakor's shards float in the app.

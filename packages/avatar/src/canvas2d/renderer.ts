@@ -1,8 +1,10 @@
 // Canvas2D fallback (avatar-renderer req 2.2): the same `Renderer` interface; draws the same
 // `LayerPose[]` (position, scale, rotation, opacity) through the shared frame math, and skips the
-// rim light and the glow. Pose `tint`, the eye colour and eyeGain are light terms too and are
-// skipped with them; the brow offset is geometry and is kept, so both renderers place every
-// layer identically.
+// rim light and the glow. The eye colour and eyeGain are light terms too and are skipped with
+// them; the brow offset is geometry and is kept, so both renderers place every layer identically.
+// Pose `tint` (a layer pulse, cast-forge req 1, and the glare/flare gains) is drawn as a
+// `brightness()` filter, the same per-channel multiply the GL base pass applies; where the
+// browser has no canvas filter it is a no-op.
 import type { Layer, LayerPose, Look, Rig } from "@sr/rig";
 import { fitView, layerAffine, lookLight } from "../render/frame.js";
 import type { CanvasHost, Renderer, RendererInfo, RigAssets } from "../render/types.js";
@@ -10,6 +12,12 @@ import type { CanvasHost, Renderer, RendererInfo, RigAssets } from "../render/ty
 interface Entry {
   layer: Layer;
   image: ImageBitmap | HTMLImageElement;
+}
+
+/** The canvas filter for a pose tint: "none" at 1 (or a non-finite tint), else `brightness(tint)`. */
+export function tintFilter(tint: number): string {
+  if (!Number.isFinite(tint) || tint === 1) return "none";
+  return `brightness(${Math.max(0, tint).toFixed(4)})`;
 }
 
 /** A 2D renderer on `ctx` (whose canvas is `canvas`); `ctx` null draws nothing (no surface at all). */
@@ -58,11 +66,13 @@ export function createCanvas2dRenderer(canvas: CanvasHost, ctx: CanvasRenderingC
         const m = layerAffine(layer, pose, view, browY);
         ctx.setTransform(m[0], m[1], m[2], m[3], m[4], m[5]);
         ctx.globalAlpha = Math.min(1, Math.max(0, pose.opacity));
+        ctx.filter = tintFilter(pose.tint);
         ctx.drawImage(image, layer.bbox[0], layer.bbox[1], layer.bbox[2], layer.bbox[3]);
         drawCalls += 1;
       }
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.globalAlpha = 1;
+      ctx.filter = "none";
     },
     resize(width: number, height: number, dpr: number): void {
       canvas.width = Math.max(1, Math.round(width * dpr));

@@ -65,9 +65,9 @@ describe("layerAffine", () => {
     );
   });
 
-  it("draws every Malakor layer exactly on its bbox at rest", () => {
+  it("draws every Malakor layer exactly on its bbox at rest (still: Malakor's shards float otherwise)", () => {
     const rig = malakorRig();
-    const poses = poseLayers(rig, defaultLook(rig), { t: 0, headYaw: 0, headPitch: 0, jawOpen: 0, blink: 0 });
+    const poses = poseLayers(rig, defaultLook(rig), { t: 0, headYaw: 0, headPitch: 0, jawOpen: 0, blink: 0, still: true });
     const view = fitView(rig, 512, 512);
     for (const pose of poses) {
       const layer = rig.layers.find((l) => l.name === pose.name);

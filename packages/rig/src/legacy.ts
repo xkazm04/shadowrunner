@@ -3,11 +3,16 @@
 // The converted rig is passed through validateRig, so a successful import is always a valid Rig.
 // A legacy per-layer `depth` in [0, 1] is kept; any other value is warned about and dropped, so
 // the layer falls back to the per-kind default of the Rig format. Static layers always get depth
-// 0 (mapping table). Other legacy-only fields (numeric follow weights, float/pulse curves, gains,
-// modes) are dropped.
+// 0 (mapping table). Float and pulse curves (`float {amp, freq, rot_deg}`, `pulse {amp, freq}`)
+// are kept as `motion` (amended by cast-forge, req 1.4): from the layer, else from the m8 spec
+// element of the same name, with a phase from the layer-name hash so sibling shards never move in
+// lockstep and the same rig always moves alike. A curve outside the Rig ranges is warned about and
+// dropped. Other legacy-only fields (numeric follow weights, gains, modes) are dropped.
 import type { Result } from "./result.js";
-import { RIG_VERSION, type LayerKind, type Palette, type Rig } from "./types.js";
+import { phaseFromName } from "./motion.js";
+import { RIG_VERSION, type LayerKind, type Motion, type Palette, type Rig } from "./types.js";
 import { validateRig, type RigError } from "./validate.js";
+import { readFloat, readPulse, type MotionCanvas } from "./validateMotion.js";
 
 export interface LegacyWarning {
   /** Legacy layer name. */
@@ -102,13 +107,45 @@ function legacyDepth(layer: string, value: unknown, warnings: LegacyWarning[]): 
   return undefined;
 }
 
+/** spec.elements by name (the m8 spec's per-layer curves); empty without a spec or elements. */
+function specElements(spec: unknown): Map<string, Fields> {
+  const elements = isRecord(spec) && Array.isArray(spec.elements) ? (Array.from(spec.elements) as unknown[]) : [];
+  const byName = new Map<string, Fields>();
+  for (const element of elements) {
+    if (isRecord(element) && typeof element.name === "string" && !byName.has(element.name)) byName.set(element.name, element);
+  }
+  return byName;
+}
+
+const dimension = (value: unknown): number | undefined => (typeof value === "number" && Number.isInteger(value) && value > 0 ? value : undefined);
+
+/** The layer's float and pulse curves as Rig motion (phase from the name), or undefined when it has none. */
+function legacyMotion(name: string, item: Fields, element: Fields | undefined, canvas: MotionCanvas, warnings: LegacyWarning[]): Motion | undefined {
+  const phase = phaseFromName(name);
+  const curve = (key: "float" | "pulse"): unknown => {
+    const own = item[key];
+    const raw = own === undefined ? element?.[key] : own;
+    return isRecord(raw) ? { ...raw, phase } : raw;
+  };
+  const rawFloat = curve("float");
+  const rawPulse = curve("pulse");
+  const float = rawFloat === undefined ? undefined : readFloat(rawFloat, "float", canvas);
+  const pulse = rawPulse === undefined ? undefined : readPulse(rawPulse, "pulse");
+  for (const problem of [...(float?.problems ?? []), ...(pulse?.problems ?? [])]) {
+    warnings.push({ layer: name, message: `legacy ${problem.message}; curve dropped` });
+  }
+  if (float?.float === undefined && pulse?.pulse === undefined) return undefined;
+  return { ...(float?.float === undefined ? {} : { float: float.float }), ...(pulse?.pulse === undefined ? {} : { pulse: pulse.pulse }) };
+}
+
 /** Legacy layers -> undecoded Rig layers (validateRig checks them). Image-less layers are skipped. */
-function convertLayers(value: unknown, errors: RigError[], warnings: LegacyWarning[]): Fields[] {
+function convertLayers(value: unknown, spec: unknown, canvas: MotionCanvas, errors: RigError[], warnings: LegacyWarning[]): Fields[] {
   if (!Array.isArray(value)) {
     errors.push(shape("$.layers", "expected an array of layers"));
     return [];
   }
   const items: unknown[] = Array.from(value);
+  const elements = specElements(spec);
   const layers: Fields[] = [];
   items.forEach((item, i) => {
     const path = `$.layers[${i}]`;
@@ -135,6 +172,7 @@ function convertLayers(value: unknown, errors: RigError[], warnings: LegacyWarni
       mapping = UNKNOWN;
     }
     const depth = mapping.depth ?? legacyDepth(name, item.depth, warnings);
+    const motion = legacyMotion(name, item, elements.get(name), canvas, warnings);
     layers.push({
       name,
       z: item.z,
@@ -144,6 +182,7 @@ function convertLayers(value: unknown, errors: RigError[], warnings: LegacyWarni
       anchor: item.anchor,
       ...(mapping.follow === undefined ? {} : { follow: mapping.follow }),
       ...(depth === undefined ? {} : { depth }),
+      ...(motion === undefined ? {} : { motion }),
     });
   });
   return layers;
@@ -161,7 +200,10 @@ export function importLegacyLayers(json: unknown, spec?: unknown): Result<Legacy
   const warnings: LegacyWarning[] = [];
   if (json.rig_type !== "glow") errors.push(shape("$.rig_type", `expected "glow", got ${JSON.stringify(json.rig_type) ?? "nothing"}`));
   const palette = spec === undefined ? DEFAULT_LEGACY_PALETTE : specPalette(spec, errors);
-  const layers = convertLayers(json.layers, errors, warnings);
+  const width = dimension(json.width);
+  const height = dimension(json.height);
+  const canvas = { ...(width === undefined ? {} : { width }), ...(height === undefined ? {} : { height }) };
+  const layers = convertLayers(json.layers, spec, canvas, errors, warnings);
   if (errors.length > 0 || palette === undefined) return { ok: false, errors };
   const portrait = json.portrait_id;
   const id = typeof portrait === "string" && SLUG.test(portrait) ? portrait : "legacy";
