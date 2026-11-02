@@ -13,14 +13,12 @@
 // Timings in job.json are the recorded upstream latencies and this machine's cut time; `steps`
 // holds the replay latency per status (1.5-3 s). It also writes var/forge-replay/<slug>.png: the
 // portrait, the rig at rest, with the jaw open (0.06 x height) and with the head turned, for review.
-import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+// The pipeline, the job folder and the review panels are shared with scripts/cast-forge.mjs
+// (scripts/forge-lib.mjs).
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { runnerImport } from "vite";
+import { OUT, imagesOf, loadPipeline, readImage, runPipeline, sideBySide, stepsOf, writeReplayJob } from "./forge-lib.mjs";
 
-const OUT = join("assets", "replay", "forge");
-/** Per file. The background is the whole plate as a lossless PNG since task 9 (about 0.7-1.5 MB). */
-const MAX_FILE_BYTES = 1.5 * 1024 * 1024;
 const PRESETS = join("assets", "characters", "presets");
 const REVIEW = join("var", "forge-replay");
 
@@ -62,91 +60,44 @@ const SOURCES = [
   })),
 ];
 
-const { module: forge } = await runnerImport("/packages/forge/src/index.ts");
-const { module: steps } = await runnerImport("/api/_lib/forge-steps.ts");
-const { module: rigCore } = await runnerImport("/packages/rig/src/index.ts");
-
-/** Replay latency per status, 1.5-3 s (requirement 7.5), scaled from the recorded step it stands for. */
-const hold = (ms) => Math.round(Math.min(3000, Math.max(1500, (ms ?? 0) / 8)));
+const pipeline = await loadPipeline();
+const { forge, rigCore } = pipeline;
 
 /** var/forge-replay/<slug>.png: portrait | rest | jaw open | head turned 10 degrees with the jaw half open. */
 function review(slug, portrait, { rig, files }) {
-  const images = Object.fromEntries(Object.entries(files).map(([file, png]) => [file, forge.decodeImage(png).value]));
+  const images = imagesOf(forge, files);
   const drop = Math.round(rigCore.JAW_DROP * rig.height);
   const turn = (10 / rigCore.YAW_LIMIT_DEG) * rigCore.YAW_SHIFT * rig.width;
   const panels = [portrait, forge.compositeRig(rig, images), forge.compositeRig(rig, images, { jaw: drop }), forge.compositeRig(rig, images, { jaw: drop / 2, parallax: turn })];
-  const { width, height } = rig;
-  const data = new Uint8ClampedArray(width * panels.length * height * 4);
-  panels.forEach((p, k) => {
-    for (let y = 0; y < height; y++) data.set(p.data.subarray(y * width * 4, (y + 1) * width * 4), (y * width * panels.length + k * width) * 4);
-  });
   mkdirSync(REVIEW, { recursive: true });
-  writeFileSync(join(REVIEW, `${slug}.png`), forge.encodePng({ width: width * panels.length, height, data }));
+  writeFileSync(join(REVIEW, `${slug}.png`), forge.encodePng(sideBySide(panels)));
 }
 
 const index = [];
 for (const src of SOURCES) {
   if (!existsSync(src.portrait)) throw new Error(`forge-replay: missing ${src.portrait}`);
   const bytes = new Uint8Array(readFileSync(src.portrait));
-  const decoded = forge.decodeImage(bytes);
-  if (!decoded.ok) throw new Error(`forge-replay: ${src.portrait}: ${decoded.errors.message}`);
-  const portrait = decoded.value;
+  const portrait = readImage(forge, src.portrait);
   const parsed = forge.parseParts(JSON.parse(readFileSync(src.parts, "utf8")));
   if (!parsed.ok) throw new Error(`forge-replay: ${src.parts} does not parse`);
   const parts = parsed.value.parts;
-  let edit;
-  if (src.fill !== undefined) {
-    const fill = forge.decodeImage(new Uint8Array(readFileSync(src.fill)));
-    if (!fill.ok) throw new Error(`forge-replay: ${src.fill}: ${fill.errors.message}`);
-    edit = fill.value;
-  }
-
-  const started = performance.now();
-  const plate = steps.plateFor(portrait, parts, edit);
-  const cut = forge.cutAll(portrait, parts, { plate });
-  const assembled = forge.assembleRig(parts, cut.layers, { id: `replay-${src.slug}`, name: src.name, portrait, plate });
-  const cutMs = Math.round(performance.now() - started);
-  if (!assembled.ok) throw new Error(`forge-replay: ${src.slug}: rig invalid: ${assembled.errors.map((e) => e.code).join(", ")}`);
-
-  const dir = join(OUT, src.slug);
-  rmSync(dir, { recursive: true, force: true });
-  mkdirSync(dir, { recursive: true });
-  const portraitFile = `portrait.${forge.sniffImage(bytes) === "png" ? "png" : "jpg"}`;
-  writeFileSync(join(dir, portraitFile), bytes);
-  const sizes = { [portraitFile]: bytes.length };
-  for (const [file, png] of Object.entries(assembled.value.files)) {
-    writeFileSync(join(dir, file), png);
-    sizes[file] = png.length;
-  }
-  const over = Object.entries(sizes).filter(([, n]) => n > MAX_FILE_BYTES);
-  if (over.length > 0) throw new Error(`forge-replay: ${src.slug}: files over 1 MB: ${over.map(([f]) => f).join(", ")}`);
+  const edit = src.fill === undefined ? undefined : readImage(forge, src.fill);
+  const { cut, assembled, cutMs } = runPipeline(pipeline, { portrait, parts, edit, id: `replay-${src.slug}`, name: src.name });
 
   const timings = { ...src.recorded, cutMs };
-  const job = {
+  const total = writeReplayJob(forge, src.slug, bytes, assembled.files, {
     slug: src.slug,
     name: src.name,
-    fictional: true,
     source: src.source,
     prompt: src.prompt,
-    promptSha256: createHash("sha256").update(src.prompt).digest("hex"),
-    portrait: portraitFile,
     fill: edit === undefined ? "fallback" : "edit",
     timings,
-    steps: [
-      { status: "queued", holdMs: 1500 },
-      { status: "portrait", holdMs: hold(timings.portraitMs) },
-      { status: "segmenting", holdMs: hold(timings.partsMs) },
-      { status: "cutting", holdMs: hold(timings.fillMs) },
-      { status: "filling", holdMs: hold(cutMs) },
-      { status: "done" },
-    ],
-    warnings: assembled.value.warnings.map((w) => w.code),
-    rig: assembled.value.rig,
-  };
-  writeFileSync(join(dir, "job.json"), `${JSON.stringify(job, null, 2)}\n`);
-  review(src.slug, portrait, assembled.value);
-  const total = Object.values(sizes).reduce((a, b) => a + b, 0);
+    steps: stepsOf(timings),
+    warnings: assembled.warnings.map((w) => w.code),
+    rig: assembled.rig,
+  });
+  review(src.slug, portrait, assembled);
   index.push(src.slug);
-  console.log(`forge-replay: ${src.slug}: ${job.rig.layers.length} layers, ${cut.empty.length} empty part(s), cut ${cutMs} ms, ${(total / 1024).toFixed(0)} KB`);
+  console.log(`forge-replay: ${src.slug}: ${assembled.rig.layers.length} layers, ${cut.empty.length} empty part(s), cut ${cutMs} ms, ${(total / 1024).toFixed(0)} KB`);
 }
 console.log(`forge-replay: wrote ${index.length} jobs under ${OUT}`);

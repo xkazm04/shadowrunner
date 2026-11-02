@@ -1,0 +1,2 @@
+Use your image generation tool to EDIT the attached input image ./portrait.png (pass it to the tool as the input/reference image). Prompt, verbatim: "<FILL_PROMPT>"
+Then copy the generated PNG into the current directory as fill.png and verify the copy. Report whether the tool actually received the input image (yes/no) and the output pixel size.

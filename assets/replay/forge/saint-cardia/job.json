@@ -1,0 +1,367 @@
+{
+  "slug": "saint-cardia",
+  "name": "Saint Cardia of the Glass Heart",
+  "fictional": true,
+  "source": "cast-forge offline build: Codex CLI built-in image generation (codex-cli 0.160.0) portrait (contest supporting-cast, entry A/6 style-3, 2026-11-02); named parts measured from pixels; fill Codex CLI image edit",
+  "prompt": "a porcelain saint with a heart that beats when chat gets hype",
+  "promptSha256": "da9051d80d1ed1b9023f81ffbd60cb6167e5ec07cf9edf32dc591a2987d2a267",
+  "portrait": "portrait.png",
+  "fill": "edit",
+  "timings": {
+    "cutMs": 3063
+  },
+  "steps": [
+    {
+      "status": "queued",
+      "holdMs": 1500
+    },
+    {
+      "status": "portrait",
+      "holdMs": 1500
+    },
+    {
+      "status": "segmenting",
+      "holdMs": 1500
+    },
+    {
+      "status": "cutting",
+      "holdMs": 1500
+    },
+    {
+      "status": "filling",
+      "holdMs": 1500
+    },
+    {
+      "status": "done"
+    }
+  ],
+  "warnings": [],
+  "rig": {
+    "version": 1,
+    "id": "replay-saint-cardia",
+    "name": "Saint Cardia of the Glass Heart",
+    "width": 1024,
+    "height": 1024,
+    "source": "forge",
+    "fictional": true,
+    "palette": {
+      "glow": "#ab3638",
+      "eye": "#c95f61",
+      "rim": "#c95f61",
+      "mouth": "#261212"
+    },
+    "layers": [
+      {
+        "name": "background",
+        "z": 1,
+        "kind": "static",
+        "file": "background.png",
+        "bbox": [
+          0,
+          0,
+          1024,
+          1024
+        ],
+        "anchor": [
+          512,
+          512
+        ],
+        "depth": 0
+      },
+      {
+        "name": "torso",
+        "z": 2,
+        "kind": "body",
+        "file": "torso.png",
+        "bbox": [
+          74,
+          603,
+          871,
+          421
+        ],
+        "anchor": [
+          509.44,
+          811.008
+        ],
+        "depth": 0.3
+      },
+      {
+        "name": "head",
+        "z": 3,
+        "kind": "head",
+        "file": "head.png",
+        "bbox": [
+          193,
+          0,
+          617,
+          753
+        ],
+        "anchor": [
+          502.27200000000005,
+          753.664
+        ],
+        "depth": 0.6
+      },
+      {
+        "name": "jaw",
+        "z": 4,
+        "kind": "jaw",
+        "file": "jaw.png",
+        "bbox": [
+          440,
+          465,
+          144,
+          87
+        ],
+        "anchor": [
+          512,
+          474.112
+        ],
+        "follow": "head",
+        "depth": 0.62
+      },
+      {
+        "name": "crown",
+        "z": 5,
+        "kind": "crown",
+        "file": "crown.png",
+        "bbox": [
+          362,
+          82,
+          302,
+          276
+        ],
+        "anchor": [
+          513.024,
+          222.71999999999997
+        ],
+        "follow": "head",
+        "depth": 0.65
+      },
+      {
+        "name": "cage",
+        "z": 6,
+        "kind": "accessory",
+        "file": "cage.png",
+        "bbox": [
+          434,
+          647,
+          166,
+          370
+        ],
+        "anchor": [
+          515.1331827762722,
+          845.0008431195423
+        ],
+        "follow": "torso",
+        "depth": 0.3
+      },
+      {
+        "name": "eye_l",
+        "z": 7,
+        "kind": "eye",
+        "file": "eye_l.png",
+        "bbox": [
+          534,
+          356,
+          76,
+          45
+        ],
+        "anchor": [
+          571.9735516372796,
+          378.8702770780856
+        ],
+        "follow": "head",
+        "depth": 0.7
+      },
+      {
+        "name": "eye_r",
+        "z": 8,
+        "kind": "eye",
+        "file": "eye_r.png",
+        "bbox": [
+          418,
+          364,
+          72,
+          38
+        ],
+        "anchor": [
+          452.48198757763976,
+          381.95652173913044
+        ],
+        "follow": "head",
+        "depth": 0.7
+      },
+      {
+        "name": "heart",
+        "z": 9,
+        "kind": "accessory",
+        "file": "heart.png",
+        "bbox": [
+          461,
+          813,
+          100,
+          86
+        ],
+        "anchor": [
+          512.8810305892014,
+          851.2838226236912
+        ],
+        "follow": "cage",
+        "depth": 0.3,
+        "motion": {
+          "pulse": {
+            "amp": 0.6,
+            "freq": 1.1,
+            "phase": 0.057
+          }
+        }
+      },
+      {
+        "name": "spire_5",
+        "z": 10,
+        "kind": "accessory",
+        "file": "spire_5.png",
+        "bbox": [
+          634,
+          166,
+          27,
+          75
+        ],
+        "anchor": [
+          647.6108786610879,
+          206.88807531380752
+        ],
+        "follow": "crown",
+        "depth": 0.65,
+        "motion": {
+          "float": {
+            "amp": [
+              1,
+              3
+            ],
+            "freq": 0.37,
+            "rot_deg": 1.5,
+            "phase": 0.984
+          }
+        }
+      },
+      {
+        "name": "spire_4",
+        "z": 11,
+        "kind": "accessory",
+        "file": "spire_4.png",
+        "bbox": [
+          580,
+          87,
+          30,
+          77
+        ],
+        "anchor": [
+          594.933734939759,
+          130.7128514056225
+        ],
+        "follow": "crown",
+        "depth": 0.65,
+        "motion": {
+          "float": {
+            "amp": [
+              1,
+              3
+            ],
+            "freq": 0.33999999999999997,
+            "rot_deg": 1.5,
+            "phase": 0.988
+          }
+        }
+      },
+      {
+        "name": "spire_3",
+        "z": 12,
+        "kind": "accessory",
+        "file": "spire_3.png",
+        "bbox": [
+          492,
+          3,
+          40,
+          96
+        ],
+        "anchor": [
+          511.9067592033796,
+          59.20187085093543
+        ],
+        "follow": "crown",
+        "depth": 0.65,
+        "motion": {
+          "float": {
+            "amp": [
+              1,
+              3
+            ],
+            "freq": 0.31,
+            "rot_deg": 1.5,
+            "phase": 0.008
+          }
+        }
+      },
+      {
+        "name": "spire_2",
+        "z": 13,
+        "kind": "accessory",
+        "file": "spire_2.png",
+        "bbox": [
+          414,
+          87,
+          30,
+          77
+        ],
+        "anchor": [
+          428.92004048583,
+          130.70141700404858
+        ],
+        "follow": "crown",
+        "depth": 0.65,
+        "motion": {
+          "float": {
+            "amp": [
+              1,
+              3
+            ],
+            "freq": 0.28,
+            "rot_deg": 1.5,
+            "phase": 0.011
+          }
+        }
+      },
+      {
+        "name": "spire_1",
+        "z": 14,
+        "kind": "accessory",
+        "file": "spire_1.png",
+        "bbox": [
+          363,
+          166,
+          27,
+          74
+        ],
+        "anchor": [
+          376.1624203821656,
+          206.79830148619956
+        ],
+        "follow": "crown",
+        "depth": 0.65,
+        "motion": {
+          "float": {
+            "amp": [
+              1,
+              3
+            ],
+            "freq": 0.25,
+            "rot_deg": 1.5,
+            "phase": 0
+          }
+        }
+      }
+    ]
+  }
+}

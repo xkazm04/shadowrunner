@@ -13,7 +13,8 @@ import { defaultForgeDeps, handleForgeGet, handleForgePost } from "../_lib/forge
 import { REPLAY_BASE, bundledReplay, createForgeReplay, pickIndex, replayJobId, replayJobOf, replayView, statusAt, type ReplayJob } from "../_lib/forge-replay.js";
 
 const manifests = import.meta.glob("../../assets/replay/forge/*/job.json", { eager: true, import: "default" });
-const SLUGS = ["announcer-of-dead-air", "lantern-warden", "malakor", "moth-widow", "sister-vesper", "understudy"];
+// cast-forge task 2 adds the first cast member (scripts/cast-forge.mjs); the rest follow one task at a time.
+const SLUGS = ["announcer-of-dead-air", "lantern-warden", "malakor", "moth-widow", "saint-cardia", "sister-vesper", "understudy"];
 
 /** The static file behind a /replay/** URL, read from assets/replay/** (what the deploy serves). */
 function serveStatic(url: string): Uint8Array | undefined {
@@ -42,7 +43,7 @@ async function view(res: Response): Promise<JobView> {
 }
 
 describe("recorded jobs", () => {
-  it("there are 6, each fictional, with a valid rig of 7+ layers and holds of 1.5-3 s", () => {
+  it("there are 7, each fictional, with a valid rig of 7+ layers and holds of 1.5-3 s", () => {
     const slugs = Object.keys(manifests).map((p) => p.split("/").at(-2));
     expect(slugs.sort()).toEqual(SLUGS);
     for (const manifest of Object.values(manifests)) {

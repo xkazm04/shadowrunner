@@ -210,7 +210,7 @@ export function seamReach(feather: number): number {
  * it (`front`), never into the ground. Feathering this shape keeps the part opaque under the soft
  * edges of its neighbours in front, while its own silhouette against the ground stays soft.
  */
-function underFront(own: Mask, front: Mask, reach: number): Mask {
+export function underFront(own: Mask, front: Mask, reach: number): Mask {
   if (reach === 0) return own;
   const grown = dilateMask(own, reach).data;
   const data = own.data.slice();
@@ -309,8 +309,12 @@ export function cutAll(portrait: Rgba, parts: readonly Part[], options: CutOptio
  * Hidden at rest: the jaw layer is opaque over the whole region. Modifies and returns `image`.
  */
 function shadeMouth(image: Rgba, parts: readonly Part[]): Rgba {
-  const { width, height } = image;
-  const region = liftedRegion(parts, width, height, ["jaw"]);
+  return shadeMouthIn(image, liftedRegion(parts, image.width, image.height, ["jaw"]));
+}
+
+/** `shadeMouth` over a given jaw region (the jaw's lifted region, 255 inside). Modifies and returns `image`. */
+export function shadeMouthIn(image: Rgba, region: Mask): Rgba {
+  const { width } = image;
   const box = bboxOfMask(region);
   if (box === undefined) return image;
   const [bx, , bw] = box;
@@ -334,7 +338,7 @@ export const KEY_KEEP = 8;
  * plate behind it looks the same: alpha is at least |luma(portrait) - luma(plate)| / KEY_KEEP, so
  * a dark ribbon over a filled brow or a glow over a painted-out ground stays (task 9, rest = portrait).
  */
-function keyOf(portrait: Rgba, lo: number, plate?: Rgba): Mask {
+export function keyOf(portrait: Rgba, lo: number, plate?: Rgba): Mask {
   const key = lumaKey(portrait, lo, KEY_HI);
   if (plate === undefined) return key;
   const p = portrait.data;
@@ -348,6 +352,6 @@ function keyOf(portrait: Rgba, lo: number, plate?: Rgba): Mask {
 }
 
 /** Sets `shape` to 255 wherever `extra` is non-zero. */
-function addTo(shape: Mask, extra: Mask): void {
+export function addTo(shape: Mask, extra: Mask): void {
   for (let i = 0; i < shape.data.length; i++) if ((extra.data[i] ?? 0) !== 0) shape.data[i] = 255;
 }

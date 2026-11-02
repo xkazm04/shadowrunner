@@ -11,6 +11,8 @@ export interface CompositePose {
   parallax?: number;
   /** Per layer name, a move in canvas px that replaces the two above (e.g. from `poseLayers`). */
   offsets?: Readonly<Record<string, readonly [number, number]>>;
+  /** Per layer name, a light gain multiplied into its colour (a pulse; `poseLayers` tint), clamped to 255. */
+  gains?: Readonly<Record<string, number>>;
 }
 
 /**
@@ -26,6 +28,7 @@ export function compositeRig(rig: Pick<Rig, "width" | "height" | "layers">, imag
     const image = images[layer.file];
     if (image === undefined) continue;
     const [dx, dy] = offsetOf(layer, pose);
+    const gain = pose.gains?.[layer.name] ?? 1;
     const left = Math.round(layer.bbox[0]) + dx;
     const top = Math.round(layer.bbox[1]) + dy;
     for (let y = 0; y < image.height; y++) {
@@ -38,7 +41,7 @@ export function compositeRig(rig: Pick<Rig, "width" | "height" | "layers">, imag
         const t = (ty * width + tx) * 4;
         const a = (image.data[s + 3] ?? 0) / 255;
         if (a === 0) continue;
-        for (let c = 0; c < 3; c++) out[t + c] = Math.round((image.data[s + c] ?? 0) * a + (out[t + c] ?? 0) * (1 - a));
+        for (let c = 0; c < 3; c++) out[t + c] = Math.round(Math.min(255, (image.data[s + c] ?? 0) * gain) * a + (out[t + c] ?? 0) * (1 - a));
       }
     }
   }

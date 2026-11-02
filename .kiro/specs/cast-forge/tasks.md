@@ -13,10 +13,10 @@
     design amended. Malakor's shards float in the app.
   - _Requirements: 1.1-1.4_
 
-- [ ] 2. Named parts and the offline tool, proven on `saint-cardia`
-  - [ ] 2.1 `PartsV2`, `ROLE_KIND`, parse, cut order, fill behind lifted parts, assemble with follow and motion.
-  - [ ] 2.2 `scripts/cast-forge.mjs <slug>` and the review sheet; shares code with `forge-replay.mjs`.
-  - [ ] 2.3 Decompose `saint-cardia`; NOTES.md; ledger section; hardening.
+- [x] 2. Named parts and the offline tool, proven on `saint-cardia`
+  - [x] 2.1 `PartsV2`, `ROLE_KIND`, parse, cut order, fill behind lifted parts, assemble with follow and motion.
+  - [x] 2.2 `scripts/cast-forge.mjs <slug>` and the review sheet; shares code with `forge-replay.mjs`.
+  - [x] 2.3 Decompose `saint-cardia`; NOTES.md; ledger section; hardening.
   - _Requirements: 2.1-2.3, 3.1-3.4_
 
 - [ ] 3. Decompose `the-redactor` (pixel art) and harden
