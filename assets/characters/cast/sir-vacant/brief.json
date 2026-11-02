@@ -1,0 +1,84 @@
+{
+ "name": "Sir Vacant",
+ "one_line_request": "an empty suit of armor that holds me to my stream goals",
+ "archetype": "Hollow knight of a dissolved order, the accountability partner",
+ "persona_hook": "Guards the one promise nobody checked on. He keeps every stream goal chat made hung on his chest in wax, reads them aloud on the hour, and his visor opens a little wider whenever a vow is kept.",
+ "world": "ninth-dark",
+ "accent_hex": "#f2f6ff",
+ "secondary_hex": "#8a8f99",
+ "silhouette": "A plumed great-helm over broad spiked pauldrons, a triangle of armour with a single vertical plume line.",
+ "parts": [
+  {
+   "name": "helm",
+   "kind": "head",
+   "what": "Pewter great-helm with the vertical eye slit",
+   "motion": "Tilts slowly and turns with a faint metallic creak."
+  },
+  {
+   "name": "plume",
+   "kind": "hair",
+   "what": "Tall black horsehair plume on the crest",
+   "motion": "Sways and trails behind every head turn."
+  },
+  {
+   "name": "bevor_jaw",
+   "kind": "aperture_lower",
+   "what": "Hinged bevor plate forming the jaw",
+   "motion": "Drops open with speech."
+  },
+  {
+   "name": "inner_light",
+   "kind": "aperture_glow",
+   "what": "White light inside the helm",
+   "motion": "Brightens as the jaw opens; floods when a vow is kept."
+  },
+  {
+   "name": "slit_l",
+   "kind": "eye",
+   "what": "Left glowing eye slit",
+   "motion": "Narrows and flares instead of a blink."
+  },
+  {
+   "name": "slit_r",
+   "kind": "eye",
+   "what": "Right glowing eye slit",
+   "motion": "Narrows and flares instead of a blink."
+  },
+  {
+   "name": "vow_tags",
+   "kind": "float",
+   "what": "Three wax-sealed tags on chains across the chest",
+   "motion": "Swing and tick like pendulums; one lifts when a goal is met."
+  },
+  {
+   "name": "pauldrons",
+   "kind": "accessory",
+   "what": "Spiked shoulder plates",
+   "motion": "Rise and settle with the breathing."
+  },
+  {
+   "name": "surcoat",
+   "kind": "body",
+   "what": "Tattered dark surcoat and gorget",
+   "motion": "Slow breathing."
+  }
+ ],
+ "style": {
+  "name": "Naive heraldic miniature",
+  "why": "Flat fills and brown-black ink outlines like a faded manuscript illumination: the gentlest knight of the three, sad rather than menacing, with clean flat plates that cut easily.",
+  "prompt": "STYLE: medieval illuminated manuscript miniature: completely flat tempera colour fills with no 3D lighting and no gradients, bold brown-black ink outlines, simple flat hatching, pigments of faded slate, rust and cream like old vellum, naive heraldic drawing, no gold leaf, set on near-black ground. CHARACTER: Sir Vacant, an empty suit of armour of a dissolved order. A weathered pewter great-helm with a vertical eye-slit visor where two narrow slits glow star-white (#f2f6ff); the hinged lower bevor plate is a separate jaw, opened slightly with white light inside; a tall plume of black horsehair rises straight up from the crest of the helm as its own shape. Broad symmetrical pauldrons with short spikes, a tattered dark surcoat, and a rusted iron chain across the chest with three small wax-sealed paper tags hanging separately from it. Palette: pewter, rust, black, one star-white glow. Composition: square 1:1; strictly frontal, perfectly symmetrical, character centred, head-and-shoulders bust from the topmost element down to mid-chest, everything fully inside the frame with a margin. Background: completely empty flat near-black (#050505), no floor, no scenery, no props, no frame or border, no glow haze behind the figure. Both eyes and the lower jaw are clearly visible and unobstructed. Every animatable element is its own distinct, cleanly outlined shape, separated from its neighbours by a thin gap of dark space; nothing overlaps or hides another part. Exactly one glowing accent colour, used sparingly. No text, letters, numbers, logos, watermarks or signatures. Horror but not gore."
+ },
+ "provenance": {
+  "tool": "Codex CLI built-in image generation (codex-cli 0.160.0)",
+  "date": "2026-11-02",
+  "source": "contest supporting-cast, entry B/10 style-2",
+  "original_px": [
+   1254,
+   1254
+  ],
+  "resized_to": [
+   1024,
+   1024
+  ]
+ }
+}

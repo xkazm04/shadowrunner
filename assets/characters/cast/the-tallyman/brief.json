@@ -1,0 +1,72 @@
+{
+ "name": "The Tallyman",
+ "one_line_request": "a spooky census guy that counts everyone in chat",
+ "archetype": "Ninth Dark census-taker (many-eyed clerk)",
+ "persona_hook": "The Ninth Dark's census-taker counts the audience out loud: each of its six eyes blinks once per new viewer, and it audits lurkers by name with polite, terrifying precision.",
+ "world": "ninth-dark",
+ "accent_hex": "#c6ff2e",
+ "secondary_hex": "#d8cfb8",
+ "silhouette": "A tall smooth egg-shaped bald head with six bright points in two rows, on narrow shoulders with an abacus collar.",
+ "parts": [
+  {
+   "name": "head",
+   "kind": "head",
+   "what": "a smooth, pale, egg-shaped bald head",
+   "motion": "small precise tilts, like a bird counting"
+  },
+  {
+   "name": "jaw",
+   "kind": "aperture_lower",
+   "what": "a thin-lipped narrow lower jaw",
+   "motion": "opens primly with speech"
+  },
+  {
+   "name": "mouth_glow",
+   "kind": "aperture_glow",
+   "what": "faint chartreuse light inside the mouth",
+   "motion": "glows on open"
+  },
+  {
+   "name": "eyes_l1..l3 / r1..r3",
+   "kind": "eye",
+   "what": "six round eyes in two vertical rows of three, chartreuse irises",
+   "motion": "blink in a cascade, one per counted viewer"
+  },
+  {
+   "name": "pince_nez",
+   "kind": "monocle",
+   "what": "small brass pince-nez on the bridge of the nose",
+   "motion": "glints / pulses when a count is finished"
+  },
+  {
+   "name": "abacus_collar",
+   "kind": "accessory",
+   "what": "a collar strung with bone abacus beads across the chest",
+   "motion": "beads slide on new follows"
+  },
+  {
+   "name": "frock",
+   "kind": "body",
+   "what": "dark clerk's frock coat",
+   "motion": "breathing"
+  }
+ ],
+ "style": {
+  "name": "Low-poly 3D",
+  "why": "Hard polygon planes keep every eye a clean separate shape and animate cheaply.",
+  "prompt": "A low-poly 3D render: visible flat triangular facets, smooth flat shading, a single cold top light, matte materials, clean crisp geometry like a stylised indie game character. A gaunt Ninth Dark census-taker with a tall, smooth, pale-grey egg-shaped bald head and a calm, polite face. It has six round eyes arranged symmetrically in two vertical rows of three, the rows set apart left and right of the narrow nose, each eye with a glowing chartreuse iris. A thin-lipped narrow mouth and a clearly defined chin. Tiny brass pince-nez on the nose bridge. A dark high-buttoned clerk's frock coat, and across the chest a horizontal collar strung with rows of bone abacus beads. Square 1:1 image. Strictly frontal, perfectly symmetrical head-and-shoulders bust, centred, the whole figure fits inside the frame from above the top of the headpiece down to mid-chest, nothing cropped. Plain empty near-black background (#050505), no floor, no scenery, no props or shapes behind the figure, no border or frame. Both eyes and the mouth and jaw are clearly visible and unobstructed. The head, the six eyes, the mouth and jaw, the pince-nez and the abacus-bead collar are each a distinct, separate shape with a clear dark gap around it, not overlapping the face or each other. Exactly one glowing accent colour, acid chartreuse (#c6ff2e), only in the six irises; everything else muted and dark. No text, no letters, no numerals, no logos, no watermark. Horror, not gore: no blood, no wounds."
+ },
+ "provenance": {
+  "tool": "Codex CLI built-in image generation (codex-cli 0.160.0)",
+  "date": "2026-11-02",
+  "source": "contest supporting-cast, entry A/3 style-3",
+  "original_px": [
+   1254,
+   1254
+  ],
+  "resized_to": [
+   1024,
+   1024
+  ]
+ }
+}

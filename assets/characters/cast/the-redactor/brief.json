@@ -1,0 +1,84 @@
+{
+ "name": "The Redactor",
+ "one_line_request": "a strict censor who blocks bad words, but make it funny",
+ "archetype": "The Lord's censor-clerk, a Ninth Dark official with a black bar",
+ "persona_hook": "Hangs a black bar above his own head and slams it over whatever the Lord forbids. When a viewer asks for the forbidden, the bar drops across his mouth, he mumbles muffled apologies, and it slides back up with a sigh.",
+ "world": "ninth-dark",
+ "accent_hex": "#ffd60a",
+ "secondary_hex": "#e9e4d8",
+ "silhouette": "A flat black slab floating over a narrow plaster-white head and a tall black collar: a clear T-shape.",
+ "parts": [
+  {
+   "name": "head",
+   "kind": "head",
+   "what": "Plaster-white clerk face",
+   "motion": "Tilts stiffly, never more than a few degrees."
+  },
+  {
+   "name": "censor_bar",
+   "kind": "float",
+   "what": "Black slab with a thin yellow edge, hovering overhead",
+   "motion": "Hangs and bobs; drops across the mouth on a forbidden word, then rises back."
+  },
+  {
+   "name": "bar_glow",
+   "kind": "pulse",
+   "what": "Yellow edge-light on the bar",
+   "motion": "Flickers once on every cut."
+  },
+  {
+   "name": "jaw",
+   "kind": "aperture_lower",
+   "what": "Thin-lipped lower jaw",
+   "motion": "Opens with speech, clipped and precise."
+  },
+  {
+   "name": "mouth_glow",
+   "kind": "aperture_glow",
+   "what": "Faint yellow light inside the mouth",
+   "motion": "Brightens as the jaw opens."
+  },
+  {
+   "name": "eye_l",
+   "kind": "eye",
+   "what": "Left spectacle lens with a yellow pinprick pupil",
+   "motion": "Narrow blink, pupil flares on a violation."
+  },
+  {
+   "name": "eye_r",
+   "kind": "eye",
+   "what": "Right spectacle lens with a yellow pinprick pupil",
+   "motion": "Narrow blink, pupil flares on a violation."
+  },
+  {
+   "name": "inkstamp",
+   "kind": "accessory",
+   "what": "Brass inkstamp swinging on its chain",
+   "motion": "Swings and thunks when something is approved."
+  },
+  {
+   "name": "collar_robe",
+   "kind": "body",
+   "what": "Tall funeral collar and black robe",
+   "motion": "Barely breathes."
+  }
+ ],
+ "style": {
+  "name": "16-bit pixel art",
+  "why": "Hand-placed pixels and 16 colours: a retro-game cast member that survives any downscale and suits a bit-heavy chat.",
+  "prompt": "STYLE: crisp 16-bit pixel art on a roughly 200 by 200 pixel grid scaled up, hard square pixels clearly visible, a completely bald hairless head, limited 16-colour palette, dithered shading, no smooth gradients and no anti-aliasing; the floating bar is a lighter charcoal-grey slab so it reads against the black background. CHARACTER: The Redactor, the Lord's censor-clerk. A gaunt, smooth, pale plaster-white face with a long narrow nose and stern sunken cheeks; two small round black-glass spectacle lenses with glowing hazard-yellow (#ffd60a) pinprick pupils as eyes; a thin tight mouth on a distinct separate lower jaw. Tall stiff black funeral collar and a plain black robe with narrow shoulders. High above the head, floating on its own, hovers a thick horizontal slab of obsidian black with a razor-thin glowing yellow edge line, exactly like a censor bar. A small brass inkstamp hangs on a chain from the collar. Palette: plaster white, ink black, one hazard-yellow glow. Composition: square 1:1; strictly frontal, perfectly symmetrical, character centred, head-and-shoulders bust from the topmost element down to mid-chest, everything fully inside the frame with a margin. Background: completely empty flat near-black (#050505), no floor, no scenery, no props, no frame or border, no glow haze behind the figure. Both eyes and the lower jaw are clearly visible and unobstructed. Every animatable element is its own distinct, cleanly outlined shape, separated from its neighbours by a thin gap of dark space; nothing overlaps or hides another part. Exactly one glowing accent colour, used sparingly. No text, letters, numbers, logos, watermarks or signatures. Horror but not gore."
+ },
+ "provenance": {
+  "tool": "Codex CLI built-in image generation (codex-cli 0.160.0)",
+  "date": "2026-11-02",
+  "source": "contest supporting-cast, entry B/6 style-3",
+  "original_px": [
+   1254,
+   1254
+  ],
+  "resized_to": [
+   1024,
+   1024
+  ]
+ }
+}

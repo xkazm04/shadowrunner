@@ -1,0 +1,84 @@
+{
+ "name": "Lot Ninety, the Auctioneer",
+ "one_line_request": "a fast talking ghost auctioneer with floating hands",
+ "archetype": "Spectral auctioneer of small souls",
+ "persona_hook": "Lot Ninety runs every poll as a rapid-fire auction, his disembodied white-gloved hands pointing at bidders in chat and slamming down 'sold' on the winning option.",
+ "world": "ninth-dark",
+ "accent_hex": "#22e07a",
+ "secondary_hex": "#e9e2cf",
+ "silhouette": "A narrow grinning head with slicked hair between two big white gloves hovering at shoulder height: a three-blob 'W'.",
+ "parts": [
+  {
+   "name": "head",
+   "kind": "head",
+   "what": "gaunt grey-green face with slicked centre-parted hair",
+   "motion": "quick showman tilts"
+  },
+  {
+   "name": "jaw",
+   "kind": "aperture_lower",
+   "what": "grinning lower jaw with neat teeth",
+   "motion": "patters open and shut fast"
+  },
+  {
+   "name": "mouth_glow",
+   "kind": "aperture_glow",
+   "what": "emerald light inside the mouth",
+   "motion": "brightens on open"
+  },
+  {
+   "name": "eye_l",
+   "kind": "eye",
+   "what": "bright emerald pupil, heavy lid",
+   "motion": "winks, glances toward bidders"
+  },
+  {
+   "name": "eye_r",
+   "kind": "eye",
+   "what": "bright emerald pupil",
+   "motion": "blinks, glances"
+  },
+  {
+   "name": "hand_l",
+   "kind": "float",
+   "what": "detached white glove, palm open, emerald ghost-flame at the cuff",
+   "motion": "floats, points, gestures"
+  },
+  {
+   "name": "hand_r",
+   "kind": "float",
+   "what": "detached white glove, index finger raised",
+   "motion": "floats, points, 'sold' slam"
+  },
+  {
+   "name": "bowtie",
+   "kind": "accessory",
+   "what": "a small black bow tie",
+   "motion": "twitches on emphasis"
+  },
+  {
+   "name": "suit",
+   "kind": "body",
+   "what": "pinstripe auctioneer's suit, high collar",
+   "motion": "breathing"
+  }
+ ],
+ "style": {
+  "name": "Art nouveau poster",
+  "why": "Flat colour and sinuous outlines: a showman drawn as his own playbill.",
+  "prompt": "An art nouveau theatre poster illustration: flat colour areas, elegant sinuous black outlines, decorative but simple linework, muted ivory, charcoal and green, no border, no lettering, on a near-black ground. A spectral auctioneer: a gaunt, sharp, grey-green face with a wide charming grin of neat teeth, slicked-back black hair with a centre parting, bright emerald pupils, a dark pinstripe suit with a high white wing collar and a small black bow tie. He has no hands attached: two large white gloves float in mid-air at shoulder height, one on each side of the head, mirrored, palms toward the viewer with index fingers raised, each glove ending at the cuff in a small emerald ghost flame. The gloves are well apart from the face and the body. Square 1:1 image. Strictly frontal, perfectly symmetrical head-and-shoulders bust, centred, the whole figure fits inside the frame from above the top of the headpiece down to mid-chest, nothing cropped. Plain empty near-black background (#050505), no floor, no scenery, no props or shapes behind the figure, no border or frame. Both eyes and the mouth and jaw are clearly visible and unobstructed. The head, the grinning lower jaw, the two eyes, the two floating gloves, the bow tie and the suit are each a distinct, separate shape with a clear dark gap around it, not overlapping the face or each other. Exactly one glowing accent colour, ghostly emerald green (#22e07a), only in the eyes and the cuff flames; everything else muted and dark. No text, no letters, no numerals, no logos, no watermark. Horror, not gore: no blood, no wounds."
+ },
+ "provenance": {
+  "tool": "Codex CLI built-in image generation (codex-cli 0.160.0)",
+  "date": "2026-11-02",
+  "source": "contest supporting-cast, entry A/4 style-1",
+  "original_px": [
+   1254,
+   1254
+  ],
+  "resized_to": [
+   1024,
+   1024
+  ]
+ }
+}

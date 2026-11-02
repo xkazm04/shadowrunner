@@ -1,0 +1,72 @@
+{
+ "name": "Saint Cardia of the Glass Heart",
+ "one_line_request": "a porcelain saint with a heart that beats when chat gets hype",
+ "archetype": "Reliquary saint (a living shrine)",
+ "persona_hook": "A serene reliquary saint whose glass-caged heart beats with chat: calm and slow when the room is quiet, racing and blazing when hype trains roll in, and she narrates her own pulse.",
+ "world": "standalone",
+ "accent_hex": "#ff1f3d",
+ "secondary_hex": "#c9ccd6",
+ "silhouette": "A tall narrow silver spire crown over a pale oval face, and a glowing red diamond-cage at the centre of the chest.",
+ "parts": [
+  {
+   "name": "head",
+   "kind": "head",
+   "what": "smooth pale porcelain face, serene",
+   "motion": "slow, holy tilts"
+  },
+  {
+   "name": "crown",
+   "kind": "crown",
+   "what": "tall narrow pointed crown of silver filigree spires",
+   "motion": "catches light, slight sway"
+  },
+  {
+   "name": "jaw",
+   "kind": "aperture_lower",
+   "what": "soft closed lower lip and chin",
+   "motion": "opens gently with speech"
+  },
+  {
+   "name": "eye_l",
+   "kind": "eye",
+   "what": "half-lidded grey eye with a red point of light",
+   "motion": "slow blink"
+  },
+  {
+   "name": "eye_r",
+   "kind": "eye",
+   "what": "half-lidded grey eye",
+   "motion": "slow blink"
+  },
+  {
+   "name": "heart",
+   "kind": "pulse",
+   "what": "a stylised red heart of glowing glass inside a silver reliquary cage at the chest",
+   "motion": "beats; tempo follows chat activity"
+  },
+  {
+   "name": "robe",
+   "kind": "body",
+   "what": "pale grey-white robes, silver hem",
+   "motion": "breathing"
+  }
+ ],
+ "style": {
+  "name": "Faceted gothic painting",
+  "why": "Malakor's house style, so she can share a stage with him.",
+  "prompt": "Stylised painterly realism with faceted, flat-planed shading like a dark fantasy game portrait, hard rim light, muted cold darks. A serene reliquary saint: a smooth pale porcelain face with half-lidded grey eyes holding tiny red points of light, a calm closed mouth with a defined chin. On her head a tall, narrow, pointed crown of silver filigree spires. She wears pale grey-white robes with a high round neckline; set into the centre of her chest is a small silver reliquary cage shaped like a lantern, and inside it a stylised glowing red glass heart (a smooth jewel heart, not anatomical). Square 1:1 image. Strictly frontal, perfectly symmetrical head-and-shoulders bust, centred, the whole figure fits inside the frame from above the top of the headpiece down to mid-chest, nothing cropped. Plain empty near-black background (#050505), no floor, no scenery, no props or shapes behind the figure, no border or frame. Both eyes and the mouth and jaw are clearly visible and unobstructed. The face, the jaw, the two eyes, the spired crown, the caged glass heart and the robe are each a distinct, separate shape with a clear dark gap around it, not overlapping the face or each other. Exactly one glowing accent colour, glowing heart red (#ff1f3d), only in the glass heart and the eye points; everything else muted and dark. No text, no letters, no numerals, no logos, no watermark. Horror, not gore: no blood, no wounds."
+ },
+ "provenance": {
+  "tool": "Codex CLI built-in image generation (codex-cli 0.160.0)",
+  "date": "2026-11-02",
+  "source": "contest supporting-cast, entry A/6 style-3",
+  "original_px": [
+   1254,
+   1254
+  ],
+  "resized_to": [
+   1024,
+   1024
+  ]
+ }
+}

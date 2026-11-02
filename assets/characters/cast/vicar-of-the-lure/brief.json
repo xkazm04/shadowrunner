@@ -1,0 +1,78 @@
+{
+ "name": "Vicar of the Lure",
+ "one_line_request": "deep sea monster preacher with a glowing light",
+ "archetype": "Abyssal anglerfish preacher",
+ "persona_hook": "A deep-sea preacher who dangles a glowing lure over chat and preaches to lurkers until they speak; the lure swells brighter the longer the chat stays silent, then snaps dark when someone finally types.",
+ "world": "standalone",
+ "accent_hex": "#ff2fd0",
+ "secondary_hex": "#2a3a55",
+ "silhouette": "A wide, low anglerfish head with a huge underbite of needle teeth and a single thin stalk arcing up to a bright magenta bulb above the head.",
+ "parts": [
+  {
+   "name": "head",
+   "kind": "head",
+   "what": "broad scaled anglerfish head with a clerical collar below",
+   "motion": "tilts, slow predatory sway"
+  },
+  {
+   "name": "jaw",
+   "kind": "aperture_lower",
+   "what": "the enormous underslung lower jaw lined with glassy needle teeth",
+   "motion": "drops wide with speech"
+  },
+  {
+   "name": "maw_glow",
+   "kind": "aperture_glow",
+   "what": "faint magenta glow deep in the throat",
+   "motion": "brightens as the jaw opens"
+  },
+  {
+   "name": "eye_l",
+   "kind": "eye",
+   "what": "small milky round left eye",
+   "motion": "slow blink, glances"
+  },
+  {
+   "name": "eye_r",
+   "kind": "eye",
+   "what": "small milky round right eye",
+   "motion": "slow blink, glances"
+  },
+  {
+   "name": "lure_stalk",
+   "kind": "accessory",
+   "what": "thin bony stalk rising from the brow and curving forward",
+   "motion": "sways slowly like a fishing rod"
+  },
+  {
+   "name": "lure_bulb",
+   "kind": "pulse",
+   "what": "glowing magenta bulb at the end of the stalk",
+   "motion": "pulses; grows brighter in chat silence"
+  },
+  {
+   "name": "vestment",
+   "kind": "body",
+   "what": "dark vestment with a white clerical collar, barnacle studs",
+   "motion": "slow underwater breathing"
+  }
+ ],
+ "style": {
+  "name": "Leaded stained glass",
+  "why": "Lead lines are pre-drawn cut lines: jaw, eyes, stalk and bulb are separate glass panes.",
+  "prompt": "A leaded stained-glass window design: flat panes of deep blue, slate and bone-white glass separated by thick black lead lines, the lure bulb a glowing magenta glass jewel, no window frame, figure on black. A deep-sea anglerfish preacher: a broad dark blue-grey scaled anglerfish head facing the viewer, with an enormous underslung lower jaw lined with long glassy needle teeth, mouth slightly open showing a dark throat. Two small round milky-white eyes set wide apart on the brow. A single thin bony stalk rises from the top of the head and arcs up and forward, ending in a round glowing magenta lure bulb hanging well above the head, never in front of the face. Shoulders in a dark clerical vestment with a plain white collar band, crusted with a few barnacles. Square 1:1 image. Strictly frontal, perfectly symmetrical head-and-shoulders bust, centred, the whole figure fits inside the frame from above the top of the headpiece down to mid-chest, nothing cropped. Plain empty near-black background (#050505), no floor, no scenery, no props or shapes behind the figure, no border or frame. Both eyes and the mouth and jaw are clearly visible and unobstructed. The head, the lower jaw, the two eyes, the lure stalk, the lure bulb and the vestment are each a distinct, separate shape with a clear dark gap around it, not overlapping the face or each other. Exactly one glowing accent colour, bioluminescent magenta (#ff2fd0), only in the lure bulb and a faint glow in the throat; everything else muted and dark. No text, no letters, no numerals, no logos, no watermark. Horror, not gore: no blood, no wounds."
+ },
+ "provenance": {
+  "tool": "Codex CLI built-in image generation (codex-cli 0.160.0)",
+  "date": "2026-11-02",
+  "source": "contest supporting-cast, entry A/2 style-2",
+  "original_px": [
+   1254,
+   1254
+  ],
+  "resized_to": [
+   1024,
+   1024
+  ]
+ }
+}

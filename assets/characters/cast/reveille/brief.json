@@ -1,0 +1,90 @@
+{
+ "name": "Reveille, the Alarm of the Ninth",
+ "one_line_request": "a haunted alarm clock that yells when the stream starts",
+ "archetype": "Haunted alarm clock (the show's timekeeper)",
+ "persona_hook": "The throne room's alarm clock keeps the segment schedule and wakes lurkers: its twin bells rattle and its clock-hand eyebrows spin when a segment is about to end or a hype train starts.",
+ "world": "ninth-dark",
+ "accent_hex": "#38c8ff",
+ "secondary_hex": "#b08a4a",
+ "silhouette": "A round head with two round bells on top like ears and a little hammer between them: a circle with two domes.",
+ "parts": [
+  {
+   "name": "head",
+   "kind": "head",
+   "what": "a round tarnished brass clock case with a pale dial face",
+   "motion": "jittery tilts, shakes when ringing"
+  },
+  {
+   "name": "bell_l",
+   "kind": "crown",
+   "what": "left brass bell on top",
+   "motion": "rattles on alarms"
+  },
+  {
+   "name": "bell_r",
+   "kind": "crown",
+   "what": "right brass bell on top",
+   "motion": "rattles"
+  },
+  {
+   "name": "hammer",
+   "kind": "float",
+   "what": "small striker hammer between the bells",
+   "motion": "vibrates side to side when ringing"
+  },
+  {
+   "name": "brow_hands",
+   "kind": "accessory",
+   "what": "two clock hands forming the eyebrows",
+   "motion": "rotate to express mood"
+  },
+  {
+   "name": "eye_l",
+   "kind": "eye",
+   "what": "round cyan-glowing eye on the dial",
+   "motion": "blink, glance"
+  },
+  {
+   "name": "eye_r",
+   "kind": "eye",
+   "what": "round cyan-glowing eye",
+   "motion": "blink, glance"
+  },
+  {
+   "name": "dial_jaw",
+   "kind": "aperture_lower",
+   "what": "the lower third of the dial, hinged like a jaw",
+   "motion": "drops open with speech"
+  },
+  {
+   "name": "dial_glow",
+   "kind": "aperture_glow",
+   "what": "cyan light behind the dial jaw",
+   "motion": "glows on open"
+  },
+  {
+   "name": "body",
+   "kind": "body",
+   "what": "small brass shoulders with a winding key",
+   "motion": "breathing; key turns"
+  }
+ ],
+ "style": {
+  "name": "Smoked brass and neon",
+  "why": "A dim tarnished-brass shell where only cyan neon burns (eyes, teeth, a cracked tube): the most menacing version, and the glow sits on its own layers.",
+  "prompt": "Neon sign line art: the whole character drawn as glowing bent neon tubes on black, warm brass-coloured tubes for the case and bells, cyan tubes for the eyes and the inner jaw, clean continuous tube lines, faint glow halo, no letters. A haunted antique alarm clock as a character: the head is a round tarnished brass clock case with a pale cream dial face that has only small tick marks around its edge, no numerals. Two round glowing cyan eyes on the dial, and two black clock hands lying above them as angled eyebrows. The lower third of the dial is cut as a hinged jaw, open, showing a dark gap lit with cyan light inside. On top of the head two round brass bells sit like ears, with a small striker hammer between them. Small brass shoulders below with a winding key at the chest. Square 1:1 image. Strictly frontal, perfectly symmetrical head-and-shoulders bust, centred, the whole figure fits inside the frame from above the top of the headpiece down to mid-chest, nothing cropped. Plain empty near-black background (#050505), no floor, no scenery, no props or shapes behind the figure, no border or frame. Both eyes and the mouth and jaw are clearly visible and unobstructed. The clock head, the two bells, the hammer, the clock-hand eyebrows, the two eyes, the dial jaw and the shoulders are each a distinct, separate shape with a clear dark gap around it, not overlapping the face or each other. Exactly one glowing accent colour, electric cyan (#38c8ff), only in the eyes and the light behind the jaw; everything else muted and dark. No text, no letters, no numerals, no logos, no watermark. Horror, not gore: no blood, no wounds. Make it unsettling rather than cute: the case, bells and shoulders are dim, barely-lit dark tubes of old smoked glass; only the eyes and the inside of the jaw burn bright cyan; the open jaw is lined with a row of small sharp teeth drawn in thin cyan tube; a cracked tube flickers on the dial."
+ },
+ "provenance": {
+  "tool": "Codex CLI built-in image generation (codex-cli 0.160.0)",
+  "date": "2026-11-02",
+  "source": "contest supporting-cast, entry A/10 style-3",
+  "original_px": [
+   1254,
+   1254
+  ],
+  "resized_to": [
+   1024,
+   1024
+  ]
+ }
+}

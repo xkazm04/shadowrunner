@@ -1,0 +1,72 @@
+{
+ "name": "Auntie Asp, Keeper of the Stone Stacks",
+ "one_line_request": "a medusa librarian with snakes for hair who shushes chat",
+ "archetype": "Stone-skinned archive librarian (serpent-haired)",
+ "persona_hook": "The Spire's archivist shushes spammers by 'turning them to stone' (a timeout), and her six serpents each pipe up with their own opinion about the book chat is discussing.",
+ "world": "ninth-dark",
+ "accent_hex": "#ff6a1a",
+ "secondary_hex": "#8a8f99",
+ "silhouette": "A starburst: six serpents fanning out symmetrically from the head like rays, over squared librarian shoulders.",
+ "parts": [
+  {
+   "name": "head",
+   "kind": "head",
+   "what": "grey stone-skinned face with reading spectacles",
+   "motion": "stern tilts over the spectacles"
+  },
+  {
+   "name": "serpent_l1..l3 / r1..r3",
+   "kind": "hair",
+   "what": "six separate snakes rising and curving outward from the scalp",
+   "motion": "each sways on its own, they turn toward whoever speaks"
+  },
+  {
+   "name": "jaw",
+   "kind": "aperture_lower",
+   "what": "stern lower jaw",
+   "motion": "opens with speech, shushes"
+  },
+  {
+   "name": "eye_l",
+   "kind": "eye",
+   "what": "molten-orange eye behind round spectacles",
+   "motion": "blink, glare flares orange on timeouts"
+  },
+  {
+   "name": "eye_r",
+   "kind": "eye",
+   "what": "molten-orange eye",
+   "motion": "blink, glare"
+  },
+  {
+   "name": "spectacles",
+   "kind": "monocle",
+   "what": "round wire reading spectacles low on the nose",
+   "motion": "glint"
+  },
+  {
+   "name": "cardigan",
+   "kind": "body",
+   "what": "buttoned cardigan with a thin chain",
+   "motion": "breathing"
+  }
+ ],
+ "style": {
+  "name": "Art nouveau poster",
+  "why": "The serpents become decorative whiplash curves, a classic poster medusa reinvented as a librarian.",
+  "prompt": "An art nouveau poster illustration: flat colour areas, sinuous whiplash black outlines, simple decorative linework, muted grey and dusk tones, no border, no lettering, on a near-black ground. A stern stone-skinned librarian of the dark archive: a smooth grey stone face with fine cracks, a stern mouth and defined chin, eyes glowing molten orange behind round thin wire reading spectacles perched on the nose. Instead of hair, six slender grey serpents rise from her scalp and curve outward in a symmetrical fan, three to each side, each snake separate with a gap between them, each with tiny orange eyes. A buttoned dark cardigan over a high-collared blouse, a thin chain across the chest. Square 1:1 image. Strictly frontal, perfectly symmetrical head-and-shoulders bust, centred, the whole figure fits inside the frame from above the top of the headpiece down to mid-chest, nothing cropped. Plain empty near-black background (#050505), no floor, no scenery, no props or shapes behind the figure, no border or frame. Both eyes and the mouth and jaw are clearly visible and unobstructed. The face, the jaw, the two eyes, the spectacles, each of the six serpents and the cardigan are each a distinct, separate shape with a clear dark gap around it, not overlapping the face or each other. Exactly one glowing accent colour, molten orange (#ff6a1a), only in the eyes and the serpents' eyes; everything else muted and dark. No text, no letters, no numerals, no logos, no watermark. Horror, not gore: no blood, no wounds."
+ },
+ "provenance": {
+  "tool": "Codex CLI built-in image generation (codex-cli 0.160.0)",
+  "date": "2026-11-02",
+  "source": "contest supporting-cast, entry A/9 style-2",
+  "original_px": [
+   1254,
+   1254
+  ],
+  "resized_to": [
+   1024,
+   1024
+  ]
+ }
+}
