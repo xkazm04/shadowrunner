@@ -35,6 +35,14 @@ Ranges (validate, every error reported, path `$.layers[i].motion.<field>`): `amp
 `[0, 0.05 * width]` / `[0, 0.05 * height]` px; `freq` in `[0.02, 2]` Hz; `rot_deg` in `[0, 15]`;
 `phase` in `[0, 1)` cycles; pulse `amp` in `[0, 1]`.
 
+Amended by task 6 (the Tallyman's six eyes that count one at a time; `Drive.blink` is one scalar, so
+every eye shut together): `export interface BlinkMotion { freq: number; phase?: number }`,
+`Motion.blink?`, `eye` layers only (`bad_shape` at `$.layers[i].motion.blink` elsewhere; a named
+part with a blink needs an eye role). Closure `ownBlinkAt` = `sin(pi * s / OWN_BLINK_S)` for
+`s = frac(freq*t + phase) / freq < OWN_BLINK_S` (0.15 s), else 0; `poseLayers` squashes the eye by
+`max(Drive.blink, own)`; `still` zeroes it. Periodic, not event-driven: a blink per new viewer
+(the brief's hook) needs an event the rig does not carry.
+
 Pose, with `w = 2*pi*(freq*t + phase)`: float adds, about the layer's own anchor and **after** the
 inherited follow transform, a translation `(amp[0]*sin(w), amp[1]*sin(w + pi/2))` and a rotation
 `rot_deg*sin(w + pi)`. Amended by task 4: a float is carried down the follow chain (a follower turns and

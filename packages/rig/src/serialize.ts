@@ -9,7 +9,7 @@ function wirePalette(palette: Palette): Palette {
 }
 
 function wireMotion(motion: Motion): Motion {
-  const { float, pulse } = motion;
+  const { float, pulse, blink } = motion;
   return {
     ...(float === undefined
       ? {}
@@ -22,6 +22,7 @@ function wireMotion(motion: Motion): Motion {
           },
         }),
     ...(pulse === undefined ? {} : { pulse: { amp: pulse.amp, freq: pulse.freq, ...(pulse.phase === undefined ? {} : { phase: pulse.phase }) } }),
+    ...(blink === undefined ? {} : { blink: { freq: blink.freq, ...(blink.phase === undefined ? {} : { phase: blink.phase }) } }),
   };
 }
 

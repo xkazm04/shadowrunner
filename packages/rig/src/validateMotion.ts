@@ -2,9 +2,10 @@
 // undecoded value. Called by validateRig (every problem becomes a `bad_shape` error) and by the
 // legacy import (a problem drops that curve with a warning). Every problem is reported, each at
 // its own path under `<layer>.motion`: `.float.amp[0]`, `.float.amp[1]`, `.float.freq`,
-// `.float.rot_deg`, `.float.phase`, `.pulse.amp`, `.pulse.freq`, `.pulse.phase`.
+// `.float.rot_deg`, `.float.phase`, `.pulse.amp`, `.pulse.freq`, `.pulse.phase`, `.blink.freq`,
+// `.blink.phase` (blink: cast-forge task 6; that it sits on an eye layer is validateRig's check).
 // A range that depends on the canvas (float amp) is checked only against a known canvas size.
-import type { FloatMotion, Motion, PulseMotion } from "./types.js";
+import type { BlinkMotion, FloatMotion, Motion, PulseMotion } from "./types.js";
 
 /** Float amplitude limit, as a fraction of the canvas width (x) and height (y). */
 export const FLOAT_AMP_MAX = 0.05;
@@ -97,6 +98,15 @@ class MotionReader {
     if (this.problems.length > before || amp === undefined || freq === undefined) return undefined;
     return { amp, freq, ...(phase === undefined ? {} : { phase }) };
   }
+
+  blink(value: unknown, path: string): BlinkMotion | undefined {
+    if (!isRecord(value)) return this.fail(path, `expected a blink object, got ${describe(value)}`);
+    const before = this.problems.length;
+    const freq = this.number(value.freq, `${path}.freq`, MOTION_FREQ_MIN, MOTION_FREQ_MAX);
+    const phase = this.phase(value, path);
+    if (this.problems.length > before || freq === undefined) return undefined;
+    return { freq, ...(phase === undefined ? {} : { phase }) };
+  }
 }
 
 /** Reads one curve, `float` or `pulse`, at `path` (the curve's own path). */
@@ -119,6 +129,7 @@ export function readMotion(value: unknown, path: string, canvas: MotionCanvas): 
   const reader = new MotionReader();
   const float = value.float === undefined ? undefined : reader.float(value.float, `${path}.float`, canvas);
   const pulse = value.pulse === undefined ? undefined : reader.pulse(value.pulse, `${path}.pulse`);
+  const blink = value.blink === undefined ? undefined : reader.blink(value.blink, `${path}.blink`);
   if (reader.problems.length > 0) return { problems: reader.problems };
-  return { motion: { ...(float === undefined ? {} : { float }), ...(pulse === undefined ? {} : { pulse }) }, problems: [] };
+  return { motion: { ...(float === undefined ? {} : { float }), ...(pulse === undefined ? {} : { pulse }), ...(blink === undefined ? {} : { blink }) }, problems: [] };
 }

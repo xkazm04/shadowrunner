@@ -32,7 +32,10 @@
   - Neon on a lit dial: `matte: "plate"` (alpha from the plate difference, colour un-mixed); clock
     hands turn on their hubs (`NamedPart.pivot`); a mouth drawn open over a dark gap with no throat
     in the edit takes `cavity: "gap"`. Format finding: the 2 Hz float cap cannot carry a rattle.
-- [ ] 6. Decompose `the-tallyman` (low-poly) and harden
+- [x] 6. Decompose `the-tallyman` (low-poly) and harden
+  - Six eyes that count: an eye's own `Motion.blink` (rig-core amended, eye layers only), max'ed with
+    `Drive.blink`; `motionOf` keeps it. Beads cut by their whole body slide on their rods; the stand
+    collar is a front part so a turned neck goes behind it. Format finding: no event-driven motion.
 - [ ] 7. Decompose `sir-vacant` (heraldic miniature) and harden
 - [ ] 8. Decompose `lot-ninety` (art nouveau) and harden
 - [ ] 9. Decompose `auntie-asp` (art nouveau, serpents) and harden

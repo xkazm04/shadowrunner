@@ -100,12 +100,17 @@ Amended by cast-forge (`.kiro/specs/cast-forge/design.md`, "Motion"). Additive: 
 | `pulse.amp` | number | yes | `[0, 1]` | Gain amplitude. |
 | `pulse.freq` | number | yes | `[0.02, 2]` | Hz. |
 | `pulse.phase` | number | no | `[0, 1)` | Cycles; omitted means 0. |
+| `blink` | BlinkMotion | no | | `eye` layers only (amended by cast-forge task 6): a blink of the layer's own, once per cycle. On any other kind it is `bad_shape` at `$.layers[i].motion.blink`. |
+| `blink.freq` | number | yes | `[0.02, 2]` | Hz: blinks per second. |
+| `blink.phase` | number | no | `[0, 1)` | Cycles; omitted means 0. The eye shuts where `freq*t + phase` is whole. |
 
 A motion with neither curve (`{}`) is valid and does nothing. Any field outside its range, or of
 the wrong type, is `bad_shape` at `$.layers[i].motion.<field>` (for example
 `$.layers[3].motion.float.amp[1]` or `$.layers[3].motion.pulse.freq`); every fault is reported.
 Fields outside the contract are dropped. Builders give sibling floats different phases so a set of
-parts never moves in lockstep.
+parts never moves in lockstep. An eye's own blink is a half-sine of closure over `OWN_BLINK_S`
+(0.15 s) from each cycle's start, 0 for the rest of the cycle (`ownBlinkAt`); sibling eyes given
+staggered phases blink one at a time (the Tallyman's six eyes counting).
 
 
 `importLegacyLayers(json, spec?)` (`packages/rig/src/legacy.ts`) converts an Overlord-era
@@ -219,7 +224,7 @@ The per-frame input from the avatar driver.
 | `jawOpen` | number | yes | 0..1, clamped. |
 | `blink` | number | yes | 0..1, clamped; 1 = eyes shut. |
 | `gesture` | `{ name: Gesture, startedAt: number }` | no | The running gesture; `startedAt` is in seconds on the same clock as `t`. |
-| `still` | boolean | no | Reduced motion: layer float and pulse are zero. The avatar sets it whenever reduced motion is on. |
+| `still` | boolean | no | Reduced motion: layer float and pulse, and an eye's own blink, are zero. The avatar sets it whenever reduced motion is on. |
 
 `GESTURE_DURATION_S` is `0.4`: every gesture curve runs for 0.4 s from `startedAt`, shaped as a
 half-sine `sin(pi * elapsed / 0.4)` that peaks halfway at the design value. Outside that window the
@@ -251,7 +256,8 @@ One per drawn layer, in `z` order. A layer is drawn unless it is named in `look.
   length is not scaled by gestures, so it never exceeds `drop * height`.
   Followers of a jaw do not move with the drop; a jaw that follows a jaw drops by its own amount
   only. No other kind moves with `jawOpen`.
-- **Blink.** `eye` layers scale y by `1 - 0.9 * blink`.
+- **Blink.** `eye` layers scale y by `1 - 0.9 * max(blink, own)`, `own` the layer's `motion.blink`
+  closure at `t` (0 when it has none or `still`; cast-forge task 6). The own blink is not inherited.
 - **Motion** (amended by cast-forge). With `w = 2*pi*(freq*t + phase)`, a float adds, after the
   inherited follow transform, the parallax and the jaw drop, a canvas-px translation
   `(amp[0]*sin(w), amp[1]*sin(w + pi/2))` and a rotation of `rot_deg*sin(w + pi)` degrees about the

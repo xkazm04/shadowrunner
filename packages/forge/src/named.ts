@@ -77,12 +77,14 @@ export function carrierOf(part: NamedPart, parts: readonly NamedPart[]): string 
  * shards never move in lockstep. Undefined for other roles without motion.
  */
 export function motionOf(part: NamedPart): Motion | undefined {
-  const own = part.motion ?? (part.role === "float" ? { float: DEFAULT_FLOAT } : part.role === "pulse" ? { pulse: DEFAULT_PULSE } : undefined);
+  const own: Motion | undefined = part.motion ?? (part.role === "float" ? { float: DEFAULT_FLOAT } : part.role === "pulse" ? { pulse: DEFAULT_PULSE } : undefined);
   if (own === undefined) return undefined;
   const phase = phaseFromName(part.name);
   return {
     ...(own.float === undefined ? {} : { float: { ...own.float, phase: own.float.phase ?? phase } }),
     ...(own.pulse === undefined ? {} : { pulse: { ...own.pulse, phase: own.pulse.phase ?? phase } }),
+    // An eye's own blink (cast-forge task 6) keeps its phase as given: its stagger is the point.
+    ...(own.blink === undefined ? {} : { blink: { ...own.blink } }),
   };
 }
 

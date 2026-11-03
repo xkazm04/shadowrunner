@@ -117,4 +117,11 @@ describe("named part rules", () => {
     expect(motionOf(named("x", "float", { motion: { float: { amp: [1, 1], freq: 1, phase: 0.5 } } }))?.float?.phase).toBe(0.5);
     expect(scaleMotion({ float: { amp: [2, 4], freq: 1 } }, 512, 256, 1024).float?.amp).toEqual([1, 1]);
   });
+
+  it("keeps an eye's own blink (cast-forge task 6) and refuses it on a part that is not an eye", () => {
+    expect(motionOf(named("eye_l1", "eye_l", { motion: { blink: { freq: 0.25, phase: 0.1 } } }))).toEqual({ blink: { freq: 0.25, phase: 0.1 } });
+    expect(scaleMotion({ blink: { freq: 0.25 } }, 512, 256, 1024)).toEqual({ blink: { freq: 0.25 } });
+    expect(parseParts(file(entry("face", "head"), entry("eye", "eye", { motion: { blink: { freq: 0.25 } } }))).ok).toBe(true);
+    expect(errorsOf(file(entry("face", "head"), entry("glass", "monocle", { motion: { blink: { freq: 0.25 } } }))).map((e) => e.path)).toEqual(["$.parts[1].motion.blink"]);
+  });
 });

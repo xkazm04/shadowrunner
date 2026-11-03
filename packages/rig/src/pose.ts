@@ -23,7 +23,9 @@
 //   moved by its parent's float, as a canvas-space turn about the parent's posed anchor and a move,
 //   before its own float, so a lure bulb stays on the tip of a swaying stalk. The pulse and the jaw
 //   drop stay the layer's own.
-import { motionAt } from "./motion.js";
+// - An eye layer's own `motion.blink` (cast-forge task 6) is a closure that adds to `Drive.blink`
+//   (the larger wins) and squashes only that eye; it is the layer's own, never inherited.
+import { motionAt, ownBlinkAt } from "./motion.js";
 import type { Gesture, Layer, LayerKind, Look, Rig } from "./types.js";
 
 /** Head yaw clamp, degrees (the range Overlord measured for 2.5D artefacts). */
@@ -162,7 +164,8 @@ interface Frame {
   jawPx: number;
   gesture: Peak;
   liftY: number;
-  squash: number;
+  /** `Drive.blink`, clamped: an eye's own blink (cast-forge task 6) adds to it, the larger wins. */
+  blink: number;
 }
 
 function frameOf(rig: Rig, drive: Drive): Frame {
@@ -175,7 +178,7 @@ function frameOf(rig: Rig, drive: Drive): Frame {
     jawPx: clamp(drive.jawOpen, 0, 1) * rig.height,
     gesture,
     liftY: gesture.lift * rig.height,
-    squash: 1 - BLINK_SQUASH * clamp(drive.blink, 0, 1),
+    blink: clamp(drive.blink, 0, 1),
   };
 }
 
@@ -294,7 +297,7 @@ export function poseLayers(rig: Rig, look: Look, drive: Drive): LayerPose[] {
       const [bx, by] = layer.bbox;
       const [ax, ay] = layer.anchor;
       const [px, py] = apply(sim, ax, ay);
-      const squash = layer.kind === "eye" ? frame.squash : 1;
+      const squash = layer.kind === "eye" ? 1 - BLINK_SQUASH * Math.max(frame.blink, ownBlinkAt(layer.motion, drive.t, drive.still === true)) : 1;
       return {
         name: layer.name,
         x: bx + px - ax,

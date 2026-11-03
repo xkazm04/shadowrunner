@@ -27,7 +27,7 @@ describe("motionAt", () => {
   it("float offsets are bounded by amp and rot_deg; pulse gain stays in [1, 1 + amp]", () => {
     const motion = arbCanvas.chain(([w, h]) => fc.record({ float: arbFloat(w, h), pulse: arbPulse }));
     fc.assert(
-      fc.property(motion, arbT, (m: Required<Motion>, t) => {
+      fc.property(motion, arbT, (m: Required<Pick<Motion, "float" | "pulse">>, t) => {
         const o = motionAt(m, t);
         expect(Math.abs(o.dx)).toBeLessThanOrEqual(m.float.amp[0] + EPS);
         expect(Math.abs(o.dy)).toBeLessThanOrEqual(m.float.amp[1] + EPS);

@@ -24,6 +24,10 @@ One section per decomposed character (cast-forge requirement 3.4): what broke, w
   4b. (task 3) give the jaw part a `drop` (a lips-only human jaw about 0.012-0.02; omit for a skull) and a `glow` if the mouth glows; for hard-edged pixel art set `cut: { feather: 0, cell: <px> }` and trace ground-meeting parts at least one cell out; mark small parts on a flat field `fill: "extend"`.
   4c. (task 4) a mouth drawn open (rows of teeth over a throat) takes `cavity: "fill"` and a jaw top between the rows of teeth (`corridor` in `recipes/vicar-of-the-lure.mjs`); hanging chains get explicit follows (stalk follows head, bulb follows stalk); the sheet draws rotation, so check sways at t0/t1.
   4d. (task 5) a glowing or dark part on a lit surface (neon on a dial, a clock hand) takes `matte: "plate"` and, when the edit drifts in tone, `fill: "extend"`; a part that turns on a hub names `pivot`; a mouth drawn open over a dark gap with a smooth upper lip takes `cavity: "gap"` when the edit will not paint a throat; plate parts on a glowing ground are traced onto it by the halo's width.
+  4e. (task 6) many eyes that blink one at a time take an own `motion.blink` each (one freq,
+     staggered phases); a lit 3D object (a bead, a button) is measured by its whole body, shaded half
+     included, never by its highlight; a collar or ruff that wraps the neck is a front part on the
+     torso, and the torso starts under it.
   6. add the slug to `CAST` in `packages/forge/src/cast.golden.test.ts`.
      and to `SLUGS` in `api/_tests/forge-replay.test.ts` (it pins the recorded job list), `CAST_FORGE`
      and the cast order in `apps/web/src/creator/gallery/notes.test.ts`, the hours in
@@ -184,3 +188,46 @@ One section per decomposed character (cast-forge requirement 3.4): what broke, w
 - Float is one sinusoid at most 2 Hz (design.md Motion). A bell's rattle is 10-20 Hz; at 2 Hz with
   3.5 deg the bells read as an agitated wobble, not ringing. A rattle needs a higher frequency cap or
   an event gesture ("ring"); left for the owner.
+
+## The Tallyman (low-poly 3D)
+**What broke**
+- Six eyes, one blink: `Drive.blink` is one scalar and `poseLayers` squashed every eye by it, so the
+  census-taker's eyes could not count one at a time.
+- `motionOf` (named.ts) rebuilt a part's motion from `float` and `pulse` only, so any new curve on a
+  named part would have been dropped silently before it reached the rig.
+- The beads were measured by their lit half (bone luma > 112): the shaded half is the rods' own
+  colour and stayed on the frame, so a slide split every bead and left dark arcs.
+- The turned neck slid over the stand collar's corner (the collar is in front of the neck in 3D);
+  the torso's parallax backing pushed a strip of neck up beside the collar; the collar's top rim rode
+  the head as a fleck.
+- A tight eye outline let the cut's feather blend the iris's bottom into the head's plate: a
+  chartreuse fleck under a shut eye.
+
+**What became code**
+- `Motion.blink { freq, phase? }` (rig-core amended, additive, eye layers only; `bad_shape` at
+  `$.layers[i].motion.blink` elsewhere): `ownBlinkAt` (motion.ts), a half-sine over `OWN_BLINK_S`
+  (0.15 s) once per cycle; `poseLayers` squashes the eye by `max(Drive.blink, own)`; `still` zeroes
+  it; validate and serialize carry it; `parseParts` refuses it on a part without an eye role and
+  `motionOf` keeps it (`packages/forge`); the cast golden checks it reaches the layer.
+- Seeded faults red: pose ignores the own blink; validate accepts a blink on a non-eye; the closure
+  not gated to `OWN_BLINK_S`; `motionOf` drops the blink; parse accepts a blink on a monocle.
+- Tried and reverted: cutting a lifted part behind a floating one from the filled surface. The ghost
+  arcs were the beads' unmeasured shaded half, not the cut, and the feather zone lies outside the
+  lifted region, where the plate is the portrait anyway.
+
+**What became a decomposition-prompt rule**
+- A character with many eyes gives each eye its own blink phase in the parts plan when the eyes
+  "count", "scan" or "blink in turn"; the driver's blink still shuts them together. A blink per event
+  (one per viewer) is not in the rig.
+- Ask for a fill edit that closes the eyes rather than painting skin: a squashed eye then reads as a
+  shut lid (the Tallyman's edit did this unasked with "remove the eyes").
+- Lit 3D objects are cut by their whole body including the shaded side; a string of beads is one
+  part per run of touching beads, sliding along its rod (`float` amp x only, `fill: "extend"`).
+- A collar, ruff or gorget that wraps the neck is its own front part following `torso`, and the torso
+  part starts under it, so a turned neck goes behind it.
+- An eye outline is grown past the iris by at least the cut's feather plus 3 px.
+
+**Format findings (not widened)**
+- Events: the brief's "each eye blinks once per new viewer" and "beads slide on new follows" are
+  driven by chat events; the rig carries only periodic motion (as the Redactor's slam). An engine
+  event that fires a part's motion once would carry both.

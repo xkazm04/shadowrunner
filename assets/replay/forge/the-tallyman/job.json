@@ -1,0 +1,499 @@
+{
+  "slug": "the-tallyman",
+  "name": "The Tallyman",
+  "fictional": true,
+  "source": "cast-forge offline build: Codex CLI built-in image generation (codex-cli 0.160.0) portrait (contest supporting-cast, entry A/3 style-3, 2026-11-02); named parts measured from pixels; fill Codex CLI image edit",
+  "prompt": "a spooky census guy that counts everyone in chat",
+  "promptSha256": "2e1d5d5ea8427b5c3947b455832abffe8723df03dadf4e787ee9911bef2133b2",
+  "portrait": "portrait.png",
+  "fill": "edit",
+  "timings": {
+    "cutMs": 3592
+  },
+  "steps": [
+    {
+      "status": "queued",
+      "holdMs": 1500
+    },
+    {
+      "status": "portrait",
+      "holdMs": 1500
+    },
+    {
+      "status": "segmenting",
+      "holdMs": 1500
+    },
+    {
+      "status": "cutting",
+      "holdMs": 1500
+    },
+    {
+      "status": "filling",
+      "holdMs": 1500
+    },
+    {
+      "status": "done"
+    }
+  ],
+  "warnings": [],
+  "rig": {
+    "version": 1,
+    "id": "replay-the-tallyman",
+    "name": "The Tallyman",
+    "width": 1024,
+    "height": 1024,
+    "source": "forge",
+    "fictional": true,
+    "palette": {
+      "glow": "#b4d125",
+      "eye": "#d7f642",
+      "rim": "#d7f642",
+      "mouth": "#21260a"
+    },
+    "layers": [
+      {
+        "name": "background",
+        "z": 1,
+        "kind": "static",
+        "file": "background.png",
+        "bbox": [
+          0,
+          0,
+          1024,
+          1024
+        ],
+        "anchor": [
+          512,
+          512
+        ],
+        "depth": 0
+      },
+      {
+        "name": "torso",
+        "z": 2,
+        "kind": "body",
+        "file": "torso.png",
+        "bbox": [
+          130,
+          538,
+          764,
+          481
+        ],
+        "anchor": [
+          512,
+          832
+        ],
+        "depth": 0.3
+      },
+      {
+        "name": "head",
+        "z": 3,
+        "kind": "head",
+        "file": "head.png",
+        "bbox": [
+          332,
+          1,
+          360,
+          642
+        ],
+        "anchor": [
+          512,
+          634.88
+        ],
+        "depth": 0.6
+      },
+      {
+        "name": "jaw",
+        "z": 4,
+        "kind": "jaw",
+        "file": "jaw.png",
+        "bbox": [
+          448,
+          493,
+          130,
+          22
+        ],
+        "anchor": [
+          513.024,
+          492.544
+        ],
+        "follow": "head",
+        "depth": 0.62,
+        "drop": 0.014
+      },
+      {
+        "name": "collar",
+        "z": 5,
+        "kind": "accessory",
+        "file": "collar.png",
+        "bbox": [
+          395,
+          549,
+          234,
+          104
+        ],
+        "anchor": [
+          511.9985994397759,
+          645.4761904761905
+        ],
+        "follow": "torso",
+        "depth": 0.3
+      },
+      {
+        "name": "abacus",
+        "z": 6,
+        "kind": "accessory",
+        "file": "abacus.png",
+        "bbox": [
+          288,
+          775,
+          450,
+          158
+        ],
+        "anchor": [
+          511.80678057553956,
+          858.1181654676259
+        ],
+        "follow": "torso",
+        "depth": 0.3
+      },
+      {
+        "name": "pince_nez",
+        "z": 7,
+        "kind": "accessory",
+        "file": "pince_nez.png",
+        "bbox": [
+          445,
+          320,
+          136,
+          44
+        ],
+        "anchor": [
+          512.1293664890468,
+          342.29573712255774
+        ],
+        "follow": "head",
+        "depth": 0.6,
+        "motion": {
+          "pulse": {
+            "amp": 0.5,
+            "freq": 0.25,
+            "phase": 0.6
+          }
+        }
+      },
+      {
+        "name": "eye_l3",
+        "z": 8,
+        "kind": "eye",
+        "file": "eye_l3.png",
+        "bbox": [
+          545,
+          354,
+          96,
+          48
+        ],
+        "anchor": [
+          591.7696673189824,
+          378.79197651663407
+        ],
+        "follow": "head",
+        "depth": 0.7,
+        "motion": {
+          "blink": {
+            "freq": 0.25,
+            "phase": 0.594
+          }
+        }
+      },
+      {
+        "name": "eye_r3",
+        "z": 9,
+        "kind": "eye",
+        "file": "eye_r3.png",
+        "bbox": [
+          384,
+          355,
+          96,
+          45
+        ],
+        "anchor": [
+          433.5559467918623,
+          378.6122848200313
+        ],
+        "follow": "head",
+        "depth": 0.7,
+        "motion": {
+          "blink": {
+            "freq": 0.25,
+            "phase": 0.679
+          }
+        }
+      },
+      {
+        "name": "eye_l2",
+        "z": 10,
+        "kind": "eye",
+        "file": "eye_l2.png",
+        "bbox": [
+          545,
+          289,
+          98,
+          47
+        ],
+        "anchor": [
+          593.2066766691673,
+          312.78769692423106
+        ],
+        "follow": "head",
+        "depth": 0.7,
+        "motion": {
+          "blink": {
+            "freq": 0.25,
+            "phase": 0.764
+          }
+        }
+      },
+      {
+        "name": "eye_r2",
+        "z": 11,
+        "kind": "eye",
+        "file": "eye_r2.png",
+        "bbox": [
+          381,
+          288,
+          99,
+          47
+        ],
+        "anchor": [
+          432.1100676183321,
+          312.5510894064613
+        ],
+        "follow": "head",
+        "depth": 0.7,
+        "motion": {
+          "blink": {
+            "freq": 0.25,
+            "phase": 0.849
+          }
+        }
+      },
+      {
+        "name": "eye_l1",
+        "z": 12,
+        "kind": "eye",
+        "file": "eye_l1.png",
+        "bbox": [
+          545,
+          221,
+          98,
+          46
+        ],
+        "anchor": [
+          593.3952524491334,
+          245.30406932931425
+        ],
+        "follow": "head",
+        "depth": 0.7,
+        "motion": {
+          "blink": {
+            "freq": 0.25,
+            "phase": 0.934
+          }
+        }
+      },
+      {
+        "name": "eye_r1",
+        "z": 13,
+        "kind": "eye",
+        "file": "eye_r1.png",
+        "bbox": [
+          381,
+          221,
+          99,
+          46
+        ],
+        "anchor": [
+          431.43303235515424,
+          245.36644093303235
+        ],
+        "follow": "head",
+        "depth": 0.7,
+        "motion": {
+          "blink": {
+            "freq": 0.25,
+            "phase": 0.019
+          }
+        }
+      },
+      {
+        "name": "beads_3r",
+        "z": 14,
+        "kind": "accessory",
+        "file": "beads_3r.png",
+        "bbox": [
+          544,
+          872,
+          160,
+          52
+        ],
+        "anchor": [
+          623.285842523724,
+          898.9493459861503
+        ],
+        "follow": "abacus",
+        "depth": 0.3,
+        "motion": {
+          "float": {
+            "amp": [
+              4,
+              0
+            ],
+            "freq": 0.26,
+            "phase": 0.85
+          }
+        }
+      },
+      {
+        "name": "beads_3l",
+        "z": 15,
+        "kind": "accessory",
+        "file": "beads_3l.png",
+        "bbox": [
+          323,
+          875,
+          166,
+          51
+        ],
+        "anchor": [
+          407.56057571964953,
+          901.4156445556946
+        ],
+        "follow": "abacus",
+        "depth": 0.3,
+        "motion": {
+          "float": {
+            "amp": [
+              4,
+              0
+            ],
+            "freq": 0.24,
+            "phase": 0.48
+          }
+        }
+      },
+      {
+        "name": "beads_2r",
+        "z": 16,
+        "kind": "accessory",
+        "file": "beads_2r.png",
+        "bbox": [
+          543,
+          835,
+          159,
+          51
+        ],
+        "anchor": [
+          622.0072983354673,
+          860.9568501920614
+        ],
+        "follow": "abacus",
+        "depth": 0.3,
+        "motion": {
+          "float": {
+            "amp": [
+              4,
+              0
+            ],
+            "freq": 0.22,
+            "phase": 0.11
+          }
+        }
+      },
+      {
+        "name": "beads_2l",
+        "z": 17,
+        "kind": "accessory",
+        "file": "beads_2l.png",
+        "bbox": [
+          326,
+          838,
+          163,
+          49
+        ],
+        "anchor": [
+          408.66724565756823,
+          862.9923076923077
+        ],
+        "follow": "abacus",
+        "depth": 0.3,
+        "motion": {
+          "float": {
+            "amp": [
+              4,
+              0
+            ],
+            "freq": 0.2,
+            "phase": 0.74
+          }
+        }
+      },
+      {
+        "name": "beads_1r",
+        "z": 18,
+        "kind": "accessory",
+        "file": "beads_1r.png",
+        "bbox": [
+          543,
+          797,
+          157,
+          50
+        ],
+        "anchor": [
+          620.3614442459811,
+          822.9013779025262
+        ],
+        "follow": "abacus",
+        "depth": 0.3,
+        "motion": {
+          "float": {
+            "amp": [
+              4,
+              0
+            ],
+            "freq": 0.18,
+            "phase": 0.37
+          }
+        }
+      },
+      {
+        "name": "beads_1l",
+        "z": 19,
+        "kind": "accessory",
+        "file": "beads_1l.png",
+        "bbox": [
+          328,
+          800,
+          162,
+          48
+        ],
+        "anchor": [
+          410.1888050314465,
+          824.334716981132
+        ],
+        "follow": "abacus",
+        "depth": 0.3,
+        "motion": {
+          "float": {
+            "amp": [
+              4,
+              0
+            ],
+            "freq": 0.16,
+            "phase": 0
+          }
+        }
+      }
+    ]
+  }
+}

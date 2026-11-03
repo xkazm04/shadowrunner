@@ -8,7 +8,7 @@ import { castOf, loadCast, loadGallery, memberFor } from "./entries";
 import { noteFor, parsePresetNotes, presetNotes, type PresetNote } from "./notes";
 
 /** Cast-forge members recorded so far (cast-forge task 2); their notes come from brief.json in task 12, not PROMPTS.md. */
-const CAST_FORGE = ["saint-cardia", "the-redactor", "vicar-of-the-lure", "reveille"];
+const CAST_FORGE = ["saint-cardia", "the-redactor", "vicar-of-the-lure", "reveille", "the-tallyman"];
 
 describe("the committed preset notes", () => {
   it("lists five presets, each with what it teaches, a persona hook, an accent and its prompt", () => {
@@ -52,7 +52,7 @@ describe("the cast", () => {
     const jobs = await loadReplayJobs();
     expect(gallery).toHaveLength(jobs.length + 1);
     const cast = await loadCast();
-    expect(cast.map((m) => m.slug)).toEqual(["malakor", "announcer-of-dead-air", "lantern-warden", "moth-widow", "the-redactor", "reveille", "saint-cardia", "sister-vesper", "understudy", "vicar-of-the-lure"]);
+    expect(cast.map((m) => m.slug)).toEqual(["malakor", "announcer-of-dead-air", "lantern-warden", "moth-widow", "the-redactor", "reveille", "saint-cardia", "sister-vesper", "the-tallyman", "understudy", "vicar-of-the-lure"]);
     expect(cast[0]).toMatchObject({ id: "malakor", origin: "hand-rigged", showsOff: "crown shards, monocle" });
     for (const m of cast.slice(1)) {
       expect(m.id).toBe(`replay-${m.slug}`);

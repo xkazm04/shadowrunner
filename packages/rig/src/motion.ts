@@ -2,6 +2,7 @@
 // With `w = 2*pi*(freq*t + phase)`, float gives a canvas-px translation
 // `(amp[0]*sin(w), amp[1]*sin(w + pi/2))` and a rotation `rot_deg*sin(w + pi)` degrees, and pulse a
 // light gain `1 + amp*(0.5 + 0.5*sin(w))`. `still` (reduced motion) gives no motion at all.
+// An eye's own blink (cast-forge task 6) is `ownBlinkAt`: a closure, kept apart from the offset.
 import type { Motion } from "./types.js";
 
 export interface MotionOffset {
@@ -47,4 +48,20 @@ export function phaseFromName(name: string): number {
     hash = Math.imul(hash, 0x01000193) >>> 0;
   }
   return Math.floor((hash / 2 ** 32) * 1000) / 1000;
+}
+
+/** Length of an eye's own blink (cast-forge task 6), seconds: the middle of the driver's 0.12-0.18. */
+export const OWN_BLINK_S = 0.15;
+
+/**
+ * The closure (0 open .. 1 shut) of the layer's own blink at `t`: a half-sine over OWN_BLINK_S from
+ * each cycle's start (`frac(freq*t + phase) = 0`), 0 for the rest of the cycle; 0 when absent, still
+ * or `t` is not finite.
+ */
+export function ownBlinkAt(motion: Motion | undefined, t: number, still = false): number {
+  const blink = motion?.blink;
+  if (blink === undefined || still || !Number.isFinite(t)) return 0;
+  const cycle = blink.freq * t + (blink.phase ?? 0);
+  const since = (cycle - Math.floor(cycle)) / blink.freq;
+  return since < OWN_BLINK_S ? Math.sin((Math.PI * since) / OWN_BLINK_S) : 0;
 }

@@ -1,6 +1,6 @@
 // cast-forge golden (design.md "Testing strategy"): each committed cast rig loads, poses at t = 0 and
 // t = 1.7 s and passes validateRig; every named part of its parts.json is its own layer; its float
-// and pulse layers move. Built by scripts/cast-forge.mjs; no network.
+// and pulse layers move; an eye's own blink reaches its layer. Built by scripts/cast-forge.mjs; no network.
 import { motionAt, poseLayers, validateRig } from "@sr/rig";
 import { describe, expect, it } from "vitest";
 import cardiaJob from "../../../assets/replay/forge/saint-cardia/job.json";
@@ -9,6 +9,8 @@ import redactorJob from "../../../assets/replay/forge/the-redactor/job.json";
 import redactorParts from "../../../assets/characters/cast/the-redactor/parts.json";
 import reveilleJob from "../../../assets/replay/forge/reveille/job.json";
 import reveilleParts from "../../../assets/characters/cast/reveille/parts.json";
+import tallymanJob from "../../../assets/replay/forge/the-tallyman/job.json";
+import tallymanParts from "../../../assets/characters/cast/the-tallyman/parts.json";
 import vicarJob from "../../../assets/replay/forge/vicar-of-the-lure/job.json";
 import vicarParts from "../../../assets/characters/cast/vicar-of-the-lure/parts.json";
 import { parseParts } from "./parts.js";
@@ -17,6 +19,7 @@ const CAST = [
   { slug: "saint-cardia", job: cardiaJob as unknown, parts: cardiaParts as unknown },
   { slug: "the-redactor", job: redactorJob as unknown, parts: redactorParts as unknown },
   { slug: "reveille", job: reveilleJob as unknown, parts: reveilleParts as unknown },
+  { slug: "the-tallyman", job: tallymanJob as unknown, parts: tallymanParts as unknown },
   { slug: "vicar-of-the-lure", job: vicarJob as unknown, parts: vicarParts as unknown },
 ];
 
@@ -40,6 +43,8 @@ describe.each(CAST)("cast rig $slug", ({ job, parts }) => {
     const [a, b] = [at(0), at(1.7)];
     expect(a).toHaveLength(rig.value.layers.length);
     for (const part of parsed.value.named ?? []) {
+      // An eye's own blink (cast-forge task 6) reaches its layer as given.
+      if (part.motion?.blink !== undefined) expect(rig.value.layers.find((l) => l.name === part.name)?.motion?.blink).toEqual(part.motion.blink);
       if (part.role !== "float" && part.role !== "pulse") continue;
       const layer = rig.value.layers.find((l) => l.name === part.name);
       expect(layer?.motion).toBeDefined();

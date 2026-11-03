@@ -36,10 +36,12 @@ export interface Layer {
 // Amended by cast-forge (design.md "Motion"); additive, the rig stays version 1. Ranges, checked by
 // validateRig as bad_shape at $.layers[i].motion.<field>, every error reported: amp x in
 // [0, 0.05*width], y in [0, 0.05*height] px; freq in [0.02, 2] Hz; rot_deg in [0, 15]; phase in [0, 1);
-// pulse amp in [0, 1].
+// pulse amp in [0, 1]. Blink (cast-forge task 6): eye layers only (else bad_shape at
+// $.layers[i].motion.blink), freq in [0.02, 2] Hz, phase in [0, 1).
 export interface FloatMotion { amp: [x: number, y: number]; freq: number; rot_deg?: number; phase?: number }
 export interface PulseMotion { amp: number; freq: number; phase?: number }
-export interface Motion { float?: FloatMotion; pulse?: PulseMotion }
+export interface BlinkMotion { freq: number; phase?: number }
+export interface Motion { float?: FloatMotion; pulse?: PulseMotion; blink?: BlinkMotion }
 export interface Rig {
   version: typeof RIG_VERSION;
   id: string;                 // slug
@@ -82,12 +84,13 @@ rotation and scale about the parent's anchor, but their parallax comes from thei
 layer's own, 0.06 when omitted; amended by cast-forge task 3), applied after the parent transform and
 capped at `drop * height` canvas px; it is not inherited by
 the jaw's followers. Blink in [0,1] scales
-`eye` layers' y-scale by `1 - 0.9 * blink`. Gestures add a short additive offset curve over
+`eye` layers' y-scale by `1 - 0.9 * blink`; an eye layer's own `motion.blink` (amended by cast-forge
+task 6) is a closure of its own that adds to it, the larger winning. Gestures add a short additive offset curve over
 `t` (nod: pitch +6° sine 400 ms; tilt: rotation 5°; lean_in: scale 1.04; recoil: scale .96 and
 dy -1%; glare: eye tint gain 1.6; flare: glow gain 2.0). Layer motion (amended by cast-forge, its design.md "Motion")
 comes last: float about the layer's own anchor after the follow transform, carried rigidly to its
 followers (cast-forge task 4); pulse
-multiplies the tint; `Drive.still` (reduced motion) zeroes both.
+multiplies the tint; `Drive.still` (reduced motion) zeroes both, and an eye's own blink.
 
 ## Emotion table
 | emotion | eyeGain | brow | default gesture |

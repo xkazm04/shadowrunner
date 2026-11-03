@@ -222,6 +222,8 @@ function namedPart(value: unknown, path: string, errors: PartsError[]): NamedPar
   for (const problem of motion.problems) {
     errors.push({ code: "upstream", path: problem.path, message: "is out of range or the wrong shape (cast-forge design.md Motion)" });
   }
+  const eyeRole = role === "eye" || role === "eye_l" || role === "eye_r";
+  if (motion.motion?.blink !== undefined && !eyeRole) errors.push({ code: "upstream", path: `${path}.motion.blink`, message: "is only for a part with an eye role" });
   if (errors.length > before || !nameOk || !isRole(role) || box2d === undefined || points === undefined) return undefined;
   return {
     name,

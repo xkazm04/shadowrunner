@@ -5,7 +5,8 @@
 // The returned Rig is a fresh object holding only contract fields.
 // Layer.motion (cast-forge req 1.2) is read by validateMotion.ts; its shape and range faults are
 // `bad_shape` at `$.layers[i].motion.<field>`, every one reported. Layer.drop (cast-forge task 3)
-// is `bad_shape` at `$.layers[i].drop` when out of [JAW_DROP_MIN, JAW_DROP_MAX] or not on a jaw.
+// is `bad_shape` at `$.layers[i].drop` when out of [JAW_DROP_MIN, JAW_DROP_MAX] or not on a jaw;
+// Motion.blink (cast-forge task 6) is `bad_shape` at `$.layers[i].motion.blink` on a non-eye layer.
 import { JAW_DROP_MAX, JAW_DROP_MIN } from "./pose.js";
 import type { Result } from "./result.js";
 import { RIG_VERSION, type Layer, type LayerKind, type Palette, type Rig } from "./types.js";
@@ -157,6 +158,7 @@ class Reader {
     const read = readMotion(value.motion, `${path}.motion`, canvas);
     for (const problem of read.problems) this.fail(problem.path, problem.message.slice(problem.path.length + 2), named);
     const motion = read.motion;
+    if (motion?.blink !== undefined && kind !== undefined && kind !== "eye") this.fail(`${path}.motion.blink`, `only an eye layer blinks, this one is ${kind}`, named);
     if (this.errors.length > before) return undefined;
     if (name === undefined || z === undefined || kind === undefined || file === undefined) return undefined;
     if (x === undefined || y === undefined || w === undefined || h === undefined) return undefined;

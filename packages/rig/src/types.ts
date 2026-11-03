@@ -2,7 +2,7 @@
 // This file is the ONLY declaration of these types; docs/rig-format.md describes the same contract.
 // Optional fields are omitted when absent, never null.
 // Layer.motion (FloatMotion, PulseMotion) is amended by cast-forge (req 1) and Layer.drop by
-// cast-forge task 3; Rig stays version 1.
+// cast-forge task 3, Motion.blink by cast-forge task 6; Rig stays version 1.
 
 export const RIG_VERSION = 1 as const;
 
@@ -70,9 +70,24 @@ export interface PulseMotion {
   phase?: number;
 }
 
+/**
+ * A periodic blink of the layer's own (cast-forge task 6), `eye` layers only: once per cycle, from
+ * the cycle's start `frac(freq*t + phase) = 0`, the eye shuts over OWN_BLINK_S seconds (a half-sine
+ * of closure, as the driver's blink). It adds to `Drive.blink` (the larger closure wins). Sibling
+ * eyes given staggered phases blink one at a time: a many-eyed character counting.
+ */
+export interface BlinkMotion {
+  /** Hz, in [0.02, 2]. */
+  freq: number;
+  /** Cycles, in [0, 1); omitted means 0. */
+  phase?: number;
+}
+
 export interface Motion {
   float?: FloatMotion;
   pulse?: PulseMotion;
+  /** Eye layers only (cast-forge task 6). */
+  blink?: BlinkMotion;
 }
 
 export interface Rig {
