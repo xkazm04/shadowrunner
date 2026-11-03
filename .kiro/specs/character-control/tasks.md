@@ -49,7 +49,7 @@
     stored record with its look and falls back to Malakor; reduced-motion twins.
   - _Requirements: 2.4, 3.2, 5.4, 6.1-6.2_
 
-- [ ] 5. Retrofit and verdict (director, offline)
+- [x] 5. Retrofit and verdict (director, offline)
   - Regions for the fourteen; 6 Codex expression edits per character; the owner's verdict page (7
     faces each in the real renderer); one re-edit per "redo"; commit; provenance; kiro-log rows.
   - _Requirements: 5.3, 7.2, 7.3_

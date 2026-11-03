@@ -53,3 +53,12 @@ From it we reuse **assets and ideas only**:
 | Replay forge jobs `assets/replay/forge/<slug>/` (`job.json`, `portrait.png`, layer PNGs) for the eight cast-forge characters (`saint-cardia`, `the-redactor`, `vicar-of-the-lure`, `reveille`, `the-tallyman`, `sir-vacant`, `lot-ninety`, `auntie-asp`): built offline by `scripts/cast-forge.mjs` from each character's portrait, `parts.json` (named parts measured from the portrait's pixels) and fill edit above (`fill: "edit"`), no paid call; `fictional: true`. No new art beyond the portraits and fills: every layer is cut from them. Cast-forge task 12 rebuilt `reveille/job.json` after its teeth part gained `follow: "jaw"` (the brief contract's teeth-or-lip set); every layer PNG is byte-identical and every pose equal. | Claude Code (Opus 5.5), the repo's forge pipeline | 2026-11-03 |
 
 Designed and generated art is stylised and labelled as such in the UI; no real person is depicted.
+- **Expression faces (character-control, 2026-11-03).** 84 image edits, six expression families
+  (joy, showman, anger, gloom, smug, suspicion) for each of the fourteen recorded characters, made
+  with the Codex CLI's built-in image generation from each character's committed portrait
+  (`scripts/cast/expressions.mjs --request`; prompts are `expressionPrompt` in
+  `packages/forge/src/expressions.ts`). Only pixels inside each face mask were cut into patches
+  (`cutVariants`), stored as WebP beside the layers (`<layer>.<family>.webp`; Malakor's in
+  `assets/characters/malakor/rig/expressions/`). All 84 kept by the owner's verdict, including the
+  19 whose drift exceeded the 20/255 flag. Colour region maps (`<layer>.regions.png`) are computed
+  from the committed layers with no model call.

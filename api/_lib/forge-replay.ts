@@ -37,7 +37,7 @@ const SLUG = /^[a-z0-9-]{1,48}$/;
 /** A file in the job's own folder: no path, no scheme. */
 const FILE = /^[a-z0-9_-]{1,48}\.(png|jpg)$/;
 /** A layer's region map or expression patch (character-control): `<layer>.regions.png`, `<layer>.<family>.png`. */
-const EXTRA_FILE = /^[a-z0-9_]{1,48}\.(regions|joy|showman|anger|gloom|smug|suspicion)\.png$/;
+const EXTRA_FILE = /^[a-z0-9_]{1,48}\.(?:regions\.png|(?:joy|showman|anger|gloom|smug|suspicion)\.(?:png|webp))$/;
 
 /**
  * Every file the rig names (layer files, region maps, variant patches) -> its static URL under

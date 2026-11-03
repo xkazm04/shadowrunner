@@ -1,0 +1,250 @@
+{
+  "head": {
+    "smug": {
+      "file": "expressions/head.smug.webp",
+      "bbox": [
+        317,
+        213,
+        389,
+        364
+      ],
+      "mode": "over"
+    },
+    "joy": {
+      "file": "expressions/head.joy.webp",
+      "bbox": [
+        317,
+        213,
+        389,
+        364
+      ],
+      "mode": "over"
+    },
+    "showman": {
+      "file": "expressions/head.showman.webp",
+      "bbox": [
+        317,
+        213,
+        389,
+        364
+      ],
+      "mode": "over"
+    },
+    "anger": {
+      "file": "expressions/head.anger.webp",
+      "bbox": [
+        317,
+        213,
+        389,
+        364
+      ],
+      "mode": "over"
+    },
+    "gloom": {
+      "file": "expressions/head.gloom.webp",
+      "bbox": [
+        317,
+        213,
+        389,
+        364
+      ],
+      "mode": "over"
+    },
+    "suspicion": {
+      "file": "expressions/head.suspicion.webp",
+      "bbox": [
+        317,
+        213,
+        389,
+        364
+      ],
+      "mode": "over"
+    }
+  },
+  "jaw": {
+    "smug": {
+      "file": "expressions/jaw.smug.webp",
+      "bbox": [
+        370,
+        511,
+        283,
+        118
+      ],
+      "mode": "replace"
+    },
+    "joy": {
+      "file": "expressions/jaw.joy.webp",
+      "bbox": [
+        370,
+        511,
+        283,
+        118
+      ],
+      "mode": "replace"
+    },
+    "showman": {
+      "file": "expressions/jaw.showman.webp",
+      "bbox": [
+        370,
+        511,
+        283,
+        118
+      ],
+      "mode": "replace"
+    },
+    "anger": {
+      "file": "expressions/jaw.anger.webp",
+      "bbox": [
+        370,
+        511,
+        283,
+        118
+      ],
+      "mode": "replace"
+    },
+    "gloom": {
+      "file": "expressions/jaw.gloom.webp",
+      "bbox": [
+        370,
+        511,
+        283,
+        118
+      ],
+      "mode": "replace"
+    },
+    "suspicion": {
+      "file": "expressions/jaw.suspicion.webp",
+      "bbox": [
+        370,
+        511,
+        283,
+        118
+      ],
+      "mode": "replace"
+    }
+  },
+  "eye_l": {
+    "smug": {
+      "file": "expressions/eye_l.smug.webp",
+      "bbox": [
+        324,
+        263,
+        196,
+        170
+      ],
+      "mode": "replace"
+    },
+    "joy": {
+      "file": "expressions/eye_l.joy.webp",
+      "bbox": [
+        324,
+        263,
+        196,
+        170
+      ],
+      "mode": "replace"
+    },
+    "showman": {
+      "file": "expressions/eye_l.showman.webp",
+      "bbox": [
+        324,
+        263,
+        196,
+        170
+      ],
+      "mode": "replace"
+    },
+    "anger": {
+      "file": "expressions/eye_l.anger.webp",
+      "bbox": [
+        324,
+        263,
+        196,
+        170
+      ],
+      "mode": "replace"
+    },
+    "gloom": {
+      "file": "expressions/eye_l.gloom.webp",
+      "bbox": [
+        324,
+        263,
+        196,
+        170
+      ],
+      "mode": "replace"
+    },
+    "suspicion": {
+      "file": "expressions/eye_l.suspicion.webp",
+      "bbox": [
+        324,
+        263,
+        196,
+        170
+      ],
+      "mode": "replace"
+    }
+  },
+  "eye_r": {
+    "smug": {
+      "file": "expressions/eye_r.smug.webp",
+      "bbox": [
+        534,
+        268,
+        181,
+        167
+      ],
+      "mode": "replace"
+    },
+    "joy": {
+      "file": "expressions/eye_r.joy.webp",
+      "bbox": [
+        534,
+        268,
+        181,
+        167
+      ],
+      "mode": "replace"
+    },
+    "showman": {
+      "file": "expressions/eye_r.showman.webp",
+      "bbox": [
+        534,
+        268,
+        181,
+        167
+      ],
+      "mode": "replace"
+    },
+    "anger": {
+      "file": "expressions/eye_r.anger.webp",
+      "bbox": [
+        534,
+        268,
+        181,
+        167
+      ],
+      "mode": "replace"
+    },
+    "gloom": {
+      "file": "expressions/eye_r.gloom.webp",
+      "bbox": [
+        534,
+        268,
+        181,
+        167
+      ],
+      "mode": "replace"
+    },
+    "suspicion": {
+      "file": "expressions/eye_r.suspicion.webp",
+      "bbox": [
+        534,
+        268,
+        181,
+        167
+      ],
+      "mode": "replace"
+    }
+  }
+}

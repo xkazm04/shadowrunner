@@ -193,8 +193,10 @@ describe("offline proof: the product path is the overnight path", () => {
     const { deps, store } = setup(brief, [PARTS_TEXT]);
     const { view } = await forge(deps, brief);
     const replay = JSON.parse(read(`assets/replay/forge/${SLUG}/job.json`).toString("utf8")) as { rig: Rig };
-    // The live job adds colour regions after assembly (character-control); the cut itself is the recorded one.
-    const strip = (rig: Rig | undefined) => (rig === undefined ? undefined : { ...rig, id: "", layers: rig.layers.map((layer) => Object.fromEntries(Object.entries(layer).filter(([key]) => key !== "regions"))) });
+    // The live job adds colour regions after assembly, and the recorded rig carries the offline
+    // retrofit's expression faces (character-control task 5, from Codex edits this fake does not
+    // make); the cut itself is the recorded one.
+    const strip = (rig: Rig | undefined) => (rig === undefined ? undefined : { ...rig, id: "", layers: rig.layers.map((layer) => Object.fromEntries(Object.entries(layer).filter(([key]) => key !== "regions" && key !== "variants"))) });
     expect(strip(view.rig)).toEqual(strip(replay.rig));
     for (const layer of replay.rig.layers) {
       const url = view.assets?.[layer.file];

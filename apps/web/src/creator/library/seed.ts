@@ -25,7 +25,7 @@ const PNG_URLS = import.meta.glob<string>(["../../../../../assets/characters/mal
 });
 
 /** His expression patches (character-control retrofit), when committed: `rig/expressions/*.png`. */
-const FACE_URLS = import.meta.glob<string>("../../../../../assets/characters/malakor/rig/expressions/*.png", {
+const FACE_URLS = import.meta.glob<string>("../../../../../assets/characters/malakor/rig/expressions/*.{png,webp}", {
   eager: true,
   query: "?url",
   import: "default",
