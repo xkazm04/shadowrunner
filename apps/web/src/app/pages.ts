@@ -17,6 +17,8 @@ export interface PageDef {
   /** Channel on the set's dial. Pages without one (air, forge-new) are not on the dial. */
   channel?: number;
   subtitle?: string;
+  /** The frame's bar keeps the breadcrumb for screen readers only; the room goes to the page. */
+  bareBar?: true;
 }
 
 export const PAGES: readonly PageDef[] = [
@@ -29,6 +31,7 @@ export const PAGES: readonly PageDef[] = [
     status: "live",
     channel: 3,
     subtitle: "behind the back panel",
+    bareBar: true,
   },
   // costume design.md "Route": the new-character rite, off the dial like the stage.
   { id: "forge-new", title: "Forge new", path: "/creator/new", subtitle: "a new character", hotkey: "N", status: "live" },
@@ -40,6 +43,7 @@ export const PAGES: readonly PageDef[] = [
     status: "live",
     channel: 4,
     subtitle: "tonight's listings",
+    bareBar: true,
   },
   { id: "daemon", title: "Daemon", path: "/daemon", hotkey: "6", status: "live", channel: 6, subtitle: "the carrier" },
   {

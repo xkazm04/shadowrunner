@@ -1,0 +1,23 @@
+/* The cast strip in the frame's bar (CreatorPage, on a bare bar): it fills the slot, and the
+   Forge's "+ Forge new" (an anchor, styled in Anatomy.module.css) shrinks to the bar's stills and
+   takes two of their columns. */
+.castBar {
+  display: flex;
+  flex: 1 1 0;
+  min-inline-size: 0;
+}
+
+.castBar a {
+  block-size: 2.75rem;
+  padding: 0;
+  letter-spacing: 0;
+  line-height: 1;
+}
+
+.castBar a kbd {
+  display: none;
+}
+
+.castBar li:last-child {
+  grid-column: span 2;
+}

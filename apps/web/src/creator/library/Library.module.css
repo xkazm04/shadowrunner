@@ -230,3 +230,105 @@
   outline: 0.1875rem solid var(--sr-accent);
   outline-offset: 0.125rem;
 }
+
+/* A gallery character not kept yet: a dim still with a "+" key; a press adopts it. */
+.offer .thumb {
+  filter: brightness(0.5) saturate(0.6);
+}
+
+.offer:hover .thumb,
+.offer:focus-visible .thumb {
+  filter: none;
+}
+
+.plus {
+  grid-area: 1 / 1;
+  place-self: start end;
+  z-index: 1;
+  min-inline-size: 1.125rem;
+  margin: var(--sr-space-1);
+  border-radius: var(--sr-radius-pill);
+  background-color: var(--sr-surface-0);
+  color: var(--sr-accent);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+  font-weight: 700;
+  line-height: 1.125rem;
+  text-align: center;
+}
+
+/* The bar variant: one row of small stills in the frame's bar, no reel and no heading; names show
+   on hover (title) and are read from the label. Delete and its confirm drop below the still. */
+.bar {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  gap: var(--sr-space-2);
+  padding: 0;
+  border: 0;
+  background-image: none;
+}
+
+.bar .head {
+  display: contents;
+}
+
+.bar .title {
+  position: absolute;
+  inline-size: 0.0625rem;
+  block-size: 0.0625rem;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.bar .galleryButton {
+  flex: none;
+  order: 1;
+  min-block-size: 2.75rem;
+  padding: 0 var(--sr-space-2);
+}
+
+.bar .list {
+  flex: 1 1 0;
+  min-inline-size: 0;
+  grid-auto-columns: 2.75rem;
+  gap: var(--sr-space-1);
+  padding-block: var(--sr-space-1);
+  scrollbar-width: thin;
+}
+
+.bar .card {
+  block-size: 2.75rem;
+}
+
+.bar .thumb {
+  object-position: 50% 30%;
+}
+
+.bar .name {
+  display: none;
+}
+
+.bar .remove {
+  display: none;
+  inset-block-start: 0;
+  inset-inline-end: 0;
+  min-inline-size: 1.25rem;
+  min-block-size: 1.25rem;
+  padding: 0;
+  font-size: var(--sr-size-text-sm);
+}
+
+.bar .item:hover .remove,
+.bar .remove:focus-visible {
+  display: block;
+}
+
+.bar .confirm,
+.bar .house {
+  position: fixed;
+  inset: auto;
+  z-index: 3;
+  margin-block-start: var(--sr-space-6);
+  border: thin solid var(--sr-line);
+}

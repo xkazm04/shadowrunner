@@ -49,6 +49,28 @@
   font-weight: 600;
 }
 
+/* A bare bar (PageDef.bareBar): the breadcrumb is read, not shown, and the page's strip fills
+   the room between the channel strip and the badge. */
+.srOnly {
+  position: absolute;
+  inline-size: 0.0625rem;
+  block-size: 0.0625rem;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.slot {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+.slot:empty {
+  display: none;
+}
+
 .end {
   display: flex;
   align-items: center;

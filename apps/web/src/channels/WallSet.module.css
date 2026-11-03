@@ -16,9 +16,9 @@
   display: flex;
   flex-direction: column;
   min-block-size: 0;
-  border: 0;
-  padding: var(--sr-space-3) var(--sr-space-3) var(--sr-space-2);
-  border-radius: var(--sr-wall-radius-set);
+  border: medium solid transparent;
+  padding: 0;
+  border-radius: var(--sr-radius-1);
   background-image:
     linear-gradient(
       180deg,
@@ -65,13 +65,17 @@
   outline-offset: 0.1875rem;
 }
 
+/* A super thin frame: the cabinet is a 3px rim and the bezel a hairline, so the tube is the set.
+   Square, as every still is, so a face is cropped by nothing and stretched by nothing. */
 .bezel {
   position: relative;
   display: block;
-  flex: 1 1 auto;
+  flex: none;
+  aspect-ratio: 1;
   min-block-size: 0;
-  padding: var(--sr-space-2);
-  border-radius: var(--sr-wall-radius-bezel);
+  border: thin solid transparent;
+  padding: 0;
+  border-radius: var(--sr-radius-1);
   background-color: var(--sr-wall-bezel);
   box-shadow: var(--sr-wall-shadow-bezel);
 }
@@ -82,7 +86,7 @@
   inline-size: 100%;
   block-size: 100%;
   overflow: hidden;
-  border-radius: var(--sr-wall-radius-tube);
+  border-radius: var(--sr-radius-1);
   background-color: var(--sr-wall-tube);
   box-shadow: var(--sr-wall-shadow-tube);
   transition: filter 0.6s ease;
@@ -114,13 +118,12 @@
   inset: 0;
   inline-size: 100%;
   block-size: 100%;
-  object-fit: cover;
-  object-position: 50% 22%;
+  object-fit: contain;
 }
 
 /* A later hour on standby: dim and grey until looked at or chosen. */
 .cast .face {
-  filter: brightness(0.46) saturate(0.45) contrast(1.1);
+  filter: brightness(0.82) saturate(0.85);
   transition: filter 0.7s ease;
 }
 
@@ -209,7 +212,7 @@
   align-items: baseline;
   justify-content: space-between;
   gap: var(--sr-space-2);
-  padding: var(--sr-space-2) var(--sr-space-1) 0;
+  padding: var(--sr-space-1) var(--sr-space-1) 0;
 }
 
 .who {
@@ -279,17 +282,12 @@
 .big {
   grid-column: 2 / span 2;
   grid-row: 1 / span 2;
-  padding: var(--sr-space-4) var(--sr-space-4) var(--sr-space-3);
-  border-radius: var(--sr-wall-radius-set-big);
 }
 
+/* The big set fills its two rows; its tube is whatever is left above the plate. */
 .big .bezel {
-  padding: var(--sr-space-3);
-  border-radius: var(--sr-wall-radius-bezel-big);
-}
-
-.big .tube {
-  border-radius: var(--sr-wall-radius-tube-big);
+  flex: 1 1 0;
+  aspect-ratio: auto;
 }
 
 .big .hour {
@@ -310,6 +308,11 @@
   grid-column: span 2;
 }
 
+.sealed .bezel {
+  flex: 1 1 0;
+  aspect-ratio: auto;
+}
+
 .sealed .tube {
   background-color: var(--sr-wall-bezel);
 }
@@ -321,9 +324,9 @@
     grid-row: auto;
   }
 
-  .bezel {
+  .big .bezel {
     flex: none;
-    aspect-ratio: 4 / 3;
+    aspect-ratio: 1;
   }
 }
 
