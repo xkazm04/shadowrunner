@@ -50,6 +50,49 @@ export interface Layer {
    * white glove, a silver crown, a painted iris), `true` on a lit part of another kind.
    */
   emissive?: boolean;
+  /**
+   * Expression faces (character-control): per family, a patch drawn over (`over`) or instead of
+   * (`replace`) the layer's pixels while that family is on. Omitted when the layer has none.
+   */
+  variants?: Partial<Record<ExpressionFamily, LayerPatch>>;
+  /** Colour regions (character-control): an index map and 1..4 recolourable slots. */
+  regions?: LayerRegions;
+}
+
+/** The six expression families the ten emotions share (character-control design "Moods"). */
+export type ExpressionFamily = "joy" | "showman" | "anger" | "gloom" | "smug" | "suspicion";
+
+/** One face of a layer: a PNG (rig-relative name or data: URL) placed at `bbox`, canvas px. */
+export interface LayerPatch {
+  file: string;
+  bbox: [x: number, y: number, w: number, h: number];
+  mode: "over" | "replace";
+}
+
+/** One recolourable region of a layer: id [a-z0-9_]+ ("cavity" on a jaw), a name, its painted colour. */
+export interface RegionSlot {
+  id: string;
+  name: string;
+  /** "#rrggbb", the region's median colour as painted. */
+  hex: string;
+}
+
+/** `map`: a PNG the size of the layer image, R = slot index + 1 (0 = no region). */
+export interface LayerRegions {
+  map: string;
+  slots: RegionSlot[];
+}
+
+/** A part's reshape (character-control design "Reshape"); ranges in `SHAPE_LIMITS`. */
+export interface PartShape {
+  size: number;
+  sx: number;
+  sy: number;
+  /** Fractions of the rig's width. */
+  dx: number;
+  dy: number;
+  /** Degrees. */
+  rot: number;
 }
 
 /**
@@ -130,4 +173,8 @@ export interface Look {
   hidden: string[];
   emotion: Emotion;
   gesture?: Gesture;
+  /** Region colours, keyed `${layer}/${slotId}` -> "#rrggbb". Omitted keys draw as painted. */
+  regions?: Record<string, string>;
+  /** Part reshapes, keyed by layer name. Omitted layers keep their shape. */
+  shape?: Record<string, PartShape>;
 }

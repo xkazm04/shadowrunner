@@ -2,15 +2,15 @@
 // The import below is the exact one the creator uses (creator/design.md "Contracts"), so this file
 // failing `pnpm typecheck` means the creator cannot compile. `@ts-expect-error` lines prove the
 // unions are closed: if a type widens, the directive becomes unused and typecheck fails.
-import type { Rig } from "@sr/rig";
+import type { ExpressionFamily, Rig } from "@sr/rig";
 import { describe, expectTypeOf, it } from "vitest";
 import type { BriefResponse, CharacterBrief, ForgeErrorCode, ForgeRequest, ForgeStatus, JobView } from "@sr/forge/wire";
 import type * as root from "@sr/forge";
 
 describe("@sr/forge/wire", () => {
-  it("ForgeStatus is exactly the seven design.md statuses, including filling", () => {
+  it("ForgeStatus is exactly the design.md statuses, including filling and expressing", () => {
     expectTypeOf<ForgeStatus>().toEqualTypeOf<
-      "queued" | "portrait" | "segmenting" | "cutting" | "filling" | "done" | "failed"
+      "queued" | "portrait" | "segmenting" | "cutting" | "filling" | "expressing" | "done" | "failed"
     >();
   });
 
@@ -46,6 +46,7 @@ describe("@sr/forge/wire", () => {
       assets?: Record<string, string>;
       fill?: "edit" | "fallback";
       decomposition?: "named" | "fallback";
+      expressions?: Partial<Record<ExpressionFamily, "ok" | "skipped" | "failed">>;
       error?: { code: ForgeErrorCode; message: string };
     }>();
     const queued: JobView = { jobId: "j1", status: "queued", plane: "replay" };

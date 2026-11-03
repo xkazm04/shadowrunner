@@ -17,6 +17,7 @@ export const STEP_VERB: Readonly<Record<RunStep, string>> = {
   segmenting: "Finding the parts",
   cutting: "Cutting the layers",
   filling: "Filling behind the cuts",
+  expressing: "Drawing the expressions",
   done: "Rigged and alive",
 };
 

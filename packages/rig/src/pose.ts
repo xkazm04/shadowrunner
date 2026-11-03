@@ -29,7 +29,7 @@
 // - An eye layer's own `motion.blink` (cast-forge task 6) is a closure that adds to `Drive.blink`
 //   (the larger wins) and squashes only that eye; it is the layer's own, never inherited.
 import { motionAt, ownBlinkAt } from "./motion.js";
-import type { Gesture, Layer, LayerKind, Look, Rig } from "./types.js";
+import type { Emotion, ExpressionFamily, Gesture, Layer, LayerKind, Look, Rig } from "./types.js";
 
 /** Head yaw clamp, degrees (the range Overlord measured for 2.5D artefacts). */
 export const YAW_LIMIT_DEG = 22;
@@ -80,6 +80,11 @@ export interface Drive {
   gesture?: GestureCue;
   /** Reduced motion: layer float and pulse are zero (cast-forge req 1.3). Omitted means false. */
   still?: boolean;
+  /**
+   * An emotion change in progress (character-control design "Moods"): every mood value is
+   * `lerp(from, look.emotion, smoothstep(mix))`. Omitted means mix 1 (the look's emotion, settled).
+   */
+  mood?: { from: Emotion; mix: number };
 }
 
 export interface LayerPose {
@@ -95,6 +100,8 @@ export interface LayerPose {
   opacity: number;
   /** Light gain multiplied into the layer colour; 1 = as drawn. */
   tint: number;
+  /** Expression faces to draw with their weights (character-control); omitted = the base only. */
+  faces?: { family: ExpressionFamily; weight: number }[];
 }
 
 /** Design.md gesture peaks, as offsets from rest. */

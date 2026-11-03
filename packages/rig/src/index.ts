@@ -8,3 +8,4 @@ export * from "./pose.js";
 export * from "./motion.js";
 export * from "./validateMotion.js";
 export * from "./look.js";
+export * from "./control.js";

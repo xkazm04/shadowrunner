@@ -121,6 +121,7 @@ const LABEL: Readonly<Record<RunStep, string>> = {
   segmenting: "Segmenting",
   cutting: "Cutting",
   filling: "Filling",
+  expressing: "Expressions",
   done: "Done",
 };
 

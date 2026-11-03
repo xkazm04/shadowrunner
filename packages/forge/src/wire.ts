@@ -1,11 +1,11 @@
 // @sr/forge/wire: the forge wire contract (forge-pipeline design.md "Contracts (wire names)").
 // Types only, so it is safe to import in the browser. This is the ONLY declaration of these
 // names; the creator imports them from "@sr/forge/wire" and never redeclares them.
-import type { Rig } from "@sr/rig";
+import type { ExpressionFamily, Rig } from "@sr/rig";
 import type { PartRole } from "./types.js";
 
 /** Job status, in step order. `filling` sits between `cutting` and `done`. */
-export type ForgeStatus = "queued" | "portrait" | "segmenting" | "cutting" | "filling" | "done" | "failed";
+export type ForgeStatus = "queued" | "portrait" | "segmenting" | "cutting" | "filling" | "expressing" | "done" | "failed";
 
 /** Error codes that may cross the API in `{ error: { code, message } }`. */
 export type ForgeErrorCode = "quota" | "refused_likeness" | "refused_content" | "upstream" | "bad_input";
@@ -81,5 +81,7 @@ export interface JobView {
   fill?: "edit" | "fallback";
   /** Brief jobs only, once the parts step has decided. */
   decomposition?: Decomposition;
+  /** Live jobs from "expressing" on (character-control): what each expression family came to. */
+  expressions?: Partial<Record<ExpressionFamily, "ok" | "skipped" | "failed">>;
   error?: { code: ForgeErrorCode; message: string };
 }
