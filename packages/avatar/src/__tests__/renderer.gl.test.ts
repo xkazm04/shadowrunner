@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { glowGain, GLOW_GAIN } from "../gl/glow.js";
 import { createRenderer } from "../gl/renderer.js";
 import { hexToRgb, RIM_STRENGTH } from "../render/frame.js";
+import { hexToHsl } from "../render/recolour.js";
 import { createCanvasStub, createGlStub, type GlStub } from "./glStub.js";
 import { fakeAssets, malakorRig } from "./malakor.js";
 
@@ -84,9 +85,12 @@ describe("WebGL2 renderer", () => {
     });
     const gains = uniformCalls(stub, "uniform3f", "u_gain");
     const eyeIndex = poses.findIndex((p) => p.name === "eye_l");
-    const [er, eg, eb] = hexToRgb("#80ff40");
+    // character-control: a changed eye light recolours the eye (u_light, every pixel), then eyeGain.
     const tint = poses[eyeIndex]?.tint ?? NaN;
-    expect(gains[eyeIndex]).toEqual([er * 2 * tint, eg * 2 * tint, eb * 2 * tint].map((v) => expect.closeTo(v, 6)));
+    expect(gains[eyeIndex]).toEqual([2 * tint, 2 * tint, 2 * tint].map((v) => expect.closeTo(v, 6)));
+    const recolour = uniformCalls(stub, "uniform1f", "u_recolour");
+    expect(recolour[eyeIndex]).toEqual([1]);
+    expect(uniformCalls(stub, "uniform4f", "u_light")).toContainEqual([...hexToHsl("#80ff40"), 1].map((v) => expect.closeTo(v, 9)));
     const torsoIndex = poses.findIndex((p) => p.name === "torso");
     expect(gains[torsoIndex]).toEqual([1, 1, 1]);
     const [gr, gg, gb] = hexToRgb("#204080");

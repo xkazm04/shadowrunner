@@ -14,12 +14,19 @@
 // - `lookAt` (costume 9) is read every frame, like the other props. It takes a point or a ref
 //   holding one, so a page can steer the gaze from a pointer handler without a React render per
 //   move (the landing's torch); a ref holding null or undefined means no point.
-import { applyLook, poseLayers, type Drive, type Gesture, type Look, type Rig } from "@sr/rig";
+// - Mood crossfade (character-control "Moods"): when `look.emotion` changes, the drive carries
+//   `mood: { from: previous, mix }` with mix rising 0 -> 1 over MOOD_FADE_S of driver time; under
+//   reduced motion the change is instant (no `mood`). A change mid-fade starts a new fade from the
+//   emotion it was fading to. A `drive` prop passes through untouched.
+// - `loadAsset` (character-control): region maps and face patches missing from `assets` are
+//   loaded through it on first need (render/assets.ts); read once, at mount.
+import { applyLook, MOOD_FADE_S, poseLayers, type Drive, type Emotion, type Gesture, type Look, type Rig } from "@sr/rig";
 import { useEffect, useRef, type ReactElement } from "react";
 import { attachAudio, type AudioLevelTap } from "../audio/level.js";
 import type { LookAtPoint } from "../driver/lookAt.js";
 import { initialState, type Gaze } from "../driver/state.js";
 import { createRenderer } from "../gl/renderer.js";
+import type { AssetLoader } from "../render/assets.js";
 import type { RigAssets } from "../render/types.js";
 import { advanceFrame, isReducedMotion } from "./loop.js";
 
@@ -55,6 +62,28 @@ export interface AvatarCanvasProps {
    * driver/lookAt.ts), or a ref holding it. Absent: behaviour is unchanged (costume 9).
    */
   lookAt?: LookAtPoint | LookAtRef;
+  /** Loads a rig file missing from `assets` (a region map, a face patch) on first need. */
+  loadAsset?: AssetLoader;
+}
+
+/** Tracks emotion changes on the driver clock; returns the drive's `mood` for this frame. */
+export function moodFader(): (emotion: Emotion, t: number, reducedMotion: boolean) => Drive["mood"] {
+  let shown: Emotion | undefined;
+  let fade: { from: Emotion; start: number } | undefined;
+  return (emotion, t, reducedMotion) => {
+    if (shown !== undefined && emotion !== shown) fade = { from: shown, start: t };
+    shown = emotion;
+    if (fade === undefined || reducedMotion || fade.from === emotion) {
+      fade = undefined;
+      return undefined;
+    }
+    const mix = (t - fade.start) / MOOD_FADE_S;
+    if (!(mix < 1)) {
+      fade = undefined;
+      return undefined;
+    }
+    return { from: fade.from, mix: Math.max(0, mix) };
+  };
 }
 
 const REDUCED_QUERY = "(prefers-reduced-motion: reduce)";
@@ -89,7 +118,7 @@ export function AvatarCanvas(props: AvatarCanvasProps): ReactElement {
     canvas.style.cssText = "display:block;width:100%;height:100%";
     host.appendChild(canvas);
     const first = latest.current;
-    const renderer = createRenderer(canvas, first.rig, first.assets);
+    const renderer = createRenderer(canvas, first.rig, first.assets, first.loadAsset === undefined ? {} : { loadAsset: first.loadAsset });
     let shown = { rig: first.rig, assets: first.assets };
 
     const resize = (): void => {
@@ -102,6 +131,7 @@ export function AvatarCanvas(props: AvatarCanvasProps): ReactElement {
 
     const media = typeof win.matchMedia === "function" ? win.matchMedia(REDUCED_QUERY) : undefined;
     const dress = dresser();
+    const fadeMood = moodFader();
     let state = initialState(first.seed ?? 1);
     let lastNow: number | undefined;
     let raf = 0;
@@ -130,7 +160,9 @@ export function AvatarCanvas(props: AvatarCanvasProps): ReactElement {
         ...(p.drive === undefined ? {} : { drive: p.drive }),
       });
       state = next.state;
-      const poses = poseLayers(dress(p.rig, p.look), p.look, next.drive);
+      const mood = fadeMood(p.look.emotion, state.t, reducedMotion);
+      const drive = p.drive !== undefined || mood === undefined ? next.drive : { ...next.drive, mood };
+      const poses = poseLayers(dress(p.rig, p.look), p.look, drive);
       renderer.draw(poses, p.look, { t: p.drive?.t ?? state.t, reducedMotion });
       raf = win.requestAnimationFrame(frame);
     };

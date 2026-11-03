@@ -8,12 +8,14 @@
 // - Brow: no Rig v1 kind is a brow, so the emotion's brow offset moves the `eye` layers, the part
 //   of the face a brow frames, by `BROW_STEP * rig.height` canvas px per step (rig-core ruling:
 //   0.004 * height; positive raises). It is canvas-space and not inherited, like the jaw drop.
-import { lookToEmotionDrive, type Layer, type LayerPose, type Look, type Rig } from "@sr/rig";
+//   A rig with brow layers (`hasBrowLayers`, character-control "Moods") moves those in the pose
+//   instead, so its eyes get no brow shift here.
+import { hasBrowLayers, lookToEmotionDrive, type Layer, type LayerPose, type Look, type Rig } from "@sr/rig";
 
 /** Brow offset per table step, as a fraction of rig height (rig-core ruling). */
 export const BROW_STEP = 0.004;
-/** Rim-light strength on `palette.rim` (design.md "Rendering"). */
-export const RIM_STRENGTH = 0.35;
+/** Rim-light strength on `palette.rim` (design.md "Rendering"; character-control raises it to 0.6). */
+export const RIM_STRENGTH = 0.6;
 
 /** Device-px placement of rig canvas px: `device = scale * rig + offset`. */
 export interface View {
@@ -71,20 +73,24 @@ export function hexToRgb(hex: string): Rgb {
 /** The light a look sets: rim and glow colours, the eye multiplier (palette x eyeGain), the brow shift. */
 export interface LookLight {
   rim: Rgb;
+  /** The old eye multiply (palette x eyeGain), for an eye the look does not recolour. */
   eye: Rgb;
+  /** The emotion's eye gain alone, applied after the eye light's recolour. */
+  eyeGain: number;
   glow: Rgb;
   /** Canvas px added to eye layers' y; negative is up. */
   browY: number;
 }
 
-export function lookLight(rig: Pick<Rig, "height">, look: Look): LookLight {
+export function lookLight(rig: Pick<Rig, "height" | "layers">, look: Look): LookLight {
   const { eyeGain, brow } = lookToEmotionDrive(look.emotion);
   const [er, eg, eb] = hexToRgb(look.palette.eye);
   const [rr, rg, rb] = hexToRgb(look.palette.rim);
   return {
     rim: [rr * RIM_STRENGTH, rg * RIM_STRENGTH, rb * RIM_STRENGTH],
     eye: [er * eyeGain, eg * eyeGain, eb * eyeGain],
+    eyeGain,
     glow: hexToRgb(look.palette.glow),
-    browY: -brow * BROW_STEP * rig.height,
+    browY: hasBrowLayers(rig) ? 0 : -brow * BROW_STEP * rig.height,
   };
 }

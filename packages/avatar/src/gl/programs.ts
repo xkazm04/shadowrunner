@@ -2,6 +2,34 @@
 // colour and the glow source in one pass, two render targets), and three full-screen programs for
 // the glow: extract (downsample to half res), blur (one axis of a separable 9-tap Gaussian),
 // composite (scene + tinted glow onto the canvas). All share one unit-quad buffer.
+import { GLOW_SATURATION, S_FLOOR, S_KEEP } from "../render/recolour.js";
+
+/**
+ * The recolour rule in GLSL (render/recolour.ts `rgbToHsl`, `hslToRgb`, `recolourHsl`), exported so
+ * a test can port it line for line. HSL components are 0..1.
+ */
+export const RECOLOUR_GLSL = `vec3 rgb2hsl(vec3 c) {
+  float mx = max(c.r, max(c.g, c.b));
+  float mn = min(c.r, min(c.g, c.b));
+  float l = (mx + mn) * 0.5;
+  float d = mx - mn;
+  if (d <= 0.0) return vec3(0.0, 0.0, l);
+  float s = min(1.0, d / (1.0 - abs(2.0 * l - 1.0)));
+  float h;
+  if (mx == c.r) h = (c.g - c.b) / d + (c.g < c.b ? 6.0 : 0.0);
+  else if (mx == c.g) h = (c.b - c.r) / d + 2.0;
+  else h = (c.r - c.g) / d + 4.0;
+  return vec3(h / 6.0, s, l);
+}
+vec3 hsl2rgb(vec3 hsl) {
+  float c = (1.0 - abs(2.0 * hsl.z - 1.0)) * hsl.y;
+  vec3 x = mod(hsl.x * 6.0 + vec3(0.0, 4.0, 2.0), 6.0);
+  return hsl.z + c * (clamp(abs(x - 3.0) - 1.0, 0.0, 1.0) - 0.5);
+}
+vec3 recolour(vec3 src, vec3 target) {
+  float s = max(target.y * S_KEEP + src.y * (1.0 - S_KEEP), S_FLOOR * target.y);
+  return hsl2rgb(vec3(target.x, s, src.z));
+}`;
 
 const QUAD_VS = `#version 300 es
 layout(location = 0) in vec2 a_corner;
@@ -29,27 +57,57 @@ void main() {
 // fill around cut parts (straight cut lines, inpaint patches) never draws a lit outline.
 // Emissive layers also write their bright parts (a bright-pass on the lit colour) to the glow
 // source; other layers write their alpha there, so whatever is in front occludes the glow.
+// Recolour (character-control design.md "Recolour"), only when u_recolour is set (a look equal to
+// the rig never takes it): the straight colour's HSL; the layer light (u_light.xyz, an HSL target)
+// on every pixel (u_light.w 1) or on pixels with s > GLOW_SAT (u_light.w 2); a region slot's
+// target (u_slots, enabled by u_slotOn) wins on the pixels whose index map (nearest, R = slot + 1)
+// names it. The rule is render/recolour.ts's `recolourHsl`, expression for expression.
 const BASE_FS = `#version 300 es
 precision highp float;
 in vec2 v_uv;
 uniform sampler2D u_tex;
+uniform sampler2D u_map;
 uniform vec2 u_texel;
 uniform float u_opacity;
 uniform vec3 u_gain;
 uniform vec3 u_rim;
 uniform float u_emissive;
+uniform float u_recolour;
+uniform vec4 u_light;
+uniform vec4 u_mapRect;
+uniform vec4 u_slotOn;
+uniform vec3 u_slots[4];
 const float BRIGHT_LO = 0.3;
 const float BRIGHT_HI = 0.7;
+const float S_KEEP = ${S_KEEP.toFixed(4)};
+const float S_FLOOR = ${S_FLOOR.toFixed(4)};
+const float GLOW_SAT = ${GLOW_SATURATION.toFixed(4)};
 layout(location = 0) out vec4 o_color;
 layout(location = 1) out vec4 o_glow;
+${RECOLOUR_GLSL}
 void main() {
   vec4 tex = texture(u_tex, v_uv);
   vec2 d = u_texel * 2.0;
   float gx = texture(u_tex, v_uv + vec2(d.x, 0.0)).a - texture(u_tex, v_uv - vec2(d.x, 0.0)).a;
   float gy = texture(u_tex, v_uv + vec2(0.0, d.y)).a - texture(u_tex, v_uv - vec2(0.0, d.y)).a;
+  vec2 muv = u_mapRect.xy + v_uv * u_mapRect.zw;
+  float slot = texture(u_map, clamp(muv, 0.0, 1.0)).r;
   float albedo = tex.a > 0.0 ? max(tex.r, max(tex.g, tex.b)) / tex.a : 0.0;
   float rim = smoothstep(0.15, 0.7, length(vec2(gx, gy))) * smoothstep(0.08, 0.4, albedo);
-  vec4 color = vec4(tex.rgb * u_gain + u_rim * rim * tex.a, tex.a) * u_opacity;
+  vec3 rgb = tex.rgb;
+  if (u_recolour > 0.5 && tex.a > 0.0) {
+    vec3 hsl = rgb2hsl(tex.rgb / tex.a);
+    vec3 target = vec3(0.0);
+    bool on = false;
+    if (u_light.w > 0.5 && (u_light.w < 1.5 || hsl.y > GLOW_SAT)) { target = u_light.xyz; on = true; }
+    bool inside = muv.x >= 0.0 && muv.x <= 1.0 && muv.y >= 0.0 && muv.y <= 1.0;
+    int idx = int(floor(slot * 255.0 + 0.5)) - 1;
+    for (int i = 0; i < 4; i++) {
+      if (inside && i == idx && u_slotOn[i] > 0.5) { target = u_slots[i]; on = true; }
+    }
+    if (on) rgb = recolour(hsl, target) * tex.a;
+  }
+  vec4 color = vec4(rgb * u_gain + u_rim * rim * tex.a, tex.a) * u_opacity;
   o_color = color;
   float bright = smoothstep(BRIGHT_LO, BRIGHT_HI, max(color.r, max(color.g, color.b)));
   o_glow = u_emissive > 0.5 ? vec4(color.rgb * bright, color.a) : vec4(0.0, 0.0, 0.0, color.a);
@@ -103,8 +161,14 @@ export interface Program<K extends string> {
   u: Uniforms<K>;
 }
 
+const BASE_UNIFORMS = [
+  "u_rect", "u_m", "u_res", "u_tex", "u_map", "u_texel", "u_opacity", "u_gain", "u_rim", "u_emissive",
+  "u_recolour", "u_light", "u_mapRect", "u_slotOn", "u_slots",
+] as const;
+export type BaseUniform = (typeof BASE_UNIFORMS)[number];
+
 export interface Programs {
-  base: Program<"u_rect" | "u_m" | "u_res" | "u_tex" | "u_texel" | "u_opacity" | "u_gain" | "u_rim" | "u_emissive">;
+  base: Program<BaseUniform>;
   extract: Program<"u_src">;
   blur: Program<"u_src" | "u_step">;
   composite: Program<"u_scene" | "u_glow" | "u_tint">;
@@ -160,7 +224,7 @@ function createQuad(gl: WebGL2RenderingContext): Programs["quad"] {
 
 export function createPrograms(gl: WebGL2RenderingContext): Programs {
   return {
-    base: link(gl, BASE_VS, BASE_FS, ["u_rect", "u_m", "u_res", "u_tex", "u_texel", "u_opacity", "u_gain", "u_rim", "u_emissive"]),
+    base: link(gl, BASE_VS, BASE_FS, BASE_UNIFORMS),
     extract: link(gl, QUAD_VS, EXTRACT_FS, ["u_src"]),
     blur: link(gl, QUAD_VS, BLUR_FS, ["u_src", "u_step"]),
     composite: link(gl, QUAD_VS, COMPOSITE_FS, ["u_scene", "u_glow", "u_tint"]),

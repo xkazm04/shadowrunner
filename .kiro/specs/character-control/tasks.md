@@ -20,7 +20,7 @@
     inherit shape; crossfade endpoints; reduced motion.
   - _Requirements: 3.1, 4.1-4.4_
 
-- [ ] 2. Renderer: recolour, regions, faces (packages/avatar)
+- [x] 2. Renderer: recolour, regions, faces (packages/avatar)
   - `render/recolour.ts`; GLSL recolour in the layer program; index-map textures and a 4-slot
     colour uniform; mouth light on `cavity` and `mouth_glow`; eye light on every eye layer; rim 0.6;
     face patches with the replace/over rule; canvas2d parity via an offscreen cache; textures for
