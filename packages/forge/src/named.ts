@@ -1,7 +1,7 @@
 // Named parts (cast-forge design.md "Named parts", requirement 2): the role rules the cut and the
 // assembly share. A v1 part is a named part whose name is its role (`asNamed`), so one code path
 // serves both formats. Pure: no I/O.
-import { type FloatMotion, type Motion, type PulseMotion, phaseFromName } from "@sr/rig";
+import { EMISSIVE_KINDS, type FloatMotion, type LayerKind, type Motion, type PulseMotion, phaseFromName } from "@sr/rig";
 import type { NamedPart, Part, PartRole } from "./types.js";
 
 /** Cut order, front to back, by role; roles in one group keep file order among themselves. */
@@ -86,6 +86,24 @@ export function motionOf(part: NamedPart): Motion | undefined {
     // An eye's own blink (cast-forge task 6) keeps its phase as given: its stagger is the point.
     ...(own.blink === undefined ? {} : { blink: { ...own.blink } }),
   };
+}
+
+/** Roles of an eye: an eye gives light unless its part says `emissive: false`. */
+const EYE_ROLES: readonly PartRole[] = ["eye", "eye_l", "eye_r"];
+
+/**
+ * The layer's `emissive` (cast-forge task 12 follow-up; design.md "Emissive per layer"). A part
+ * gives light when its file says so (`emissive`), else when it pulses (a pulse role, or a pulse in
+ * its motion: a pulse is a light gain) or is an eye. The rule only takes light away: a part of
+ * an emissive kind (EMISSIVE_KINDS) that gives none gets `false` (a white glove, abacus beads, a
+ * silver crown); a part of another kind gets `true` only when its file says `emissive: true` (a jaw's
+ * pulse lights its own pixels, not the glow pass). Undefined when the kind's default holds.
+ */
+export function emissiveOf(part: NamedPart, kind: LayerKind): boolean | undefined {
+  const lit = EMISSIVE_KINDS.has(kind);
+  if (part.emissive !== undefined) return part.emissive === lit ? undefined : part.emissive;
+  const glows = part.role === "pulse" || part.motion?.pulse !== undefined || EYE_ROLES.includes(part.role);
+  return lit && !glows ? false : undefined;
 }
 
 /** Motion scaled from MOTION_CANVAS px to a `width` x `height` canvas (float amplitude only). */

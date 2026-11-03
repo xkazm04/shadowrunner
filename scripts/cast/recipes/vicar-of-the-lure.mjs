@@ -191,8 +191,8 @@ const part = (name, role, m, extra, groundR = 4) => {
 // The bulb glows and swings from the stalk's tip; the stalk sways about its foot on the brow, at
 // the head's depth (an explicit follow), and carries the bulb with it.
 part("lure_bulb", "pulse", bulb, { follow: "lure_stalk", key: false, motion: { pulse: { amp: 0.55, freq: 0.4 }, float: { amp: [0, 0], freq: 0.31, rot_deg: 5 } } }, 0);
-part("eye_r", "eye_r", eyeR, {}, 0);
-part("eye_l", "eye_l", eyeL, {}, 0);
+part("eye_r", "eye_r", eyeR, { emissive: false }, 0);
+part("eye_l", "eye_l", eyeL, { emissive: false }, 0);
 part("lure_stalk", "accessory", stalk, { follow: "head", key: false, motion: { float: { amp: [0, 0], freq: 0.17, rot_deg: 4 } } }, 6);
 part("jaw", "jaw", jaw, { drop: 0.035, cavity: "fill" }, 0);
 part("head", "head", head);

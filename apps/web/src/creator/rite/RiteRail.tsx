@@ -4,7 +4,7 @@
 // parts are not known until the job is done, so the slots wait unnamed until then. Once the face
 // wakes, each slot's lamp lifts its layer off the face, as on the Forge page.
 import type { Layer } from "@sr/rig";
-import { KIND_WORD, zLabel } from "../glass/LayerRail";
+import { layerWord, zLabel } from "../glass/LayerRail";
 import anatomy from "../glass/Anatomy.module.css";
 import type { SlotState } from "./riteClock";
 import styles from "./Slots.module.css";
@@ -59,7 +59,7 @@ export function RiteRail({ layers, slots, thumbs, alive, recipe }: RiteRailProps
                   <span className={styles.slotThumb}>{state === "cut" && url !== undefined && <img src={url} alt="" />}</span>
                   <span className={styles.slotName}>
                     {state === "waiting" ? "awaiting the knife" : layer.name}
-                    <small>{state === "cut" ? KIND_WORD[layer.kind] : state === "found" ? `found · ${Math.round(layer.bbox[2])}×${Math.round(layer.bbox[3])}` : " "}</small>
+                    <small>{state === "cut" ? layerWord(layer) : state === "found" ? `found · ${Math.round(layer.bbox[2])}×${Math.round(layer.bbox[3])}` : " "}</small>
                   </span>
                   {alive !== undefined && layer.kind !== "static" ? (
                     <button

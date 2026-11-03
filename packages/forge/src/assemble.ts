@@ -5,7 +5,7 @@ import { CUT_ORDER } from "./cut.js";
 import { encodePng } from "./image.js";
 import { dilateMask, rasterizeMask } from "./mask.js";
 import { type NamedLayer, backgroundOf } from "./background.js";
-import { asNamed, cutOrderNamed, followOf, headNameOf, motionOf, scaleMotion } from "./named.js";
+import { asNamed, cutOrderNamed, emissiveOf, followOf, headNameOf, motionOf, scaleMotion } from "./named.js";
 import { samplePalette, type PaletteWarning } from "./palette.js";
 import { MOTION_CANVAS, ROLE_KIND, toCanvas, v1View } from "./parts.js";
 import type { NamedPart, Part, Rgba } from "./types.js";
@@ -121,7 +121,9 @@ function anchorOf(kind: LayerKind, layer: NamedLayer, part: Pick<Part, "poly"> |
  * kind's default, except that a part with an explicit follow takes its target's depth (a heart on
  * the chest moves with the chest, not ahead of it). Motion (`motionOf`) is scaled from
  * MOTION_CANVAS px to the portrait. A jaw part's `drop` becomes its layer's
- * `drop` (cast-forge task 3). The rig is passed through validateRig; its errors are returned
+ * `drop` (cast-forge task 3). A named part's layer takes `emissiveOf` (task 12 follow-up: a part of
+ * an emissive kind that gives no light is `emissive: false`); a v1 file's layers keep the kind's
+ * default. The rig is passed through validateRig; its errors are returned
  * as they are.
  */
 export function assembleRig(parts: readonly Part[] | readonly NamedPart[], layers: readonly NamedLayer[], meta: AssembleMeta): Result<AssembledRig, RigError[]> {
@@ -210,6 +212,7 @@ export function assembleRig(parts: readonly Part[] | readonly NamedPart[], layer
     const [x, y, w, h] = layer.bbox;
     const follow = follows.get(layer.name);
     const motion = part === undefined ? undefined : motionOf(part);
+    const emissive = part === undefined || !isV2 ? undefined : emissiveOf(part, kind);
     files[file] = encodePng(layer.image);
     rigLayers.push({
       name: layer.name,
@@ -222,6 +225,7 @@ export function assembleRig(parts: readonly Part[] | readonly NamedPart[], layer
       depth: depthOf(layer.name),
       ...(motion === undefined ? {} : { motion: scaleMotion(motion, width, height, MOTION_CANVAS) }),
       ...(kind === "jaw" && part?.drop !== undefined ? { drop: part.drop } : {}),
+      ...(emissive === undefined ? {} : { emissive }),
     });
   });
   if (headless) warnings.push({ code: "no_head_layer", message: "no head layer; jaw, eyes, accessories and crown follow nothing" });

@@ -2,7 +2,7 @@
 // rig, front-most first, with its z, its cut-out, what it does, and a lamp that lifts it off the
 // face or puts it back (Look.hidden). Hover or focus on a row outlines that layer on the glass.
 // The rows slide in one after another when a character comes onto the glass.
-import type { Layer, LayerKind } from "@sr/rig";
+import { isEmissive, type Layer, type LayerKind } from "@sr/rig";
 import { useEffect, useState, type CSSProperties } from "react";
 import styles from "./Anatomy.module.css";
 
@@ -16,6 +16,9 @@ export const KIND_WORD: Readonly<Record<LayerKind, string>> = {
   accessory: "pulses · lit",
   crown: "floats",
 };
+
+/** The rail's word for a layer: its kind's, without "lit" when the layer gives no light (`Layer.emissive`). */
+export const layerWord = (layer: Pick<Layer, "kind" | "emissive">): string => (isEmissive(layer) ? KIND_WORD[layer.kind] : KIND_WORD[layer.kind].replace(" · lit", ""));
 
 /** Object URLs for a record's layer Blobs (by Layer.file), revoked when the blobs change. */
 export function useBlobUrls(blobs: Readonly<Record<string, Blob>> | undefined): Record<string, string> {
@@ -66,7 +69,7 @@ export function LayerRail({ layers, thumbs, hidden, onToggle, onHighlight }: Lay
               <span className={styles.thumb}>{url !== undefined && <img src={url} alt="" />}</span>
               <span className={styles.layerName}>
                 {layer.name}
-                <small>{KIND_WORD[layer.kind]}</small>
+                <small>{layerWord(layer)}</small>
               </span>
               {layer.kind === "static" ? (
                 <span />

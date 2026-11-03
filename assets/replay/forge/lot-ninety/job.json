@@ -137,7 +137,8 @@
           148.992
         ],
         "follow": "head",
-        "depth": 0.6
+        "depth": 0.6,
+        "emissive": false
       },
       {
         "name": "collar_l",
@@ -155,7 +156,8 @@
           640.742206235012
         ],
         "follow": "torso",
-        "depth": 0.3
+        "depth": 0.3,
+        "emissive": false
       },
       {
         "name": "collar_r",
@@ -173,7 +175,8 @@
           641.523498694517
         ],
         "follow": "torso",
-        "depth": 0.3
+        "depth": 0.3,
+        "emissive": false
       },
       {
         "name": "bowtie",
@@ -202,7 +205,8 @@
             "rot_deg": 3,
             "phase": 0.609
           }
-        }
+        },
+        "emissive": false
       },
       {
         "name": "eye_l",
@@ -285,7 +289,8 @@
             "rot_deg": 5,
             "phase": 0.5
           }
-        }
+        },
+        "emissive": false
       },
       {
         "name": "hand_r",
@@ -314,7 +319,8 @@
             "rot_deg": 5,
             "phase": 0
           }
-        }
+        },
+        "emissive": false
       },
       {
         "name": "wisp_l",

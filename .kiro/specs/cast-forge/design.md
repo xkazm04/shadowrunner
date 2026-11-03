@@ -15,7 +15,7 @@ packages/avatar/                 passes reduced motion as "still"; pulse tint re
 packages/forge/src/types.ts      PartRole, NamedPart, PartsV2
 packages/forge/src/parts.ts      parseParts accepts v1 (ten names) and v2 (named parts); ROLE_KIND table
 packages/forge/src/cut.ts        cutAll over named parts (order below)
-packages/forge/src/assemble.ts   role -> kind, follow, motion (and a jaw's drop) into the rig
+packages/forge/src/assemble.ts   role -> kind, follow, motion (and a jaw's drop, emissiveOf) into the rig
 packages/forge/src/mouth.ts      liftedJaw, paintCavity: the mouth an open jaw reveals (task 3)
 packages/forge/src/brief.ts      CharacterBrief, parseBrief, BRIEF_PROMPT, portraitPromptFromBrief, partsPromptFromBrief
 packages/forge/src/briefParts.ts settleBriefParts, motionFromWords, fillPromptFromBrief (task 11)
@@ -142,6 +142,35 @@ a soft grey smear (task 9's `MOUTH_SHADE` ramp). Now:
   v1 `cutAll` path is unchanged (presets keep their recorded jobs); task 11 moves live jobs onto
   `cutNamed`.
 
+## Emissive per layer (amended by cast-forge, emissive fix: task 12 follow-up)
+The app renderer feeds the bright pixels of every `eye`, `crown` and `accessory` layer to the glow
+pass (tinted `palette.glow`), multiplies an eye by `palette.eye`, and raises those kinds on glare and
+flare. `ROLE_KIND` maps float and pulse roles to `accessory`, so on the real renderer Lot Ninety's
+white gloves went neon green, the Tallyman's beads yellow-green, Sir Vacant's armour orange and
+Saint Cardia's silver crown and the skin around her eyes rose. The review compositor never tinted,
+so no sheet showed it. The fix is in the format, so a streamer's forged character gets it too:
+- **Rig** (rig-core amended, `docs/rig-format.md`): `Layer.emissive?: boolean`, omitted = the kind's
+  default (`EMISSIVE_KINDS` = eye, crown, accessory), so every existing rig (Malakor, the presets) is
+  unchanged. `isEmissive(layer) = layer.emissive ?? EMISSIVE_KINDS.has(kind)`; `bad_shape` at
+  `$.layers[i].emissive` unless boolean; serialized after `drop`. `poseLayers`: a non-emissive layer
+  takes no gesture light gain (no glare, no flare); its own pulse still multiplies its tint. GL: a
+  non-emissive layer writes no glow and an eye that is not emissive takes no eye colour. Canvas2D draws
+  neither anyway and gets the change through the pose tint. The creator's rail says "lit" and pins the
+  Glow light only on emissive layers.
+- **Forge rule** (`emissiveOf(part, kind)` in `named.ts`, used by `assembleRig` for named parts; v1
+  files keep the kind's default). A part gives light when its file says so (`NamedPart.emissive`,
+  any role), else when it **pulses** (a pulse role, or a pulse in its motion: a pulse is a light gain,
+  so whatever pulses is a light) or **is an eye** (an eye's light is the norm). `matte: "plate"`
+  alone is not a light (Reveille's brows and key are matted to turn, not to glow; every plate-matted
+  neon in the cast also pulses), and a jaw's `glow` is painted into the cavity, not the glow pass. The
+  rule only takes light away: a part of an emissive kind that gives none gets `emissive: false`
+  (gloves, beads, tags, armour, serpents, spires, a cage, spectacles, a silver crown); a part of
+  another kind gets `emissive: true` only when its file says so (Reveille's pulsing teeth are a jaw
+  and stay out of the glow pass as before). An eye drawn without light (Saint Cardia's painted eyes,
+  the Vicar's pale glass orbs) says `emissive: false` in `parts.json`; the drawing decides, not a role.
+- **Live path** (task 11): `settleBriefParts` keeps a boolean `emissive` on any role, and
+  `partsPromptFromBrief` asks for it (the "Light" rule below), so a streamer's rig gets the same rule.
+
 ## How a character is decomposed (requirement 3, offline, by the builder)
 1. Read `brief.json` (the parts plan the contest seat wrote) and look at `portrait.png`. The plan is a
    proposal: merge, split or drop parts where the drawing disagrees, and say so in `NOTES.md`.
@@ -250,13 +279,13 @@ were)" (ledger: a squashed eye reads as a shut lid). No phrase, no edit: the pla
 with " | ", each `<name> (<role>): <what>`, then `; moves: <motion>` and `; follows <follow>` when the
 part has them (`briefPartLine`). The lines below are joined with single spaces. Every prompt rule of
 `docs/cast-forge-ledger.md` "General rules for any character" is in it (Outlines, Cuts, Follows,
-Motion, Mouth, Keys and fills, Events); the forge-code rules there need no asking.
+Motion, Mouth, Keys and fills, Light, Events); the forge-code rules there need no asking.
 ```text
 This is the portrait of <name>, a character drawn in <style>, to be cut into animation layers for a
 live 2.5D co-host. Return JSON only: {"version": 2, "cut": {"feather": integer, "cell": integer},
 "parts": [{"name": string, "role": string, "box_2d": [ymin,xmin,ymax,xmax], "poly": [[y,x],...],
 "follow": string, "motion": object, "key": boolean, "drop": number, "glow": string, "cavity":
-string, "fill": string, "matte": string, "pivot": [y,x]}]} with coordinates as integers normalized
+string, "fill": string, "matte": string, "pivot": [y,x], "emissive": boolean}]} with coordinates as integers normalized
 to 0-1000 and 8-60 points per polygon, clockwise; name, role, box_2d and poly are required, leave
 out every other field a part does not need. Name exactly these parts with exactly these roles and no
 others, and leave out only a part that is not visible: <parts>. Fields: follow is another part's
@@ -296,7 +325,11 @@ a slit's light the eye). Keys and fills: glowing parts and thin dark parts on a 
 matte "plate"; small parts on a flat field, parts floating on the ground and collars take fill
 "extend"; a dark plume or hair on a dark ground takes key false; a machine with a hollow takes
 cavity "gap" and fill "extend"; pixel art takes cut {"feather": 0, "cell": its pixel size}, flat
-fills with ink outlines cut {"feather": 1}. Events are not motion: words such as "when chat ...",
+fills with ink outlines cut {"feather": 1}. Light: a part that pulses and an eye give light on
+their own; give emissive false to an eye drawn without light of its own (a painted iris, a pale
+glass orb) and emissive true to a part that gives light but does not pulse (a lit lantern, a neon
+sign); nothing else gives light (gloves, beads, armour, a silver crown are lit by the stage).
+Events are not motion: words such as "when chat ...",
 "on a timeout" or "turns toward the speaker" become no motion; give a slow periodic stand-in or
 none.
 ```

@@ -119,6 +119,7 @@ function roleFields(raw: Fields, role: PartRole): Fields {
   const jaw = role === "jaw";
   const lifted = !PLATE_ROLES.includes(role);
   if (typeof raw.key === "boolean") out.key = raw.key;
+  if (typeof raw.emissive === "boolean") out.emissive = raw.emissive;
   const drop = num(raw.drop);
   if (jaw && drop !== undefined) out.drop = clamp(drop, JAW_DROP_MIN, JAW_DROP_MAX);
   const cavity = raw.cavity === "paint" || raw.cavity === "fill" || raw.cavity === "gap" ? raw.cavity : undefined;

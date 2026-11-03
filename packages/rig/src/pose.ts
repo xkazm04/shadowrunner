@@ -9,7 +9,10 @@
 // - tilt, lean_in and recoil act on the head group: each `head` layer with no `head` ancestor,
 //   about its own anchor; its followers inherit the change. nod adds pitch before the clamp.
 // - `tint` is a light gain (1 = as drawn): glare raises `eye` layers, flare raises the emissive
-//   kinds (`eye`, `crown`, `accessory`). Palette colours and eyeGain stay with the renderer.
+//   layers (`isEmissive`: the layer's own `emissive`, else its kind is in EMISSIVE_KINDS). Glare
+//   raises only an emissive eye: a layer with `emissive: false` takes no light gain from a gesture
+//   (cast-forge task 12 follow-up); its own pulse still applies. Palette colours and eyeGain stay
+//   with the renderer.
 // - A layer is drawn unless it is in `look.hidden` or carries `visible: false`.
 // - Rulings of 2026-11-01 (req 4.3, 4.4): followers inherit only the gesture part of the parent's
 //   transform (translation, rotation, scale about the parent's anchor). Parallax comes from the
@@ -113,7 +116,11 @@ const PEAKS: Record<Gesture, Partial<Peak>> = {
   glare: { eyeTint: 0.6 },
   flare: { glowTint: 1 },
 };
-const EMISSIVE: ReadonlySet<LayerKind> = new Set(["eye", "crown", "accessory"]);
+/** Kinds that give light unless the layer says otherwise (`Layer.emissive`). */
+export const EMISSIVE_KINDS: ReadonlySet<LayerKind> = new Set(["eye", "crown", "accessory"]);
+
+/** Whether a layer gives light: its own `emissive`, else its kind's default (EMISSIVE_KINDS). */
+export const isEmissive = (layer: Pick<Layer, "kind" | "emissive">): boolean => layer.emissive ?? EMISSIVE_KINDS.has(layer.kind);
 
 const finite = (value: number): number => (Number.isFinite(value) ? value : 0);
 const clamp = (value: number, lo: number, hi: number): number => (Number.isNaN(value) ? 0 : Math.min(hi, Math.max(lo, value)));
@@ -237,9 +244,9 @@ function worldsOf(rig: Rig, frame: Frame): Map<string, World> {
   return worlds;
 }
 
-function tintOf(kind: LayerKind, gesture: Peak): number {
-  const eye = kind === "eye" ? 1 + gesture.eyeTint : 1;
-  return eye * (EMISSIVE.has(kind) ? 1 + gesture.glowTint : 1);
+function tintOf(layer: Layer, gesture: Peak): number {
+  if (!isEmissive(layer)) return 1;
+  return (layer.kind === "eye" ? 1 + gesture.eyeTint : 1) * (1 + gesture.glowTint);
 }
 
 /** The canvas-space turn by `rotation` about `[qx, qy]` followed by a move of `(dx, dy)`. */
@@ -305,7 +312,7 @@ export function poseLayers(rig: Rig, look: Look, drive: Drive): LayerPose[] {
         scale: [sim.k, sim.k * squash],
         rotation: sim.rot,
         opacity: 1,
-        tint: tintOf(layer.kind, frame.gesture) * motion.gain,
+        tint: tintOf(layer, frame.gesture) * motion.gain,
       };
     });
 }

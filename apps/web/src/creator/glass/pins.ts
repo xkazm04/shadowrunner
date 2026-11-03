@@ -10,7 +10,7 @@
 //   (or the union of the moving layers), so every rig gets four pins.
 // - Labels sit on the side of the glass their pin is on, at the edge, and are pushed apart
 //   vertically so two on one side never overlap (a minimum gap of `TAG_GAP` percent).
-import type { Layer, LayerKind, Palette, Rig } from "@sr/rig";
+import { isEmissive, type Layer, type LayerKind, type Palette, type Rig } from "@sr/rig";
 
 export type LightKey = keyof Palette;
 export type Point = [x: number, y: number];
@@ -76,8 +76,9 @@ export function lightPoints(rig: Rig): Record<LightKey, Point> {
   const head = ofKind(rig, "head")[0]?.bbox ?? union(rig, rig.layers.filter((l) => l.kind !== "static"));
   const eyes = [...ofKind(rig, "eye")].sort((a, b) => centre(a.bbox)[0] - centre(b.bbox)[0]);
   const firstEye = eyes[0];
-  const accessory = [...ofKind(rig, "accessory")].sort((a, b) => b.z - a.z)[0];
-  const crown = ofKind(rig, "crown");
+  // The glow is pinned to a part that gives light (`isEmissive`), never to a glove or an abacus.
+  const accessory = [...ofKind(rig, "accessory").filter(isEmissive)].sort((a, b) => b.z - a.z)[0];
+  const crown = ofKind(rig, "crown").filter(isEmissive);
   const jaw = ofKind(rig, "jaw")[0];
   const eye: Point = firstEye === undefined ? [head[0] + head[2] * 0.35, head[1] + head[3] * 0.4] : centre(firstEye.bbox);
   const glowLayer = accessory ?? eyes[1];

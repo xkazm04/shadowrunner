@@ -397,6 +397,22 @@ One section per decomposed character (cast-forge requirement 3.4): what broke, w
   the backing from the plate part's own surface; it changes every rig's torso.
 - Gaze ("turns toward whoever speaks", "glances") is not in the rig either.
 
+## Emissive per layer (task 12 follow-up, from the director's real-renderer walk)
+- What broke: the app renderer tints the bright pixels of every `eye`, `crown` and `accessory` layer
+  with the palette's glow (and an eye with its eye colour); float and pulse roles become `accessory`,
+  so Lot Ninety's white gloves glowed neon green, the Tallyman's beads yellow-green, Sir Vacant's
+  armour orange, Saint Cardia's silver crown and the skin around her eyes rose. The review
+  compositor never tinted, so no sheet showed it.
+- What became code: `Layer.emissive?: boolean` in the rig (omitted = kind default, so Malakor and the
+  presets are unchanged; honoured by `poseLayers`' glare/flare gain, the GL glow and eye colour, the
+  rail's "lit" and the Glow pin), and `emissiveOf` in the forge (design.md "Emissive per layer"): a
+  part gives light when it pulses or is an eye, unless its file says otherwise; the rule only takes
+  light away. Seeded faults red once (kiro-log row).
+- What became a prompt rule: "Light" (below): an eye drawn without light says `emissive: false`
+  (Cardia's painted eyes, the Vicar's pale glass orbs, now in their `parts.json` and recipes); a part
+  that glows without pulsing says `emissive: true`. The eight replay jobs were rebuilt: layer PNGs
+  byte-identical, only `job.json` gained `emissive: false` on the layers that do not glow.
+
 ## General rules for any character (folded into `partsPromptFromBrief`, task 11)
 What the eight taught, for a streamer's character. **Forge code** does the first list on its own; the
 **parts prompt** must say the second. Task 11 folded the prompt rules into `partsPromptFromBrief`
@@ -418,6 +434,9 @@ What the eight taught, for a streamer's character. **Forge code** does the first
   the plate keeps the portrait's open ground under keyed lifted parts and around every lifted part.
 - Own eye blinks (`motion.blink`) combine with the driver's blink; reduced motion stills every curve;
   float and pulse parts without motion get a default, phases from the part's name.
+- Light (task 12 follow-up, `emissiveOf`): a part that pulses or is an eye gives light; a part of an
+  emissive kind (float, pulse, accessory, monocle, hat, crown, hair roles) that gives none gets
+  `emissive: false`, so the renderer's glow and eye colour never tint a glove, a bead or a crown.
 
 **Prompt rules (the parts model must be told)**
 - Outlines: trace a part whose edge meets the background a few px outside its silhouette (rim light
@@ -452,5 +471,8 @@ What the eight taught, for a streamer's character. **Forge code** does the first
 - The fill edit: ask for the parts removed (it paints the bald scalp, the throat, the neck under a
   collar); ask for the eyes closed, not skin, so a squashed eye reads as a shut lid; for a machine
   with a hollow, plan `cavity: "gap"` and `fill: "extend"` instead of trusting the edit.
+- Light: a part that pulses and an eye give light on their own; an eye drawn without light (a
+  painted iris, a pale glass orb) says `emissive: false`, a part that gives light without pulsing
+  (a lit lantern, a neon sign) says `emissive: true`; nothing else gives light.
 - Events are not motion: "when chat...", "on a timeout", "turns toward the speaker" do not become rig
   motion; plan a periodic stand-in or leave it to the engine.

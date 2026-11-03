@@ -150,7 +150,8 @@
             "rot_deg": 3,
             "phase": 0.63
           }
-        }
+        },
+        "emissive": false
       },
       {
         "name": "pauldron_l",
@@ -178,7 +179,8 @@
             "freq": 0.2,
             "phase": 0
           }
-        }
+        },
+        "emissive": false
       },
       {
         "name": "pauldron_r",
@@ -206,7 +208,8 @@
             "freq": 0.2,
             "phase": 0
           }
-        }
+        },
+        "emissive": false
       },
       {
         "name": "chain",
@@ -224,7 +227,8 @@
           771.5926783388801
         ],
         "follow": "torso",
-        "depth": 0.3
+        "depth": 0.3,
+        "emissive": false
       },
       {
         "name": "slit_l",
@@ -303,7 +307,8 @@
             "rot_deg": 4,
             "phase": 0.66
           }
-        }
+        },
+        "emissive": false
       },
       {
         "name": "tag_2",
@@ -332,7 +337,8 @@
             "rot_deg": 4,
             "phase": 0.6
           }
-        }
+        },
+        "emissive": false
       },
       {
         "name": "tag_1",
@@ -361,7 +367,8 @@
             "rot_deg": 4,
             "phase": 0
           }
-        }
+        },
+        "emissive": false
       }
     ]
   }

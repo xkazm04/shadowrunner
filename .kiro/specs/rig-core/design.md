@@ -32,6 +32,8 @@ export interface Layer {
   motion?: Motion;            // amended by cast-forge (req 1): own float and/or pulse
   drop?: number;              // amended by cast-forge task 3: jaw layers only, travel at jawOpen 1 as a
                               // fraction of height in [0.005, 0.1], default 0.06 (bad_shape at $.layers[i].drop)
+  emissive?: boolean;         // amended by cast-forge (emissive fix, task 12 follow-up): gives light (glow pass,
+                              // eye colour, glare/flare gain); omitted = kind default (eye, crown, accessory)
 }
 // Amended by cast-forge (design.md "Motion"); additive, the rig stays version 1. Ranges, checked by
 // validateRig as bad_shape at $.layers[i].motion.<field>, every error reported: amp x in
@@ -87,7 +89,8 @@ the jaw's followers. Blink in [0,1] scales
 `eye` layers' y-scale by `1 - 0.9 * blink`; an eye layer's own `motion.blink` (amended by cast-forge
 task 6) is a closure of its own that adds to it, the larger winning. Gestures add a short additive offset curve over
 `t` (nod: pitch +6° sine 400 ms; tilt: rotation 5°; lean_in: scale 1.04; recoil: scale .96 and
-dy -1%; glare: eye tint gain 1.6; flare: glow gain 2.0). Layer motion (amended by cast-forge, its design.md "Motion")
+dy -1%; glare: eye tint gain 1.6; flare: glow gain 2.0; both only on emissive layers, `isEmissive` =
+`emissive ?? kind in {eye, crown, accessory}`, amended by cast-forge's emissive fix). Layer motion (amended by cast-forge, its design.md "Motion")
 comes last: float about the layer's own anchor after the follow transform, carried rigidly to its
 followers (cast-forge task 4); pulse
 multiplies the tint; `Drive.still` (reduced motion) zeroes both, and an eye's own blink.

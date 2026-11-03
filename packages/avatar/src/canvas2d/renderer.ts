@@ -4,7 +4,9 @@
 // them; the brow offset is geometry and is kept, so both renderers place every layer identically.
 // Pose `tint` (a layer pulse, cast-forge req 1, and the glare/flare gains) is drawn as a
 // `brightness()` filter, the same per-channel multiply the GL base pass applies; where the
-// browser has no canvas filter it is a no-op.
+// browser has no canvas filter it is a no-op. `Layer.emissive: false` (cast-forge task 12
+// follow-up) reaches this renderer through that tint: `poseLayers` gives such a layer no gesture
+// light gain, and the eye colour and glow it would lose are skipped here for every layer anyway.
 import type { Layer, LayerPose, Look, Rig } from "@sr/rig";
 import { fitView, layerAffine, lookLight } from "../render/frame.js";
 import type { CanvasHost, Renderer, RendererInfo, RigAssets } from "../render/types.js";

@@ -137,7 +137,8 @@
           645.4761904761905
         ],
         "follow": "torso",
-        "depth": 0.3
+        "depth": 0.3,
+        "emissive": false
       },
       {
         "name": "abacus",
@@ -155,7 +156,8 @@
           858.1181654676259
         ],
         "follow": "torso",
-        "depth": 0.3
+        "depth": 0.3,
+        "emissive": false
       },
       {
         "name": "pince_nez",
@@ -352,7 +354,8 @@
             "freq": 0.26,
             "phase": 0.85
           }
-        }
+        },
+        "emissive": false
       },
       {
         "name": "beads_3l",
@@ -380,7 +383,8 @@
             "freq": 0.24,
             "phase": 0.48
           }
-        }
+        },
+        "emissive": false
       },
       {
         "name": "beads_2r",
@@ -408,7 +412,8 @@
             "freq": 0.22,
             "phase": 0.11
           }
-        }
+        },
+        "emissive": false
       },
       {
         "name": "beads_2l",
@@ -436,7 +441,8 @@
             "freq": 0.2,
             "phase": 0.74
           }
-        }
+        },
+        "emissive": false
       },
       {
         "name": "beads_1r",
@@ -464,7 +470,8 @@
             "freq": 0.18,
             "phase": 0.37
           }
-        }
+        },
+        "emissive": false
       },
       {
         "name": "beads_1l",
@@ -492,7 +499,8 @@
             "freq": 0.16,
             "phase": 0
           }
-        }
+        },
+        "emissive": false
       }
     ]
   }

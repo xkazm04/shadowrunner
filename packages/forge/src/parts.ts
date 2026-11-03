@@ -196,7 +196,7 @@ function namedPart(value: unknown, path: string, errors: PartsError[]): NamedPar
     return undefined;
   }
   const before = errors.length;
-  const { name, role, follow, key, drop, glow, fill, cavity, matte, pivot } = value;
+  const { name, role, follow, key, drop, glow, fill, cavity, matte, pivot, emissive } = value;
   const nameOk = typeof name === "string" && PART_NAME_PATTERN.test(name) && !RESERVED_PART_NAMES.includes(name);
   if (!nameOk) errors.push({ code: "upstream", path: `${path}.name`, message: NAME_RULE });
   if (!isRole(role)) errors.push({ code: "upstream", path: `${path}.role`, message: `must be one of ${PART_ROLES.join(", ")}` });
@@ -204,6 +204,7 @@ function namedPart(value: unknown, path: string, errors: PartsError[]): NamedPar
   const points = poly(value.poly, `${path}.poly`, errors);
   if (follow !== undefined && typeof follow !== "string") errors.push({ code: "upstream", path: `${path}.follow`, message: "must be a part name when present" });
   if (key !== undefined && typeof key !== "boolean") errors.push({ code: "upstream", path: `${path}.key`, message: "must be a boolean when present" });
+  if (emissive !== undefined && typeof emissive !== "boolean") errors.push({ code: "upstream", path: `${path}.emissive`, message: "must be a boolean when present" });
   const dropOk = drop === undefined || (typeof drop === "number" && drop >= JAW_DROP_MIN && drop <= JAW_DROP_MAX);
   if (!dropOk) errors.push({ code: "upstream", path: `${path}.drop`, message: `must be a number in [${JAW_DROP_MIN}, ${JAW_DROP_MAX}] when present` });
   if (glow !== undefined && (typeof glow !== "string" || !HEX.test(glow))) errors.push({ code: "upstream", path: `${path}.glow`, message: "must be a \"#rrggbb\" colour when present" });
@@ -238,6 +239,7 @@ function namedPart(value: unknown, path: string, errors: PartsError[]): NamedPar
     ...(fill === "edit" || fill === "extend" ? { fill } : {}),
     ...(cavity === "paint" || cavity === "fill" || cavity === "gap" ? { cavity } : {}),
     ...(matte === "plate" ? { matte } : {}),
+    ...(typeof emissive === "boolean" ? { emissive } : {}),
     ...(pivotOk && Array.isArray(pivot) && isCoord(pivot[0]) && isCoord(pivot[1]) ? { pivot: [pivot[0], pivot[1]] } : {}),
   };
 }

@@ -7,6 +7,7 @@
 // `bad_shape` at `$.layers[i].motion.<field>`, every one reported. Layer.drop (cast-forge task 3)
 // is `bad_shape` at `$.layers[i].drop` when out of [JAW_DROP_MIN, JAW_DROP_MAX] or not on a jaw;
 // Motion.blink (cast-forge task 6) is `bad_shape` at `$.layers[i].motion.blink` on a non-eye layer.
+// Layer.emissive (cast-forge task 12 follow-up) is `bad_shape` at `$.layers[i].emissive` unless boolean.
 import { JAW_DROP_MAX, JAW_DROP_MIN } from "./pose.js";
 import type { Result } from "./result.js";
 import { RIG_VERSION, type Layer, type LayerKind, type Palette, type Rig } from "./types.js";
@@ -57,6 +58,7 @@ const isSource = (value: unknown): value is Rig["source"] => typeof value === "s
 const isKind = (value: unknown): value is LayerKind => typeof value === "string" && Object.hasOwn(LAYER_KINDS, value);
 const isTrue = (value: unknown): value is true => value === true;
 const isFalse = (value: unknown): value is false => value === false;
+const isBoolean = (value: unknown): value is boolean => typeof value === "boolean";
 const isDepth = (value: unknown): value is number => isFinite(value) && value >= 0 && value <= 1;
 const isDimension = (value: unknown): value is number => isInteger(value) && value > 0;
 const isDrop = (value: unknown): value is number => isFinite(value) && value >= JAW_DROP_MIN && value <= JAW_DROP_MAX;
@@ -155,6 +157,7 @@ class Reader {
     const visible = this.optional(value, "visible", path, isFalse, "false (omit the field when visible)", named);
     const drop = this.optional(value, "drop", path, isDrop, `a number in [${JAW_DROP_MIN}, ${JAW_DROP_MAX}]`, named);
     if (drop !== undefined && kind !== undefined && kind !== "jaw") this.fail(`${path}.drop`, `only a jaw layer has a drop, this one is ${kind}`, named);
+    const emissive = this.optional(value, "emissive", path, isBoolean, "a boolean (omit the field for the kind's default)", named);
     const read = readMotion(value.motion, `${path}.motion`, canvas);
     for (const problem of read.problems) this.fail(problem.path, problem.message.slice(problem.path.length + 2), named);
     const motion = read.motion;
@@ -175,6 +178,7 @@ class Reader {
       ...(visible === undefined ? {} : { visible }),
       ...(motion === undefined ? {} : { motion }),
       ...(drop === undefined ? {} : { drop }),
+      ...(emissive === undefined ? {} : { emissive }),
     };
   }
 

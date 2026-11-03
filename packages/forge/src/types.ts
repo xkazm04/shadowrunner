@@ -85,6 +85,12 @@ export interface NamedPart {
    * layer anchor): a clock hand's hub, a key's boss. Omitted means `pivotOf` or the role's anchor.
    */
   pivot?: [y: number, x: number];
+  /**
+   * Any role (cast-forge task 12 follow-up): whether the part gives light. Omitted means the rule
+   * `emissiveOf` applies (a pulsing part and an eye give light, nothing else does); `false` on an eye
+   * drawn without light of its own, `true` on a part that gives light without pulsing.
+   */
+  emissive?: boolean;
 }
 
 /** How a v2 file's parts are cut, per art style (cast-forge task 3). */

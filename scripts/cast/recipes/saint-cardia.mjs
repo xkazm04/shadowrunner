@@ -99,8 +99,8 @@ const parts = {
   parts: [
     ...spires.map(([name, m], k) => part(name, "float", m, float(k))),
     part("heart", "pulse", heart, { follow: "cage", key: false, motion: { pulse: { amp: 0.6, freq: 1.1 } } }, false),
-    part("eye_r", "eye_r", eyeR, {}, false),
-    part("eye_l", "eye_l", eyeL, {}, false),
+    part("eye_r", "eye_r", eyeR, { emissive: false }, false),
+    part("eye_l", "eye_l", eyeL, { emissive: false }, false),
     part("cage", "accessory", cage, { follow: "torso" }),
     part("crown", "crown", crown),
     part("jaw", "jaw", jaw, { drop: JAW_TRAVEL }, false),

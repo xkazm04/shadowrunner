@@ -148,7 +148,8 @@
             "rot_deg": 5,
             "phase": 0.65
           }
-        }
+        },
+        "emissive": false
       },
       {
         "name": "serpent_r1",
@@ -177,7 +178,8 @@
             "rot_deg": 5,
             "phase": 0.15
           }
-        }
+        },
+        "emissive": false
       },
       {
         "name": "serpent_l2",
@@ -206,7 +208,8 @@
             "rot_deg": 4.5,
             "phase": 0.8
           }
-        }
+        },
+        "emissive": false
       },
       {
         "name": "serpent_r2",
@@ -235,7 +238,8 @@
             "rot_deg": 4.5,
             "phase": 0.3
           }
-        }
+        },
+        "emissive": false
       },
       {
         "name": "serpent_l3",
@@ -264,7 +268,8 @@
             "rot_deg": 4,
             "phase": 0.55
           }
-        }
+        },
+        "emissive": false
       },
       {
         "name": "serpent_r3",
@@ -293,7 +298,8 @@
             "rot_deg": 4,
             "phase": 0
           }
-        }
+        },
+        "emissive": false
       },
       {
         "name": "collar_back_l",
@@ -311,7 +317,8 @@
           617.1732435033687
         ],
         "follow": "torso",
-        "depth": 0.3
+        "depth": 0.3,
+        "emissive": false
       },
       {
         "name": "collar_back_r",
@@ -329,7 +336,8 @@
           617.2758041286606
         ],
         "follow": "torso",
-        "depth": 0.3
+        "depth": 0.3,
+        "emissive": false
       },
       {
         "name": "collar",
@@ -347,7 +355,8 @@
           646.2480873087309
         ],
         "follow": "torso",
-        "depth": 0.3
+        "depth": 0.3,
+        "emissive": false
       },
       {
         "name": "spectacles",
@@ -365,7 +374,8 @@
           389.99603966771843
         ],
         "follow": "head",
-        "depth": 0.6
+        "depth": 0.6,
+        "emissive": false
       },
       {
         "name": "eye_l",

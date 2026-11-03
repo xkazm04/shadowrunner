@@ -59,6 +59,7 @@ Four colours, each `#rrggbb`:
 | `visible` | `false` | no | Present only when the layer is hidden by default. Never written as `true`. |
 | `motion` | Motion | no | The layer's own float and/or pulse (see "Motion"). Omitted when the layer has none. Amended by cast-forge; the format stays version 1. |
 | `drop` | number | no | `jaw` layers only: the drop at `jawOpen = 1` as a fraction of `height`, in `[0.005, 0.1]`. Omitted means 0.06 (a skull's gape); a human mouth wants about 0.012-0.02. On any other kind, or out of range, it is `bad_shape` at `$.layers[i].drop`. Amended by cast-forge task 3; the format stays version 1. |
+| `emissive` | boolean | no | Whether the layer gives light: its bright pixels feed the glow pass (tinted `palette.glow`), an `eye` takes `palette.eye`, and `glare` / `flare` raise its tint. Omitted means the kind's default: `eye`, `crown` and `accessory` give light, the other kinds do not. `false` on a part drawn without light of its own (a white glove, a silver crown, a painted iris); its own `motion.pulse` still applies. Not a boolean is `bad_shape` at `$.layers[i].emissive`. Amended by cast-forge (emissive fix, task 12 follow-up); the format stays version 1. |
 
 ### Layer files
 
@@ -269,8 +270,9 @@ One per drawn layer, in `z` order. A layer is drawn unless it is named in `look.
   multiplies the tint into the layer colour; the canvas2D fallback draws it as a `brightness()` filter.
 - **Gestures**, at their peak: `nod` adds 6° of pitch; `tilt` rotates the head 5°; `lean_in`
   scales the head by 1.04; `recoil` scales it by 0.96 and lifts it by 1% of height; `glare` sets
-  the eye tint to 1.6; `flare` sets the tint of the emissive kinds (`eye`, `crown`, `accessory`)
-  to 2.0. `tilt`, `lean_in` and `recoil` act about the anchor of each `head` layer that has no
+  the eye tint to 1.6; `flare` sets the tint of the emissive layers (`emissive`, else the kinds
+  `eye`, `crown`, `accessory`) to 2.0; a layer with `emissive: false` takes neither (glare only
+  raises an emissive eye). `tilt`, `lean_in` and `recoil` act about the anchor of each `head` layer that has no
   `head` ancestor, and reach its followers through the follow rule.
 
 ## Example

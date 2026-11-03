@@ -5,6 +5,7 @@ import type { Layer, LayerKind, Rig } from "@sr/rig";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { testRig } from "../testFixtures";
+import { layerWord } from "./LayerRail";
 import { boxOf, layerAt, lightPins, lightPoints, spread, TAG_GAP, TAG_MARGIN, toGlass } from "./pins";
 
 const KINDS: LayerKind[] = ["body", "head", "jaw", "eye", "accessory", "crown"];
@@ -140,5 +141,18 @@ describe("layerAt", () => {
         expect(x >= b.left && x <= b.left + b.width && y >= b.top && y <= b.top + b.height).toBe(true);
       }),
     );
+  });
+
+  it("pins the glow only on a part that gives light, and the rail says lit only there (Layer.emissive)", () => {
+    const base = testRig();
+    const rig = { ...base, layers: base.layers.map((l): Layer => (l.name === "monocle" ? { ...l, bbox: [10, 40, 10, 8] } : l)) };
+    const dark = { ...rig, layers: rig.layers.map((l) => (l.name === "monocle" ? { ...l, emissive: false } : l)) };
+    const crown = rig.layers.find((l) => l.name === "crown");
+    expect(lightPoints(rig).glow).toEqual([15, 44]);
+    expect(lightPoints(dark).glow).toEqual([39, 20]); // the second eye: the monocle gives no light
+    expect(crown === undefined ? undefined : layerWord(crown)).toBe("floats");
+    expect(layerWord({ kind: "accessory" })).toBe("pulses · lit");
+    expect(layerWord({ kind: "accessory", emissive: false })).toBe("pulses");
+    expect(layerWord({ kind: "eye", emissive: false })).toBe("blinks");
   });
 });

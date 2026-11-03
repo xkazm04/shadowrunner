@@ -2,7 +2,8 @@
 // This file is the ONLY declaration of these types; docs/rig-format.md describes the same contract.
 // Optional fields are omitted when absent, never null.
 // Layer.motion (FloatMotion, PulseMotion) is amended by cast-forge (req 1) and Layer.drop by
-// cast-forge task 3, Motion.blink by cast-forge task 6; Rig stays version 1.
+// cast-forge task 3, Motion.blink by cast-forge task 6, Layer.emissive by the cast-forge task 12
+// follow-up (emissive per layer); Rig stays version 1.
 
 export const RIG_VERSION = 1 as const;
 
@@ -42,6 +43,13 @@ export interface Layer {
    * wants about 0.012-0.02.
    */
   drop?: number;
+  /**
+   * Whether the layer gives light (cast-forge task 12 follow-up): the renderer's glow pass, the
+   * palette's eye colour on an eye, and the glare and flare gains. Omitted means the kind's default
+   * (`EMISSIVE_KINDS`: eye, crown, accessory); `false` on a part drawn without light of its own (a
+   * white glove, a silver crown, a painted iris), `true` on a lit part of another kind.
+   */
+  emissive?: boolean;
 }
 
 /**

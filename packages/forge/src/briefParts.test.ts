@@ -52,8 +52,8 @@ describe("partsPromptFromBrief", () => {
     for (const part of BRIEF.parts) expect(prompt).toContain(briefPartLine(part));
     const general = ledger.replace(/\r\n/g, "\n").split("**Prompt rules (the parts model must be told)**")[1] ?? "";
     const headings = [...general.matchAll(/^- ([A-Z][a-z]+(?: [a-z]+)*?)(?::| are not)/gm)].map((m) => m[1]);
-    expect(headings).toEqual(["Outlines", "Cuts", "Follows", "Motion", "Mouth", "Keys and fills", "The fill edit", "Events"]);
-    for (const h of ["Outlines:", "Cuts:", "Follows:", "Motion:", "Mouth:", "Keys and fills:", "Events are not motion"]) expect(prompt).toContain(h);
+    expect(headings).toEqual(["Outlines", "Cuts", "Follows", "Motion", "Mouth", "Keys and fills", "The fill edit", "Light", "Events"]);
+    for (const h of ["Outlines:", "Cuts:", "Follows:", "Motion:", "Mouth:", "Keys and fills:", "Light:", "Events are not motion"]) expect(prompt).toContain(h);
     // The fill-edit rule's parts-model half; its eyes-closed half is fillPromptFromBrief's.
     expect(prompt).toContain('a machine with a hollow takes cavity "gap" and fill "extend"');
   });

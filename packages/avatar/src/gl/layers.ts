@@ -1,13 +1,17 @@
 // Layer textures and the base pass (avatar-renderer task 3.3, req 1.1-1.3, 7.2): one texture per
 // visible rig layer, uploaded once in `setRig` with premultiplied alpha; one textured quad per
 // `LayerPose`, in the order `poseLayers` returns, blended premultiplied-over.
-import type { Layer, LayerKind, LayerPose, Rig } from "@sr/rig";
+import { EMISSIVE_KINDS as RIG_EMISSIVE_KINDS, isEmissive, type Layer, type LayerKind, type LayerPose, type Rig } from "@sr/rig";
 import { layerAffine, type LookLight, type View } from "../render/frame.js";
 import type { RigAssets } from "../render/types.js";
 import type { Programs } from "./programs.js";
 
-/** Kinds whose light feeds the glow pass (req 1.4). */
-export const EMISSIVE_KINDS: ReadonlySet<LayerKind> = new Set(["eye", "crown", "accessory"]);
+/**
+ * Kinds whose light feeds the glow pass (req 1.4) unless the layer says otherwise: a layer's own
+ * `emissive` (cast-forge task 12 follow-up) wins (`isEmissive`). An eye that is not emissive also
+ * takes no eye colour: it is drawn as painted.
+ */
+export const EMISSIVE_KINDS: ReadonlySet<LayerKind> = RIG_EMISSIVE_KINDS;
 /**
  * Kinds without a rim: their edges are cuts inside the face, not silhouette (the jaw's top edge is
  * the mouth seam across the teeth; eyes sit in their sockets), so a rim there draws a seam line.
@@ -84,7 +88,8 @@ export function drawLayers(
     if (entry === undefined) continue;
     const { layer } = entry;
     const m = layerAffine(layer, pose, view, light.browY);
-    const eye = layer.kind === "eye" ? light.eye : ([1, 1, 1] as const);
+    const emissive = isEmissive(layer);
+    const eye = layer.kind === "eye" && emissive ? light.eye : ([1, 1, 1] as const);
     gl.bindTexture(gl.TEXTURE_2D, entry.texture);
     gl.uniform4f(u.u_rect, layer.bbox[0], layer.bbox[1], layer.bbox[2], layer.bbox[3]);
     gl.uniformMatrix3fv(u.u_m, false, [m[0], m[1], 0, m[2], m[3], 0, m[4], m[5], 1]);
@@ -93,7 +98,7 @@ export function drawLayers(
     gl.uniform3f(u.u_gain, pose.tint * eye[0], pose.tint * eye[1], pose.tint * eye[2]);
     const rim = NO_RIM_KINDS.has(layer.kind) ? 0 : 1;
     gl.uniform3f(u.u_rim, light.rim[0] * rim, light.rim[1] * rim, light.rim[2] * rim);
-    gl.uniform1f(u.u_emissive, EMISSIVE_KINDS.has(layer.kind) ? 1 : 0);
+    gl.uniform1f(u.u_emissive, emissive ? 1 : 0);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     draws += 1;
   }

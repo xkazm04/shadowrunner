@@ -137,7 +137,8 @@
           222.71999999999997
         ],
         "follow": "head",
-        "depth": 0.65
+        "depth": 0.65,
+        "emissive": false
       },
       {
         "name": "cage",
@@ -155,7 +156,8 @@
           845.0008431195423
         ],
         "follow": "torso",
-        "depth": 0.3
+        "depth": 0.3,
+        "emissive": false
       },
       {
         "name": "eye_l",
@@ -173,7 +175,8 @@
           378.8702770780856
         ],
         "follow": "head",
-        "depth": 0.7
+        "depth": 0.7,
+        "emissive": false
       },
       {
         "name": "eye_r",
@@ -191,7 +194,8 @@
           381.95652173913044
         ],
         "follow": "head",
-        "depth": 0.7
+        "depth": 0.7,
+        "emissive": false
       },
       {
         "name": "heart",
@@ -245,7 +249,8 @@
             "rot_deg": 1.5,
             "phase": 0.984
           }
-        }
+        },
+        "emissive": false
       },
       {
         "name": "spire_4",
@@ -274,7 +279,8 @@
             "rot_deg": 1.5,
             "phase": 0.988
           }
-        }
+        },
+        "emissive": false
       },
       {
         "name": "spire_3",
@@ -303,7 +309,8 @@
             "rot_deg": 1.5,
             "phase": 0.008
           }
-        }
+        },
+        "emissive": false
       },
       {
         "name": "spire_2",
@@ -332,7 +339,8 @@
             "rot_deg": 1.5,
             "phase": 0.011
           }
-        }
+        },
+        "emissive": false
       },
       {
         "name": "spire_1",
@@ -361,7 +369,8 @@
             "rot_deg": 1.5,
             "phase": 0
           }
-        }
+        },
+        "emissive": false
       }
     ]
   }

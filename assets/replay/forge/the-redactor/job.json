@@ -148,7 +148,8 @@
             "rot_deg": 2.5,
             "phase": 0.42
           }
-        }
+        },
+        "emissive": false
       },
       {
         "name": "eye_l",
