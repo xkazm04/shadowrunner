@@ -116,3 +116,11 @@ multiplies the tint; `Drive.still` (reduced motion) zeroes both, and an eye's ow
 - Purity and non-mutation of `poseLayers` / `applyLook` (deep-freeze inputs).
 - Parallax monotonic in depth; jaw moves only jaw layers.
 - Golden: Malakor import has 0 errors and 18 layers.
+
+## Amendment: character-control (2026-11-03)
+The emotion table above is superseded by `.kiro/specs/character-control/design.md` "Moods": the same
+`eyeGain`, `brow` and default gesture, plus held `headTilt`, `headPitch`, `squint`, `jawSet`,
+`glowGain` and `browLift` columns, a 250 ms crossfade (`Drive.mood`), and expression faces
+(`Layer.variants`, `LayerPose.faces`, `EMOTION_FAMILY`). Brow layers (`/^brow(_|$)/`) take the brow
+offset when the rig has them; otherwise the eyes move as before. `Layer.regions`, `Look.regions` and
+`Look.shape` (`PartShape`, applied before the follow chain) are additive; Rig stays version 1.

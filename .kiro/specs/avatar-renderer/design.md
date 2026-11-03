@@ -98,3 +98,11 @@ every 0.4–1.2 s; gaze targets 0/−8/+10°; jaw attack 40 ms, release 120 ms, 
   count total.
 - Fallback: a stub returning null for `webgl2` yields `info().mode === "2d"`.
 - Bench page is manual and reported in `docs/kiro-log.md`, never a CI gate.
+
+## Amendment: character-control (2026-11-03)
+The eye light no longer multiplies the eye texels: lights and region colours recolour by hue and
+saturation while keeping each pixel's lightness (character-control design "Recolour"), on every
+`eye` layer, the jaw's `cavity` slot and `mouth_glow` (mouth light), and on coloured pixels of
+emissive layers (glow). Rim strength is 0.6. Layers may carry an index-map texture (`regions`) and
+expression patches (`variants`) drawn per `LayerPose.faces` (replace or over). The canvas2d
+fallback renders the same recolour through an offscreen cache; it matches GL within 3/255.

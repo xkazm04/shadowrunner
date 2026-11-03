@@ -101,3 +101,10 @@ constants in `api/_lib/costs.ts` (illustrative, not billing).
   produce a valid rig with 7+ layers.
 - API: steps with a fake Gemini client (injected), quota exhaustion returns `quota` before any
   fake call; replay plane makes zero fetches (fetch stubbed to throw).
+
+## Amendment: character-control (2026-11-03)
+After assembly a live job enters `expressing` and runs one image edit per expression family (six,
+each charged like the fill edit), cutting each family's patches inside the face mask only
+(`expressions.ts`); a failure, a spent budget or a drift over 20/255 skips that family and the job
+still finishes `done`, with `JobView.expressions` saying which. The assemble step also writes colour
+regions per layer (`regions.ts`, no model call). The global daily cap default is 30 USD.

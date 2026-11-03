@@ -93,3 +93,9 @@ may need are requested from `packages/theme` (`--sr-face-glow`, `--sr-surface-*`
 - Component tests (Testing Library) with the replay client: each failure code renders its
   state; quota offers the gallery; resume-by-jobId after remount.
 - `image.ts`: rejects > 5 MB and non-image types; downscales to ≤ 1024 px.
+
+## Amendment: character-control (2026-11-03)
+The right column gains a Mood / Look switch. Look holds the Palette card (lights and colour regions,
+also picked by clicking the glass) and the Shape card (the selected part's size, stretch, offset and
+tilt). "Put on air" records the active character (`sr.onAir`) so CH 2 and the stage show it with its
+look. Details: `.kiro/specs/character-control/design.md` "Creator UI" and "On air".
