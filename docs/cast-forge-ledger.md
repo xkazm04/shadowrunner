@@ -23,8 +23,12 @@ One section per decomposed character (cast-forge requirement 3.4): what broke, w
      `var/cast-forge/<slug>-{rest,jaw,left,right,t0,t1}.png` at full size; iterate.
   4b. (task 3) give the jaw part a `drop` (a lips-only human jaw about 0.012-0.02; omit for a skull) and a `glow` if the mouth glows; for hard-edged pixel art set `cut: { feather: 0, cell: <px> }` and trace ground-meeting parts at least one cell out; mark small parts on a flat field `fill: "extend"`.
   4c. (task 4) a mouth drawn open (rows of teeth over a throat) takes `cavity: "fill"` and a jaw top between the rows of teeth (`corridor` in `recipes/vicar-of-the-lure.mjs`); hanging chains get explicit follows (stalk follows head, bulb follows stalk); the sheet draws rotation, so check sways at t0/t1.
+  4d. (task 5) a glowing or dark part on a lit surface (neon on a dial, a clock hand) takes `matte: "plate"` and, when the edit drifts in tone, `fill: "extend"`; a part that turns on a hub names `pivot`; a mouth drawn open over a dark gap with a smooth upper lip takes `cavity: "gap"` when the edit will not paint a throat; plate parts on a glowing ground are traced onto it by the halo's width.
   6. add the slug to `CAST` in `packages/forge/src/cast.golden.test.ts`.
-     and to `SLUGS` in `api/_tests/forge-replay.test.ts` (it pins the recorded job list).
+     and to `SLUGS` in `api/_tests/forge-replay.test.ts` (it pins the recorded job list), `CAST_FORGE`
+     and the cast order in `apps/web/src/creator/gallery/notes.test.ts`, the hours in
+     `apps/web/src/channels/Listings.dom.test.tsx` (sorted by name without "The"), and a 320 px
+     still `assets/replay/thumbs/<slug>.webp`.
   7. If a web replay test then sees one job fewer than the folder holds, the vitest module cache
      is stale on the glob import: `rm -rf node_modules/.vitest-cache`.
 
@@ -142,3 +146,41 @@ One section per decomposed character (cast-forge requirement 3.4): what broke, w
   the jaw; the jaw's top runs between the rows; ask the fill edit to remove "the lower jaw, its lower
   teeth and the chin" (it paints the throat) and set `cavity: "fill"`. A big maw drops about 0.035.
 - A glowing part's halo on the ground belongs to the glowing part, never to its neighbour.
+
+## Reveille, the Alarm of the Ninth (smoked brass and neon)
+**What broke**
+- Neon on a lit dial: an opaque eye polygon carried a disc of dial, which a pulse brightened; a
+  turning clock hand slid a lozenge of cream over the dial. Both edits (two Codex runs) redrew the
+  case as a whole round clock, the dial 30-60 levels too bright, with no throat behind the jaw.
+- The clock hands lie wholly on the head, so they turned about their centroid, not their hub.
+- The cavity lens is sized on the jaw's whole width: on a wide jaw frame its corners showed the
+  edit's dial; a glow band read as a stripe across a mouth already drawn open over a dark gap.
+- Ghosts: the hands' lit rim stayed on the dial when they turned; the eye discs (cut first) kept a
+  piece of each hand; the brass halo beside the head stayed on the ground on a turn.
+- A name holding ", " broke the CH 4 test's label split; a fixed 10-tick settle raced the tenth
+  recorded job's load in the full run (it now waits for the wall's `aria-busy`).
+
+**What became code** (`packages/forge`)
+- `matte.ts`: `NamedPart.matte: "plate"`, alpha from the largest channel difference to the plate
+  (MATTE_LO 18 .. MATTE_HI 56), colour un-mixed so the part over the plate is the portrait at rest.
+- `NamedPart.pivot` `[y, x]`: the layer anchor of a part that turns on a hub (before `pivotOf`).
+- `NamedPart.cavity: "gap"` (`MouthOptions.gap`): the drawn gap carried up, the full drop in every
+  column, each in its own colour GAP_INSET rows under the lip when dark (GAP_LUMA), else the lip tones.
+- Seeded faults red: cutNamed ignores matte; matte without un-mixing (property and rest composite);
+  assemble ignores pivot; parse accepts pivot on a plate part; gap as a lens; gap ignores the
+  column's colour; cutNamed ignores `cavity: "gap"`. Cardia, the Redactor and the Vicar rebuild
+  byte-identical.
+
+**What became a decomposition-prompt rule**
+- Glowing parts (neon eyes, a lit crack) and thin dark parts on a light surface (clock hands) are
+  matted against the plate; never cut a glow on a lit surface as an opaque disc.
+- A part that turns on a hub or boss (clock hands, a wind-up key) names its pivot.
+- Neon that is one circuit (eyes, teeth) pulses in phase; a cracked tube flickers on its own, faster.
+- Teeth that must glow are their own jaw-role part with the jaw's drop, in front of the jaw.
+- When the character is a machine with a hollow, the fill edit redraws the machine whole: plan
+  `cavity: "gap"` and `fill: "extend"` for such mouths and dials instead of relying on the edit.
+
+**Format finding (not widened)**
+- Float is one sinusoid at most 2 Hz (design.md Motion). A bell's rattle is 10-20 Hz; at 2 Hz with
+  3.5 deg the bells read as an agitated wobble, not ringing. A rattle needs a higher frequency cap or
+  an event gesture ("ring"); left for the owner.

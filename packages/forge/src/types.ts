@@ -63,14 +63,28 @@ export interface NamedPart {
    * cavity lens (`paintCavity`); "fill" leaves the fill plate, for a mouth the drawing already shows
    * open (a maw of teeth over a lit throat), where the edit paints the throat behind the jaw and a
    * flat lens hung from a jagged line between the teeth would read as a zigzag. No `glow` with it.
+   * "gap" (cast-forge task 5) carries a drawn dark gap up under a smooth lip, full depth in every
+   * column (`MouthOptions.gap`): for a mouth drawn open when the edit will not paint a throat.
    */
-  cavity?: "paint" | "fill";
+  cavity?: "paint" | "fill" | "gap";
   /**
    * Lifted parts only (cast-forge task 3): how the plate behind it is filled. "extend" paints it
    * from the surface around it (`blurExtend`), not from the image edit: for a small part on a flat
    * field (a pupil in a dark lens), where an edit would paint something new. Omitted means "edit".
    */
   fill?: "edit" | "extend";
+  /**
+   * Lifted parts only (cast-forge task 5): "plate" keys the part against the fill plate (`matte.ts`):
+   * it keeps only what differs from the surface painted behind it (a neon ring and its halo on a
+   * dial, a clock hand), so a pulse lights the neon, not the dial, and a turning part carries no
+   * patch of the surface with it.
+   */
+  matte?: "plate";
+  /**
+   * Lifted parts only (cast-forge task 5): `[y, x]` in 0..1000, the point the part turns about (its
+   * layer anchor): a clock hand's hub, a key's boss. Omitted means `pivotOf` or the role's anchor.
+   */
+  pivot?: [y: number, x: number];
 }
 
 /** How a v2 file's parts are cut, per art style (cast-forge task 3). */

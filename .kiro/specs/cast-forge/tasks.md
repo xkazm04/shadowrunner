@@ -28,7 +28,10 @@
   - Lure as a follow chain: a float is carried to followers (rig pose amended), attached parts pivot
     where they meet their target (`pivotOf`); a maw drawn open takes `cavity: "fill"`; the review
     sheet draws rotation and scale.
-- [ ] 5. Decompose `reveille` (brass and neon) and harden
+- [x] 5. Decompose `reveille` (brass and neon) and harden
+  - Neon on a lit dial: `matte: "plate"` (alpha from the plate difference, colour un-mixed); clock
+    hands turn on their hubs (`NamedPart.pivot`); a mouth drawn open over a dark gap with no throat
+    in the edit takes `cavity: "gap"`. Format finding: the 2 Hz float cap cannot carry a rattle.
 - [ ] 6. Decompose `the-tallyman` (low-poly) and harden
 - [ ] 7. Decompose `sir-vacant` (heraldic miniature) and harden
 - [ ] 8. Decompose `lot-ninety` (art nouveau) and harden

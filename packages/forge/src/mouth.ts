@@ -26,7 +26,18 @@ export interface MouthOptions {
   glow?: string;
   /** The art's own pixel size in canvas px (pixel art): the cavity is stepped on that grid. */
   cell?: number;
+  /**
+   * Cast-forge task 5: the mouth is drawn open over a dark gap (Reveille's grin), so the cavity is
+   * that gap carried up: every column as deep as the drop (no lens), in the column's own colour
+   * GAP_INSET rows under the lip line when it is dark (luma <= GAP_LUMA), else the lip's tones.
+   */
+  gap?: boolean;
 }
+
+/** The darkest a column's gap sample may be to count as the drawn gap. */
+export const GAP_LUMA = 40;
+/** The gap is sampled this many rows under the lip line, clear of the lip's own anti-aliased edge. */
+export const GAP_INSET = 2;
 
 /** Per column, the first row of `hard` (the lip line), or -1 where the column is empty. */
 export function lipLine(hard: Mask): Int32Array {
@@ -89,6 +100,13 @@ function meanUnder(image: Rgba, hard: Mask): [number, number, number] {
   return n === 0 ? [128, 128, 128] : [(sum[0] ?? 0) / n, (sum[1] ?? 0) / n, (sum[2] ?? 0) / n];
 }
 
+/** The portrait's colour at (x, y) when it is as dark as a drawn gap (GAP_LUMA), else undefined. */
+function gapTone(portrait: Rgba, x: number, y: number): [number, number, number] | undefined {
+  const i = (y * portrait.width + x) * 4;
+  const rgb: [number, number, number] = [portrait.data[i] ?? 0, portrait.data[i + 1] ?? 0, portrait.data[i + 2] ?? 0];
+  return 0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2] <= GAP_LUMA ? rgb : undefined;
+}
+
 const hexRgb = (hex: string): [number, number, number] => [1, 3, 5].map((k) => parseInt(hex.slice(k, k + 2), 16)) as [number, number, number];
 
 export interface Cavity {
@@ -132,18 +150,19 @@ export function paintCavity(surface: Rgba, portrait: Rgba, hard: Mask, lifted: M
     if (lipY < 0) continue;
     const at = cell === 1 ? x + 0.5 : x0 + (Math.floor((x - x0) / cell) + 0.5) * cell;
     const u = Math.min(1, Math.abs(at - centre) / half);
-    const raw = dropPx * (1 - u * u);
+    const raw = options.gap === true ? dropPx : dropPx * (1 - u * u);
     // Never deeper than the drop: on a stepped grid, at most the whole cells the drop holds.
     const depth = cell === 1 ? Math.min(dropPx, Math.round(raw)) : Math.min(Math.round(raw / cell), Math.floor(dropPx / cell)) * cell;
     if (depth <= 0) continue;
     const band = Math.max(1, cell === 1 ? Math.round(depth * CAVITY_SHADOW_SHARE) : Math.round((depth * CAVITY_SHADOW_SHARE) / cell) * cell);
     const glowing = glow !== undefined && u <= GLOW_WIDTH_SHARE;
+    const own = options.gap === true ? gapTone(portrait, x, Math.min(height - 1, lipY + GAP_INSET)) : undefined;
     for (let k = 0; k < depth; k++) {
       const y = lipY + k;
       if (y >= height) break;
       const i = y * width + x;
       if ((lifted.data[i] ?? 0) === 0) continue;
-      const tone = k < band ? shadow : glowing && k >= glowFrom ? glow : deep;
+      const tone = own ?? (k < band ? shadow : glowing && k >= glowFrom ? glow : deep);
       surface.data.set([tone[0], tone[1], tone[2], 255], i * 4);
       mask.data[i] = 255;
     }

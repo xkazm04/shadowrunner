@@ -17,11 +17,14 @@ afterEach(async () => {
   window.history.replaceState(null, "", "/");
 });
 
+/** Ticks until the wall is no longer busy (the cast has loaded), at least 10, at most SETTLE_TICKS: a fixed count raced the recorded jobs' load under a full run. */
+const SETTLE_TICKS = 400;
 async function settle(): Promise<void> {
-  for (let i = 0; i < 10; i += 1) {
+  for (let i = 0; i < SETTLE_TICKS; i += 1) {
     await act(async () => {
       await new Promise((r) => setTimeout(r, 0));
     });
+    if (i >= 10 && view?.container.querySelector('[aria-busy="true"]') === null) return;
   }
 }
 
@@ -44,21 +47,23 @@ describe("Listings as the wall of sets (CH 4)", () => {
       "05:00, The Lantern Warden",
       "06:00, The Moth Widow",
       "07:00, The Redactor",
-      "08:00, Saint Cardia of the Glass Heart",
-      "09:00, Sister Vesper",
-      "10:00, The Understudy",
-      "11:00, Vicar of the Lure",
-      "12:00, before the boiler wakes",
+      // The label is split on ", ", and this name holds one.
+      "08:00, Reveille",
+      "09:00, Saint Cardia of the Glass Heart",
+      "10:00, Sister Vesper",
+      "11:00, The Understudy",
+      "12:00, Vicar of the Lure",
+      "13:00, before the boiler wakes",
       "Channel 9, not built yet",
     ]);
-    expect(wall.map((s) => s.dataset.kind)).toEqual(["live", "cast", "cast", "cast", "cast", "cast", "cast", "cast", "cast", "vacant", "sealed"]);
+    expect(wall.map((s) => s.dataset.kind)).toEqual(["live", "cast", "cast", "cast", "cast", "cast", "cast", "cast", "cast", "cast", "vacant", "sealed"]);
     expect(wall[0]?.getAttribute("aria-label")).toBe("03:00, Arch-Lich Malakor, on air now");
     expect(wall[0]?.getAttribute("aria-pressed")).toBe("true");
     expect(wall[2]?.getAttribute("aria-label")).toBe("05:00, The Lantern Warden, later tonight");
     expect(wall[2]?.querySelector("img")?.getAttribute("src")).toMatch(/lantern-warden\.webp/);
-    expect(wall[9]?.textContent).toContain("12:00 · VACANT");
-    expect(wall[10]?.textContent).toContain("CH 9 · SEALED");
-    expect(wall[10]?.textContent).toContain("NOT BUILT YET");
+    expect(wall[10]?.textContent).toContain("13:00 · VACANT");
+    expect(wall[11]?.textContent).toContain("CH 9 · SEALED");
+    expect(wall[11]?.textContent).toContain("NOT BUILT YET");
     // The clipping opens on Malakor, from his bible, with what he shows off.
     expect(clip(view)?.textContent).toContain("03:00 · ON AIR NOW · CH 2");
     expect(clip(view)?.textContent).toContain("High Auditor of the Obsidian Spire");

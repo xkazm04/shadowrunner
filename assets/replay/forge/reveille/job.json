@@ -1,0 +1,401 @@
+{
+  "slug": "reveille",
+  "name": "Reveille, the Alarm of the Ninth",
+  "fictional": true,
+  "source": "cast-forge offline build: Codex CLI built-in image generation (codex-cli 0.160.0) portrait (contest supporting-cast, entry A/10 style-3, 2026-11-02); named parts measured from pixels; fill Codex CLI image edit",
+  "prompt": "a haunted alarm clock that yells when the stream starts",
+  "promptSha256": "6dc2523d583a6ae001f113a18eb60b808f9fa8173af890a139088cc58bb8bb16",
+  "portrait": "portrait.png",
+  "fill": "edit",
+  "timings": {
+    "cutMs": 4943
+  },
+  "steps": [
+    {
+      "status": "queued",
+      "holdMs": 1500
+    },
+    {
+      "status": "portrait",
+      "holdMs": 1500
+    },
+    {
+      "status": "segmenting",
+      "holdMs": 1500
+    },
+    {
+      "status": "cutting",
+      "holdMs": 1500
+    },
+    {
+      "status": "filling",
+      "holdMs": 1500
+    },
+    {
+      "status": "done"
+    }
+  ],
+  "warnings": [],
+  "rig": {
+    "version": 1,
+    "id": "replay-reveille",
+    "name": "Reveille, the Alarm of the Ninth",
+    "width": 1024,
+    "height": 1024,
+    "source": "forge",
+    "fictional": true,
+    "palette": {
+      "glow": "#1bccd7",
+      "eye": "#2ff1fd",
+      "rim": "#2ff1fd",
+      "mouth": "#072426"
+    },
+    "layers": [
+      {
+        "name": "background",
+        "z": 1,
+        "kind": "static",
+        "file": "background.png",
+        "bbox": [
+          0,
+          0,
+          1024,
+          1024
+        ],
+        "anchor": [
+          512,
+          512
+        ],
+        "depth": 0
+      },
+      {
+        "name": "torso",
+        "z": 2,
+        "kind": "body",
+        "file": "torso.png",
+        "bbox": [
+          147,
+          760,
+          722,
+          253
+        ],
+        "anchor": [
+          508.416,
+          879.104
+        ],
+        "depth": 0.3
+      },
+      {
+        "name": "head",
+        "z": 3,
+        "kind": "head",
+        "file": "head.png",
+        "bbox": [
+          138,
+          0,
+          745,
+          777
+        ],
+        "anchor": [
+          506.88,
+          585.728
+        ],
+        "depth": 0.6
+      },
+      {
+        "name": "jaw",
+        "z": 4,
+        "kind": "jaw",
+        "file": "jaw.png",
+        "bbox": [
+          260,
+          539,
+          492,
+          226
+        ],
+        "anchor": [
+          506.368,
+          538.624
+        ],
+        "follow": "head",
+        "depth": 0.62,
+        "drop": 0.03
+      },
+      {
+        "name": "teeth",
+        "z": 5,
+        "kind": "jaw",
+        "file": "teeth.png",
+        "bbox": [
+          315,
+          586,
+          387,
+          97
+        ],
+        "anchor": [
+          508.41600000000005,
+          585.728
+        ],
+        "follow": "head",
+        "depth": 0.62,
+        "motion": {
+          "pulse": {
+            "amp": 0.45,
+            "freq": 0.5,
+            "phase": 0
+          }
+        },
+        "drop": 0.03
+      },
+      {
+        "name": "key",
+        "z": 6,
+        "kind": "accessory",
+        "file": "key.png",
+        "bbox": [
+          421,
+          823,
+          181,
+          151
+        ],
+        "anchor": [
+          510.976,
+          861.184
+        ],
+        "follow": "torso",
+        "depth": 0.3,
+        "motion": {
+          "float": {
+            "amp": [
+              0,
+              0
+            ],
+            "freq": 0.2,
+            "rot_deg": 6,
+            "phase": 0.406
+          }
+        }
+      },
+      {
+        "name": "brow_l",
+        "z": 7,
+        "kind": "accessory",
+        "file": "brow_l.png",
+        "bbox": [
+          542,
+          266,
+          167,
+          132
+        ],
+        "anchor": [
+          559.104,
+          367.616
+        ],
+        "follow": "head",
+        "depth": 0.6,
+        "motion": {
+          "float": {
+            "amp": [
+              0,
+              0
+            ],
+            "freq": 0.12,
+            "rot_deg": 6,
+            "phase": 0.5
+          }
+        }
+      },
+      {
+        "name": "brow_r",
+        "z": 8,
+        "kind": "accessory",
+        "file": "brow_r.png",
+        "bbox": [
+          338,
+          286,
+          146,
+          112
+        ],
+        "anchor": [
+          465.92,
+          366.592
+        ],
+        "follow": "head",
+        "depth": 0.6,
+        "motion": {
+          "float": {
+            "amp": [
+              0,
+              0
+            ],
+            "freq": 0.12,
+            "rot_deg": 6,
+            "phase": 0
+          }
+        }
+      },
+      {
+        "name": "hammer",
+        "z": 9,
+        "kind": "accessory",
+        "file": "hammer.png",
+        "bbox": [
+          444,
+          42,
+          134,
+          117
+        ],
+        "anchor": [
+          511.31944444444446,
+          147.90625
+        ],
+        "follow": "head",
+        "depth": 0.6,
+        "motion": {
+          "float": {
+            "amp": [
+              2,
+              0
+            ],
+            "freq": 2,
+            "rot_deg": 2,
+            "phase": 0.6
+          }
+        }
+      },
+      {
+        "name": "bell_l",
+        "z": 10,
+        "kind": "accessory",
+        "file": "bell_l.png",
+        "bbox": [
+          581,
+          0,
+          290,
+          251
+        ],
+        "anchor": [
+          651.1522411128284,
+          188.29443585780527
+        ],
+        "follow": "head",
+        "depth": 0.6,
+        "motion": {
+          "float": {
+            "amp": [
+              1.5,
+              1
+            ],
+            "freq": 1.9,
+            "rot_deg": 3.5,
+            "phase": 0.37
+          }
+        }
+      },
+      {
+        "name": "bell_r",
+        "z": 11,
+        "kind": "accessory",
+        "file": "bell_r.png",
+        "bbox": [
+          150,
+          0,
+          290,
+          251
+        ],
+        "anchor": [
+          362.1127167630058,
+          191.03564547206165
+        ],
+        "follow": "head",
+        "depth": 0.6,
+        "motion": {
+          "float": {
+            "amp": [
+              1.5,
+              1
+            ],
+            "freq": 2,
+            "rot_deg": 3.5,
+            "phase": 0
+          }
+        }
+      },
+      {
+        "name": "eye_l",
+        "z": 12,
+        "kind": "eye",
+        "file": "eye_l.png",
+        "bbox": [
+          556,
+          357,
+          121,
+          112
+        ],
+        "anchor": [
+          621.0185681470138,
+          413.5899693721286
+        ],
+        "follow": "head",
+        "depth": 0.7,
+        "motion": {
+          "pulse": {
+            "amp": 0.45,
+            "freq": 0.5,
+            "phase": 0
+          }
+        }
+      },
+      {
+        "name": "eye_r",
+        "z": 13,
+        "kind": "eye",
+        "file": "eye_r.png",
+        "bbox": [
+          343,
+          354,
+          121,
+          114
+        ],
+        "anchor": [
+          402.70294882914135,
+          413.49026693649415
+        ],
+        "follow": "head",
+        "depth": 0.7,
+        "motion": {
+          "pulse": {
+            "amp": 0.45,
+            "freq": 0.5,
+            "phase": 0
+          }
+        }
+      },
+      {
+        "name": "crack",
+        "z": 14,
+        "kind": "accessory",
+        "file": "crack.png",
+        "bbox": [
+          470,
+          214,
+          143,
+          323
+        ],
+        "anchor": [
+          538.9178338001867,
+          369.7049486461251
+        ],
+        "follow": "head",
+        "depth": 0.75,
+        "motion": {
+          "pulse": {
+            "amp": 0.6,
+            "freq": 2,
+            "phase": 0.25
+          }
+        }
+      }
+    ]
+  }
+}

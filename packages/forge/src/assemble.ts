@@ -115,7 +115,7 @@ function anchorOf(kind: LayerKind, layer: NamedLayer, part: Pick<Part, "poly"> |
  * the plate with the moving layers' cores painted out by `backgroundOf` (task 10)), then the cut
  * layers back to front (reverse CUT_ORDER; named parts: reverse `cutOrderNamed`) at z 2, 3, ...;
  * each is named after its part, has the kind of its role (ROLE_KIND; a v1 part's role is its name),
- * the anchor from `anchorOf` (an attached part's from `pivotOf`), and the file `<name>.png`. Follow: the part's own, else every
+ * the anchor from `anchorOf` (an attached part's from `pivotOf`, a part's own `pivot` first), and the file `<name>.png`. Follow: the part's own, else every
  * non-plate role follows the head part (`followOf`); a target with no layer passes the follow on to
  * its own target, and when the head has no layer a `no_head_layer` warning says so. Depth: the
  * kind's default, except that a part with an explicit follow takes its target's depth (a heart on
@@ -194,6 +194,9 @@ export function assembleRig(parts: readonly Part[] | readonly NamedPart[], layer
     return target === undefined ? undefined : pivotOf(part, target, width, height);
   };
 
+  /** A part's own `pivot` (cast-forge task 5: a clock hand's hub) in canvas px. */
+  const ownPivot = (part: NamedPart | undefined): [number, number] | undefined => (part?.pivot === undefined ? undefined : toCanvas([part.pivot], width, height)[0]);
+
   const files: Record<string, Uint8Array> = {};
   const background = `${BACKGROUND_LAYER}.png`;
   files[background] = encodePng(painted.background);
@@ -214,7 +217,7 @@ export function assembleRig(parts: readonly Part[] | readonly NamedPart[], layer
       kind,
       file,
       bbox: [x, y, w, h],
-      anchor: attachedPivot(part) ?? anchorOf(kind, layer, part, width, height),
+      anchor: ownPivot(part) ?? attachedPivot(part) ?? anchorOf(kind, layer, part, width, height),
       ...(follow === undefined ? {} : { follow }),
       depth: depthOf(layer.name),
       ...(motion === undefined ? {} : { motion: scaleMotion(motion, width, height, MOTION_CANVAS) }),

@@ -96,6 +96,15 @@ a soft grey smear (task 9's `MOUTH_SHADE` ramp). Now:
   uncovers the fill plate, unpainted. For a mouth the drawing already shows open (a maw of teeth over
   a lit throat) the jaw's top runs on a jagged line between the rows of teeth, and a lens hung from
   it reads as a zigzag; the edit paints the throat behind the jaw instead. Default `"paint"`.
+- **Gap cavity** (task 5). `NamedPart.cavity: "gap"`: a mouth drawn open over a dark gap under a
+  smooth lip, where the edit will not paint a throat (it redrew Reveille's case as a whole clock):
+  every column of the jaw uncovers the full drop, in the column's own colour `GAP_INSET` rows under
+  the lip when it is dark (`GAP_LUMA`), else the lip's tones. Hard, like the lens.
+- **Plate matte and pivot** (task 5). `NamedPart.matte: "plate"` (lifted parts): the part keeps only
+  what differs from the plate behind it, alpha ramped from `MATTE_LO` to `MATTE_HI` on the largest
+  channel difference and colour un-mixed (`plate + (portrait - plate) / alpha`), so it is the
+  portrait at rest and a pulse lights the neon, not the surface. `NamedPart.pivot` `[y, x]` 0..1000
+  (lifted parts) is the layer's anchor: a clock hand's hub; it wins over `pivotOf`.
 - **Cut style.** `PartsV2.cut` `{ feather?: 0..8, cell?: 1..32 }`: `feather: 0` is a hard cut (pixel
   art: no smeared cluster edges), `cell` the art's pixel size, on which the cavity steps.
 - **Fill per part.** `NamedPart.fill: "extend"` (lifted parts) paints the plate behind it from the

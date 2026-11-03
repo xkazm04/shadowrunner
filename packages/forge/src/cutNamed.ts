@@ -7,10 +7,12 @@
 // what it uncovers when it drops is a painted mouth cavity (mouth.ts), not a shaded smear; and a
 // plate part keeps `parallaxBacking` px of surface under the plate part in front of it (the torso
 // under the head), so a turned head never opens a gap onto the painted-out background at the seam.
-// Pure: plain arrays in, fresh images out.
+// Cast-forge task 5: a lifted part with `matte: "plate"` keeps only what differs from the plate
+// behind it (`matteToPlate`). Pure: plain arrays in, fresh images out.
 import { DEFAULT_DEPTH, JAW_DROP, PITCH_SHIFT, YAW_SHIFT } from "@sr/rig";
 import { type Cut, type CutOptions, CUT_FEATHER, HOOD_SHARE, PLATE_DILATE, addTo, blendBy, cutLayer, hoodShare, keyOf, seamReach, underFront } from "./cut.js";
 import { KEY_HI, type Mask, cornerKeyLo, dilateMask, emptyMask, featherMask, rasterizeMask } from "./mask.js";
+import { matteToPlate } from "./matte.js";
 import { clearAboveLip, liftedJaw, paintCavity } from "./mouth.js";
 import { carrierOf, cutOrderNamed, headNameOf, isKeyed, isLifted } from "./named.js";
 import { composePlate, fallbackFill } from "./plate.js";
@@ -123,7 +125,8 @@ export function cutNamed(portrait: Rgba, parts: readonly NamedPart[], options: N
       const hard = hardOf(part);
       const glow = part.glow === undefined ? {} : { glow: part.glow };
       const cell = options.cell === undefined ? {} : { cell: options.cell };
-      paintCavity(surface, portrait, hard, liftedJaw(hard), Math.round((part.drop ?? JAW_DROP) * height), { ...glow, ...cell });
+      const gap = part.cavity === "gap" ? { gap: true } : {};
+      paintCavity(surface, portrait, hard, liftedJaw(hard), Math.round((part.drop ?? JAW_DROP) * height), { ...glow, ...cell, ...gap });
     }
   }
 
@@ -160,6 +163,8 @@ export function cutNamed(portrait: Rgba, parts: readonly NamedPart[], options: N
       key ??= keyOf(portrait, keyLo, filled ? plate : undefined);
       for (let i = 0; i < m.length; i++) m[i] = Math.round(((m[i] ?? 0) * (key.data[i] ?? 0)) / 255);
     }
+    // Before the core is claimed: what the matte clears stays free for the parts behind.
+    const matted = filled && up && part.matte === "plate" ? matteToPlate(portrait, plate, m) : undefined;
     if (part.role === "hat" && head !== undefined && hoodShare(polyOf(head, width, height), poly, width, height) > HOOD_SHARE) {
       hood = true;
       for (const other of parts) {
@@ -178,7 +183,7 @@ export function cutNamed(portrait: Rgba, parts: readonly NamedPart[], options: N
       if (own.data[i] !== 0) front.data[i] = 255;
       if (!up && own.data[i] !== 0) plateFront.data[i] = 255;
     }
-    const cut = cutLayer(up ? portrait : surface, { width, height, data: m });
+    const cut = cutLayer(matted ?? (up ? portrait : surface), { width, height, data: m });
     if (cut === undefined) empty.push(part.name);
     else layers.push({ name: part.name, role: part.role, ...cut });
   }
