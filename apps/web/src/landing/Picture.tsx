@@ -10,6 +10,8 @@ import { defaultLook, importLegacyLayers } from "@sr/rig";
 import { useEffect, useState, type ReactElement } from "react";
 import layersJson from "../../../../assets/characters/malakor/rig/layers.json";
 import specJson from "../../../../assets/characters/malakor/rig/m8.spec.json";
+import { rigFiles } from "../creator/library/assets";
+import { malakorFiles, withSidecars } from "../creator/library/seed";
 import { RESIDENT, type OnAirCharacter } from "./cast";
 
 /** The rig's layer images only: the source portrait and the depth map are not drawn. */
@@ -29,18 +31,23 @@ export function loadMalakor(): Promise<OnAirCharacter> {
   malakor ??= (async () => {
     const result = importLegacyLayers(layersJson, specJson);
     if (!result.ok) throw new Error(`Malakor did not import: ${result.errors.map((e) => e.message).join("; ")}`);
-    const rig = result.value.rig;
+    // The retrofit's region and face sidecars, when committed (character-control; seed.ts).
+    const rig = withSidecars(result.value.rig);
     const urls = new Map(Object.entries(PNG_URLS).map(([path, url]) => [fileOf(path), url]));
+    const extra = malakorFiles();
+    const layerFiles = new Set(rig.layers.map((l) => l.file));
     const assets: RigAssets = {};
     await Promise.all(
-      rig.layers.map(async (layer) => {
-        if (layer.file === undefined) return;
-        const url = urls.get(layer.file);
-        if (url === undefined) throw new Error(`Malakor is missing ${layer.file}`);
+      rigFiles(rig).map(async (file) => {
+        const url = urls.get(file) ?? (layerFiles.has(file) ? undefined : extra[file]);
+        if (url === undefined) {
+          if (layerFiles.has(file)) throw new Error(`Malakor is missing ${file}`);
+          return;
+        }
         const image = new Image();
         image.src = url;
         await image.decode();
-        assets[layer.file] = image;
+        assets[file] = image;
       }),
     );
     return { name: RESIDENT, rig, look: defaultLook(rig), assets };

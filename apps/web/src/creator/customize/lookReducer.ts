@@ -8,13 +8,22 @@
 //   (toggling twice returns an equal look) and two looks that hide the same parts compare equal.
 // - Choosing an emotion clears a pinned `look.gesture`, so the emotion's own default gesture
 //   (resolveGesture) applies again.
-import { defaultLook, type Emotion, type Look, type Palette, type Rig } from "@sr/rig";
+// - Region colours and part shapes (character-control "Creator UI") are omitted when absent: a
+//   region reset deletes its key, a shape that clamps to identity deletes its layer, and an empty
+//   map deletes the field, so an untouched look stays exactly `defaultLook`. A region value that is
+//   not a hex colour is refused like a palette one.
+import { clampShape, defaultLook, isIdentityShape, type Emotion, type Look, type Palette, type PartShape, type Rig } from "@sr/rig";
 
 export type LookAction =
   | { type: "palette"; key: keyof Palette; value: string }
   | { type: "toggle"; layer: string }
   | { type: "emotion"; emotion: Emotion }
-  | { type: "reset"; rig: Rig };
+  | { type: "reset"; rig: Rig }
+  /** `key` is `regionKey(layer, slot)`; a null or omitted value resets the region to its paint. */
+  | { type: "region"; key: string; value?: string | null }
+  | { type: "shape"; layer: string; value: Partial<PartShape> }
+  | { type: "shapeReset"; layer: string }
+  | { type: "shapeResetAll" };
 
 const HEX = /^#?([0-9a-f]{6})$/i;
 
@@ -27,8 +36,24 @@ export function normalizeHex(value: string): string | undefined {
 const copy = (look: Look): Look => {
   const out: Look = { palette: { ...look.palette }, hidden: [...look.hidden], emotion: look.emotion };
   if (look.gesture !== undefined) out.gesture = look.gesture;
+  if (look.regions !== undefined) out.regions = { ...look.regions };
+  if (look.shape !== undefined) out.shape = Object.fromEntries(Object.entries(look.shape).map(([k, v]) => [k, { ...v }]));
   return out;
 };
+
+/** `look` with `regions` / `shape` set to the maps given, each left out when it is empty. */
+function withMaps(look: Look, regions: Look["regions"], shape: Look["shape"]): Look {
+  const next = copy(look);
+  delete next.regions;
+  delete next.shape;
+  if (regions !== undefined && Object.keys(regions).length > 0) next.regions = { ...regions };
+  if (shape !== undefined && Object.keys(shape).length > 0) next.shape = shape;
+  return next;
+}
+
+/** `map` without `key`. */
+const without = <T>(map: Readonly<Record<string, T>> | undefined, key: string): Record<string, T> =>
+  Object.fromEntries(Object.entries(map ?? {}).filter(([k]) => k !== key));
 
 const sortedUnique = (names: readonly string[]): string[] => [...new Set(names)].sort();
 
@@ -57,5 +82,23 @@ export function lookReducer(look: Look, action: LookAction): Look {
     }
     case "reset":
       return defaultLook(action.rig);
+    case "region": {
+      if (action.value === undefined || action.value === null) {
+        if (look.regions?.[action.key] === undefined) return look;
+        return withMaps(look, without(look.regions, action.key), look.shape);
+      }
+      const value = normalizeHex(action.value);
+      if (value === undefined) return look;
+      return withMaps(look, { ...look.regions, [action.key]: value }, look.shape);
+    }
+    case "shape": {
+      const value = clampShape({ ...look.shape?.[action.layer], ...action.value });
+      const rest = without(look.shape, action.layer);
+      return withMaps(look, look.regions, isIdentityShape(value) ? rest : { ...rest, [action.layer]: value });
+    }
+    case "shapeReset":
+      return look.shape?.[action.layer] === undefined ? look : withMaps(look, look.regions, without(look.shape, action.layer));
+    case "shapeResetAll":
+      return look.shape === undefined ? look : withMaps(look, look.regions, undefined);
   }
 }

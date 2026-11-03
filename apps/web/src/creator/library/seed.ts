@@ -9,10 +9,10 @@
 //   (voices.ts: "Malakor uses `clerk`").
 // - "Empty" means no stored value at all: a library holding only damaged records is not reseeded
 //   over, so nothing the user had is silently replaced.
-import { defaultLook, importLegacyLayers, type Rig } from "@sr/rig";
+import { defaultLook, importLegacyLayers, validateRig, type Layer, type Rig } from "@sr/rig";
 import layersJson from "../../../../../assets/characters/malakor/rig/layers.json";
 import specJson from "../../../../../assets/characters/malakor/rig/m8.spec.json";
-import { urlsToBlobs, type BlobFetcher } from "./assets";
+import { extraFiles, urlsToBlobs, type BlobFetcher } from "./assets";
 import type { CharacterRecord, LibraryStore } from "./libraryStore";
 
 export const MALAKOR_ID = "malakor";
@@ -24,19 +24,60 @@ const PNG_URLS = import.meta.glob<string>(["../../../../../assets/characters/mal
   import: "default",
 });
 
-/** Layer file name -> bundled URL. */
+/** His expression patches (character-control retrofit), when committed: `rig/expressions/*.png`. */
+const FACE_URLS = import.meta.glob<string>("../../../../../assets/characters/malakor/rig/expressions/*.png", {
+  eager: true,
+  query: "?url",
+  import: "default",
+});
+
+/**
+ * The retrofit's optional sidecars next to his rig (character-control design "Expressions"):
+ * `regions.json` (layer -> LayerRegions) and `variants.json` (layer -> family -> LayerPatch).
+ * Absent until the director's retrofit writes them, and then nothing changes.
+ */
+const SIDECARS = import.meta.glob<unknown>("../../../../../assets/characters/malakor/rig/{regions,variants}.json", { eager: true, import: "default" });
+
+const sidecar = (name: "regions" | "variants"): unknown => Object.entries(SIDECARS).find(([path]) => path.endsWith(`/${name}.json`))?.[1];
+
+/** File name (relative to his rig folder) -> bundled URL; a face also under its bare name. */
 export function malakorFiles(): Record<string, string> {
-  return Object.fromEntries(Object.entries(PNG_URLS).map(([path, url]) => [path.slice(path.lastIndexOf("/") + 1), url]));
+  const out = Object.fromEntries(Object.entries(PNG_URLS).map(([path, url]) => [path.slice(path.lastIndexOf("/") + 1), url]));
+  for (const [path, url] of Object.entries(FACE_URLS)) {
+    const name = path.slice(path.lastIndexOf("/") + 1);
+    out[`expressions/${name}`] = url;
+    out[name] ??= url;
+  }
+  return out;
+}
+
+type Fields = Record<string, unknown>;
+const isFields = (v: unknown): v is Fields => typeof v === "object" && v !== null && !Array.isArray(v);
+
+/**
+ * `rig` with the sidecars merged into its layers (by layer name). The result goes through
+ * validateRig; a sidecar that does not validate is left out whole, so a bad retrofit file never
+ * breaks the house character.
+ */
+export function withSidecars(rig: Rig, regions: unknown = sidecar("regions"), variants: unknown = sidecar("variants")): Rig {
+  let out = rig;
+  for (const [field, value] of [["regions", regions], ["variants", variants]] as const) {
+    if (!isFields(value)) continue;
+    const layers = out.layers.map((layer): Layer => (value[layer.name] === undefined ? layer : ({ ...layer, [field]: value[layer.name] } as Layer)));
+    const checked = validateRig({ ...out, layers });
+    if (checked.ok) out = checked.value;
+  }
+  return out;
 }
 
 /** His rig, imported from the committed legacy files and renamed. Throws if the art stops importing. */
 export function malakorRig(): Rig {
   const result = importLegacyLayers(layersJson, specJson);
   if (!result.ok) throw new Error(`Malakor did not import: ${result.errors.map((e) => e.message).join("; ")}`);
-  return { ...result.value.rig, id: MALAKOR_ID, name: MALAKOR_NAME, fictional: true };
+  return withSidecars({ ...result.value.rig, id: MALAKOR_ID, name: MALAKOR_NAME, fictional: true });
 }
 
-/** The layer file -> URL map for `rig` (only the files its layers use). */
+/** The layer file -> URL map for `rig` (only the files it uses; region maps and faces when committed). */
 export function malakorAssetUrls(rig: Rig): Record<string, string> {
   const files = malakorFiles();
   const out: Record<string, string> = {};
@@ -44,6 +85,10 @@ export function malakorAssetUrls(rig: Rig): Record<string, string> {
     const url = files[layer.file];
     if (url === undefined) throw new Error(`Malakor is missing ${layer.file}`);
     out[layer.file] = url;
+  }
+  for (const file of extraFiles(rig)) {
+    const url = files[file];
+    if (url !== undefined) out[file] = url;
   }
   return out;
 }

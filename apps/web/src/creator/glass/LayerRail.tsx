@@ -1,10 +1,12 @@
 // The layer stack beside the face (costume 3.1, `r1/creator-b.html` `.rail`): every layer of the
 // rig, front-most first, with its z, its cut-out, what it does, and a lamp that lifts it off the
 // face or puts it back (Look.hidden). Hover or focus on a row outlines that layer on the glass.
-// The rows slide in one after another when a character comes onto the glass.
+// The rows slide in one after another when a character comes onto the glass. With `onSelect`
+// (character-control) a row's name is a button that selects the part for the Shape card.
 import { isEmissive, type Layer, type LayerKind } from "@sr/rig";
 import { useEffect, useState, type CSSProperties } from "react";
 import styles from "./Anatomy.module.css";
+import look from "./Look.module.css";
 
 /** What a layer does, as the rail says it. */
 export const KIND_WORD: Readonly<Record<LayerKind, string>> = {
@@ -43,9 +45,13 @@ export interface LayerRailProps {
   hidden: readonly string[];
   onToggle: (layer: string) => void;
   onHighlight: (layer: string | undefined) => void;
+  /** The part selected for the Look tab. */
+  selected?: string;
+  /** A row's name was pressed: select that part. */
+  onSelect?: (layer: string) => void;
 }
 
-export function LayerRail({ layers, thumbs, hidden, onToggle, onHighlight }: LayerRailProps) {
+export function LayerRail({ layers, thumbs, hidden, onToggle, onHighlight, selected, onSelect }: LayerRailProps) {
   const off = new Set(hidden);
   const rows = [...layers].sort((a, b) => b.z - a.z);
   return (
@@ -67,10 +73,24 @@ export function LayerRail({ layers, thumbs, hidden, onToggle, onHighlight }: Lay
             >
               <span className={styles.z}>{zLabel(layer.z)}</span>
               <span className={styles.thumb}>{url !== undefined && <img src={url} alt="" />}</span>
-              <span className={styles.layerName}>
-                {layer.name}
-                <small>{layerWord(layer)}</small>
-              </span>
+              {onSelect === undefined ? (
+                <span className={styles.layerName}>
+                  {layer.name}
+                  <small>{layerWord(layer)}</small>
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  className={`${styles.layerName} ${look.railPick}`}
+                  aria-pressed={selected === layer.name}
+                  aria-label={`Select ${layer.name}`}
+                  data-select={layer.name}
+                  onClick={() => onSelect(layer.name)}
+                >
+                  {layer.name}
+                  <small>{layerWord(layer)}</small>
+                </button>
+              )}
               {layer.kind === "static" ? (
                 <span />
               ) : (

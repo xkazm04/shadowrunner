@@ -7,6 +7,9 @@
 // source for a stream. The shell hands in the RECORDED badge, the theme toggle (the haunt toggle:
 // a theme without haunt stills the candles) and the channel strip, which stays hidden for capture
 // and opens on top-edge hover, focus, or the C key; Esc closes it before Esc may leave the page.
+// character-control 6: the face is the character "Put on air" recorded (onAir.ts), with its saved
+// look; Malakor with his default look when none is recorded or it is gone. The reply's emotion
+// still sets look.emotion. The persona and the recorded show stay Malakor's.
 import { AvatarCanvas, type RigAssets } from "@sr/avatar";
 import { MAX_CHAT_CHARS } from "@sr/engine";
 import { defaultLook, type Look, type Rig } from "@sr/rig";
@@ -18,6 +21,7 @@ import { CatacombFront, CatacombLights, CatacombPlate } from "./Catacomb";
 import { Chat } from "./Chat";
 import { loadRigAssets, MALAKOR_NAME, MALAKOR_PERSONA, malakorRig, malakorShow } from "./malakor";
 import { OnAirLamp, VoiceTally } from "./OnAirLamp";
+import { useOnAir } from "./onAir";
 import { useLoudness } from "./useLoudness";
 import { useShow } from "./useShow";
 import { useStageLights } from "./useStageLights";
@@ -40,11 +44,20 @@ export const STAGE_HIDDEN = ["background"];
 export const TALLY_ON = 0.12;
 export const TALLY_OFF = 0.04;
 
-type Loaded = { rig: Rig; assets: RigAssets } | "loading" | "failed";
+type Loaded = { rig: Rig; assets: RigAssets; look?: Look; name?: string } | "loading" | "failed";
 
-function useMalakor(): Loaded {
+/** The on-air character with its look, else Malakor (loaded only when he is the one on air). */
+function useFace(): Loaded {
+  const onAir = useOnAir();
+  const malakor = useMalakor(onAir === "none");
+  if (onAir === "looking") return "loading";
+  return onAir === "none" ? malakor : { rig: onAir.rig, assets: onAir.assets, look: onAir.look, name: onAir.name };
+}
+
+function useMalakor(wanted: boolean): Loaded {
   const [loaded, setLoaded] = useState<Loaded>("loading");
   useEffect(() => {
+    if (!wanted) return undefined;
     let alive = true;
     const rig = malakorRig();
     loadRigAssets(rig)
@@ -53,7 +66,7 @@ function useMalakor(): Loaded {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [wanted]);
   return loaded;
 }
 
@@ -125,7 +138,7 @@ export function useStripKeys(holder: RefObject<HTMLElement | null>): boolean {
 }
 
 export function AirPage({ plane, badge, controls, strip }: AirPageProps) {
-  const loaded = useMalakor();
+  const loaded = useFace();
   const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
   const loudness = useLoudness(audio);
   const show = useMemo(() => malakorShow(), []);
@@ -157,7 +170,12 @@ export function AirPage({ plane, badge, controls, strip }: AirPageProps) {
   }, [answeredNow]);
 
   const emotion = speaking && caption ? caption.reply.emotion : "neutral";
-  const look = useMemo<Look | undefined>(() => (typeof loaded === "object" ? { ...defaultLook(loaded.rig), hidden: STAGE_HIDDEN, emotion } : undefined), [loaded, emotion]);
+  const look = useMemo<Look | undefined>(() => {
+    if (typeof loaded !== "object") return undefined;
+    const base = loaded.look ?? defaultLook(loaded.rig);
+    return { ...base, hidden: [...new Set([...base.hidden, ...STAGE_HIDDEN])].sort(), emotion };
+  }, [loaded, emotion]);
+  const title = typeof loaded === "object" && loaded.name !== undefined ? loaded.name : `Arch-Lich ${MALAKOR_NAME}`;
   const gesture = speaking ? caption?.reply.gesture : undefined;
 
   return (
@@ -189,7 +207,7 @@ export function AirPage({ plane, badge, controls, strip }: AirPageProps) {
         <CatacombFront />
         <header className={styles.top}>
           <div className={styles.slate}>
-            <h1 className={styles.name}>Arch-Lich {MALAKOR_NAME}</h1>
+            <h1 className={styles.name}>{title}</h1>
             <p className={styles.from}>live from the Ninth Dark</p>
             <VoiceTally voiced={voiced} />
           </div>

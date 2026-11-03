@@ -5,21 +5,38 @@
 // accessory lifts it off (Look.hidden). Every position comes from the rig (pins.ts).
 //
 // Decisions the spec leaves open:
-// - The ring is a group of eight buttons; arrow keys walk it, Esc closes it (and is kept from the
-//   shell, which would otherwise leave the channel), as does a press anywhere else.
+// - The ring (Ring.tsx) closes on Esc or on a press anywhere else.
 // - The hit test for lifting runs on pointer moves without a React render (a data attribute on the
 //   glass sets the cursor).
+// - A click on the glass that lifts nothing is a pick (character-control "Glass pick"): its point
+//   goes to `onPick` in rig px, and the page draws the picked region's `outline`. A crown piece or
+//   an accessory is still lifted by a click, as before the Look tab.
 import { AvatarCanvas, type RigAssets } from "@sr/avatar";
 import type { Gesture, Look, Palette, Rig } from "@sr/rig";
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
-import { boxOf, layerAt, lightPins, type Pin } from "./pins";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { boxOf, fromGlass, layerAt, lightPins, type Pin, type Point } from "./pins";
+import { lamp, Ring } from "./Ring";
 import { LIGHT_LABELS, ringOf, swatchName } from "./swatches";
 import styles from "./Glass.module.css";
 
 const LIFTABLE = ["crown", "accessory"] as const;
 
-type Lamp = CSSProperties & Record<"--lamp", string>;
-const lamp = (hex: string, extra: CSSProperties = {}): Lamp => ({ ...extra, "--lamp": hex });
+/** A picked region's outline on the glass: an SVG path placed by `transform` (percent of the glass). */
+export interface GlassOutline {
+  /** Changes with every pick, so a repeat pick redraws. */
+  n: number;
+  d: string;
+  transform: string;
+  /** Reduced motion: drawn steady for its time, no fade. */
+  steady: boolean;
+}
+
+/** Where a pin's ring opens: beside its label, kept inside the glass. */
+function ringAt(pin: Pin): [number, number] {
+  const x = Math.min(80, Math.max(20, pin.side === "start" ? pin.tag[0] + 18 : pin.tag[0] - 18));
+  const y = Math.min(80, Math.max(20, pin.tag[1] + (pin.tag[1] < 55 ? 19 : -19)));
+  return [x, y];
+}
 
 export interface GlassProps {
   rig: Rig;
@@ -33,50 +50,14 @@ export interface GlassProps {
   onPalette?: (key: keyof Palette, hex: string) => void;
   /** A click lifted a crown piece or accessory off (or put it back). */
   onLift?: (layer: string) => void;
+  /** A click on the glass that lifted nothing, at this rig px point. */
+  onPick?: (point: Point) => void;
+  /** The picked region, outlined over the face. */
+  outline?: GlassOutline;
   /** Bottom right on the glass. */
   chip?: ReactNode;
   /** Over the face: loading, an error. */
   children?: ReactNode;
-}
-
-function Ring({ pin, value, onPick, onClose }: { pin: Pin; value: string; onPick: (hex: string) => void; onClose: () => void }) {
-  const group = useRef<HTMLDivElement>(null);
-  const colours = ringOf(pin.key, value);
-  const label = LIGHT_LABELS[pin.key];
-  const x = Math.min(80, Math.max(20, pin.side === "start" ? pin.tag[0] + 18 : pin.tag[0] - 18));
-  const y = Math.min(80, Math.max(20, pin.tag[1] + (pin.tag[1] < 55 ? 19 : -19)));
-  useEffect(() => {
-    const own = group.current?.querySelector<HTMLButtonElement>('button[aria-pressed="true"]') ?? group.current?.querySelector("button");
-    own?.focus({ preventScroll: true });
-  }, []);
-  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
-    const buttons = [...(group.current?.querySelectorAll("button") ?? [])];
-    const at = buttons.indexOf(document.activeElement as HTMLButtonElement);
-    if (event.key === "Escape") onClose();
-    else if (event.key === "ArrowRight" || event.key === "ArrowDown") buttons[(at + 1) % buttons.length]?.focus();
-    else if (event.key === "ArrowLeft" || event.key === "ArrowUp") buttons[(at - 1 + buttons.length) % buttons.length]?.focus();
-    else return;
-    event.preventDefault();
-    event.stopPropagation();
-  };
-  return (
-    <div ref={group} className={styles.ring} style={{ insetInlineStart: `${x}%`, insetBlockStart: `${y}%` }} role="group" aria-label={`${label}: lamps`} onKeyDown={onKeyDown} data-ring="">
-      <span className={styles.ringLabel} aria-hidden="true">
-        {label.toUpperCase()}
-      </span>
-      {colours.map((hex, i) => (
-        <button
-          key={hex}
-          type="button"
-          className={styles.swatch}
-          style={lamp(hex, { "--a": `${i * 45}deg` } as CSSProperties)}
-          aria-pressed={hex === value.toLowerCase()}
-          aria-label={`${label}: ${swatchName(hex)}`}
-          onClick={() => onPick(hex)}
-        />
-      ))}
-    </div>
-  );
 }
 
 /** A polygon covering the glass with a hole at `box` (evenodd), to dim all but one layer. */
@@ -85,7 +66,7 @@ const holeAround = (b: { left: number; top: number; width: number; height: numbe
   return `polygon(evenodd, 0 0, 100% 0, 100% 100%, 0 100%, 0 0, ${l} ${t}, ${r} ${t}, ${r} ${bt}, ${l} ${bt}, ${l} ${t})`;
 };
 
-export function Glass({ rig, look, assets, gesture, audio, highlight, onPalette, onLift, chip, children }: GlassProps) {
+export function Glass({ rig, look, assets, gesture, audio, highlight, onPalette, onLift, onPick, outline, chip, children }: GlassProps) {
   const pins = useMemo(() => lightPins(rig), [rig]);
   const [open, setOpen] = useState<keyof Palette | undefined>(undefined);
   const [flash, setFlash] = useState<{ n: number; hex: string } | undefined>(undefined);
@@ -118,9 +99,11 @@ export function Glass({ rig, look, assets, gesture, audio, highlight, onPalette,
           event.currentTarget.dataset.lift = p !== undefined && layerAt(rig, p, LIFTABLE) !== undefined ? "on" : "";
         }}
         onClick={(event) => {
-          const p = onLift === undefined ? undefined : pointAt(event);
-          const hit = p === undefined ? undefined : layerAt(rig, p, LIFTABLE);
+          const p = onLift === undefined && onPick === undefined ? undefined : pointAt(event);
+          if (p === undefined) return;
+          const hit = onLift === undefined ? undefined : layerAt(rig, p, LIFTABLE);
           if (hit !== undefined) onLift?.(hit.name);
+          else onPick?.(fromGlass(rig, p));
         }}
       >
         {assets !== undefined && (
@@ -145,6 +128,11 @@ export function Glass({ rig, look, assets, gesture, audio, highlight, onPalette,
               aria-hidden="true"
             />
           </>
+        )}
+        {outline !== undefined && (
+          <svg key={outline.n} className={styles.pick} viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" data-pick-outline={outline.steady ? "steady" : "fade"}>
+            <path d={outline.d} transform={outline.transform} vectorEffect="non-scaling-stroke" />
+          </svg>
         )}
         {children !== undefined && <div className={styles.over}>{children}</div>}
       </div>
@@ -184,7 +172,9 @@ export function Glass({ rig, look, assets, gesture, audio, highlight, onPalette,
           .map((p) => (
             <Ring
               key={p.key}
-              pin={p}
+              label={LIGHT_LABELS[p.key]}
+              colours={ringOf(p.key, look.palette[p.key])}
+              at={ringAt(p)}
               value={look.palette[p.key]}
               onPick={(hex) => {
                 onPalette(p.key, hex);

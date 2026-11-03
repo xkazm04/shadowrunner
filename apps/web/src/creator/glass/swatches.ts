@@ -49,3 +49,12 @@ export function ringOf(key: keyof Palette, current: string): string[] {
   const c = current.toLowerCase();
   return own.includes(c) ? [...own] : [c, ...own.slice(0, own.length - 1)];
 }
+
+/** The ring for a colour region (character-control Palette): eight lamps from the lights' rings. */
+export const REGION_SWATCHES: readonly string[] = ["#e0453a", "#ff7a1a", "#e6b84a", "#5fc86a", "#3fd6c4", "#3f9fe0", "#9a5cf0", "#f2efe8"];
+
+/** A region's ring: its eight lamps, the current colour leading when it is not one of them. */
+export function regionRing(current: string): string[] {
+  const c = current.toLowerCase();
+  return REGION_SWATCHES.includes(c) ? [...REGION_SWATCHES] : [c, ...REGION_SWATCHES.slice(0, REGION_SWATCHES.length - 1)];
+}

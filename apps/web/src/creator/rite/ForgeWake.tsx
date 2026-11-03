@@ -2,9 +2,11 @@
 // (and how long the live run that was recorded took), the current one lit; a failure that is not
 // about the description lands here with its copy and a retry. Wake hands the new face to the Forge
 // (/creator, with it selected) or puts it on air.
-import type { ForgeErrorCode } from "@sr/forge/wire";
+import type { ForgeErrorCode, JobView } from "@sr/forge/wire";
+import { EXPRESSION_FAMILIES, type ExpressionFamily } from "@sr/rig";
 import { PAGES } from "../../app/pages";
 import { handleLinkClick } from "../../app/router";
+import { writeOnAir } from "../../air/onAir";
 import type { ReplayStep } from "../replayJobs";
 import { RUN_STEPS, secText, type RunStep } from "./riteClock";
 import { FAILURE_COPY } from "./request";
@@ -21,6 +23,32 @@ export const STEP_VERB: Readonly<Record<RunStep, string>> = {
   done: "Rigged and alive",
 };
 
+export type Expressions = NonNullable<JobView["expressions"]>;
+
+/** The rite's expression progress (character-control 5.4): families answered so far, of six. */
+export const expressionsProgress = (e: Expressions): string => `Expressions ${Object.keys(e).length} / ${EXPRESSION_FAMILIES.length}`;
+
+/** The families that came to anything but "ok": they ship procedural only. */
+export const proceduralFamilies = (e: Expressions): ExpressionFamily[] => EXPRESSION_FAMILIES.filter((f) => e[f] !== "ok");
+
+/** While expressing, the count; once done, every family that is procedural. */
+export function ExpressionsNote({ expressions, done }: { expressions: Expressions; done: boolean }) {
+  if (!done) {
+    return (
+      <p className={marks.note} role="status" data-expressions="">
+        {expressionsProgress(expressions)}
+      </p>
+    );
+  }
+  const procedural = proceduralFamilies(expressions);
+  if (procedural.length === 0) return null;
+  return (
+    <p className={marks.note} data-procedural="">
+      {procedural.map((f) => `${f} · procedural`).join(", ")}
+    </p>
+  );
+}
+
 export interface ForgeMarkProps {
   step?: RunStep;
   steps?: readonly ReplayStep[];
@@ -29,6 +57,8 @@ export interface ForgeMarkProps {
   recorded: boolean;
   /** A live brief job whose parts could not be found (`JobView.decomposition: "fallback"`). */
   fallback?: boolean;
+  /** What each expression family came to so far (live jobs from "expressing" on). */
+  expressions?: Expressions;
   onRetry?: () => void;
   onEdit: () => void;
 }
@@ -44,8 +74,10 @@ function FallbackNotice() {
   );
 }
 
-export function ForgeMark({ step, steps, live, failure, recorded, fallback = false, onRetry, onEdit }: ForgeMarkProps) {
-  const at = step === undefined ? -1 : RUN_STEPS.indexOf(step);
+export function ForgeMark({ step, steps, live, failure, recorded, fallback = false, expressions, onRetry, onEdit }: ForgeMarkProps) {
+  // The expressions stage is listed only for a job that runs it (a recorded job has none).
+  const shown = RUN_STEPS.filter((s) => s !== "expressing" || step === "expressing" || expressions !== undefined);
+  const at = step === undefined ? -1 : shown.indexOf(step);
   const total = steps?.reduce((sum, s) => sum + s.holdMs, 0);
   const liveTotal = live === undefined ? undefined : Object.values(live).reduce((sum, ms) => sum + ms, 0);
   return (
@@ -54,7 +86,7 @@ export function ForgeMark({ step, steps, live, failure, recorded, fallback = fal
         STAGE <small>{steps === undefined ? "live" : "hold / live"}</small>
       </span>
       <ol className={styles.stages}>
-        {RUN_STEPS.map((s, j) => {
+        {shown.map((s, j) => {
           const hold = steps?.find((x) => x.status === s)?.holdMs;
           const ran = live?.[s];
           return (
@@ -63,12 +95,14 @@ export function ForgeMark({ step, steps, live, failure, recorded, fallback = fal
               <span>
                 {hold === undefined || hold === 0 ? "" : secText(hold)}
                 {ran === undefined ? "" : ` / ${secText(ran)}`}
+                {s === "expressing" && expressions !== undefined ? expressionsProgress(expressions) : ""}
               </span>
             </li>
           );
         })}
       </ol>
       {fallback && <FallbackNotice />}
+      {expressions !== undefined && <ExpressionsNote expressions={expressions} done={step === "done"} />}
       {failure !== undefined && (
         <div className={marks.refuse} role="alert" data-failure={failure.code}>
           <b>{FAILURE_COPY[failure.code].title}</b>
@@ -113,9 +147,13 @@ export interface WakeMarkProps {
   keepError?: string;
   /** As ForgeMark's: the brief's parts were not found, the face was cut as the standard ten. */
   fallback?: boolean;
+  /** The kept record's library id: "Put on air" records it (`sr.onAir`). */
+  id?: string;
+  /** What each expression family came to (live jobs). */
+  expressions?: Expressions;
 }
 
-export function WakeMark({ name, layers, handoff, keepError, fallback = false }: WakeMarkProps) {
+export function WakeMark({ name, layers, handoff, keepError, fallback = false, id, expressions }: WakeMarkProps) {
   if (keepError !== undefined) return <p className={marks.note}>{keepError}</p>;
   if (name === undefined || handoff === undefined) return <p className={marks.note}>The face wakes here when the forge is done.</p>;
   return (
@@ -124,11 +162,20 @@ export function WakeMark({ name, layers, handoff, keepError, fallback = false }:
         {name} is rigged: {layers} layers, lit and breathing. Its lights are pinned to the face now, as on the Forge page.
       </p>
       {fallback && <FallbackNotice />}
+      {expressions !== undefined && <ExpressionsNote expressions={expressions} done />}
       <a className={`${styles.btn} ${styles.amber}`} href={handoff} onClick={(event) => handleLinkClick(event, handoff)} data-handoff="">
         Open in Anatomy Under Glass <kbd>CH {forge?.channel}</kbd>
       </a>
       {onAir !== undefined && (
-        <a className={`${styles.btn} ${styles.red}`} href={onAir.path} onClick={(event) => handleLinkClick(event, onAir.path)}>
+        <a
+          className={`${styles.btn} ${styles.red}`}
+          href={onAir.path}
+          data-on-air=""
+          onClick={(event) => {
+            if (id !== undefined) writeOnAir(id);
+            handleLinkClick(event, onAir.path);
+          }}
+        >
           Put on air <kbd>CH {onAir.channel}</kbd>
         </a>
       )}

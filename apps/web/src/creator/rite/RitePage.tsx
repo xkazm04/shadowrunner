@@ -31,7 +31,7 @@ import signal from "../glass/Signal.module.css";
 import keys from "./ForgeWake.module.css";
 import { Handshake } from "./BriefCard";
 import { BindMark, Describe, Marks } from "./Marks";
-import { ForgeMark, STEP_VERB, WakeMark } from "./ForgeWake";
+import { expressionsProgress, ForgeMark, STEP_VERB, WakeMark } from "./ForgeWake";
 import { planeClient, withSeededStart } from "./planeClient";
 import { ARCHETYPES, bound, DESCRIBE_CODES, PALETTES, requestOf, type Bind, type ForgeDraft } from "./request";
 import { clockText, markOf, progressIn, RUN_STEPS, secText, slotsAt, startOf, type Mark, type RunStep } from "./riteClock";
@@ -114,6 +114,7 @@ export function RitePage({ client: given, briefer: givenBriefer, jobs = loadRepl
   const replay = useReplayJob(jobId ?? (state.phase === "failed" ? last.current?.jobId : undefined), jobs);
   const recorded = plane === "replay" || jobId?.startsWith("replay_") === true;
   const fallback = (state.phase === "running" || state.phase === "done") && state.decomposition === "fallback";
+  const expressions = state.phase === "running" || state.phase === "done" ? state.expressions : undefined;
 
   const step: RunStep | undefined = state.phase === "running" ? state.status : state.phase === "done" ? "done" : state.phase === "failed" ? last.current?.status : undefined;
   const now = useNow(state.phase === "running");
@@ -236,7 +237,9 @@ export function RitePage({ client: given, briefer: givenBriefer, jobs = loadRepl
                 ? replay === undefined ? "cutting the layers" : `${cutCount} of ${parts.length} cut · lifting off the canvas`
                 : step === "filling"
                   ? "background · filling behind the cuts"
-                  : `alive · ${kept?.rig.layers.length ?? layers?.length ?? 0} layers`;
+                  : step === "expressing"
+                    ? expressionsProgress(expressions ?? {})
+                    : `alive · ${kept?.rig.layers.length ?? layers?.length ?? 0} layers`;
   const sub =
     failure !== undefined
       ? "the forge stopped"
@@ -347,12 +350,14 @@ export function RitePage({ client: given, briefer: givenBriefer, jobs = loadRepl
               {...(failure === undefined || describeFailure !== undefined ? {} : { failure })}
               recorded={recorded}
               fallback={fallback}
+              {...(expressions === undefined ? {} : { expressions })}
               {...(state.phase === "failed" ? { onRetry: () => job.start(state.retry) } : {})}
               onEdit={edit}
             />,
             <WakeMark
               key="w"
-              {...(kept === undefined ? {} : { name: kept.rig.name, layers: kept.rig.layers.length, handoff: handoffOf(kept.id) })}
+              {...(kept === undefined ? {} : { name: kept.rig.name, layers: kept.rig.layers.length, handoff: handoffOf(kept.id), id: kept.id })}
+              {...(expressions === undefined ? {} : { expressions })}
               {...(keepError === undefined ? {} : { keepError })}
               fallback={fallback}
             />,

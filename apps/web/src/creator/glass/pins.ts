@@ -49,6 +49,12 @@ export function toGlass(rig: Pick<Rig, "width" | "height">, [x, y]: Point): Poin
   return [((offX + x) / side) * 100, ((offY + y) / side) * 100];
 }
 
+/** Percent of the glass -> rig px (the inverse of `toGlass`). */
+export function fromGlass(rig: Pick<Rig, "width" | "height">, [x, y]: Point): Point {
+  const side = Math.max(rig.width, rig.height, 1);
+  return [(x / 100) * side - (side - rig.width) / 2, (y / 100) * side - (side - rig.height) / 2];
+}
+
 /** A layer box (rig px) -> percent of the glass. */
 export function boxOf(rig: Pick<Rig, "width" | "height">, bbox: Layer["bbox"]): Box {
   const [left, top] = toGlass(rig, [bbox[0], bbox[1]]);
