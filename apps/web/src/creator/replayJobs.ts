@@ -10,6 +10,7 @@
 //   creator's own bundle carries no art; an image is fetched only when it is shown or adopted.
 import type { ForgeStatus } from "@sr/forge/wire";
 import { validateRig, type Rig } from "@sr/rig";
+import { rigFiles } from "./library/assets";
 
 export interface ReplayStep {
   status: ForgeStatus;
@@ -76,10 +77,12 @@ export function replayJobOf(value: unknown, files: Readonly<Record<string, strin
   const portraitUrl = files[value.portrait];
   if (portraitUrl === undefined) return undefined;
   const assets: Record<string, string> = {};
-  for (const layer of rig.value.layers) {
-    const url = files[layer.file];
-    if (url === undefined) return undefined;
-    assets[layer.file] = url;
+  const layerFiles = new Set(rig.value.layers.map((l) => l.file));
+  // Layer images must exist; region maps and expression patches (character-control) when committed.
+  for (const file of rigFiles(rig.value)) {
+    const url = files[file];
+    if (url === undefined && layerFiles.has(file)) return undefined;
+    if (url !== undefined) assets[file] = url;
   }
   const job: ReplayJob = { slug: value.slug, name: value.name, steps, portraitUrl, rig: rig.value, assets };
   if (typeof value.prompt === "string" && value.prompt !== "") job.prompt = value.prompt;

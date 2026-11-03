@@ -11,7 +11,7 @@
 // - A job view is checked before use (`readJobView`): unknown status, wrong plane, a `rig` that
 //   fails `validateRig` or non-string asset URLs make the response `upstream`, never a crash.
 import type { ForgeErrorCode, ForgeRequest, ForgeStatus, JobView } from "@sr/forge/wire";
-import { validateRig } from "@sr/rig";
+import { EXPRESSION_FAMILIES, validateRig, type ExpressionFamily } from "@sr/rig";
 import { apiFetch, type Fetcher } from "../app/plane";
 
 export type { ForgeErrorCode, ForgeRequest, ForgeStatus, JobView } from "@sr/forge/wire";
@@ -26,7 +26,7 @@ export interface ForgeClient {
 export const FORGE_URL = "/api/forge";
 
 /** Every status, in step order (wire.ts). */
-export const FORGE_STATUSES: readonly ForgeStatus[] = ["queued", "portrait", "segmenting", "cutting", "filling", "done", "failed"];
+export const FORGE_STATUSES: readonly ForgeStatus[] = ["queued", "portrait", "segmenting", "cutting", "filling", "expressing", "done", "failed"];
 
 export const FORGE_ERROR_CODES: readonly ForgeErrorCode[] = ["quota", "refused_likeness", "refused_content", "upstream", "bad_input"];
 
@@ -95,6 +95,16 @@ export function readJobView(value: unknown): JobView | undefined {
   if (value.decomposition !== undefined) {
     if (value.decomposition !== "named" && value.decomposition !== "fallback") return undefined;
     view.decomposition = value.decomposition;
+  }
+  // character-control: what each expression family came to; an unknown family or outcome is refused.
+  if (value.expressions !== undefined) {
+    if (!isRecord(value.expressions)) return undefined;
+    const expressions: NonNullable<JobView["expressions"]> = {};
+    for (const [family, outcome] of Object.entries(value.expressions)) {
+      if (!(EXPRESSION_FAMILIES as readonly string[]).includes(family) || (outcome !== "ok" && outcome !== "skipped" && outcome !== "failed")) return undefined;
+      expressions[family as ExpressionFamily] = outcome;
+    }
+    view.expressions = expressions;
   }
   if (value.error !== undefined) {
     const error = value.error;

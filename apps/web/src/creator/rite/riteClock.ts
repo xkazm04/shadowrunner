@@ -15,7 +15,7 @@ import type { ReplayStep } from "../replayJobs";
 export type RunStep = Exclude<ForgeStatus, "failed">;
 
 /** Every step of a run, in order. */
-export const RUN_STEPS: readonly RunStep[] = ["queued", "portrait", "segmenting", "cutting", "filling", "done"];
+export const RUN_STEPS: readonly RunStep[] = ["queued", "portrait", "segmenting", "cutting", "filling", "expressing", "done"];
 
 export type SlotState = "waiting" | "found" | "cut";
 

@@ -1,11 +1,13 @@
 // The right column's lower cards (costume 3.1, `r1/creator-b.html` GESTURE, VOICE and the actions):
 // six gestures, the five voices with "speak a line" and its transcript typed out, and the two
-// channel actions (Put on air to CH 2, Characters to CH 4) taken from the page manifest.
+// channel actions (Put on air to CH 2, Characters to CH 4) taken from the page manifest. Put on air
+// records the character first (`sr.onAir`, character-control), so the stage shows it.
 import { VOICE_IDS, VOICES, type VoiceId } from "@sr/engine";
 import type { Gesture } from "@sr/rig";
 import { useEffect, useState } from "react";
 import { PAGES } from "../../app/pages";
 import { handleLinkClick } from "../../app/router";
+import { writeOnAir } from "../../air/onAir";
 import { GESTURES, gestureLabel } from "./gestures";
 import anatomy from "./Anatomy.module.css";
 import styles from "./Signal.module.css";
@@ -89,11 +91,19 @@ export function VoiceCard({ voice, onVoice, onSpeak, speaking, line }: VoiceCard
 const onAir = PAGES.find((p) => p.id === "landing");
 const characters = PAGES.find((p) => p.id === "characters");
 
-export function ChannelActions() {
+export function ChannelActions({ recordId }: { recordId?: string }) {
   return (
     <nav className={styles.actions} aria-label="Channels from the forge">
       {onAir !== undefined && (
-        <a href={onAir.path} className={`${styles.action} ${styles.air}`} onClick={(event) => handleLinkClick(event, onAir.path)}>
+        <a
+          href={onAir.path}
+          className={`${styles.action} ${styles.air}`}
+          data-on-air=""
+          onClick={(event) => {
+            if (recordId !== undefined) writeOnAir(recordId);
+            handleLinkClick(event, onAir.path);
+          }}
+        >
           Put on air <kbd>CH {onAir.channel}</kbd>
         </a>
       )}

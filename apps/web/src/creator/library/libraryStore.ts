@@ -15,7 +15,8 @@
 //   second object store `meta` (database version 2), so a preset the user deleted is not put back
 //   and a new recorded job still joins an old library once.
 import { isEmotion, isGesture, VOICE_IDS, type VoiceId } from "@sr/engine";
-import { defaultLook, validateRig, type Look, type Palette, type Rig } from "@sr/rig";
+import { defaultLook, validateLookControls, validateRig, type Look, type Palette, type PartShape, type Rig } from "@sr/rig";
+import { extraFiles } from "./assets";
 
 export const DB_NAME = "sr-library";
 export const STORE = "characters";
@@ -81,8 +82,22 @@ const PALETTE_KEYS: readonly (keyof Palette)[] = ["glow", "eye", "rim", "mouth"]
 
 export const isVoiceId = (v: unknown): v is VoiceId => typeof v === "string" && (VOICE_IDS as readonly string[]).includes(v);
 
-/** A stored look, or undefined when any field is off. */
-export function readLook(value: unknown): Look | undefined {
+/**
+ * The entries of a stored look's `regions` or `shape` that `validateLookControls` passes, one by
+ * one (character-control): an invalid entry is dropped, never the whole look. Undefined when none
+ * is left.
+ */
+function readControls<T>(field: "regions" | "shape", value: unknown, rig: Rig | undefined): Record<string, T> | undefined {
+  if (!isRecord(value)) return undefined;
+  const kept = Object.entries(value).filter(([key, item]) => validateLookControls({ [field]: { [key]: item } }, rig).length === 0);
+  return kept.length === 0 ? undefined : (Object.fromEntries(kept) as Record<string, T>);
+}
+
+/**
+ * A stored look, or undefined when any of its base fields is off. Its region colours and part
+ * shapes are checked entry by entry (against `rig` when given) and the bad ones dropped.
+ */
+export function readLook(value: unknown, rig?: Rig): Look | undefined {
   if (!isRecord(value) || !isRecord(value.palette) || !Array.isArray(value.hidden) || !isEmotion(value.emotion)) return undefined;
   const palette = value.palette;
   const read = (key: keyof Palette): string | undefined => {
@@ -97,6 +112,10 @@ export function readLook(value: unknown): Look | undefined {
     if (!isGesture(value.gesture)) return undefined;
     look.gesture = value.gesture;
   }
+  const regions = readControls<string>("regions", value.regions, rig);
+  if (regions !== undefined) look.regions = regions;
+  const shape = readControls<PartShape>("shape", value.shape, rig);
+  if (shape !== undefined) look.shape = shape;
   return look;
 }
 
@@ -117,11 +136,16 @@ export function readRecord(value: unknown): LibraryEntry {
     if (!(blob instanceof Blob)) return damaged(`missing the image for layer ${layer.name}`);
     blobs[layer.file] = blob;
   }
+  // Region maps and expression patches are kept when stored; without one the base art is drawn.
+  for (const file of extraFiles(rig.value)) {
+    const blob = assets[file];
+    if (blob instanceof Blob) blobs[file] = blob;
+  }
   const record: CharacterRecord = {
     id: rig.value.id,
     rig: rig.value,
     assets: blobs,
-    look: readLook(value.look) ?? defaultLook(rig.value),
+    look: readLook(value.look, rig.value) ?? defaultLook(rig.value),
     voice: isVoiceId(value.voice) ? value.voice : DEFAULT_VOICE,
     createdAt: typeof value.createdAt === "string" ? value.createdAt : new Date(0).toISOString(),
   };

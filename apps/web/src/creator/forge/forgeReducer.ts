@@ -14,15 +14,27 @@
 //   job) and `reset` (back to the form) leave `done` or `failed`.
 // - A brief job's `decomposition` (cast-forge task 12) is kept from the first view that reports it
 //   through `done`, so the creator can say when the brief's parts were not found ("fallback").
+// - A live job's `expressions` (character-control) are kept from each view that reports them
+//   through `done`, so the rite can count them and name the procedural families.
 import type { Decomposition, ForgeErrorCode, ForgeRequest, ForgeStatus, JobView } from "@sr/forge/wire";
 import { validateRig, type Rig } from "@sr/rig";
 
 export type RunningStatus = Exclude<ForgeStatus, "done" | "failed">;
+export type Expressions = NonNullable<JobView["expressions"]>;
 
 export type ForgeState =
   | { phase: "idle" }
-  | { phase: "running"; jobId: string; status: RunningStatus; startedAt: number; request: ForgeRequest; portraitUrl?: string; decomposition?: Decomposition }
-  | { phase: "done"; rig: Rig; assets: Record<string, string>; jobId: string; plane: JobView["plane"]; portraitUrl?: string; decomposition?: Decomposition }
+  | {
+      phase: "running";
+      jobId: string;
+      status: RunningStatus;
+      startedAt: number;
+      request: ForgeRequest;
+      portraitUrl?: string;
+      decomposition?: Decomposition;
+      expressions?: Expressions;
+    }
+  | { phase: "done"; rig: Rig; assets: Record<string, string>; jobId: string; plane: JobView["plane"]; portraitUrl?: string; decomposition?: Decomposition; expressions?: Expressions }
   | { phase: "failed"; code: ForgeErrorCode; message: string; retry: ForgeRequest };
 
 export type ForgeEvent =
@@ -33,7 +45,7 @@ export type ForgeEvent =
   | { type: "reset" };
 
 /** Running statuses in step order. */
-export const RUNNING_ORDER: readonly RunningStatus[] = ["queued", "portrait", "segmenting", "cutting", "filling"];
+export const RUNNING_ORDER: readonly RunningStatus[] = ["queued", "portrait", "segmenting", "cutting", "filling", "expressing"];
 
 export const IDLE: ForgeState = { phase: "idle" };
 
@@ -51,6 +63,8 @@ function finish(state: Extract<ForgeState, { phase: "running" }>, view: JobView)
   if (portraitUrl !== undefined) done.portraitUrl = portraitUrl;
   const decomposition = view.decomposition ?? state.decomposition;
   if (decomposition !== undefined) done.decomposition = decomposition;
+  const expressions = view.expressions ?? state.expressions;
+  if (expressions !== undefined) done.expressions = { ...expressions };
   return done;
 }
 
@@ -83,11 +97,14 @@ export function forgeReducer(state: ForgeState, event: ForgeEvent): ForgeState {
       if (view.status === "done") return finish(state, view);
       const portraitUrl = view.portraitUrl ?? state.portraitUrl;
       const decomposition = view.decomposition ?? state.decomposition;
+      const expressions = view.expressions ?? state.expressions;
+      const sameExpressions = JSON.stringify(expressions) === JSON.stringify(state.expressions);
       if (rank(view.status) < rank(state.status)) return state;
-      if (rank(view.status) === rank(state.status) && portraitUrl === state.portraitUrl && decomposition === state.decomposition) return state;
+      if (rank(view.status) === rank(state.status) && portraitUrl === state.portraitUrl && decomposition === state.decomposition && sameExpressions) return state;
       const next: ForgeState = { ...state, status: view.status };
       if (portraitUrl !== undefined) next.portraitUrl = portraitUrl;
       if (decomposition !== undefined) next.decomposition = decomposition;
+      if (expressions !== undefined) next.expressions = { ...expressions };
       return next;
     }
   }

@@ -5,16 +5,12 @@
 import type { RigAssets } from "@sr/avatar";
 import { parseShow, type Persona, type ShowScript } from "@sr/engine";
 import { importLegacyLayers, type Rig } from "@sr/rig";
+import { rigFiles } from "../creator/library/assets";
+import { malakorFiles, withSidecars } from "../creator/library/seed";
 import bible from "../../../../assets/characters/malakor/bible.md?raw";
 import layersJson from "../../../../assets/characters/malakor/rig/layers.json";
 import specJson from "../../../../assets/characters/malakor/rig/m8.spec.json";
 import showJson from "../../../../assets/replay/shows/malakor-night.json";
-
-const PNG_URLS = import.meta.glob<string>("../../../../assets/characters/malakor/rig/*.png", {
-  query: "?url",
-  import: "default",
-  eager: true,
-});
 
 /** The name his replies are posted under in chat (the picker's `ctx.self`). */
 export const MALAKOR_NAME = "Malakor";
@@ -35,21 +31,26 @@ export function malakorShow(): ShowScript {
 export function malakorRig(): Rig {
   const result = importLegacyLayers(layersJson, specJson);
   if (!result.ok) throw new Error(`Malakor did not import: ${result.errors.map((e) => e.message).join("; ")}`);
-  return result.value.rig;
+  // The retrofit's region and face sidecars, when committed (character-control; seed.ts).
+  return withSidecars(result.value.rig);
 }
 
-/** Loads and decodes every layer image of `rig`. */
+/** Loads and decodes every image of `rig` (`rigFiles`): layer images required, maps and faces when committed. */
 export async function loadRigAssets(rig: Rig): Promise<RigAssets> {
-  const byName = new Map(Object.entries(PNG_URLS).map(([path, url]) => [path.slice(path.lastIndexOf("/") + 1), url]));
+  const byName = new Map(Object.entries(malakorFiles()));
+  const layerFiles = new Set(rig.layers.map((l) => l.file));
   const assets: RigAssets = {};
   await Promise.all(
-    rig.layers.map(async (layer) => {
-      const url = byName.get(layer.file);
-      if (url === undefined) throw new Error(`missing ${layer.file}`);
+    rigFiles(rig).map(async (file) => {
+      const url = byName.get(file);
+      if (url === undefined) {
+        if (layerFiles.has(file)) throw new Error(`missing ${file}`);
+        return;
+      }
       const image = new Image();
       image.src = url;
       await image.decode();
-      assets[layer.file] = image;
+      assets[file] = image;
     }),
   );
   return assets;

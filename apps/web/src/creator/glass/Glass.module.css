@@ -110,6 +110,36 @@
   pointer-events: none;
 }
 
+/* A glass pick (character-control): the picked region's 1px accent outline, held, then faded out
+   by the end of its 1.2 s; steady for its time under reduced motion. */
+.pick {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  inline-size: 100%;
+  block-size: 100%;
+  overflow: visible;
+  pointer-events: none;
+  animation: pickFade 1.2s ease-in both;
+}
+
+.pick path {
+  fill: none;
+  stroke: var(--sr-accent);
+  stroke-width: 1;
+  stroke-linecap: square;
+}
+
+@keyframes pickFade {
+  70% {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
 .sheen {
   position: absolute;
   inset: 0;

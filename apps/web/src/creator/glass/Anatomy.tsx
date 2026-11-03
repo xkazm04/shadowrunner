@@ -3,8 +3,10 @@
 // its state and logic: the look (lookReducer) is written to the library shortly after each change,
 // the voice is stored on the record, "speak a line" plays a recorded line through the mouth.
 // Keyed by the character, so a switch starts clean. The page hands in the cast strip.
+// character-control: the right column is two tabs, Mood (dial, gestures, voice) and Look (Palette,
+// Shape); selecting a part (a Layer stack name, or a pick on the glass) switches to Look.
 import type { VoiceId } from "@sr/engine";
-import { resolveGesture, type Emotion, type Gesture, type Look } from "@sr/rig";
+import { regionKey, resolveGesture, type Emotion, type Gesture, type Look } from "@sr/rig";
 import { useCallback, useEffect, useReducer, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { lookReducer } from "../customize/lookReducer";
 import type { CharacterRecord } from "../library/libraryStore";
@@ -14,7 +16,12 @@ import { Glass } from "./Glass";
 import { gestureLabel, useGesturePulse } from "./gestures";
 import { LayerRail, useBlobUrls } from "./LayerRail";
 import { MoodDial } from "./MoodDial";
+import { PaletteCard } from "./PaletteCard";
+import { decodePixels, type PixelReader } from "./pixels";
+import { ShapeCard } from "./ShapeCard";
 import { ChannelActions, GestureCard, VoiceCard } from "./SignalCards";
+import { SignalTabs, type SignalTab } from "./SignalTabs";
+import { usePick } from "./usePick";
 import styles from "./Anatomy.module.css";
 import signal from "./Signal.module.css";
 
@@ -28,6 +35,8 @@ export interface AnatomyProps {
   cast?: ReactNode;
   /** Next to the name (RECORDED). */
   badge?: ReactNode;
+  /** Reads an image's pixels for a glass pick. Default: decoded through a 2D canvas. */
+  readPixels?: PixelReader;
 }
 
 const title = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
@@ -44,8 +53,12 @@ function liftChip(record: CharacterRecord, hidden: readonly string[]): string | 
   return accessory === undefined ? undefined : `${title(accessory.name.replace(/_/g, " "))} ${off.has(accessory.name) ? "off" : "on"} · click it to lift`;
 }
 
-export function Anatomy({ record, library, cast, badge }: AnatomyProps) {
+export function Anatomy({ record, library, cast, badge, readPixels = decodePixels }: AnatomyProps) {
   const [look, dispatch] = useReducer(lookReducer, record.look);
+  const [tab, setTab] = useState<SignalTab>("mood");
+  const [part, setPart] = useState<string | undefined>(undefined);
+  const [region, setRegion] = useState<string | undefined>(undefined);
+  const glassPick = usePick(record, look, readPixels);
   const [gesture, fireGesture] = useGesturePulse();
   const [lastGesture, setLastGesture] = useState<string | undefined>(undefined);
   const [highlight, setHighlight] = useState<string | undefined>(undefined);
@@ -83,6 +96,16 @@ export function Anatomy({ record, library, cast, badge }: AnatomyProps) {
 
   const onVoice = (voice: VoiceId): void => void library.saveVoice(record.id, voice);
   const toggle = (layer: string): void => dispatch({ type: "toggle", layer });
+  const select = (layer: string, slot?: string): void => {
+    setPart(layer);
+    setRegion(slot === undefined ? undefined : regionKey(layer, slot));
+    setTab("look");
+  };
+  const onPick = (point: [number, number]): void => {
+    void glassPick.pick(point).then((hit) => {
+      if (hit !== undefined) select(hit.layer, hit.slot);
+    });
+  };
 
   const motion = failed
     ? "The face could not be drawn"
@@ -92,12 +115,21 @@ export function Anatomy({ record, library, cast, badge }: AnatomyProps) {
         ? `Gesture · ${lastGesture}`
         : `${look.emotion === "neutral" ? "Idle" : title(look.emotion)} · blinking`;
   const shown = record.rig.layers.filter((l) => l.visible !== false && !look.hidden.includes(l.name)).length;
-  const changed = JSON.stringify(look.palette) !== JSON.stringify(record.rig.palette) || look.hidden.length > 0 || look.emotion !== "neutral";
+  const changed =
+    JSON.stringify(look.palette) !== JSON.stringify(record.rig.palette) || look.hidden.length > 0 || look.emotion !== "neutral" || look.regions !== undefined || look.shape !== undefined;
   const chip = liftChip(record, look.hidden);
 
   return (
     <div className={styles.anatomy} data-page="creator" style={{ "--lamp": look.palette.eye } as CSSProperties}>
-      <LayerRail layers={record.rig.layers} thumbs={thumbs} hidden={look.hidden} onToggle={toggle} onHighlight={setHighlight} />
+      <LayerRail
+        layers={record.rig.layers}
+        thumbs={thumbs}
+        hidden={look.hidden}
+        onToggle={toggle}
+        onHighlight={setHighlight}
+        {...(part === undefined ? {} : { selected: part })}
+        onSelect={(layer) => select(layer)}
+      />
       <section className={styles.centre} aria-label={`The glass: ${record.rig.name}`}>
         <div className={styles.glassBox}>
           <Glass
@@ -109,6 +141,8 @@ export function Anatomy({ record, library, cast, badge }: AnatomyProps) {
             {...(highlight === undefined ? {} : { highlight })}
             onPalette={(key, value) => dispatch({ type: "palette", key, value })}
             onLift={toggle}
+            onPick={onPick}
+            {...(glassPick.outline === undefined ? {} : { outline: glassPick.outline })}
             {...(chip === undefined ? {} : { chip })}
           >
             {assets === undefined ? <p>{failed ? "This character's images could not be read." : "Lighting the face…"}</p> : undefined}
@@ -130,16 +164,44 @@ export function Anatomy({ record, library, cast, badge }: AnatomyProps) {
         {cast}
       </section>
       <aside className={signal.signal} aria-label="Signal">
-        <MoodDial value={look.emotion} onChange={onEmotion} />
-        <GestureCard onGesture={onGesture} />
-        <VoiceCard
-          voice={record.voice}
-          onVoice={onVoice}
-          onSpeak={speaker.toggle}
-          speaking={speaker.line !== undefined}
-          {...(speaker.line === undefined ? {} : { line: speaker.line.reply.line })}
+        <SignalTabs
+          tab={tab}
+          onTab={setTab}
+          panels={{
+            mood: (
+              <>
+                <MoodDial value={look.emotion} onChange={onEmotion} />
+                <GestureCard onGesture={onGesture} />
+                <VoiceCard
+                  voice={record.voice}
+                  onVoice={onVoice}
+                  onSpeak={speaker.toggle}
+                  speaking={speaker.line !== undefined}
+                  {...(speaker.line === undefined ? {} : { line: speaker.line.reply.line })}
+                />
+              </>
+            ),
+            look: (
+              <>
+                <PaletteCard
+                  rig={record.rig}
+                  look={look}
+                  onPalette={(key, value) => dispatch({ type: "palette", key, value })}
+                  onRegion={(key, value) => dispatch({ type: "region", key, value })}
+                  {...(region === undefined ? {} : { selected: region })}
+                />
+                <ShapeCard
+                  look={look}
+                  {...(part === undefined ? {} : { part })}
+                  onShape={(layer, value) => dispatch({ type: "shape", layer, value })}
+                  onReset={(layer) => dispatch({ type: "shapeReset", layer })}
+                  onResetAll={() => dispatch({ type: "shapeResetAll" })}
+                />
+              </>
+            ),
+          }}
         />
-        <ChannelActions />
+        <ChannelActions recordId={record.id} />
       </aside>
     </div>
   );

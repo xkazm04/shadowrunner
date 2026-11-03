@@ -28,6 +28,7 @@ import { LIGHTS } from "./slides";
 import { daemonOf, StatusBar, useBroadcastClock } from "./StatusBar";
 import { gazeAt, SLIDE_REACH, slideLight, TORCH_REST } from "./torch";
 import { World } from "./World";
+import { useOnAir } from "../air/onAir";
 
 const CURRENT = "landing" as const;
 
@@ -198,7 +199,10 @@ export interface LandingPageProps {
   onAir?: OnAirCharacter;
 }
 
-export function LandingPage({ plane = "replay", badge, controls, daemonSample = false, onAir }: LandingPageProps) {
+export function LandingPage({ plane = "replay", badge, controls, daemonSample = false, onAir: given }: LandingPageProps) {
+  // character-control 6: the character "Put on air" recorded, with its saved look (air/onAir.ts).
+  const stored = useOnAir();
+  const onAir = given ?? (typeof stored === "object" ? stored : undefined);
   const { motion } = usePreferences();
   const lost = daemonOf(useHealth()) === "lost" || (plane === "replay" && daemonSample);
   const daemon = useDaemon(lost, motion);

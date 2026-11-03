@@ -41,7 +41,7 @@
     budget runs out at family 3 finishes `done` with families 3-6 `skipped`; the prompt text pinned.
   - _Requirements: 2.1-2.2, 5.1-5.3_
 
-- [ ] 4. Web: Look tab, Palette, Shape, glass pick, on air (apps/web)
+- [x] 4. Web: Look tab, Palette, Shape, glass pick, on air (apps/web)
   - As design "Creator UI" and "On air"; library persistence of `regions`/`shape`; rite
     expression progress; creator design amended.
   - Tests (DOM): tabs keyboard-reachable; region chip recolours (reducer state); glass pick selects
