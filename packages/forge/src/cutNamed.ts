@@ -37,6 +37,8 @@ export interface NamedCutResult {
   keyLo: number;
   /** Whether any hat-role part was treated as a hood. */
   hood: boolean;
+  /** Canvas-size, 255 where a mouth cavity was painted (`paintCavity`); omitted when none was (character-control "Regions"). */
+  cavity?: Mask;
 }
 
 /** Roles a hood gives up before it is cut (the v1 HOOD_YIELDS, plus the unpaired eye). */
@@ -160,6 +162,7 @@ export function cutNamed(portrait: Rgba, parts: readonly NamedPart[], options: N
   }
   const surface = filled ? blendBy(portrait, plate, featherMask(lifted, feather)) : portrait;
   const hardOf = (part: NamedPart): Mask => rasterizeMask(polyOf(part, width, height), width, height, 0);
+  let cavity: Mask | undefined;
   if (filled) {
     for (const part of parts) {
       if (part.role !== "jaw" || part.cavity === "fill") continue;
@@ -167,7 +170,10 @@ export function cutNamed(portrait: Rgba, parts: readonly NamedPart[], options: N
       const glow = part.glow === undefined ? {} : { glow: part.glow };
       const cell = options.cell === undefined ? {} : { cell: options.cell };
       const gap = part.cavity === "gap" ? { gap: true } : {};
-      paintCavity(surface, portrait, hard, liftedJaw(hard), Math.round((part.drop ?? JAW_DROP) * height), { ...glow, ...cell, ...gap });
+      const painted = paintCavity(surface, portrait, hard, liftedJaw(hard), Math.round((part.drop ?? JAW_DROP) * height), { ...glow, ...cell, ...gap });
+      if (!painted.mask.data.some((v) => v !== 0)) continue;
+      cavity ??= emptyMask(width, height);
+      addTo(cavity, painted.mask);
     }
   }
 
@@ -232,5 +238,5 @@ export function cutNamed(portrait: Rgba, parts: readonly NamedPart[], options: N
     if (cut === undefined) empty.push(part.name);
     else layers.push({ name: part.name, role: part.role, ...cut });
   }
-  return { layers, empty, keyLo, hood };
+  return { layers, empty, keyLo, hood, ...(cavity === undefined ? {} : { cavity }) };
 }

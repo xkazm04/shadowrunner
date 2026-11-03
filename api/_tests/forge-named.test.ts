@@ -48,6 +48,9 @@ function castBrief(motionWords: Record<string, string> = {}): CharacterBrief {
   return brief.value;
 }
 
+/** The six expression edits every live job runs after assembly (character-control). */
+const EXPRESSIONS = Array.from({ length: 6 }, () => "expression");
+
 function fake(brief: CharacterBrief, partsReplies: string[]) {
   const calls: string[] = [];
   const fills: string[] = [];
@@ -55,7 +58,8 @@ function fake(brief: CharacterBrief, partsReplies: string[]) {
   const client: GeminiClient = {
     models: { image: "fake-image", imageDraft: "fake-draft", segment: "fake-segment" },
     generateImage: async () => (calls.push("portrait"), PORTRAIT),
-    editImage: async (_image, prompt) => (calls.push("fill"), fills.push(prompt), FILL),
+    // character-control: the six expression edits after assembly return the portrait unchanged (each family "skipped").
+    editImage: async (_image, prompt) => (prompt.startsWith("Edit this portrait") ? (calls.push("expression"), PORTRAIT) : (calls.push("fill"), fills.push(prompt), FILL)),
     generateJson: async (prompt) => {
       if (prompt === partsPromptFromBrief(brief)) calls.push("parts:brief");
       else if (prompt === PARTS_PROMPT) calls.push("parts:v1");
@@ -100,7 +104,7 @@ async function forge(deps: ForgeDeps, brief: CharacterBrief): Promise<{ view: Jo
   expect(res.status).toBe(202);
   const { jobId } = (await res.json()) as { jobId: string };
   const views: JobView[] = [];
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 16; i++) {
     const view = (await (await handleForgeGet(new Request(`https://sr.test/api/forge/${jobId}`), deps)).json()) as JobView;
     views.push(view);
     if (view.status === "done" || view.status === "failed") return { view, views, jobId };
@@ -124,7 +128,7 @@ describe("live brief job: named parts", () => {
     const { view } = await forge(deps, brief);
     expect(view.status).toBe("done");
     expect(view.decomposition).toBe("named");
-    expect(gemini.calls).toEqual(["portrait", "parts:brief", "fill"]);
+    expect(gemini.calls).toEqual(["portrait", "parts:brief", "fill", ...EXPRESSIONS]);
     const rig = validateRig(view.rig);
     expect(rig.ok).toBe(true);
     if (!rig.ok) return;
@@ -150,8 +154,9 @@ describe("live brief job: named parts", () => {
     const { view, views, jobId } = await forge(deps, brief);
     expect(view.status).toBe("done");
     expect(view.decomposition).toBe("fallback");
-    expect(views.map((v) => v.decomposition)).toEqual([undefined, "fallback", "fallback", "fallback", "fallback"]);
-    expect(gemini.calls).toEqual(["portrait", "parts:brief", "parts:brief", "parts:v1", "fill"]);
+    expect(views.map((v) => v.decomposition)).toEqual([undefined, ...views.slice(1).map(() => "fallback")]);
+    expect(views.length).toBe(5 + EXPRESSIONS.length);
+    expect(gemini.calls).toEqual(["portrait", "parts:brief", "parts:brief", "parts:v1", "fill", ...EXPRESSIONS]);
     expect(validateRig(view.rig).ok).toBe(true);
     expect(JSON.stringify(views)).not.toContain("SECRET");
     expect((await store.get(jobId))?.named).toBeUndefined();
@@ -162,7 +167,7 @@ describe("live brief job: named parts", () => {
     const { deps, gemini } = setup(brief, ["{", PARTS_TEXT]);
     const { view } = await forge(deps, brief);
     expect(view.decomposition).toBe("named");
-    expect(gemini.calls).toEqual(["portrait", "parts:brief", "parts:brief", "fill"]);
+    expect(gemini.calls).toEqual(["portrait", "parts:brief", "parts:brief", "fill", ...EXPRESSIONS]);
   });
 });
 
@@ -188,7 +193,8 @@ describe("offline proof: the product path is the overnight path", () => {
     const { deps, store } = setup(brief, [PARTS_TEXT]);
     const { view } = await forge(deps, brief);
     const replay = JSON.parse(read(`assets/replay/forge/${SLUG}/job.json`).toString("utf8")) as { rig: Rig };
-    const strip = (rig: Rig | undefined) => (rig === undefined ? undefined : { ...rig, id: "" });
+    // The live job adds colour regions after assembly (character-control); the cut itself is the recorded one.
+    const strip = (rig: Rig | undefined) => (rig === undefined ? undefined : { ...rig, id: "", layers: rig.layers.map((layer) => Object.fromEntries(Object.entries(layer).filter(([key]) => key !== "regions"))) });
     expect(strip(view.rig)).toEqual(strip(replay.rig));
     for (const layer of replay.rig.layers) {
       const url = view.assets?.[layer.file];

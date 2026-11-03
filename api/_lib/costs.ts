@@ -9,6 +9,8 @@ export const COST_USD = {
   imageFinal: 0.14,
   /** One fill edit with the final image model (requirement 5.2). */
   imageEdit: 0.14,
+  /** One expression edit (character-control: six per live forge), priced as the fill edit. */
+  expression: 0.14,
   /** One parts request to the segmentation model, including a re-ask. */
   segment: 0.01,
   /** One likeness/content classification of an upload. */

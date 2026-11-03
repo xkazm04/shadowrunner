@@ -32,10 +32,26 @@ export interface ReplayJob {
   assets: Record<string, string>;
 }
 
-const STATUS_ORDER: readonly ForgeStatus[] = ["queued", "portrait", "segmenting", "cutting", "filling", "done"];
+const STATUS_ORDER: readonly ForgeStatus[] = ["queued", "portrait", "segmenting", "cutting", "filling", "expressing", "done"];
 const SLUG = /^[a-z0-9-]{1,48}$/;
 /** A file in the job's own folder: no path, no scheme. */
 const FILE = /^[a-z0-9_-]{1,48}\.(png|jpg)$/;
+/** A layer's region map or expression patch (character-control): `<layer>.regions.png`, `<layer>.<family>.png`. */
+const EXTRA_FILE = /^[a-z0-9_]{1,48}\.(regions|joy|showman|anger|gloom|smug|suspicion)\.png$/;
+
+/**
+ * Every file the rig names (layer files, region maps, variant patches) -> its static URL under
+ * `base`; undefined when any is not a plain file name in the job's folder.
+ */
+export function replayAssets(rig: Rig, base: string): Record<string, string> | undefined {
+  const assets: Record<string, string> = {};
+  for (const layer of rig.layers) {
+    const extras = [...(layer.regions === undefined ? [] : [layer.regions.map]), ...Object.values(layer.variants ?? {}).map((p) => p.file)];
+    if (!FILE.test(layer.file) || extras.some((f) => !EXTRA_FILE.test(f))) return undefined;
+    for (const file of [layer.file, ...extras]) assets[file] = base + file;
+  }
+  return assets;
+}
 
 type Fields = Record<string, unknown>;
 const isRecord = (v: unknown): v is Fields => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -45,7 +61,7 @@ const isStatus = (v: unknown): v is ForgeStatus => typeof v === "string" && (STA
  * One committed job.json -> a replay job whose images are static URLs under REPLAY_BASE/<slug>/.
  * Undefined when anything is off: a recorded job must be fictional, its rig must validate, its
  * holds must be 1.5-3 s in status order, and its portrait and every layer file must be a plain
- * .png/.jpg name in its folder (that the files exist is checked by the build and by the tests).
+ * .png/.jpg name in its folder, every region map and variant patch a `<layer>.<suffix>.png` there (that the files exist is checked by the build and by the tests).
  */
 export function replayJobOf(value: unknown): ReplayJob | undefined {
   if (!isRecord(value) || typeof value.slug !== "string" || !SLUG.test(value.slug) || typeof value.name !== "string") return undefined;
@@ -62,11 +78,8 @@ export function replayJobOf(value: unknown): ReplayJob | undefined {
   const order = steps.map((s) => STATUS_ORDER.indexOf(s.status));
   if (steps.at(-1)?.status !== "done" || order.some((r, i) => i > 0 && r <= (order[i - 1] ?? -1))) return undefined;
   const base = `${REPLAY_BASE}/${value.slug}/`;
-  const assets: Record<string, string> = {};
-  for (const layer of rig.value.layers) {
-    if (!FILE.test(layer.file)) return undefined;
-    assets[layer.file] = base + layer.file;
-  }
+  const assets = replayAssets(rig.value, base);
+  if (assets === undefined) return undefined;
   const fill = value.fill === "edit" ? "edit" : "fallback";
   const prompt = typeof value.prompt === "string" ? { prompt: value.prompt } : {};
   return { slug: value.slug, name: value.name, ...prompt, fill, steps, portraitUrl: base + value.portrait, rig: rig.value, assets };

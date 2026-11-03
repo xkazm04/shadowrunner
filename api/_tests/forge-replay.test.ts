@@ -10,7 +10,7 @@ import type { JobView } from "@sr/forge";
 import { validateRig } from "@sr/rig";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { defaultForgeDeps, handleForgeGet, handleForgePost } from "../_lib/forge-api.js";
-import { REPLAY_BASE, bundledReplay, createForgeReplay, pickIndex, replayJobId, replayJobOf, replayView, statusAt, type ReplayJob } from "../_lib/forge-replay.js";
+import { REPLAY_BASE, bundledReplay, createForgeReplay, pickIndex, replayAssets, replayJobId, replayJobOf, replayView, statusAt, type ReplayJob } from "../_lib/forge-replay.js";
 
 const manifests = import.meta.glob("../../assets/replay/forge/*/job.json", { eager: true, import: "default" });
 // cast-forge task 2 adds the first cast member (scripts/cast-forge.mjs); the rest follow one task at a time.
@@ -179,5 +179,41 @@ describe("the real endpoints on replay", () => {
     expect(((await res.json()) as { jobId: string }).jobId.startsWith("replay_")).toBe(true);
     expect(quota).not.toHaveBeenCalled();
     expect(fetches).toBe(0);
+  });
+});
+
+describe("replayAssets (character-control)", () => {
+  const rig = (extra: Record<string, unknown>) =>
+    ({
+      version: 1,
+      id: "t",
+      name: "T",
+      width: 10,
+      height: 10,
+      source: "replay",
+      fictional: true,
+      palette: { glow: "#ffffff", eye: "#ffffff", rim: "#ffffff", mouth: "#000000" },
+      layers: [{ name: "jaw", z: 2, kind: "jaw", file: "jaw.png", bbox: [0, 0, 5, 5], anchor: [2, 0], ...extra }],
+    }) as Parameters<typeof replayAssets>[0];
+
+  it("serves each layer's region map and expression patches from the job's folder", () => {
+    const patch = { file: "jaw.anger.png", bbox: [0, 0, 5, 5], mode: "replace" };
+    const assets = replayAssets(rig({ regions: { map: "jaw.regions.png", slots: [{ id: "cavity", name: "mouth", hex: "#000000" }] }, variants: { anger: patch } }), "/replay/forge/t/");
+    expect(assets).toEqual({ "jaw.png": "/replay/forge/t/jaw.png", "jaw.regions.png": "/replay/forge/t/jaw.regions.png", "jaw.anger.png": "/replay/forge/t/jaw.anger.png" });
+  });
+
+  it("a recorded job may hold an `expressing` step between filling and done", () => {
+    const recorded = manifests["../../assets/replay/forge/reveille/job.json"] as { steps: { status: string; holdMs?: number }[] };
+    const steps = [...recorded.steps.slice(0, -1), { status: "expressing", holdMs: 2000 }, { status: "done" }];
+    const job = replayJobOf({ ...recorded, steps });
+    expect(job?.steps.map((s) => s.status)).toEqual([...ORDER.slice(0, -1), "expressing", "done"]);
+    expect(replayJobOf({ ...recorded, steps: [...recorded.steps.slice(0, -2), { status: "expressing", holdMs: 2000 }, ...recorded.steps.slice(-2)] })).toBeUndefined();
+  });
+
+  it("refuses a region map or patch that is not a plain <layer>.<suffix>.png in the folder", () => {
+    for (const file of ["../jaw.regions.png", "jaw.regions.jpg", "jaw.other.png", "https://x/jaw.joy.png"]) {
+      expect(replayAssets(rig({ regions: { map: file, slots: [] } }), "/b/"), file).toBeUndefined();
+      expect(replayAssets(rig({ variants: { joy: { file, bbox: [0, 0, 1, 1], mode: "over" } } }), "/b/"), file).toBeUndefined();
+    }
   });
 });

@@ -40,7 +40,8 @@ export interface JobStore<J extends StoredJob> {
 }
 
 const JOB_ID = /^[A-Za-z0-9_-]{8,64}$/;
-const FILE = /^[A-Za-z0-9_-]{1,64}\.(?:png|jpe?g|webp)$/;
+/** `<name>.png`, or `<layer>.<suffix>.png` for a region map or an expression patch (character-control); no path. */
+const FILE = /^[A-Za-z0-9_-]{1,64}(?:\.[A-Za-z0-9_-]{1,32})?\.(?:png|jpe?g|webp)$/;
 const CONTENT_TYPE = /^image\/(?:png|jpeg|webp)$/;
 
 export function isJobId(value: string): boolean {

@@ -1,7 +1,7 @@
 // The server-side forge job record (forge-pipeline design.md "Job store", task 7). It lives in the
 // JobStore between steps (KV on the live plane, at most 50 KB): statuses, parts and URLs, never
 // image bytes. `toJobView` is the only way a record reaches the client.
-import type { Rig } from "@sr/rig";
+import type { ExpressionFamily, Rig } from "@sr/rig";
 import type { Part, PartsV2 } from "./types.js";
 import type { CharacterBrief, Decomposition, ForgeErrorCode, ForgeStatus, JobView } from "./wire.js";
 
@@ -41,9 +41,15 @@ export interface ForgeJob {
   fill?: "edit" | "fallback";
   rig?: Rig;
   assets?: Record<string, string>;
+  /** Status "expressing" (character-control): the next family to run, an index into EXPRESSION_FAMILIES. */
+  expressionIndex?: number;
+  /** What each expression family came to, from "expressing" on. */
+  expressions?: Partial<Record<ExpressionFamily, ExpressionOutcome>>;
   error?: { code: ForgeErrorCode; message: string };
   timings?: Partial<Record<ForgeStep, number>>;
 }
+
+export type ExpressionOutcome = "ok" | "skipped" | "failed";
 
 /** The client's view of a job (design.md `JobView`): optional fields omitted, never null. */
 export function toJobView(job: ForgeJob): JobView {
@@ -57,6 +63,7 @@ export function toJobView(job: ForgeJob): JobView {
     ...(job.status === "done" && job.assets !== undefined ? { assets: job.assets } : {}),
     ...(job.fill !== undefined && job.status === "done" ? { fill: job.fill } : {}),
     ...(job.decomposition === undefined ? {} : { decomposition: job.decomposition }),
+    ...(job.expressions === undefined ? {} : { expressions: { ...job.expressions } }),
     ...(job.status === "failed" && job.error !== undefined ? { error: job.error } : {}),
   };
 }

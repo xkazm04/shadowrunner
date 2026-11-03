@@ -94,3 +94,18 @@ export function sideBySide(panels) {
 
 /** Decoded layer pixels by file name. */
 export const imagesOf = (forge, files) => Object.fromEntries(Object.entries(files).map(([file, png]) => [file, forge.decodeImage(png).value]));
+
+/**
+ * A committed JSON file with its formatting (character-control: the retrofit scripts write job.json
+ * back with its own line ending and trailing newline; new keys append, existing keys keep their place).
+ */
+export function readJsonFile(path) {
+  const text = readFileSync(path, "utf8");
+  const eol = text.includes("\r\n") ? "\r\n" : "\n";
+  return { value: JSON.parse(text), eol, trailing: text.endsWith(eol) };
+}
+
+/** Writes `value` as 2-space JSON with the `eol` and `trailing` newline `readJsonFile` found (LF and one newline for a new file). */
+export function writeJsonFile(path, value, { eol = "\n", trailing = true } = {}) {
+  writeFileSync(path, JSON.stringify(value, null, 2).replace(/\n/g, eol) + (trailing ? eol : ""));
+}
