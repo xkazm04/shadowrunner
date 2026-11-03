@@ -371,6 +371,32 @@ One section per decomposed character (cast-forge requirement 3.4): what broke, w
   remove it; it changes every rig's torso, so it is left for the owner.
 - "Turns toward whoever speaks" and "glare on timeouts" are gaze and events (the Tallyman's finding).
 
+## Integration (task 12)
+**What became code**
+- The brief contract fits the eight: 6..24 parts (`BRIEF_MAX_PARTS`, the Tallyman's 18 and a third
+  of headroom, under the v2 file's 40) and a second jaw-role part when its follow names the jaw (a
+  teeth or lip set). Reveille's teeth now follow `jaw` (rebuilt: layers byte-identical, every pose
+  equal); the live proof gives all eight replay rigs exactly. Seeded faults red: the old cap and the
+  one-jaw rule (Reveille, the Tallyman and the teeth case fail).
+- A brief job cut as the standard ten (`decomposition: "fallback"`) says so on the Forge and Wake
+  marks. The eight are listed with their briefs' hooks and adopted on demand (not seeded into every
+  first visit: their layers are 13.8 MB, the presets' 12.8 MB).
+
+**Open decisions for the owner** (consolidated; none widened the format)
+- Event-driven motion: the Redactor's slam, Lot Ninety's "sold" and pointing, the Tallyman's blink
+  per viewer and bead counting, Reveille's ring, the Vicar's lure snapping dark. The rig carries only
+  periodic motion; an engine event that fires a part's motion once would carry them all.
+- The 2 Hz float cap cannot carry a rattle (Reveille's bells): raise the cap or add a "ring" gesture.
+- The renderer smooths pixel art (linear sampling): the Redactor's cells blur when scaled. A nearest
+  filter per rig (or per `cut.feather: 0`) would keep them hard.
+- The eye light multiplies the whole eye layer: a painted eye with an outline grown past the iris
+  (Saint Cardia, the rule "extend an eye's outline 6 px") shows a tinted patch of skin around it in
+  the real renderer. Tinting only the eye's bright texels, or a white eye light for painted eyes,
+  would fix it; the review compositor does not tint, so the sheets did not show it.
+- Parallax backing copies the front part's edge (Lot Ninety's faint line, Auntie Asp's stub): paint
+  the backing from the plate part's own surface; it changes every rig's torso.
+- Gaze ("turns toward whoever speaks", "glances") is not in the rig either.
+
 ## General rules for any character (folded into `partsPromptFromBrief`, task 11)
 What the eight taught, for a streamer's character. **Forge code** does the first list on its own; the
 **parts prompt** must say the second. Task 11 folded the prompt rules into `partsPromptFromBrief`

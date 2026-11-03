@@ -12,15 +12,17 @@
 //   `failed / upstream`, never a half-shown character.
 // - Events for another job id, and events after a terminal state, are ignored; only `start` (a new
 //   job) and `reset` (back to the form) leave `done` or `failed`.
-import type { ForgeErrorCode, ForgeRequest, ForgeStatus, JobView } from "@sr/forge/wire";
+// - A brief job's `decomposition` (cast-forge task 12) is kept from the first view that reports it
+//   through `done`, so the creator can say when the brief's parts were not found ("fallback").
+import type { Decomposition, ForgeErrorCode, ForgeRequest, ForgeStatus, JobView } from "@sr/forge/wire";
 import { validateRig, type Rig } from "@sr/rig";
 
 export type RunningStatus = Exclude<ForgeStatus, "done" | "failed">;
 
 export type ForgeState =
   | { phase: "idle" }
-  | { phase: "running"; jobId: string; status: RunningStatus; startedAt: number; request: ForgeRequest; portraitUrl?: string }
-  | { phase: "done"; rig: Rig; assets: Record<string, string>; jobId: string; plane: JobView["plane"]; portraitUrl?: string }
+  | { phase: "running"; jobId: string; status: RunningStatus; startedAt: number; request: ForgeRequest; portraitUrl?: string; decomposition?: Decomposition }
+  | { phase: "done"; rig: Rig; assets: Record<string, string>; jobId: string; plane: JobView["plane"]; portraitUrl?: string; decomposition?: Decomposition }
   | { phase: "failed"; code: ForgeErrorCode; message: string; retry: ForgeRequest };
 
 export type ForgeEvent =
@@ -47,6 +49,8 @@ function finish(state: Extract<ForgeState, { phase: "running" }>, view: JobView)
   const portraitUrl = view.portraitUrl ?? state.portraitUrl;
   const done: ForgeState = { phase: "done", rig: rig.value, assets: { ...assets }, jobId: state.jobId, plane: view.plane };
   if (portraitUrl !== undefined) done.portraitUrl = portraitUrl;
+  const decomposition = view.decomposition ?? state.decomposition;
+  if (decomposition !== undefined) done.decomposition = decomposition;
   return done;
 }
 
@@ -78,9 +82,12 @@ export function forgeReducer(state: ForgeState, event: ForgeEvent): ForgeState {
       }
       if (view.status === "done") return finish(state, view);
       const portraitUrl = view.portraitUrl ?? state.portraitUrl;
-      if (rank(view.status) < rank(state.status) || (rank(view.status) === rank(state.status) && portraitUrl === state.portraitUrl)) return state;
+      const decomposition = view.decomposition ?? state.decomposition;
+      if (rank(view.status) < rank(state.status)) return state;
+      if (rank(view.status) === rank(state.status) && portraitUrl === state.portraitUrl && decomposition === state.decomposition) return state;
       const next: ForgeState = { ...state, status: view.status };
       if (portraitUrl !== undefined) next.portraitUrl = portraitUrl;
+      if (decomposition !== undefined) next.decomposition = decomposition;
       return next;
     }
   }

@@ -21,8 +21,8 @@ import { ApiError, errorResponse } from "./errors.js";
 import { planeFromRequest, type Env } from "./plane.js";
 import { checkAndCharge, clientIp, type Quota } from "./quota.js";
 
-/** A brief answer is a 6..16-part JSON object with a 900-character prompt: 3000 tokens is ample. */
-export const BRIEF_MAX_TOKENS = 3000;
+/** A brief answer is a 6..24-part JSON object with a 900-character prompt: 4000 tokens is ample. */
+export const BRIEF_MAX_TOKENS = 4000;
 /** Bodies above this are refused before parsing (the request itself is at most 2000 characters). */
 export const MAX_BRIEF_BODY = 8 * 1024;
 /** Asks per brief: the first, and one more after an invalid answer. */

@@ -13,6 +13,7 @@ import { recordOf } from "../forge/keep";
 import type { CharacterRecord } from "../library/libraryStore";
 import { loadMalakor, MALAKOR_ID, malakorFiles, malakorRig } from "../library/seed";
 import { loadReplayJobs, thumbOf, type ReplayJob } from "../replayJobs";
+import { castBriefNote } from "./castBriefs";
 import { noteFor, presetNotes, type PresetNotes } from "./notes";
 
 export interface GalleryEntry {
@@ -36,6 +37,11 @@ export interface GalleryEntry {
   hook?: string;
   /** How the rig was made: cut by the forge, or rigged by hand (Malakor). */
   origin: "forged" | "hand-rigged";
+  /**
+   * A cast-forge character (castBriefs.ts): listed and adopted on demand (a gallery press or a deep
+   * link), not seeded into every library in the background.
+   */
+  onDemand?: true;
   /** Builds the library record (fetches the layer images). */
   load(): Promise<CharacterRecord>;
 }
@@ -65,6 +71,9 @@ export function entryOfJob(job: ReplayJob, notes: PresetNotes = presetNotes()): 
     load: () => recordOf(job.rig, job.assets),
   };
   if (job.prompt !== undefined) entry.prompt = job.prompt;
+  // A cast-forge character speaks from its own brief: its hook, and the style it shows off.
+  const brief = castBriefNote(job.slug);
+  if (brief !== undefined) return { ...entry, hook: brief.hook, showsOff: brief.style, onDemand: true };
   return withNotes(entry, notes);
 }
 

@@ -96,7 +96,7 @@ describe("the handshake", () => {
     const rows = card()?.querySelectorAll("li") ?? [];
     expect(rows).toHaveLength(12);
     expect(q<HTMLSelectElement>('select[aria-label="eyes_l1 role"]')?.value).toBe("eye");
-    expect(q<HTMLInputElement>('input[aria-label="jaw motion"]')?.value).toBe("opens primly with speech");
+    expect(q<HTMLTextAreaElement>('textarea[aria-label="jaw motion"]')?.value).toBe("opens primly with speech");
     expect(q('[role="img"]')?.getAttribute("aria-label")).toBe("Accent #c6ff2e, secondary #d8cfb8");
     expect(sent).toHaveLength(0); // nothing is drawn before approval
   });
@@ -117,7 +117,7 @@ describe("the handshake", () => {
     expect(q('[role="status"]')?.textContent).toBe("The name must not be empty.");
     await type(name, "The Counter");
     await choose(q<HTMLSelectElement>('select[aria-label="pince_nez role"]') as HTMLSelectElement, "float");
-    const motion = q<HTMLInputElement>('input[aria-label="pince_nez motion"]') as HTMLInputElement;
+    const motion = q<HTMLTextAreaElement>('textarea[aria-label="pince_nez motion"]') as HTMLTextAreaElement;
     await type(motion, "");
     await click(button("Drop abacus_collar"));
     expect(button("Draw it").disabled).toBe(false);
@@ -139,7 +139,7 @@ describe("the handshake", () => {
     await briefFor("a vampire accountant with a ledger");
     for (const part of ["crown", "heart"]) await click(button(`Drop ${part}`));
     expect(button("Draw it").disabled).toBe(true);
-    expect(q('[role="status"]')?.textContent).toBe("The parts must list 6 to 16 parts.");
+    expect(q('[role="status"]')?.textContent).toBe("The parts must list 6 to 24 parts.");
   });
 
   it("Ask again re-briefs from the same words", async () => {

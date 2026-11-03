@@ -26,11 +26,24 @@ export interface ForgeMarkProps {
   live?: Partial<Record<RunStep, number>>;
   failure?: { code: ForgeErrorCode; message: string };
   recorded: boolean;
+  /** A live brief job whose parts could not be found (`JobView.decomposition: "fallback"`). */
+  fallback?: boolean;
   onRetry?: () => void;
   onEdit: () => void;
 }
 
-export function ForgeMark({ step, steps, live, failure, recorded, onRetry, onEdit }: ForgeMarkProps) {
+/** The honest notice for a brief job cut without its own parts (cast-forge task 12). */
+export const FALLBACK_NOTICE = "The brief's own parts could not be found in this portrait, so it was cut as the standard ten parts.";
+
+function FallbackNotice() {
+  return (
+    <p className={marks.note} role="status" data-decomposition="fallback">
+      {FALLBACK_NOTICE}
+    </p>
+  );
+}
+
+export function ForgeMark({ step, steps, live, failure, recorded, fallback = false, onRetry, onEdit }: ForgeMarkProps) {
   const at = step === undefined ? -1 : RUN_STEPS.indexOf(step);
   const total = steps?.reduce((sum, s) => sum + s.holdMs, 0);
   const liveTotal = live === undefined ? undefined : Object.values(live).reduce((sum, ms) => sum + ms, 0);
@@ -54,6 +67,7 @@ export function ForgeMark({ step, steps, live, failure, recorded, onRetry, onEdi
           );
         })}
       </ol>
+      {fallback && <FallbackNotice />}
       {failure !== undefined && (
         <div className={marks.refuse} role="alert" data-failure={failure.code}>
           <b>{FAILURE_COPY[failure.code].title}</b>
@@ -96,9 +110,11 @@ export interface WakeMarkProps {
   /** /creator with the new face selected. */
   handoff?: string;
   keepError?: string;
+  /** As ForgeMark's: the brief's parts were not found, the face was cut as the standard ten. */
+  fallback?: boolean;
 }
 
-export function WakeMark({ name, layers, handoff, keepError }: WakeMarkProps) {
+export function WakeMark({ name, layers, handoff, keepError, fallback = false }: WakeMarkProps) {
   if (keepError !== undefined) return <p className={marks.note}>{keepError}</p>;
   if (name === undefined || handoff === undefined) return <p className={marks.note}>The face wakes here when the forge is done.</p>;
   return (
@@ -106,6 +122,7 @@ export function WakeMark({ name, layers, handoff, keepError }: WakeMarkProps) {
       <p>
         {name} is rigged: {layers} layers, lit and breathing. Its lights are pinned to the face now, as on the Forge page.
       </p>
+      {fallback && <FallbackNotice />}
       <a className={`${styles.btn} ${styles.amber}`} href={handoff} onClick={(event) => handleLinkClick(event, handoff)} data-handoff="">
         Open in Anatomy Under Glass <kbd>CH {forge?.channel}</kbd>
       </a>

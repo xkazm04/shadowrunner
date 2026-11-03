@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { mount, type Mounted } from "../../app/testDom";
 import { loadReplayJobs } from "../replayJobs";
 import { testJob } from "../testFixtures";
+import { castBriefSlugs } from "./castBriefs";
 import { entryOfJob, loadCast, loadGallery, type GalleryEntry } from "./entries";
 import { Gallery } from "./Gallery";
 
@@ -34,6 +35,23 @@ describe("gallery entries", () => {
     expect(entries[0]?.id).toBe("malakor");
     expect(entries.map((e) => e.id).sort()).toEqual(["malakor", ...jobs.map((j) => j.rig.id)].sort());
     for (const job of jobs) expect(job.rig.fictional).toBe(true);
+  });
+
+  it("lists the eight cast-forge characters with their brief's hook and style, adopted on demand", async () => {
+    const cast = await loadCast();
+    const slugs = castBriefSlugs();
+    expect(slugs).toEqual(["auntie-asp", "lot-ninety", "reveille", "saint-cardia", "sir-vacant", "the-redactor", "the-tallyman", "vicar-of-the-lure"]);
+    for (const slug of slugs) {
+      const entry = cast.find((e) => e.slug === slug);
+      expect(entry?.onDemand).toBe(true);
+      expect(entry?.hook?.length).toBeGreaterThan(40);
+      expect(entry?.portraitUrl).toBeDefined();
+    }
+    expect(cast.find((e) => e.slug === "the-tallyman")?.hook).toContain("six eyes");
+    expect(cast.find((e) => e.slug === "vicar-of-the-lure")?.showsOff).toBe("Leaded stained glass");
+    // The presets and Malakor are still seeded in the background.
+    expect(cast.filter((e) => e.onDemand !== true).map((e) => e.slug)).toContain("moth-widow");
+    expect(cast.filter((e) => e.onDemand !== true)).toHaveLength(cast.length - 8);
   });
 
   it("leaves out a recorded rig that is not fictional", async () => {
@@ -98,5 +116,16 @@ describe("<Gallery>", () => {
     const close = [...view.container.querySelectorAll("button")].find((b) => b.textContent === "Close");
     await act(async () => close?.click());
     expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("tells the persona hook of the card under the pointer or focus in the caption", async () => {
+    const told: GalleryEntry[] = [{ ...entries[0], hook: "Counts the audience out loud." } as GalleryEntry, entries[1] as GalleryEntry];
+    view = await mount(<Gallery inLibrary={new Set()} onAdopt={async () => undefined} onClose={() => undefined} load={async () => told} />);
+    await settle();
+    const card = view.container.querySelector<HTMLButtonElement>("li button");
+    expect(view.container.querySelector("[data-hook]")).toBeNull();
+    await act(async () => card?.focus());
+    expect(view.container.querySelector("[data-hook]")?.textContent).toBe("Test Ghost. Counts the audience out loud.");
+    expect(card?.getAttribute("aria-describedby")).toBe("hook-replay-ghost-a");
   });
 });

@@ -64,14 +64,14 @@ export function BriefCard({ brief, recorded, problem, busy, onEdit, onDraw, onAg
           NAME
         </label>
         <input id={nameId} className={styles.input} value={brief.name} maxLength={80} spellCheck={false} onChange={(e) => onEdit({ ...brief, name: e.currentTarget.value })} />
-        <p className={styles.hook} title={brief.persona_hook}>
+        <p className={styles.hook}>
           {brief.persona_hook}
         </p>
         <label className={marks.lbl} htmlFor={styleId}>
           STYLE <small>its edges are the cut lines</small>
         </label>
         <input id={styleId} className={styles.input} value={brief.style.name} maxLength={80} spellCheck={false} onChange={(e) => onEdit({ ...brief, style: { ...brief.style, name: e.currentTarget.value } })} />
-        <p className={styles.why} title={brief.style.why}>
+        <p className={styles.why}>
           {brief.style.why}
         </p>
         <span className={marks.lbl}>
@@ -94,7 +94,7 @@ export function BriefCard({ brief, recorded, problem, busy, onEdit, onDraw, onAg
                   </option>
                 ))}
               </select>
-              <input className={styles.motion} aria-label={`${p.name} motion`} value={p.motion ?? ""} placeholder="still" maxLength={200} onChange={(e) => setMotion(i, e.currentTarget.value)} />
+              <textarea className={styles.motion} aria-label={`${p.name} motion`} value={p.motion ?? ""} placeholder="still" maxLength={200} rows={2} onChange={(e) => setMotion(i, e.currentTarget.value.replace(/\s*\n\s*/g, " "))} />
             </li>
           ))}
         </ol>

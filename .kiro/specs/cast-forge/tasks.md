@@ -72,7 +72,14 @@
     proof (`scripts/cast/live-proof.mjs`): six of the eight give their replay rigs exactly.
   - _Requirements: 4.4_
 
-- [ ] 12. Integration
+- [x] 12. Integration
   - Lanes merged; the eight in the gallery and CH 4 listings; provenance; kiro-log rows; gates green;
     a review page of all eight rigs for the owner.
+  - The brief fits the eight: 6..24 parts (`BRIEF_MAX_PARTS`) and a second jaw-role part that follows
+    the jaw (Reveille's teeth); every cast brief and every cast `parts.json` plans as a brief, and the
+    live proof gives all eight replay rigs exactly. A fallback decomposition is told in the rite. The
+    handshake card wraps instead of clipping. The eight are listed with their briefs' hooks and adopted
+    on demand (a press or a deep link), not seeded into every first visit. The walk
+    (`var/cast-forge/walk/`) is the owner's review page: the eight in the real renderer, at rest and
+    a second later.
   - _Requirements: 5.1-5.3_

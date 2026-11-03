@@ -16,7 +16,13 @@ export const BRIEF_ROLES: readonly PartRole[] = PART_ROLES;
 /** At most this many characters of the streamer's request reach the brief model. */
 export const MAX_BRIEF_REQUEST = 400;
 export const BRIEF_MIN_PARTS = 6;
-export const BRIEF_MAX_PARTS = 16;
+/**
+ * 24 (cast-forge task 12): the largest of the eight is the Tallyman's 18 parts, and a third of
+ * headroom covers a character of his kind (many eyes, beads, tags) without asking the parts model
+ * for an answer it cannot fit: 24 outlines of up to 60 points stay one answer, well under the
+ * v2 parts file's 40 (`MAX_NAMED_PARTS`), and every part is a layer the renderer draws per frame.
+ */
+export const BRIEF_MAX_PARTS = 24;
 export const MAX_PORTRAIT_PROMPT = 900;
 
 /** Length caps per text field (characters, after trimming; every field also needs one character). */
@@ -35,7 +41,7 @@ export const BRIEF_LIMITS = {
 
 /** design.md "Brief and handshake", exact; the design's line breaks are joined with single spaces. */
 export function BRIEF_PROMPT(request: string): string {
-  return `You design an original character to be a live 2.5D streaming co-host. It will be drawn as one portrait and cut into animation layers. From the streamer's request below, return JSON only with the fields name, one_line_request, archetype, persona_hook, accent_hex, secondary_hex, silhouette, parts, style, portrait_prompt. Rules: original fiction, never a real person or an existing character, no text or logos, horror not gore. The portrait is a frontal, centred, symmetrical head-and-shoulders bust on an empty near-black background with the jaw and both eyes visible. parts lists 6 to 16 parts, each a separate shape that does not overlap another, each with a role from head, jaw, eye_l, eye_r, eye, monocle, crown, hat, hair, accessory, torso, float, pulse; always include head, jaw, eyes and torso, and give the character one or two signature parts that float or pulse on their own, saying how they move. Choose a hard-edged graphic art style such as leaded stained glass, low-poly planes, flat poster fills with ink outlines, pixel art or a faceted painting, never soft painterly realism: its edges become the cut lines. portrait_prompt is under 900 characters, describes the character and every part in that style, and ends with the framing rules. Request: ${request.trim().slice(0, MAX_BRIEF_REQUEST)}`;
+  return `You design an original character to be a live 2.5D streaming co-host. It will be drawn as one portrait and cut into animation layers. From the streamer's request below, return JSON only with the fields name, one_line_request, archetype, persona_hook, accent_hex, secondary_hex, silhouette, parts, style, portrait_prompt. Rules: original fiction, never a real person or an existing character, no text or logos, horror not gore. The portrait is a frontal, centred, symmetrical head-and-shoulders bust on an empty near-black background with the jaw and both eyes visible. parts lists 6 to 24 parts, each a separate shape that does not overlap another, each with a role from head, jaw, eye_l, eye_r, eye, monocle, crown, hat, hair, accessory, torso, float, pulse; always include head, exactly one jaw, eyes and torso (a set of teeth or a lip that drops with the jaw may be a second part with role jaw that follows the jaw), and give the character one or two signature parts that float or pulse on their own, saying how they move. Choose a hard-edged graphic art style such as leaded stained glass, low-poly planes, flat poster fills with ink outlines, pixel art or a faceted painting, never soft painterly realism: its edges become the cut lines. portrait_prompt is under 900 characters, describes the character and every part in that style, and ends with the framing rules. Request: ${request.trim().slice(0, MAX_BRIEF_REQUEST)}`;
 }
 
 /**
@@ -96,8 +102,9 @@ const EYE_ROLES: readonly PartRole[] = ["eye_l", "eye_r", "eye"];
  * A decoded brief answer -> CharacterBrief, or every rule it breaks. Text is trimmed; hex colours
  * are lower-cased; optional fields are omitted when absent (an empty optional string is an error,
  * never silently dropped). Rules: every text field present and within BRIEF_LIMITS; accent and
- * secondary `#rrggbb`; 6..16 parts with roles from PART_ROLES and unique `[a-z0-9_]` names (not
- * reserved); exactly one head and one jaw, at least one eye and one torso; a follow names another
+ * secondary `#rrggbb`; 6..24 parts with roles from PART_ROLES and unique `[a-z0-9_]` names (not
+ * reserved); exactly one head and one jaw, plus at most one more jaw-role part (a teeth or lip set,
+ * Reveille's teeth) whose follow names the jaw; at least one eye and one torso; a follow names another
  * part and the follow chain has no cycle; unknown fields are ignored.
  */
 export function parseBrief(value: unknown): BriefResult {
@@ -191,7 +198,10 @@ function parseBriefParts(value: unknown, errors: BriefError[], text: Text): Brie
   if (failed) return undefined;
   const count = (roles: readonly PartRole[]) => out.filter((p) => roles.includes(p.role)).length;
   if (count(["head"]) !== 1) err("$.parts", "must have exactly one head");
-  if (count(["jaw"]) !== 1) err("$.parts", "must have exactly one jaw");
+  const jaws = out.filter((p) => p.role === "jaw");
+  const jawSets = jaws.filter((p) => jaws.some((j) => j !== p && j.name === p.follow));
+  if (jaws.length > 2) err("$.parts", "must have at most two jaw parts: the jaw, and a teeth or lip set that follows it");
+  else if (jaws.length - jawSets.length !== 1) err("$.parts", jaws.length === 2 ? "must have exactly one jaw; a second jaw part must follow it" : "must have exactly one jaw");
   if (count(EYE_ROLES) < 1) err("$.parts", "must have at least one eye");
   if (count(["torso"]) < 1) err("$.parts", "must have at least one torso");
   const byName = new Map(out.map((p) => [p.name, p]));

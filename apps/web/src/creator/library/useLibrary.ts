@@ -1,6 +1,7 @@
 // The library as React state: opens the store (IndexedDB or memory), seeds the cast (creator task 9:
 // Malakor, or the character a deep link asks for, before the first paint; the rest of the cast in
-// the background, the strip filling as each arrives), lists the entries, tracks the active
+// the background, the strip filling as each arrives; an on-demand member, a cast-forge character,
+// only when a deep link asks for it), lists the entries, tracks the active
 // character and decodes its layer images for the stage.
 import type { RigAssets } from "@sr/avatar";
 import type { VoiceId } from "@sr/engine";
@@ -48,6 +49,8 @@ const okRecords = (entries: readonly LibraryEntry[]): CharacterRecord[] => entri
 /** A cast member as the library seeds it: the house character first. */
 export interface CastMember extends CastSeed {
   slug: string;
+  /** Seeded only when a deep link asks for it, never in the background pass (gallery entries.ts). */
+  onDemand?: true;
 }
 
 export interface UseLibraryOptions {
@@ -95,9 +98,11 @@ export function useLibrary({ open = () => openLibrary(), cast = loadCast, want }
         if (pick !== undefined && pick === wanted) writeActive(pick);
         setActiveId(pick);
         setStatus("ready");
-        // The rest of the cast, in the background.
+        // The rest of the cast, in the background; on-demand members wait for a press or a link.
+        const background = new Set(members.filter((m) => m.onDemand !== true).map((m) => m.id));
         await seedCast(s, members, {
           now,
+          only: background,
           onAdded: () => {
             void s.list().then((next) => live && setEntries(next));
           },

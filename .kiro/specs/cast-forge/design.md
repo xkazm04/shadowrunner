@@ -164,7 +164,7 @@ then a copy of the result into `<dir>` (the tool writes under `~/.codex/generate
 export interface CharacterBrief {
   name: string; one_line_request: string; archetype: string; persona_hook: string;
   accent_hex: string; secondary_hex?: string; silhouette: string;
-  parts: { name: string; role: PartRole; what: string; motion?: string; follow?: string }[];  // 6..16
+  parts: { name: string; role: PartRole; what: string; motion?: string; follow?: string }[];  // 6..24 (task 12)
   style: { name: string; why: string };
   portrait_prompt: string;            // <= 900 chars
 }
@@ -175,16 +175,18 @@ and cut into animation layers. From the streamer's request below, return JSON on
 name, one_line_request, archetype, persona_hook, accent_hex, secondary_hex, silhouette, parts, style,
 portrait_prompt. Rules: original fiction, never a real person or an existing character, no text or
 logos, horror not gore. The portrait is a frontal, centred, symmetrical head-and-shoulders bust on an
-empty near-black background with the jaw and both eyes visible. parts lists 6 to 16 parts, each a
+empty near-black background with the jaw and both eyes visible. parts lists 6 to 24 parts, each a
 separate shape that does not overlap another, each with a role from head, jaw, eye_l, eye_r, eye,
-monocle, crown, hat, hair, accessory, torso, float, pulse; always include head, jaw, eyes and torso,
-and give the character one or two signature parts that float or pulse on their own, saying how they
+monocle, crown, hat, hair, accessory, torso, float, pulse; always include head, exactly one jaw, eyes
+and torso (a set of teeth or a lip that drops with the jaw may be a second part with role jaw that
+follows the jaw), and give the character one or two signature parts that float or pulse on their own, saying how they
 move. Choose a hard-edged graphic art style such as leaded stained glass, low-poly planes, flat poster
 fills with ink outlines, pixel art or a faceted painting, never soft painterly realism: its edges become
 the cut lines. portrait_prompt is under 900 characters, describes the character and every part in that
 style, and ends with the framing rules. Request: <request>"
 `parseBrief` validates every field and range (hex colours, part count, roles, unique `[a-z0-9_]`
-names, follow targets); an invalid answer is retried once, then `upstream`. The brief model is the
+names, follow targets; exactly one head and one jaw, plus at most one more jaw-role part whose follow
+names the jaw); an invalid answer is retried once, then `upstream`. The brief model is the
 engine's Anthropic client (`SR_BRIEF_MODEL`, default the engine's model); replay returns the recorded
 brief whose `one_line_request` matches, else the first cast brief, labelled RECORDED.
 `portraitPromptFromBrief(brief) = HOUSE_STYLE + brief.portrait_prompt` (HOUSE_STYLE's "painterly
@@ -298,9 +300,13 @@ fills with ink outlines cut {"feather": 1}. Events are not motion: words such as
 "on a timeout" or "turns toward the speaker" become no motion; give a slow periodic stand-in or
 none.
 ```
-Limits found by the offline proof (task 11): a brief plans 6..16 parts with exactly one jaw, so the
-Tallyman (18 parts) and Reveille (teeth and jaw, two jaw roles) cannot be planned by a brief as they
-were decomposed; the other six run through the live steps to their committed replay rigs exactly.
+Limits found by the offline proof (task 11), closed by task 12: a brief planned 6..16 parts with
+exactly one jaw, so the Tallyman (18 parts) and Reveille (teeth and jaw, two jaw roles) could not be
+planned as they were decomposed. A brief now plans 6..24 parts (`BRIEF_MAX_PARTS`: the Tallyman's 18
+and a third of headroom, under the v2 file's 40, since every part is one more outline in one model
+answer and one more layer drawn per frame) and may carry a second jaw-role part that follows the jaw
+(a teeth or lip set with the jaw's drop; Reveille's teeth follow `jaw`). Everything else stays strict.
+A test plans each cast brief (through `briefFromRecorded`) and each cast `parts.json` as a brief.
 
 ## Testing strategy
 - fast-check: motion offsets bounded by amp and periodic in `1/freq`; `still` gives the identity;

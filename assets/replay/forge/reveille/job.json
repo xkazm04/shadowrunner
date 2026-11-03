@@ -136,7 +136,7 @@
           508.41600000000005,
           585.728
         ],
-        "follow": "head",
+        "follow": "jaw",
         "depth": 0.62,
         "motion": {
           "pulse": {

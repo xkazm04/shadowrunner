@@ -42,7 +42,7 @@ export interface CharacterBrief {
   accent_hex: string;
   secondary_hex?: string;
   silhouette: string;
-  /** 6..16 parts. */
+  /** 6..24 parts (BRIEF_MAX_PARTS); one jaw, and at most one more jaw-role part that follows it. */
   parts: BriefPart[];
   style: { name: string; why: string };
   /** At most 900 characters. */

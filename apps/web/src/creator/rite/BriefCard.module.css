@@ -2,7 +2,8 @@
    accent swatch (the brief's own colour data, `--lamp` / `--lamp-2`), the RECORDED tag, the name
    and style fields and the parts list with role and motion. Literal colours are roles: amber
    accent for focus, face-glow for the name, signal-warn for a broken rule. The list scrolls on its
-   own so the rite's column still fits a short screen. */
+   own so the rite's column still fits a short screen. Every text wraps, nothing is clipped
+   (cast-forge task 12): the archetype, the hook, the style's reason, a part's words and motion. */
 
 /* The card takes the column's width; its long one-line texts never widen the rite. */
 .card {
@@ -24,7 +25,7 @@
 
 .head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--sr-space-2);
   min-inline-size: 0;
 }
@@ -42,12 +43,11 @@
 .arch {
   flex: 1;
   min-inline-size: 0;
-  overflow: hidden;
   color: var(--sr-text);
   font-family: var(--sr-font-type);
   font-size: var(--sr-size-text-sm);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 .tag {
@@ -88,10 +88,6 @@
 
 .hook,
 .why {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
   margin: var(--sr-space-1) 0 0;
   color: var(--sr-text);
   font-family: var(--sr-font-body);
@@ -107,7 +103,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--sr-space-1);
-  max-block-size: 12rem;
+  max-block-size: 22rem;
   margin: 0;
   padding: 0 var(--sr-space-1) 0 0;
   overflow-y: auto;
@@ -133,17 +129,17 @@
 .pname {
   grid-area: name;
   min-inline-size: 0;
-  overflow: hidden;
   color: var(--sr-text-strong);
   font-family: var(--sr-font-type);
   font-size: var(--sr-size-text-sm);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .pname small {
-  margin-inline-start: var(--sr-space-2);
+  display: block;
   color: var(--sr-text-muted);
+  font-family: var(--sr-font-body);
   font-size: var(--sr-size-text-sm);
 }
 
@@ -167,9 +163,18 @@
   grid-area: role;
 }
 
+.role {
+  align-self: start;
+}
+
+/* The motion is a short sentence: it wraps and grows with its words instead of scrolling. */
 .motion {
   grid-area: motion;
   inline-size: 100%;
+  field-sizing: content;
+  min-block-size: 2lh;
+  line-height: 1.35;
+  resize: vertical;
 }
 
 .asking {

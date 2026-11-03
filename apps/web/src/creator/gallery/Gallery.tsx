@@ -3,7 +3,8 @@
 // customised. Reachable from the forge's quota state and from the library.
 // Since creator task 9 it is a grid of portrait cards that fits the sheet (scrolling only as a
 // fallback), each naming what the character shows off; one already in the library can be put on
-// the stage from here.
+// the stage from here. The card under the pointer or focus tells its persona hook in the sheet's
+// caption (cast-forge task 12: the eight speak from their briefs), so the cards stay a grid.
 import type { LayerKind } from "@sr/rig";
 import { useEffect, useState } from "react";
 import { loadCast, type GalleryEntry } from "./entries";
@@ -40,6 +41,8 @@ export function Gallery({ inLibrary, onAdopt, onShow, onClose, load = loadCast }
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState<string | undefined>(undefined);
   const [errorFor, setErrorFor] = useState<string | undefined>(undefined);
+  const [told, setTold] = useState<string | undefined>(undefined);
+  const telling = entries?.find((e) => e.id === told && e.hook !== undefined);
 
   useEffect(() => {
     let live = true;
@@ -94,6 +97,9 @@ export function Gallery({ inLibrary, onAdopt, onShow, onClose, load = loadCast }
                   aria-label={kept ? `${entry.name} is in your library${onShow === undefined ? "" : ". Put it on the stage"}` : `Adopt ${entry.name}`}
                   title={`${entry.name} · ${entry.origin} · ${entry.layers} layers`}
                   onClick={() => (kept ? onShow?.(entry.id) : void adopt(entry))}
+                  onPointerEnter={() => setTold(entry.id)}
+                  onFocus={() => setTold(entry.id)}
+                  {...(entry.hook === undefined ? {} : { "aria-describedby": `hook-${entry.id}` })}
                 >
                   {entry.portraitUrl !== undefined && <img className={styles.portrait} src={entry.portraitUrl} alt="" loading="lazy" />}
                   <span className={kept ? `${styles.chip} ${styles.kept}` : styles.chip} aria-hidden="true">
@@ -107,13 +113,26 @@ export function Gallery({ inLibrary, onAdopt, onShow, onClose, load = loadCast }
                   {entry.origin === "hand-rigged" && <span className={styles.origin}>Hand-rigged: </span>}
                   {shows}
                 </p>
+                {entry.hook !== undefined && (
+                  <span id={`hook-${entry.id}`} hidden>
+                    {entry.hook}
+                  </span>
+                )}
                 {errorFor === entry.id && <p className={styles.error}>Its images could not be read. Try again.</p>}
               </li>
             );
           })}
         </ul>
       )}
-      <p className={styles.note}>Forged ahead of time, all invented. Each one shows off a different part of the rig.</p>
+      <p className={styles.note} data-hook={telling === undefined ? undefined : telling.slug}>
+        {telling === undefined ? (
+          "Forged ahead of time, all invented. Each one shows off a different part of the rig."
+        ) : (
+          <>
+            <b>{telling.name}.</b> {telling.hook}
+          </>
+        )}
+      </p>
     </section>
   );
 }

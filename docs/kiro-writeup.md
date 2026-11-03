@@ -26,6 +26,14 @@
   the owner picked winners on an artifact triage board (`assets/_incoming/costume/`). The `costume`
   spec turns the winners into acceptance criteria; Kiro was still out of credits, so Claude Code lanes
   ported them under the same steering, hooks and gates (log rows "costume / 0-7").
+- **The cast-forge overnight (disclosed).** On 2026-11-02 the owner advanced eight contest
+  characters, one art style each, and the `cast-forge` spec turned them into Malakor-class rigs one at
+  a time, each hardening the forge for the next, then put the same path in front of a streamer's own
+  character (a brief, the handshake, live decomposition into named parts). It was built overnight by
+  Claude Code Opus 5.5 builders under a Claude Code director, with no Kiro credits used, spec-first
+  like the rest: requirements, design and tasks were written before code, under the same steering,
+  hooks and gates (log rows "cast-forge / 0-12"; the per-character lessons are in
+  `docs/cast-forge-ledger.md`).
 
 ## Spec-driven development
 (spec structure, how specs prevented drift, spec vs vibe comparison - TODO with evidence)

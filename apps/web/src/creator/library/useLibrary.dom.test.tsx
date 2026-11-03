@@ -22,7 +22,7 @@ function member(slug: string, id = `replay-${slug}`, seeded = false): CastMember
   };
 }
 
-const CAST = [member("malakor", "malakor", true), member("lantern-warden"), member("understudy")];
+const CAST: CastMember[] = [member("malakor", "malakor", true), member("lantern-warden"), member("understudy"), { ...member("reveille"), onDemand: true }];
 
 let view: Mounted | undefined;
 let seen: Library | undefined;
@@ -48,10 +48,11 @@ async function settle(): Promise<void> {
 const ids = (lib: Library | undefined): string[] => (lib?.entries ?? []).flatMap((e) => (e.kind === "ok" ? [e.record.id] : []));
 
 describe("useLibrary and the cast", () => {
-  it("seeds the whole cast on a first visit, with Malakor on the stage", async () => {
+  it("seeds the cast on a first visit (on-demand members aside), with Malakor on the stage", async () => {
     view = await mount(<Probe store={memoryLibrary()} />);
     await settle();
     expect(seen?.status).toBe("ready");
+    // A cast-forge character (on demand) waits for a press or a link: no download on a first visit.
     expect(ids(seen)).toEqual(["malakor", "replay-lantern-warden", "replay-understudy"]);
     expect(seen?.active?.id).toBe("malakor");
   });
@@ -62,6 +63,14 @@ describe("useLibrary and the cast", () => {
     expect(seen?.active?.id).toBe("replay-understudy");
     expect(window.localStorage.getItem("sr-creator-active")).toBe("replay-understudy");
     expect(ids(seen)).toHaveLength(3);
+  });
+
+  it("a deep link to an on-demand member seeds it and puts it on the stage", async () => {
+    view = await mount(<Probe store={memoryLibrary()} want="reveille" />);
+    await settle();
+    expect(seen?.active?.id).toBe("replay-reveille");
+    expect(ids(seen)).toContain("replay-reveille");
+    expect(ids(seen)).toHaveLength(4);
   });
 
   it("a deep link wins over the remembered character, and an unknown one falls back to it", async () => {

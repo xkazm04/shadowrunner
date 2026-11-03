@@ -14,6 +14,7 @@ import { createReplayForgeClient, FAIL_MESSAGES } from "../forgeClient.replay";
 import { memoryLibrary, type LibraryStore } from "../library/libraryStore";
 import { createReplayBriefClient } from "../briefClient";
 import { testBriefs, testJob } from "../testFixtures";
+import { FALLBACK_NOTICE } from "./ForgeWake";
 import { RitePage } from "./RitePage";
 
 vi.mock(import("../../app/plane"), async (original) => ({ ...(await original()), usePlane: () => "replay" as const }));
@@ -168,5 +169,24 @@ describe("the rite", () => {
     expect(sent).toHaveLength(2);
     expect(sent[1]).toEqual(sent[0]);
     expect((sent[0] as { mode: string }).mode).toBe("brief");
+  });
+
+  it.each([
+    ["fallback", true],
+    ["named", false],
+  ] as const)("a brief job reporting decomposition %s shows the standard-ten notice: %s", async (decomposition, shown) => {
+    const base = createReplayForgeClient({ jobs });
+    const poll = async (id: string) => {
+      const v = await base.poll(id);
+      return v.status === "queued" || v.status === "portrait" ? v : { ...v, decomposition };
+    };
+    await open({ start: base.start, poll });
+    await forge();
+    await elapse(9000);
+    await flush();
+    expect(view.container.querySelector("[data-page]")?.getAttribute("data-step")).toBe("done");
+    const notice = view.container.querySelector('[data-decomposition="fallback"]');
+    expect(notice?.textContent ?? null).toBe(shown ? FALLBACK_NOTICE : null);
+    if (shown) expect(text()).toContain("cut as the standard ten parts");
   });
 });
