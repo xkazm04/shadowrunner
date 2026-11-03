@@ -45,6 +45,7 @@ describe("@sr/forge/wire", () => {
       rig?: Rig;
       assets?: Record<string, string>;
       fill?: "edit" | "fallback";
+      decomposition?: "named" | "fallback";
       error?: { code: ForgeErrorCode; message: string };
     }>();
     const queued: JobView = { jobId: "j1", status: "queued", plane: "replay" };

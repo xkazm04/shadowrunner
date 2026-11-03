@@ -18,6 +18,7 @@ packages/forge/src/cut.ts        cutAll over named parts (order below)
 packages/forge/src/assemble.ts   role -> kind, follow, motion (and a jaw's drop) into the rig
 packages/forge/src/mouth.ts      liftedJaw, paintCavity: the mouth an open jaw reveals (task 3)
 packages/forge/src/brief.ts      CharacterBrief, parseBrief, BRIEF_PROMPT, portraitPromptFromBrief, partsPromptFromBrief
+packages/forge/src/briefParts.ts settleBriefParts, motionFromWords, fillPromptFromBrief (task 11)
 scripts/cast-forge.mjs           offline: cast/<slug> -> replay job + review sheet (shares code with forge-replay.mjs)
 assets/characters/cast/<slug>/   portrait.png, brief.json, parts.json, fill.png?, NOTES.md
 assets/replay/forge/<slug>/      job.json + layer PNGs (as the presets)
@@ -190,12 +191,116 @@ brief whose `one_line_request` matches, else the first cast brief, labelled RECO
 realism" is replaced by "in the brief's art style" for brief prompts only).
 `partsPromptFromBrief(brief)`: the v2 parts request naming the brief's parts and roles, returning
 `PartsV2`; the hardening rules from `docs/cast-forge-ledger.md` that apply to any character are
-folded into its text.
+folded into its text (exact text and the live step: "Live decomposition from the brief" below).
 
 Handshake, `/creator/new` (the Rite in Four Marks): mark 1 takes the request, then shows the brief as an
 editable card (name, style, parts with role and motion); "Draw it" starts the portrait from the
 approved brief, "Ask again" re-briefs. Wire: `POST /api/forge/brief {request} -> {brief}` (quota kind
 "forge", cost constant in costs.ts) and `POST /api/forge {mode:"brief", brief}`.
+
+## Live decomposition from the brief (requirement 4.4, task 11)
+A live forge job with an approved brief (`mode: "brief"`, `job.brief`) asks the parts model for the
+brief's own parts and goes down the path the eight went down offline; a job without a brief keeps
+the v1 path unchanged (PARTS_PROMPT, `cutAll`, FILL_PARTS).
+```
+segmenting  generateJson(partsPromptFromBrief(brief), portrait) -> parseBriefPartsJson(reply, brief)
+            = JSON.parse -> settleBriefParts -> parseParts (must be v2)  -> job.named, decomposition "named"
+            a failed answer (not JSON, or refused) is re-asked once on the next GET; failed twice:
+            decomposition "fallback", asks counted afresh, PARTS_PROMPT on the next GET (v1 rules)
+cutting     fillPromptFromBrief(named, brief): the edit, or none when no lifted part needs it
+filling     assembleNamed = plateNamed(portrait, parts, edit) -> cutNamed(.., {plate, ...cut}) -> assembleRig
+```
+`assembleNamed` (in `api/_lib/forge-steps.ts`) is the same chain `scripts/forge-lib.mjs`
+`runPipeline` runs for a cast character, so the product path and the overnight path are one path.
+`JobView.decomposition` (`"named" | "fallback"`, brief jobs only, from the parts step on) lets the
+creator say when the brief's parts could not be found and the portrait was cut into the standard ten.
+
+**Motion from words (decision).** The brief carries motion as words; the numbers come from the
+parts model, which sees the portrait (a serpent's root, a tag's link) and is told the ranges and the
+ledger's motion rules in the prompt. The forge never trusts them: `settleBriefParts` clamps every
+number into the validated range (float amp 0..`LIVE_AMP_MAX` = 50 MOTION_CANVAS px, under the rig's
+0.05 x 1024 = 51.2; freq 0.02..2 Hz; rot_deg 0..15; phase taken mod 1; pulse amp 0..1; jaw drop
+0.005..0.1; pivot rounded into 0..1000; cut feather 0..8, cell 1..32), drops a blink off a non-eye
+role and every field a role may not carry (drop, glow, cavity off the jaw; fill, matte, pivot off
+head and torso; glow with cavity "fill"), and drops a curve it cannot read. A lifted part whose brief
+words say it moves but whose answer has no readable motion gets `motionFromWords(name, role, words)`,
+a deterministic mapping to safe defaults: pulse words (glow, flicker, beat, light...) a pulse of amp
+0.5 at 0.5 Hz (a flicker 1.3, a beat 1.1); sway words (sway, swing, nod, turn, tick...) rotation only,
+4 degrees at 0.3 Hz; float words (float, bob, drift, rise, breath...) a bob of [1.5, 4] px and 1.5
+degrees at 0.3 Hz; blink words on an eye an own blink at 0.2 Hz; every frequency spread 0.85x-1.15x by
+the part's name and phases left to `motionOf` (from the name), so siblings never move in lockstep.
+A clause about an event ("when chat...", "toward the speaker") maps to nothing; head and torso never
+get word motion (the stage moves them). Float and pulse roles with no motion at all keep the default
+`motionOf` gives them. So a live rig's motion always passes `validateRig`.
+
+**Settling against the brief.** The answer may be `{version: 2, parts, cut?}` or a bare array. Parts
+the brief does not plan are dropped (counted in a log note, the name never echoed); a kept part takes
+the brief's role and the brief's follow (else the answer's, when it names another kept part). Polygons
+and boxes are never repaired: an outline the parser refuses fails the answer, and the step re-asks.
+
+**The fill edit for named parts.** `fillPromptFromBrief(parts, brief)` = `fillPrompt(phrases)` over the
+lifted parts that do not take `fill: "extend"`, in file order, each phrase the brief part's `what`
+(its name with spaces when the brief has none), an eye's followed by "(paint closed eyelids where they
+were)" (ledger: a squashed eye reads as a shut lid). No phrase, no edit: the plate is the pure fallback.
+
+### partsPromptFromBrief (exact)
+`<name>` is `brief.name`, `<style>` is `brief.style.name`, `<parts>` the brief's parts in order joined
+with " | ", each `<name> (<role>): <what>`, then `; moves: <motion>` and `; follows <follow>` when the
+part has them (`briefPartLine`). The lines below are joined with single spaces. Every prompt rule of
+`docs/cast-forge-ledger.md` "General rules for any character" is in it (Outlines, Cuts, Follows,
+Motion, Mouth, Keys and fills, Events); the forge-code rules there need no asking.
+```text
+This is the portrait of <name>, a character drawn in <style>, to be cut into animation layers for a
+live 2.5D co-host. Return JSON only: {"version": 2, "cut": {"feather": integer, "cell": integer},
+"parts": [{"name": string, "role": string, "box_2d": [ymin,xmin,ymax,xmax], "poly": [[y,x],...],
+"follow": string, "motion": object, "key": boolean, "drop": number, "glow": string, "cavity":
+string, "fill": string, "matte": string, "pivot": [y,x]}]} with coordinates as integers normalized
+to 0-1000 and 8-60 points per polygon, clockwise; name, role, box_2d and poly are required, leave
+out every other field a part does not need. Name exactly these parts with exactly these roles and no
+others, and leave out only a part that is not visible: <parts>. Fields: follow is another part's
+name. motion is {"float": {"amp": [x, y], "freq": number, "rot_deg": number, "phase": number},
+"pulse": {"amp": number, "freq": number, "phase": number}, "blink": {"freq": number, "phase":
+number}}: float amp in px of a 1024 px canvas, 0-50 each; freq 0.02-2 Hz; rot_deg 0-15 degrees;
+phase 0-1 of a cycle; pulse amp 0-1, a light gain; blink on an eye only. Turn each part's motion
+words into these numbers, and give motion only to a part whose words say it moves on its own (the
+stage moves the head, jaw, eyes and torso). drop (0.005-0.1 of the height), glow ("#rrggbb") and
+cavity ("paint", "fill" or "gap") are for the jaw only; fill ("edit" or "extend"), matte ("plate")
+and pivot ([y,x], the point the part turns about) for any part but head and torso; key false keeps a
+part's dark pixels instead of keying them out against the ground; cut feather is 0-8 px, cell 1-32
+px, the art's own pixel size. Outlines: trace a part whose edge meets the background a few px
+outside its silhouette, so its rim light and ink are inside the polygon; a polygon is one outline,
+so a part drawn in two pieces is two parts; grow each part over its own ink, never into a
+neighbour's fill; extend an eye's outline 6 px past the iris; take a lit 3D object by its whole
+body, shaded side included. Cuts: cut the head from the body along a fold or hem ending in a concave
+corner, never straight across a hood, veil or hair; a collar, ruff or gorget around the neck is its
+own front part following torso, and the neck, in the head's outline, reaches under it and stops
+short of its outer edges; parts growing out of the head with no ink at the root (strands, serpents,
+horns) end at the scalp, the middle of the root their pivot. Follows: anything worn on the chest
+follows torso; anything rooted on the head (horn, stalk, plume, serpent, spectacles) has follow
+"head"; a floating finial follows what it tops; a hanging chain is a follow chain (the stalk follows
+the head, the bulb the stalk); a glow's halo belongs to the glowing part; a trail (flame, ribbon,
+ectoplasm) follows what it trails from and is listed before it. Motion: sibling floats get different
+frequencies and phases (shards, gloves, serpents, tags never move in lockstep); hanging tags and
+charms swing as pendulums (rot_deg only, amp [0, 0], pivot at the link); a plume or strand sways on
+its foot (rot_deg only, pivot at the foot); disembodied hands float with no follow, pivot at the
+wrist, a pair half a cycle apart; a part that turns on a hub names its pivot; many eyes that count
+blink on their own phases; one neon circuit pulses in phase, a cracked tube flickers alone; floats
+stay under 2 Hz, never a rattle. Mouth: a human jaw is the lower lip under the seam's ink (the chin
+too only for a skull or a puppet), drop about 0.012-0.02; a grin of teeth drops the lower teeth and
+lip, drop about 0.024; a maw drawn open takes cavity "fill" and drop about 0.035; a mouth drawn open
+over a dark gap takes cavity "gap", over light the same with glow; a glowing mouth names glow on the
+jaw, never a separate light part; a character with no face names what plays it (a visor is the jaw,
+a slit's light the eye). Keys and fills: glowing parts and thin dark parts on a light surface take
+matte "plate"; small parts on a flat field, parts floating on the ground and collars take fill
+"extend"; a dark plume or hair on a dark ground takes key false; a machine with a hollow takes
+cavity "gap" and fill "extend"; pixel art takes cut {"feather": 0, "cell": its pixel size}, flat
+fills with ink outlines cut {"feather": 1}. Events are not motion: words such as "when chat ...",
+"on a timeout" or "turns toward the speaker" become no motion; give a slow periodic stand-in or
+none.
+```
+Limits found by the offline proof (task 11): a brief plans 6..16 parts with exactly one jaw, so the
+Tallyman (18 parts) and Reveille (teeth and jaw, two jaw roles) cannot be planned by a brief as they
+were decomposed; the other six run through the live steps to their committed replay rigs exactly.
 
 ## Testing strategy
 - fast-check: motion offsets bounded by amp and periodic in `1/freq`; `still` gives the identity;

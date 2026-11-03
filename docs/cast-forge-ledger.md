@@ -373,7 +373,9 @@ One section per decomposed character (cast-forge requirement 3.4): what broke, w
 
 ## General rules for any character (folded into `partsPromptFromBrief`, task 11)
 What the eight taught, for a streamer's character. **Forge code** does the first list on its own; the
-**parts prompt** must say the second.
+**parts prompt** must say the second. Task 11 folded the prompt rules into `partsPromptFromBrief`
+(design.md "partsPromptFromBrief (exact)"); the eyes-closed half of the fill-edit rule is
+`fillPromptFromBrief`'s.
 
 **Forge-code behaviour (automatic in `packages/forge`, nothing to ask for)**
 - Cut order front to back by role, disjoint cores; every non-plate part lifted and the plate filled

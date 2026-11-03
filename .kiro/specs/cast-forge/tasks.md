@@ -62,9 +62,14 @@
     `/creator/new`.
   - _Requirements: 4.1-4.3_
 
-- [ ] 11. Live decomposition from the brief
+- [x] 11. Live decomposition from the brief
   - `partsPromptFromBrief` with the ledger's general rules; live forge job asks for v2 parts when it has a
     brief; replay unchanged.
+  - The answer is settled against the brief (`settleBriefParts`: the brief's names, roles and follows,
+    motion clamped into the rig's ranges or taken from the brief's words, role-gated fields dropped);
+    a v2 answer failing twice falls back to the v1 prompt (`JobView.decomposition: "fallback"`); named
+    parts fill (`fillPromptFromBrief`), cut and assemble on the cast's path (`assembleNamed`). Offline
+    proof (`scripts/cast/live-proof.mjs`): six of the eight give their replay rigs exactly.
   - _Requirements: 4.4_
 
 - [ ] 12. Integration

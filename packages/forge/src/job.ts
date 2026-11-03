@@ -2,8 +2,8 @@
 // JobStore between steps (KV on the live plane, at most 50 KB): statuses, parts and URLs, never
 // image bytes. `toJobView` is the only way a record reaches the client.
 import type { Rig } from "@sr/rig";
-import type { Part } from "./types.js";
-import type { CharacterBrief, ForgeErrorCode, ForgeStatus, JobView } from "./wire.js";
+import type { Part, PartsV2 } from "./types.js";
+import type { CharacterBrief, Decomposition, ForgeErrorCode, ForgeStatus, JobView } from "./wire.js";
 
 export type PortraitMime = "image/png" | "image/jpeg" | "image/webp";
 
@@ -22,7 +22,7 @@ export interface ForgeJob {
   stepStartedAt?: number;
   /** The user's text (mode "prompt"), at most MAX_CHARACTER_TEXT characters are used. */
   prompt?: string;
-  /** The approved brief (mode "brief"): the portrait prompt now, the parts plan in task 11. */
+  /** The approved brief (mode "brief"): the portrait prompt and the parts plan (cast-forge task 11). */
   brief?: CharacterBrief;
   /** The accepted upload (mode "image"), kept only for the job's 24 h lifetime. */
   uploadUrl?: string;
@@ -30,6 +30,10 @@ export interface ForgeJob {
   portraitUrl?: string;
   portraitMime?: PortraitMime;
   parts?: Part[];
+  /** A brief job's named parts (cast-forge task 11), settled against the brief; then `parts` is unset. */
+  named?: PartsV2;
+  /** A brief job: "named" when the parts came from the brief, "fallback" when the v1 prompt took over. */
+  decomposition?: Decomposition;
   /** Parts requests made so far (one re-ask after malformed JSON). */
   partsAsks?: number;
   /** The filled portrait from the Gemini edit (fill "edit"). */
@@ -52,6 +56,7 @@ export function toJobView(job: ForgeJob): JobView {
     ...(job.status === "done" && job.rig !== undefined ? { rig: job.rig } : {}),
     ...(job.status === "done" && job.assets !== undefined ? { assets: job.assets } : {}),
     ...(job.fill !== undefined && job.status === "done" ? { fill: job.fill } : {}),
+    ...(job.decomposition === undefined ? {} : { decomposition: job.decomposition }),
     ...(job.status === "failed" && job.error !== undefined ? { error: job.error } : {}),
   };
 }

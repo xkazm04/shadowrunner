@@ -22,3 +22,4 @@ export * from "./named.js";
 export * from "./cutNamed.js";
 export * from "./matte.js";
 export * from "./brief.js";
+export * from "./briefParts.js";

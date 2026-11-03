@@ -6,6 +6,7 @@
 import { type Result, validateRig } from "@sr/rig";
 import { FORGE_STEPS, type ForgeJob, type ForgeStep, type PortraitMime } from "./job.js";
 import { parseBrief, type BriefError } from "./brief.js";
+import { settleBriefParts } from "./briefParts.js";
 import { parseParts, type ParsedParts, type PartsError } from "./parts.js";
 import type { BriefRequest, CharacterBrief, ForgeErrorCode, ForgeRequest, ForgeStatus } from "./wire.js";
 
@@ -123,6 +124,20 @@ export function parseLikenessJson(text: string): Likeness | undefined {
   return typeof realPerson === "boolean" && typeof unsafe === "boolean" ? { realPerson, unsafe } : undefined;
 }
 
+/**
+ * The parts model's answer to `partsPromptFromBrief`: one strict JSON.parse, `settleBriefParts`
+ * against the brief, then `parseParts`, which must find a v2 file. `notes` say what was settled.
+ */
+export function parseBriefPartsJson(text: string, brief: CharacterBrief): Result<ParsedParts & { notes: string[] }, PartsJsonError> {
+  const decoded = decode(text);
+  if (!decoded.ok) return { ok: false, errors: { syntax: true, errors: [{ code: "upstream", path: "$", message: "is not valid JSON" }] } };
+  const settled = settleBriefParts(decoded.value, brief);
+  const parsed = parseParts(settled.value);
+  if (!parsed.ok) return { ok: false, errors: { syntax: false, errors: parsed.errors } };
+  if (parsed.value.named === undefined) return { ok: false, errors: { syntax: false, errors: [{ code: "upstream", path: "$", message: "must be a named-parts file" }] } };
+  return { ok: true, value: { ...parsed.value, notes: settled.notes } };
+}
+
 const STATUSES: readonly string[] = ["queued", "portrait", "segmenting", "cutting", "filling", "done", "failed"] satisfies ForgeStatus[];
 const ERROR_CODES: readonly string[] = ["quota", "refused_likeness", "refused_content", "upstream", "bad_input"] satisfies ForgeErrorCode[];
 const MIMES: readonly string[] = ["image/png", "image/jpeg", "image/webp"] satisfies PortraitMime[];
@@ -167,6 +182,7 @@ export function parseForgeJob(text: string): ForgeJob | undefined {
   if (!optional(j.uploadMime, isMime) || !optional(j.portraitUrl, isString) || !optional(j.portraitMime, isMime)) return undefined;
   if (!optional(j.partsAsks, isCount) || !optional(j.plateUrl, isString)) return undefined;
   if (!optional(j.fill, (v) => v === "edit" || v === "fallback")) return undefined;
+  if (!optional(j.decomposition, (v) => v === "named" || v === "fallback")) return undefined;
   const job: ForgeJob = { jobId: j.jobId, plane: j.plane, mode: j.mode, status: j.status, createdAt: j.createdAt };
   if (isCount(j.stepStartedAt)) job.stepStartedAt = j.stepStartedAt;
   if (isString(j.prompt)) job.prompt = j.prompt;
@@ -177,6 +193,7 @@ export function parseForgeJob(text: string): ForgeJob | undefined {
   if (isCount(j.partsAsks)) job.partsAsks = j.partsAsks;
   if (isString(j.plateUrl)) job.plateUrl = j.plateUrl;
   if (j.fill === "edit" || j.fill === "fallback") job.fill = j.fill;
+  if (j.decomposition === "named" || j.decomposition === "fallback") job.decomposition = j.decomposition;
   if (j.brief !== undefined) {
     const brief = parseBrief(j.brief);
     if (!brief.ok) return undefined;
@@ -187,6 +204,11 @@ export function parseForgeJob(text: string): ForgeJob | undefined {
     const parts = parseParts(j.parts);
     if (!parts.ok) return undefined;
     job.parts = parts.value.parts;
+  }
+  if (j.named !== undefined) {
+    const named = parseParts(j.named);
+    if (!named.ok || named.value.named === undefined) return undefined;
+    job.named = { version: 2, parts: named.value.named, ...(named.value.cut === undefined ? {} : { cut: named.value.cut }) };
   }
   if (j.rig !== undefined) {
     const rig = validateRig(j.rig);

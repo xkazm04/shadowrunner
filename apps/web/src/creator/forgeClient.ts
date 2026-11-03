@@ -91,6 +91,11 @@ export function readJobView(value: unknown): JobView | undefined {
     if (value.fill !== "edit" && value.fill !== "fallback") return undefined;
     view.fill = value.fill;
   }
+  // cast-forge task 11: how a brief job was cut ("fallback": the standard ten parts).
+  if (value.decomposition !== undefined) {
+    if (value.decomposition !== "named" && value.decomposition !== "fallback") return undefined;
+    view.decomposition = value.decomposition;
+  }
   if (value.error !== undefined) {
     const error = value.error;
     if (!isRecord(error) || !isForgeErrorCode(error.code) || typeof error.message !== "string") return undefined;

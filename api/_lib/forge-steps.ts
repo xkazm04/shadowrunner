@@ -7,8 +7,11 @@
 //   POST, mode image    likeness/content check, upload kept               -> portrait
 //   GET  portrait       restyle the upload into the house style           -> segmenting
 //   GET  segmenting     parts (a malformed reply is re-asked once, on the next GET) -> cutting
+//                       brief jobs (cast-forge 4.4): partsPromptFromBrief -> PartsV2, settled against
+//                       the brief; failed twice -> the v1 prompt, `decomposition: "fallback"`
 //   GET  cutting        fill edit, 30 s; on failure the job records fill "fallback" -> filling
 //   GET  filling        compose the plate (edit or blurExtend fallback), cut, assemble, upload -> done
+// Brief jobs with named parts fill, cut and assemble on the cast's path (plateNamed, cutNamed).
 // Every failure becomes `failed` with a spec code and our own message; nothing upstream is copied.
 import {
   FILL_PARTS,
@@ -17,13 +20,18 @@ import {
   assembleRig,
   composePlate,
   cutAll,
+  cutNamed,
   decodeImage,
   fallbackFill,
   fillPrompt,
+  fillPromptFromBrief,
   liftedRegion,
+  parseBriefPartsJson,
   parseLikenessJson,
   parsePartsJson,
   portraitPrompt,
+  partsPromptFromBrief,
+  plateNamed,
   portraitPromptFromBrief,
   restylePrompt,
   sniffImage,
@@ -31,6 +39,7 @@ import {
   type ForgeJob,
   type ForgeStep,
   type Part,
+  type PartsV2,
   type PortraitMime,
   type Rgba,
 } from "@sr/forge";
@@ -174,6 +183,7 @@ async function parts(job: ForgeJob, ctx: StepContext): Promise<void> {
   const portrait = await readJobImage(ctx, job.portraitUrl, job.portraitMime);
   if (!(await ctx.charge(COST_USD.segment))) throw QUOTA();
   job.partsAsks = (job.partsAsks ?? 0) + 1;
+  if (job.brief !== undefined && job.decomposition !== "fallback") return namedParts(job, job.brief, portrait, ctx);
   const reply = await timed(job, "parts", ctx.now, () => ctx.gemini.generateJson(PARTS_PROMPT, portrait));
   const parsed = parsePartsJson(reply);
   if (parsed.ok) {
@@ -187,21 +197,46 @@ async function parts(job: ForgeJob, ctx: StepContext): Promise<void> {
   throw fail("upstream", "The forge could not find the face's parts. Try again.");
 }
 
+/**
+ * Cast-forge task 11: a brief job asks for the brief's own parts (`partsPromptFromBrief`), settled
+ * against the brief (`parseBriefPartsJson`). Any failed answer is re-asked once on the next GET;
+ * a second failure hands the job to the v1 prompt (`decomposition: "fallback"`, asks counted
+ * afresh), never a failed job for that reason alone.
+ */
+async function namedParts(job: ForgeJob, brief: NonNullable<ForgeJob["brief"]>, portrait: GeminiImage, ctx: StepContext): Promise<void> {
+  const reply = await timed(job, "parts", ctx.now, () => ctx.gemini.generateJson(partsPromptFromBrief(brief), portrait));
+  const parsed = parseBriefPartsJson(reply, brief);
+  if (parsed.ok && parsed.value.named !== undefined) {
+    const { named, cut, notes } = parsed.value;
+    if (notes.length > 0) console.warn(`forge: brief parts settled: ${notes.join("; ")}`);
+    job.named = { version: 2, parts: named, ...(cut === undefined ? {} : { cut }) };
+    job.decomposition = "named";
+    job.status = "cutting";
+    return;
+  }
+  const why = parsed.ok ? "no named parts" : parsed.errors.errors.map((e) => `${e.path} ${e.message}`).join("; ");
+  console.warn(`forge: brief parts rejected (ask ${job.partsAsks ?? 0}): ${why}`);
+  if ((job.partsAsks ?? 0) < MAX_PARTS_ASKS) return;
+  job.decomposition = "fallback";
+  job.partsAsks = 0;
+}
+
 /** The FILL_PARTS this job's portrait has, in FILL_PARTS order: the one list behind both fills. */
 function liftedParts(job: ForgeJob): Part[] {
   return FILL_PARTS.flatMap((name) => job.parts?.find((p) => p.name === name) ?? []);
 }
 
 async function fillEdit(job: ForgeJob, ctx: StepContext): Promise<void> {
-  const lifted = liftedParts(job);
+  // Named parts: the lifted parts the edit paints, in the brief's words (`fillPromptFromBrief`).
+  const prompt = job.named === undefined ? v1FillPrompt(job) : fillPromptFromBrief(job.named.parts, job.brief);
   job.status = "filling";
   job.fill = "fallback";
-  if (lifted.length === 0) return;
+  if (prompt === undefined) return;
   const portrait = await readJobImage(ctx, job.portraitUrl, job.portraitMime);
   if (!(await ctx.charge(COST_USD.imageEdit))) return; // over budget: the free fallback paints it
   try {
     const plate = await timed(job, "fill", ctx.now, () =>
-      ctx.gemini.editImage(portrait, fillPrompt(lifted.map((p) => p.name)), { timeoutMs: FILL_TIMEOUT_MS }),
+      ctx.gemini.editImage(portrait, prompt, { timeoutMs: FILL_TIMEOUT_MS }),
     );
     const mime = uploadMime(plate.data);
     if (mime === undefined || mime === "image/webp") return;
@@ -213,6 +248,11 @@ async function fillEdit(job: ForgeJob, ctx: StepContext): Promise<void> {
   }
 }
 
+function v1FillPrompt(job: ForgeJob): string | undefined {
+  const lifted = liftedParts(job);
+  return lifted.length === 0 ? undefined : fillPrompt(lifted.map((p) => p.name));
+}
+
 /**
  * The plate (task 9): the portrait with the fill blended in only around the lifted parts
  * (`composePlate`). The fill is the edit when there is one, else the pure `fallbackFill`.
@@ -222,19 +262,33 @@ export function plateFor(portrait: Rgba, parts: readonly Part[], edit?: Rgba): R
   return composePlate(portrait, edit ?? fallbackFill(portrait, lifted), lifted);
 }
 
+/**
+ * Named parts on the cast's path (cast-forge task 11), the one `scripts/cast-forge.mjs` runs
+ * (`runPipeline`): `plateNamed` (the edit, or per part the pure fallback), `cutNamed` with the
+ * file's cut style, `assembleRig`.
+ */
+export function assembleNamed(portrait: Rgba, named: PartsV2, meta: { id: string; name: string }, edit?: Rgba) {
+  const plate = plateNamed(portrait, named.parts, edit);
+  const cut = cutNamed(portrait, named.parts, { plate, ...(named.cut ?? {}) });
+  return assembleRig(named.parts, cut.layers, { ...meta, portrait, plate });
+}
+
 async function cutAndAssemble(job: ForgeJob, ctx: StepContext): Promise<void> {
-  const parts = job.parts;
-  if (parts === undefined) throw fail("upstream", "The forge lost the face's parts.");
+  const { parts, named } = job;
+  if (parts === undefined && named === undefined) throw fail("upstream", "The forge lost the face's parts.");
   const portraitImage = await readJobImage(ctx, job.portraitUrl, job.portraitMime);
   const portrait = decodePortrait(portraitImage.data);
+  const meta = { id: `forge-${job.jobId.slice(0, 12)}`, name: job.brief?.name ?? "Forged character" };
   const assembled = await timed(job, "cut", ctx.now, async () => {
     let edit: Rgba | undefined;
     if (job.fill === "edit" && job.plateUrl !== undefined) edit = decodePortrait(await ctx.store.readImage(job.plateUrl));
     else job.fill = "fallback";
-    const plate = plateFor(portrait, parts, edit);
-    // A plate/portrait size mismatch throws RangeError in cutAll/assembleRig; `guarded` maps it to upstream.
-    const cut = cutAll(portrait, parts, { plate });
-    return assembleRig(parts, cut.layers, { id: `forge-${job.jobId.slice(0, 12)}`, name: job.brief?.name ?? "Forged character", portrait, plate });
+    // A plate/portrait size mismatch throws RangeError in the cut or assembleRig; `guarded` maps it to upstream.
+    if (named !== undefined) return assembleNamed(portrait, named, meta, edit);
+    const v1 = parts ?? [];
+    const plate = plateFor(portrait, v1, edit);
+    const cut = cutAll(portrait, v1, { plate });
+    return assembleRig(v1, cut.layers, { ...meta, portrait, plate });
   });
   if (!assembled.ok) {
     console.warn(`forge: rig invalid: ${assembled.errors.map((e) => e.code).join(", ")}`);

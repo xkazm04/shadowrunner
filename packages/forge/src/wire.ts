@@ -60,6 +60,13 @@ export interface BriefResponse {
   plane: "replay" | "live";
 }
 
+/**
+ * How a brief job's portrait was cut (cast-forge task 11): "named" into the brief's own parts;
+ * "fallback" into the ten standard parts, because the parts model's answer for the brief's parts
+ * failed twice. The creator can say so ("cut as the standard ten parts").
+ */
+export type Decomposition = "named" | "fallback";
+
 /** Body of `GET /api/forge/:jobId`. Optional fields are omitted, never null. */
 export interface JobView {
   jobId: string;
@@ -72,5 +79,7 @@ export interface JobView {
   /** file -> URL (https Blob URL on live, data: URL on replay/dev). */
   assets?: Record<string, string>;
   fill?: "edit" | "fallback";
+  /** Brief jobs only, once the parts step has decided. */
+  decomposition?: Decomposition;
   error?: { code: ForgeErrorCode; message: string };
 }
