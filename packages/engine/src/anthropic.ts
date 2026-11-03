@@ -4,7 +4,7 @@
 import { personaPrompt, turnPrompt } from "./persona.js";
 import { EngineError, parseReply, REPLY_SCHEMA } from "./schema.js";
 import type { Engine, EngineReply, EngineRequest } from "./types.js";
-import { parseMessagesResponse } from "./validate.js";
+import { parseMessagesResponse, type MessagesResponse } from "./validate.js";
 
 export const DEFAULT_ENGINE_MODEL = "claude-haiku-5-5";
 export const MESSAGES_URL = "https://api.anthropic.com/v1/messages";
@@ -68,23 +68,7 @@ export class AnthropicEngine implements Engine {
   }
 
   async reply(req: EngineRequest): Promise<EngineReply> {
-    let res: FetchResponse;
-    try {
-      res = await this.#fetch(MESSAGES_URL, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "x-api-key": this.#apiKey,
-          "anthropic-version": ANTHROPIC_VERSION,
-        },
-        body: JSON.stringify(buildMessagesBody(req, this.model)),
-      });
-    } catch {
-      throw new EngineError("upstream", "engine unreachable");
-    }
-    if (!res.ok) throw new EngineError("upstream", `engine answered HTTP ${res.status}`);
-    const body = parseMessagesResponse(await res.text());
-    if (body === undefined) throw new EngineError("upstream", "engine response is malformed");
+    const body = await postMessages({ apiKey: this.#apiKey, fetch: this.#fetch }, buildMessagesBody(req, this.model));
     if (body.stopReason === "refusal") throw new EngineError("upstream", "engine declined the turn");
     const reply = parseReply(body.text);
     // Only an id that was actually in the chat sent can be answered.
@@ -94,4 +78,36 @@ export class AnthropicEngine implements Engine {
     }
     return reply;
   }
+}
+
+/** Who calls the Messages API: the key (header only) and the injected fetch. */
+export interface MessagesCaller {
+  apiKey: string;
+  fetch: FetchLike;
+}
+
+/**
+ * One Messages API call with `body` (the engine's turn, or the forge's brief). Network faults,
+ * non-2xx answers and malformed bodies throw `EngineError("upstream")`; no message carries the key
+ * or upstream text. The caller judges `stopReason` and the text.
+ */
+export async function postMessages(caller: MessagesCaller, body: Record<string, unknown>): Promise<MessagesResponse> {
+  let res: FetchResponse;
+  try {
+    res = await caller.fetch(MESSAGES_URL, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-api-key": caller.apiKey.trim(),
+        "anthropic-version": ANTHROPIC_VERSION,
+      },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    throw new EngineError("upstream", "engine unreachable");
+  }
+  if (!res.ok) throw new EngineError("upstream", `engine answered HTTP ${res.status}`);
+  const parsed = parseMessagesResponse(await res.text());
+  if (parsed === undefined) throw new EngineError("upstream", "engine response is malformed");
+  return parsed;
 }

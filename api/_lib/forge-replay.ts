@@ -8,7 +8,7 @@
 // (1.5-3 s each). POST picks a job by hashing the prompt (or the upload), so the same text always
 // gets the same character.
 import { createHash } from "node:crypto";
-import { parseForgeRequest, type ForgeStatus, type JobView } from "@sr/forge";
+import { parseForgeRequest, requestKey, type ForgeRequest, type ForgeStatus, type JobView } from "@sr/forge";
 import { validateRig, type Rig } from "@sr/rig";
 import { errorBody } from "./errors.js";
 import type { ForgeReplay } from "./forge-api.js";
@@ -21,6 +21,8 @@ export const REPLAY_BASE = "/replay/forge";
 export interface ReplayJob {
   slug: string;
   name: string;
+  /** The text the job was forged from, when recorded (a cast job records its one_line_request). */
+  prompt?: string;
   /** How the recorded job's plate was filled (task 9 jobs record it; older ones were all fallback). */
   fill: "edit" | "fallback";
   /** Holds per status in order, ending with "done". */
@@ -66,7 +68,8 @@ export function replayJobOf(value: unknown): ReplayJob | undefined {
     assets[layer.file] = base + layer.file;
   }
   const fill = value.fill === "edit" ? "edit" : "fallback";
-  return { slug: value.slug, name: value.name, fill, steps, portraitUrl: base + value.portrait, rig: rig.value, assets };
+  const prompt = typeof value.prompt === "string" ? { prompt: value.prompt } : {};
+  return { slug: value.slug, name: value.name, ...prompt, fill, steps, portraitUrl: base + value.portrait, rig: rig.value, assets };
 }
 
 /** The committed job manifests, bundled at build time (Vite glob import; vitest resolves it the same way). */
@@ -79,6 +82,17 @@ function bundledJobs(): ReplayJob[] {
     else console.warn(`forge replay: skipped an invalid recorded job (${path})`);
   }
   return jobs.sort((a, b) => a.slug.localeCompare(b.slug));
+}
+
+/**
+ * The recorded job for a request. Mode brief (cast-forge 4.3): the job recorded from the brief's
+ * one_line_request (a cast member), when there is one; otherwise, and for the other modes, the
+ * prompt-hash pick over all jobs.
+ */
+export function pickJob<J extends { prompt?: string }>(req: ForgeRequest, jobs: readonly J[]): J | undefined {
+  const asked = req.brief?.one_line_request;
+  const cast = asked === undefined ? undefined : jobs.find((j) => j.prompt !== undefined && requestKey(j.prompt) === requestKey(asked));
+  return cast ?? jobs[pickIndex(asked ?? req.prompt ?? req.imageBase64 ?? "", Math.max(jobs.length, 1))];
 }
 
 /** Index of the job for this request text: the first 4 bytes of its SHA-256, modulo the job count. */
@@ -118,7 +132,7 @@ export function createForgeReplay(jobs: readonly ReplayJob[]): ForgeReplay {
     async post(body, now) {
       const parsed = parseForgeRequest(body);
       if (!parsed.ok) return Response.json(errorBody("bad_input", parsed.errors.message), { status: 400, headers: NO_STORE });
-      const job = jobs[pickIndex(parsed.value.prompt ?? parsed.value.imageBase64 ?? "", Math.max(jobs.length, 1))];
+      const job = pickJob(parsed.value, jobs);
       if (job === undefined) return unavailable();
       return Response.json({ jobId: replayJobId(job.slug, now) }, { status: 202, headers: NO_STORE });
     },

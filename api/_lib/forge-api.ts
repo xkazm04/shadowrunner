@@ -62,13 +62,14 @@ export async function handleForgePost(req: Request, deps: ForgeDeps): Promise<Re
       upload = { bytes, mime };
     }
     const store = deps.store();
-    const firstCall = request.mode === "prompt" ? COST_USD.imageFinal : COST_USD.classify;
+    const firstCall = request.mode === "image" ? COST_USD.classify : COST_USD.imageFinal;
     const ip = clientIp(req);
     const charged = await deps.quota.checkAndCharge(ip, "forge", firstCall);
     if (!charged.ok) throw new ApiError("quota", "The cellar's budget for today is spent. Try the recorded gallery.");
 
     const job: ForgeJob = { jobId: newJobId(), plane: "live", mode: request.mode, status: "queued", createdAt: now };
     if (request.prompt !== undefined) job.prompt = request.prompt;
+    if (request.brief !== undefined) job.brief = request.brief;
     await store.put(job);
     const started = await startJob(job, upload, context(deps, store, ip));
     await store.put(started);

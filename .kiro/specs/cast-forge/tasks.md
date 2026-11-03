@@ -57,7 +57,7 @@
     front part's edge.
   - _Requirements: 3.1-3.4_
 
-- [ ] 10. The brief and the handshake (parallel lane after task 2)
+- [x] 10. The brief and the handshake (parallel lane after task 2)
   - `brief.ts`, `/api/forge/brief`, `mode: "brief"`, replay briefs for the eight, handshake card in
     `/creator/new`.
   - _Requirements: 4.1-4.3_

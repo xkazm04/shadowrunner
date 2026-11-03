@@ -3,7 +3,7 @@
 // image bytes. `toJobView` is the only way a record reaches the client.
 import type { Rig } from "@sr/rig";
 import type { Part } from "./types.js";
-import type { ForgeErrorCode, ForgeStatus, JobView } from "./wire.js";
+import type { CharacterBrief, ForgeErrorCode, ForgeStatus, JobView } from "./wire.js";
 
 export type PortraitMime = "image/png" | "image/jpeg" | "image/webp";
 
@@ -14,7 +14,7 @@ export type ForgeStep = (typeof FORGE_STEPS)[number];
 export interface ForgeJob {
   jobId: string;
   plane: "replay" | "live";
-  mode: "prompt" | "image";
+  mode: "prompt" | "image" | "brief";
   status: ForgeStatus;
   /** Epoch ms. */
   createdAt: number;
@@ -22,6 +22,8 @@ export interface ForgeJob {
   stepStartedAt?: number;
   /** The user's text (mode "prompt"), at most MAX_CHARACTER_TEXT characters are used. */
   prompt?: string;
+  /** The approved brief (mode "brief"): the portrait prompt now, the parts plan in task 11. */
+  brief?: CharacterBrief;
   /** The accepted upload (mode "image"), kept only for the job's 24 h lifetime. */
   uploadUrl?: string;
   uploadMime?: PortraitMime;

@@ -8,9 +8,12 @@
 // - Stateless like the server's replay: the job id carries the slug, the start time and the
 //   seeded failure (`replay_<slug>_<t36>[_<code>]`), so polling resumes after a reload.
 // - The job is chosen by hashing the prompt (or the upload): the same text, the same character.
+//   A brief (cast-forge 4.3) starts the job recorded from its one_line_request when there is one
+//   (a cast member), else the hash of that request.
 // - Where each seeded failure happens mirrors the server: `quota` and `bad_input` are refused at
 //   start (POST answers 429 / 400); `refused_likeness` and `refused_content` fail after the
 //   portrait step; `upstream` fails while cutting.
+import { requestKey } from "@sr/forge/brief";
 import type { ForgeErrorCode, ForgeRequest, ForgeStatus, JobView } from "@sr/forge/wire";
 import { ForgeError, isForgeErrorCode, type ForgeClient } from "./forgeClient";
 import { loadReplayJobs, statusAt, type ReplayJob } from "./replayJobs";
@@ -89,6 +92,7 @@ export interface ReplayClientOptions {
 }
 
 function keyOf(req: ForgeRequest): string | undefined {
+  if (req.mode === "brief") return req.brief?.one_line_request;
   if (req.mode === "prompt") return typeof req.prompt === "string" && req.prompt.trim() !== "" ? req.prompt : undefined;
   return typeof req.imageBase64 === "string" && req.imageBase64 !== "" ? req.imageBase64.slice(0, 4096) : undefined;
 }
@@ -102,7 +106,8 @@ export function createReplayForgeClient(options: ReplayClientOptions = {}): Forg
       const key = keyOf(req);
       if (key === undefined) throw new ForgeError("bad_input", "Describe a character or bring a picture.");
       const list = await jobs();
-      const job = list[pickIndex(key, list.length)];
+      const cast = req.mode === "brief" ? list.find((j) => j.prompt !== undefined && requestKey(j.prompt) === requestKey(key)) : undefined;
+      const job = cast ?? list[pickIndex(key, list.length)];
       if (job === undefined) throw new ForgeError("upstream", "No recorded forges are available.");
       return { jobId: replayJobId(job.slug, now(), options.fail) };
     },

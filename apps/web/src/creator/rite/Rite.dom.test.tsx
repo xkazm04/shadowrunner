@@ -2,6 +2,7 @@
 // Costume 3.2: the rite with the replay client and fake timers. The slots fill as the statuses
 // arrive, a finished job is kept bound as chosen and handed to /creator, a real face is refused with
 // the API's refused_likeness copy and the words are kept, and the other failures land on Forge.
+// cast-forge 4.3: words are briefed first (the recorded brief on replay) and the approved brief drawn.
 import type { AvatarCanvasProps } from "@sr/avatar";
 import type { ForgeErrorCode } from "@sr/forge/wire";
 import { act } from "react";
@@ -11,7 +12,8 @@ import { JOB_KEY } from "../forge/useForgeJob";
 import type { ForgeClient } from "../forgeClient";
 import { createReplayForgeClient, FAIL_MESSAGES } from "../forgeClient.replay";
 import { memoryLibrary, type LibraryStore } from "../library/libraryStore";
-import { testJob } from "../testFixtures";
+import { createReplayBriefClient } from "../briefClient";
+import { testBriefs, testJob } from "../testFixtures";
 import { RitePage } from "./RitePage";
 
 vi.mock(import("../../app/plane"), async (original) => ({ ...(await original()), usePlane: () => "replay" as const }));
@@ -37,7 +39,7 @@ async function flush(): Promise<void> {
 }
 
 async function open(client: ForgeClient): Promise<void> {
-  view = await mount(<RitePage client={client} jobs={jobs} library={{ open: async () => store, cast: async () => [] }} />);
+  view = await mount(<RitePage client={client} briefer={createReplayBriefClient(async () => testBriefs())} jobs={jobs} library={{ open: async () => store, cast: async () => [] }} />);
   await flush();
 }
 
@@ -54,9 +56,11 @@ async function click(el: Element): Promise<void> {
 }
 const slots = (state: string): number => view.container.querySelectorAll(`[data-slot="${state}"]`).length;
 
-/** Describe with an example, bind, and forge. */
+/** Describe with an example, brief it, bind, and forge the approved brief. */
 async function forge(bind: string[] = []): Promise<void> {
   await click(button("Moth archivist"));
+  await click(button("Brief it"));
+  await flush();
   await click(button("Bind it"));
   for (const b of bind) await click(button(b));
   await click(button("Forge it"));
@@ -80,8 +84,14 @@ describe("the rite", () => {
     await open(createReplayForgeClient({ jobs }));
     expect(text()).toContain("The glass is empty");
     expect(slots("waiting")).toBeGreaterThan(0);
+    expect(button("Brief it").disabled).toBe(true);
     expect(button("Bind it").disabled).toBe(true);
     await click(button("Moth archivist"));
+    expect(button("Brief it").disabled).toBe(false);
+    // Only an approved brief is drawn: words alone do not go on to Bind.
+    expect(button("Bind it").disabled).toBe(true);
+    await click(button("Brief it"));
+    await flush();
     expect(button("Bind it").disabled).toBe(false);
   });
 
@@ -157,6 +167,6 @@ describe("the rite", () => {
     await flush();
     expect(sent).toHaveLength(2);
     expect(sent[1]).toEqual(sent[0]);
-    expect(JSON.stringify(sent[0])).toContain("Archetype: lich.");
+    expect((sent[0] as { mode: string }).mode).toBe("brief");
   });
 });
