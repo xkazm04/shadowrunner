@@ -59,6 +59,12 @@ function liftedOf(part: NamedPart, width: number, height: number): Mask {
   return part.role === "jaw" ? liftedJaw(hard) : hard;
 }
 
+/** Whether two same-size masks share any set pixel. */
+function touches(a: Mask, b: Mask): boolean {
+  for (let i = 0; i < a.data.length; i++) if (a.data[i] !== 0 && b.data[i] !== 0) return true;
+  return false;
+}
+
 /**
  * The region the fill paints: the hard union of every lifted (non-plate) part, or of the parts
  * `keep` accepts, a jaw role's grown by JAW_GROW. 255 inside. Pass it to `composePlate`.
@@ -109,11 +115,18 @@ export function cutNamed(portrait: Rgba, parts: readonly NamedPart[], options: N
   const lifted = filled ? liftedNamed(parts, width, height) : emptyMask(width, height);
   const carried = new Map<string, Mask>();
   if (filled) {
+    const plateParts = emptyMask(width, height);
+    for (const part of parts) if (!isLifted(part)) addTo(plateParts, rasterizeMask(polyOf(part, width, height), width, height, 0));
+    const near = dilateMask(plateParts, PLATE_DILATE);
     for (const part of parts) {
       const carrier = carrierOf(part, parts);
       if (!isLifted(part) || carrier === undefined) continue;
+      const own = liftedOf(part, width, height);
+      // Task 8: a part floating on the ground (a disembodied glove) has only ground behind it, which
+      // the background paints; carried, it would stretch its carrier's layer out to it as a patch.
+      if (!touches(own, near)) continue;
       const mask = carried.get(carrier) ?? emptyMask(width, height);
-      addTo(mask, liftedOf(part, width, height));
+      addTo(mask, own);
       carried.set(carrier, mask);
     }
   }

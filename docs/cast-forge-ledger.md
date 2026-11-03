@@ -33,6 +33,12 @@ One section per decomposed character (cast-forge requirement 3.4): what broke, w
      slit) grows onto the frame by less than the ink's width minus 3 px (the extension fill's reach), so
      the shut eye is dark ink; after taking a jaw out, check that every piece of the head beside it
      (hinges, bosses, ears) is still on the head; open `var/cast-forge/<slug>-blink.png`.
+  4g. (task 8) a part floating free on the ground (a glove, a charm) is a float with `fill: "extend"`,
+     traced 8 px onto the ground so the outline's chords cut no tip off; its glow is a follower
+     listed before it (a float role, so it is in front), pivoted on its root; check `uncovered` is 0
+     for every part, a polygon is ONE outline (split a part in two pieces, e.g. collar wings); a neck
+     inside a collar reaches under it by the head's travel (16 px) and the collar takes
+     `fill: "extend"` and all the ink between it and the neck.
   6. add the slug to `CAST` in `packages/forge/src/cast.golden.test.ts`.
      and to `SLUGS` in `api/_tests/forge-replay.test.ts` (it pins the recorded job list), `CAST_FORGE`
      and the cast order in `apps/web/src/creator/gallery/notes.test.ts`, the hours in
@@ -273,3 +279,39 @@ One section per decomposed character (cast-forge requirement 3.4): what broke, w
   dark ground (a luma key would thin a dark plume).
 - Flat fills with ink outlines: grow each part over ink only (never into a neighbour's fill), cut
   with feather 1, trace outer edges onto the ground by the ink's width.
+
+## Lot Ninety, the Auctioneer (art nouveau poster)
+**What broke**
+- The head layer was 978 px wide: the two disembodied gloves follow the head by default, so the
+  head carried their filled holes, two patches of painted ground out in the dark that moved with
+  every turn (the same was true, unseen, of Cardia's spires and the Vicar's bulb).
+- The flame splits the glove's cuff rim, so the glove mask was two pieces and its single outline
+  missed about 1,000 px of cuff, which stayed on the background as a ghost when the glove bobbed.
+  The wing collar likewise (two wings, one outline): one wing was on no part.
+- The neck inside the wing collar: the edit drew a plain shirt collar under the wings, and the neck
+  reaching under them carried its lines as a second edge on a turn; the collar's top tips above the
+  neck row rode the head as flecks.
+- A jaw between fixed columns chopped the lower lip's tails; a full-strength accent glow read as a
+  green tongue.
+
+**What became code** (`packages/forge`)
+- `cutNamed`: a lifted part whose region lies more than `PLATE_DILATE` px from every plate part's
+  polygon is carried by no plate part; the background paints the ground behind it. The head layer
+  is 446 px wide. Cardia's spires and the Vicar's bulb rebuild uncarried (rest unchanged, mean
+  0.27 and 0.25/255, no pixel over 60); the other four rebuild byte-identical.
+- Seeded fault red: the ground check removed (the head layer reached the glove, x 96 against < 50).
+
+**What became a decomposition-prompt rule**
+- Disembodied parts (hands, gloves, orbiting charms) are floats with no follow and a `pivot` at the
+  joint they would turn on (the wrist); pairs move half a cycle apart; whatever trails from them
+  (ectoplasm, a flame, a ribbon) is a follower with its own small sway about its root and a flicker.
+- A part that is two pieces in the drawing is two parts (a wing collar, a split cuff closed across).
+- A neck that disappears into a collar reaches under it; ask the fill edit for the collar removed,
+  but plan `fill: "extend"` for the collar when the edit redraws its own collar there.
+- A grin of teeth over a closed bite: the jaw is the lower teeth and lower lip under the seam between
+  the rows, a drop of about 0.024, the default cavity with the accent at about 60% as `glow`.
+- A wink is an own `motion.blink` on one eye at a slow frequency (about 0.12 Hz).
+
+**Format finding (not widened)**
+- "Points at bidders", "slams down SOLD", "glances" are chat events and gaze; the rig carries only
+  periodic motion (as the Tallyman's), so the gloves only bob and turn.

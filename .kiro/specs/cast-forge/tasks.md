@@ -41,7 +41,12 @@
     lit gap, `GAP_LIT_NEAR`); the torso's backing reaches under a jaw the head carries; the eye slits'
     light narrows to a line in a blink over a dark slit; the plume sways on its foot, three tags swing
     from the chain. The cast golden counts rotation as motion; the build writes a blink PNG.
-- [ ] 8. Decompose `lot-ninety` (art nouveau) and harden
+- [x] 8. Decompose `lot-ninety` (art nouveau) and harden
+  - Floating gloves: each glove a float turning on its wrist, its ectoplasm a float that follows it,
+    sways on its root and flickers; a part floating on the ground is carried by no plate part (the
+    head layer no longer stretches to the gloves). The neck reaches under a wing collar split in two
+    (a polygon is one outline); a showman's grin drops the lower teeth and lip onto a dark cavity lit
+    emerald. Cardia's spires and the Vicar's bulb rebuild uncarried (rest unchanged).
 - [ ] 9. Decompose `auntie-asp` (art nouveau, serpents) and harden
   - Each: the procedure in design.md "How a character is decomposed"; done per requirement 3.3; the
     ledger names what became code and what became a prompt rule.

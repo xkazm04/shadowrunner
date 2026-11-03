@@ -7,6 +7,8 @@ import cardiaJob from "../../../assets/replay/forge/saint-cardia/job.json";
 import cardiaParts from "../../../assets/characters/cast/saint-cardia/parts.json";
 import redactorJob from "../../../assets/replay/forge/the-redactor/job.json";
 import redactorParts from "../../../assets/characters/cast/the-redactor/parts.json";
+import lotNinetyJob from "../../../assets/replay/forge/lot-ninety/job.json";
+import lotNinetyParts from "../../../assets/characters/cast/lot-ninety/parts.json";
 import reveilleJob from "../../../assets/replay/forge/reveille/job.json";
 import reveilleParts from "../../../assets/characters/cast/reveille/parts.json";
 import sirVacantJob from "../../../assets/replay/forge/sir-vacant/job.json";
@@ -20,6 +22,7 @@ import { parseParts } from "./parts.js";
 const CAST = [
   { slug: "saint-cardia", job: cardiaJob as unknown, parts: cardiaParts as unknown },
   { slug: "the-redactor", job: redactorJob as unknown, parts: redactorParts as unknown },
+  { slug: "lot-ninety", job: lotNinetyJob as unknown, parts: lotNinetyParts as unknown },
   { slug: "reveille", job: reveilleJob as unknown, parts: reveilleParts as unknown },
   { slug: "sir-vacant", job: sirVacantJob as unknown, parts: sirVacantParts as unknown },
   { slug: "the-tallyman", job: tallymanJob as unknown, parts: tallymanParts as unknown },

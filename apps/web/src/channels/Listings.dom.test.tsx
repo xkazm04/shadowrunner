@@ -45,27 +45,28 @@ describe("Listings as the wall of sets (CH 4)", () => {
       "03:00, Arch-Lich Malakor",
       "04:00, Announcer of Dead Air",
       "05:00, The Lantern Warden",
-      "06:00, The Moth Widow",
-      "07:00, The Redactor",
+      "06:00, Lot Ninety",
+      "07:00, The Moth Widow",
+      "08:00, The Redactor",
       // The label is split on ", ", and this name holds one.
-      "08:00, Reveille",
-      "09:00, Saint Cardia of the Glass Heart",
-      "10:00, Sir Vacant",
-      "11:00, Sister Vesper",
-      "12:00, The Tallyman",
-      "13:00, The Understudy",
-      "14:00, Vicar of the Lure",
-      "15:00, before the boiler wakes",
+      "09:00, Reveille",
+      "10:00, Saint Cardia of the Glass Heart",
+      "11:00, Sir Vacant",
+      "12:00, Sister Vesper",
+      "13:00, The Tallyman",
+      "14:00, The Understudy",
+      "15:00, Vicar of the Lure",
+      "16:00, before the boiler wakes",
       "Channel 9, not built yet",
     ]);
-    expect(wall.map((s) => s.dataset.kind)).toEqual(["live", "cast", "cast", "cast", "cast", "cast", "cast", "cast", "cast", "cast", "cast", "cast", "vacant", "sealed"]);
+    expect(wall.map((s) => s.dataset.kind)).toEqual(["live", "cast", "cast", "cast", "cast", "cast", "cast", "cast", "cast", "cast", "cast", "cast", "cast", "vacant", "sealed"]);
     expect(wall[0]?.getAttribute("aria-label")).toBe("03:00, Arch-Lich Malakor, on air now");
     expect(wall[0]?.getAttribute("aria-pressed")).toBe("true");
     expect(wall[2]?.getAttribute("aria-label")).toBe("05:00, The Lantern Warden, later tonight");
     expect(wall[2]?.querySelector("img")?.getAttribute("src")).toMatch(/lantern-warden\.webp/);
-    expect(wall[12]?.textContent).toContain("15:00 · VACANT");
-    expect(wall[13]?.textContent).toContain("CH 9 · SEALED");
-    expect(wall[13]?.textContent).toContain("NOT BUILT YET");
+    expect(wall[13]?.textContent).toContain("16:00 · VACANT");
+    expect(wall[14]?.textContent).toContain("CH 9 · SEALED");
+    expect(wall[14]?.textContent).toContain("NOT BUILT YET");
     // The clipping opens on Malakor, from his bible, with what he shows off.
     expect(clip(view)?.textContent).toContain("03:00 · ON AIR NOW · CH 2");
     expect(clip(view)?.textContent).toContain("High Auditor of the Obsidian Spire");

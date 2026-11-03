@@ -14,7 +14,7 @@ import { REPLAY_BASE, bundledReplay, createForgeReplay, pickIndex, replayJobId, 
 
 const manifests = import.meta.glob("../../assets/replay/forge/*/job.json", { eager: true, import: "default" });
 // cast-forge task 2 adds the first cast member (scripts/cast-forge.mjs); the rest follow one task at a time.
-const SLUGS = ["announcer-of-dead-air", "lantern-warden", "malakor", "moth-widow", "reveille", "saint-cardia", "sir-vacant", "sister-vesper", "the-redactor", "the-tallyman", "understudy", "vicar-of-the-lure"];
+const SLUGS = ["announcer-of-dead-air", "lantern-warden", "lot-ninety", "malakor", "moth-widow", "reveille", "saint-cardia", "sir-vacant", "sister-vesper", "the-redactor", "the-tallyman", "understudy", "vicar-of-the-lure"];
 
 /** The static file behind a /replay/** URL, read from assets/replay/** (what the deploy serves). */
 function serveStatic(url: string): Uint8Array | undefined {

@@ -1,0 +1,389 @@
+{
+  "slug": "lot-ninety",
+  "name": "Lot Ninety, the Auctioneer",
+  "fictional": true,
+  "source": "cast-forge offline build: Codex CLI built-in image generation (codex-cli 0.160.0) portrait (contest supporting-cast, entry A/4 style-1, 2026-11-02); named parts measured from pixels; fill Codex CLI image edit",
+  "prompt": "a fast talking ghost auctioneer with floating hands",
+  "promptSha256": "4c9a7ff2885853303ffbda8044a8f6434c1ea372ab04abf28cfd72b56b751d0f",
+  "portrait": "portrait.png",
+  "fill": "edit",
+  "timings": {
+    "cutMs": 4989
+  },
+  "steps": [
+    {
+      "status": "queued",
+      "holdMs": 1500
+    },
+    {
+      "status": "portrait",
+      "holdMs": 1500
+    },
+    {
+      "status": "segmenting",
+      "holdMs": 1500
+    },
+    {
+      "status": "cutting",
+      "holdMs": 1500
+    },
+    {
+      "status": "filling",
+      "holdMs": 1500
+    },
+    {
+      "status": "done"
+    }
+  ],
+  "warnings": [],
+  "rig": {
+    "version": 1,
+    "id": "replay-lot-ninety",
+    "name": "Lot Ninety, the Auctioneer",
+    "width": 1024,
+    "height": 1024,
+    "source": "forge",
+    "fictional": true,
+    "palette": {
+      "glow": "#10c661",
+      "eye": "#1de978",
+      "rim": "#1de978",
+      "mouth": "#052614"
+    },
+    "layers": [
+      {
+        "name": "background",
+        "z": 1,
+        "kind": "static",
+        "file": "background.png",
+        "bbox": [
+          0,
+          0,
+          1024,
+          1024
+        ],
+        "anchor": [
+          512,
+          512
+        ],
+        "depth": 0
+      },
+      {
+        "name": "torso",
+        "z": 2,
+        "kind": "body",
+        "file": "torso.png",
+        "bbox": [
+          60,
+          488,
+          899,
+          534
+        ],
+        "anchor": [
+          509.952,
+          818.688
+        ],
+        "depth": 0.3
+      },
+      {
+        "name": "head",
+        "z": 3,
+        "kind": "head",
+        "file": "head.png",
+        "bbox": [
+          289,
+          0,
+          446,
+          675
+        ],
+        "anchor": [
+          512,
+          672.768
+        ],
+        "depth": 0.6
+      },
+      {
+        "name": "jaw",
+        "z": 4,
+        "kind": "jaw",
+        "file": "jaw.png",
+        "bbox": [
+          458,
+          442,
+          115,
+          45
+        ],
+        "anchor": [
+          515.5840000000001,
+          442.368
+        ],
+        "follow": "head",
+        "depth": 0.62,
+        "drop": 0.024
+      },
+      {
+        "name": "hair",
+        "z": 5,
+        "kind": "crown",
+        "file": "hair.png",
+        "bbox": [
+          301,
+          8,
+          422,
+          282
+        ],
+        "anchor": [
+          512,
+          148.992
+        ],
+        "follow": "head",
+        "depth": 0.6
+      },
+      {
+        "name": "collar_l",
+        "z": 6,
+        "kind": "accessory",
+        "file": "collar_l.png",
+        "bbox": [
+          514,
+          500,
+          133,
+          175
+        ],
+        "anchor": [
+          581.4928057553957,
+          640.742206235012
+        ],
+        "follow": "torso",
+        "depth": 0.3
+      },
+      {
+        "name": "collar_r",
+        "z": 7,
+        "kind": "accessory",
+        "file": "collar_r.png",
+        "bbox": [
+          379,
+          500,
+          134,
+          175
+        ],
+        "anchor": [
+          448.1396866840731,
+          641.523498694517
+        ],
+        "follow": "torso",
+        "depth": 0.3
+      },
+      {
+        "name": "bowtie",
+        "z": 8,
+        "kind": "accessory",
+        "file": "bowtie.png",
+        "bbox": [
+          416,
+          636,
+          198,
+          102
+        ],
+        "anchor": [
+          512,
+          690.176
+        ],
+        "follow": "torso",
+        "depth": 0.3,
+        "motion": {
+          "float": {
+            "amp": [
+              0,
+              0
+            ],
+            "freq": 1.1,
+            "rot_deg": 3,
+            "phase": 0.609
+          }
+        }
+      },
+      {
+        "name": "eye_l",
+        "z": 9,
+        "kind": "eye",
+        "file": "eye_l.png",
+        "bbox": [
+          546,
+          263,
+          78,
+          36
+        ],
+        "anchor": [
+          587.6693857965452,
+          281.6458733205374
+        ],
+        "follow": "head",
+        "depth": 0.7,
+        "motion": {
+          "pulse": {
+            "amp": 0.3,
+            "freq": 0.5,
+            "phase": 0.2
+          },
+          "blink": {
+            "freq": 0.12,
+            "phase": 0.805
+          }
+        }
+      },
+      {
+        "name": "eye_r",
+        "z": 10,
+        "kind": "eye",
+        "file": "eye_r.png",
+        "bbox": [
+          401,
+          263,
+          78,
+          36
+        ],
+        "anchor": [
+          437.8810888252149,
+          281.46418338108884
+        ],
+        "follow": "head",
+        "depth": 0.7,
+        "motion": {
+          "pulse": {
+            "amp": 0.3,
+            "freq": 0.5,
+            "phase": 0.2
+          }
+        }
+      },
+      {
+        "name": "hand_l",
+        "z": 11,
+        "kind": "accessory",
+        "file": "hand_l.png",
+        "bbox": [
+          795,
+          118,
+          194,
+          488
+        ],
+        "anchor": [
+          887.808,
+          483.328
+        ],
+        "follow": "head",
+        "depth": 0.75,
+        "motion": {
+          "float": {
+            "amp": [
+              2,
+              7
+            ],
+            "freq": 0.42,
+            "rot_deg": 5,
+            "phase": 0.5
+          }
+        }
+      },
+      {
+        "name": "hand_r",
+        "z": 12,
+        "kind": "accessory",
+        "file": "hand_r.png",
+        "bbox": [
+          35,
+          118,
+          194,
+          486
+        ],
+        "anchor": [
+          135.168,
+          483.328
+        ],
+        "follow": "head",
+        "depth": 0.75,
+        "motion": {
+          "float": {
+            "amp": [
+              2,
+              7
+            ],
+            "freq": 0.42,
+            "rot_deg": 5,
+            "phase": 0
+          }
+        }
+      },
+      {
+        "name": "wisp_l",
+        "z": 13,
+        "kind": "accessory",
+        "file": "wisp_l.png",
+        "bbox": [
+          851,
+          554,
+          72,
+          160
+        ],
+        "anchor": [
+          883.712,
+          560.128
+        ],
+        "follow": "hand_l",
+        "depth": 0.75,
+        "motion": {
+          "float": {
+            "amp": [
+              0,
+              0
+            ],
+            "freq": 0.82,
+            "rot_deg": 7,
+            "phase": 0.798
+          },
+          "pulse": {
+            "amp": 0.45,
+            "freq": 1.1,
+            "phase": 0.798
+          }
+        }
+      },
+      {
+        "name": "wisp_r",
+        "z": 14,
+        "kind": "accessory",
+        "file": "wisp_r.png",
+        "bbox": [
+          101,
+          554,
+          72,
+          161
+        ],
+        "anchor": [
+          139.264,
+          560.128
+        ],
+        "follow": "hand_r",
+        "depth": 0.75,
+        "motion": {
+          "float": {
+            "amp": [
+              0,
+              0
+            ],
+            "freq": 0.9,
+            "rot_deg": 7,
+            "phase": 0.681
+          },
+          "pulse": {
+            "amp": 0.45,
+            "freq": 1.3,
+            "phase": 0.681
+          }
+        }
+      }
+    ]
+  }
+}

@@ -114,6 +114,10 @@ a soft grey smear (task 9's `MOUTH_SHADE` ramp). Now:
 - **Backing under a carried jaw** (task 7). A plate part's backing (`parallaxBacking`) reaches under
   everything the plate part in front covers, its carried lifted regions included: a bevor at the
   helm's foot is carried by the head, and a turned head left a line of ground beside its edge.
+- **Parts floating on the ground** (task 8). A lifted part whose region lies more than
+  `PLATE_DILATE` px from every plate part's polygon (a disembodied glove, a spire high above a
+  crown) is carried by no plate part: only ground is behind it, which the background paints.
+  Carried, it stretched the head layer out to it as a moving patch of painted ground.
 - **Plate matte and pivot** (task 5). `NamedPart.matte: "plate"` (lifted parts): the part keeps only
   what differs from the plate behind it, alpha ramped from `MATTE_LO` to `MATTE_HI` on the largest
   channel difference and colour un-mixed (`plate + (portrait - plate) / alpha`), so it is the

@@ -8,7 +8,7 @@
   "portrait": "portrait.png",
   "fill": "edit",
   "timings": {
-    "cutMs": 3459
+    "cutMs": 3397
   },
   "steps": [
     {
@@ -92,9 +92,9 @@
         "file": "head.png",
         "bbox": [
           193,
-          0,
+          75,
           617,
-          753
+          678
         ],
         "anchor": [
           502.27200000000005,

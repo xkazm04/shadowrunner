@@ -108,7 +108,7 @@ describe("cutNamed", () => {
       { name: "face", role: "head", box_2d: [0, 0, 1000, 1000], poly: [[100, 250], [100, 750], [500, 750], [500, 250]] },
       { name: "body", role: "torso", box_2d: [0, 0, 1000, 1000], poly: [[500, 100], [500, 900], [1000, 900], [1000, 100]] },
     ];
-    const portrait: Rgba = { width: size, height: size, data: new Uint8ClampedArray(size * size * 4).fill(200) };
+    const portrait: Rgba = { width: size, height: size, data: new Uint8ClampedArray(size * size * 4).fill(255) };
     for (let i = 3; i < portrait.data.length; i += 4) portrait.data[i] = 255;
     const lifted = liftedNamed(parts, size, size);
     const body = cutNamed(portrait, parts, { plate: composePlate(portrait, fallbackFill(portrait, lifted), lifted) }).layers.find((l) => l.name === "body");
@@ -128,7 +128,7 @@ describe("cutNamed", () => {
       { name: "helm", role: "head", box_2d: [0, 0, 1000, 1000], poly: [[100, 250], [100, 750], [450, 750], [450, 250]] },
       { name: "body", role: "torso", box_2d: [0, 0, 1000, 1000], poly: [[500, 100], [500, 900], [1000, 900], [1000, 100]] },
     ];
-    const portrait: Rgba = { width: size, height: size, data: new Uint8ClampedArray(size * size * 4).fill(200) };
+    const portrait: Rgba = { width: size, height: size, data: new Uint8ClampedArray(size * size * 4).fill(255) };
     for (let i = 3; i < portrait.data.length; i += 4) portrait.data[i] = 255;
     const lifted = liftedNamed(parts, size, size);
     const body = cutNamed(portrait, parts, { plate: composePlate(portrait, fallbackFill(portrait, lifted), lifted) }).layers.find((l) => l.name === "body");
@@ -152,6 +152,33 @@ describe("cutNamed", () => {
     const at = (y: number, x: number): number => plate.data[(Math.round((y * size) / 1000) * size + Math.round((x * size) / 1000)) * 4] ?? 0;
     expect(at(275, 275)).toBe(100);
     expect(at(725, 725)).toBe(250);
+  });
+
+  it("task 8: a part floating on the ground is carried by no plate part; one on the head still is", () => {
+    const size = 96;
+    const box = (y0: number, x0: number, y1: number, x1: number): [number, number][] => [
+      [y0, x0],
+      [y0, x1],
+      [y1, x1],
+      [y1, x0],
+    ];
+    const parts: NamedPart[] = [
+      { name: "face", role: "head", box_2d: [0, 0, 1000, 1000], poly: box(100, 50, 900, 350) },
+      { name: "glove", role: "float", box_2d: [0, 0, 1000, 1000], poly: box(200, 700, 600, 950), key: false },
+      { name: "gem", role: "pulse", box_2d: [0, 0, 1000, 1000], poly: box(400, 150, 500, 250) },
+    ];
+    const portrait: Rgba = { width: size, height: size, data: new Uint8ClampedArray(size * size * 4).fill(255) };
+    const lifted = liftedNamed(parts, size, size);
+    const plate = composePlate(portrait, fallbackFill(portrait, lifted), lifted);
+    const face = cutNamed(portrait, parts, { plate }).layers.find((l) => l.name === "face");
+    expect(face).toBeDefined();
+    if (face === undefined) return;
+    const [bx, , bw] = face.bbox;
+    // The glove starts at x 67: the head layer stops short of it (its own edge at 34, plus its backing).
+    expect(bx + bw).toBeLessThan(50);
+    // The gem lies on the face: the face still carries the filled surface under it, opaque.
+    const [, by] = face.bbox;
+    expect(face.image.data[((43 - by) * bw + 19 - bx) * 4 + 3]).toBe(255);
   });
 
   it("lifts every non-plate part: on a plate, a lifted layer is opaque over its whole polygon unless a part in front took it", () => {
