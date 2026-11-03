@@ -30,6 +30,8 @@ export interface MouthOptions {
    * Cast-forge task 5: the mouth is drawn open over a dark gap (Reveille's grin), so the cavity is
    * that gap carried up: every column as deep as the drop (no lens), in the column's own colour
    * GAP_INSET rows under the lip line when it is dark (luma <= GAP_LUMA), else the lip's tones.
+   * With `glow` (cast-forge task 7, Sir Vacant's helm): the gap is drawn lit, so a column whose
+   * colour lies within GAP_LIT_NEAR of the accent is carried up too; the open visor widens the light.
    */
   gap?: boolean;
 }
@@ -38,6 +40,8 @@ export interface MouthOptions {
 export const GAP_LUMA = 40;
 /** The gap is sampled this many rows under the lip line, clear of the lip's own anti-aliased edge. */
 export const GAP_INSET = 2;
+/** A gap sample counts as lit by the accent when no channel lies further than this from it. */
+export const GAP_LIT_NEAR = 48;
 
 /** Per column, the first row of `hard` (the lip line), or -1 where the column is empty. */
 export function lipLine(hard: Mask): Int32Array {
@@ -100,11 +104,15 @@ function meanUnder(image: Rgba, hard: Mask): [number, number, number] {
   return n === 0 ? [128, 128, 128] : [(sum[0] ?? 0) / n, (sum[1] ?? 0) / n, (sum[2] ?? 0) / n];
 }
 
-/** The portrait's colour at (x, y) when it is as dark as a drawn gap (GAP_LUMA), else undefined. */
-function gapTone(portrait: Rgba, x: number, y: number): [number, number, number] | undefined {
+/**
+ * The portrait's colour at (x, y) when it is as dark as a drawn gap (GAP_LUMA) or, given `lit`,
+ * within GAP_LIT_NEAR of that accent in every channel (a gap drawn full of light); else undefined.
+ */
+function gapTone(portrait: Rgba, x: number, y: number, lit?: [number, number, number]): [number, number, number] | undefined {
   const i = (y * portrait.width + x) * 4;
   const rgb: [number, number, number] = [portrait.data[i] ?? 0, portrait.data[i + 1] ?? 0, portrait.data[i + 2] ?? 0];
-  return 0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2] <= GAP_LUMA ? rgb : undefined;
+  if (0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2] <= GAP_LUMA) return rgb;
+  return lit !== undefined && rgb.every((v, c) => Math.abs(v - (lit[c] ?? 0)) <= GAP_LIT_NEAR) ? rgb : undefined;
 }
 
 const hexRgb = (hex: string): [number, number, number] => [1, 3, 5].map((k) => parseInt(hex.slice(k, k + 2), 16)) as [number, number, number];
@@ -156,7 +164,7 @@ export function paintCavity(surface: Rgba, portrait: Rgba, hard: Mask, lifted: M
     if (depth <= 0) continue;
     const band = Math.max(1, cell === 1 ? Math.round(depth * CAVITY_SHADOW_SHARE) : Math.round((depth * CAVITY_SHADOW_SHARE) / cell) * cell);
     const glowing = glow !== undefined && u <= GLOW_WIDTH_SHARE;
-    const own = options.gap === true ? gapTone(portrait, x, Math.min(height - 1, lipY + GAP_INSET)) : undefined;
+    const own = options.gap === true ? gapTone(portrait, x, Math.min(height - 1, lipY + GAP_INSET), accent) : undefined;
     for (let k = 0; k < depth; k++) {
       const y = lipY + k;
       if (y >= height) break;

@@ -9,6 +9,8 @@ import redactorJob from "../../../assets/replay/forge/the-redactor/job.json";
 import redactorParts from "../../../assets/characters/cast/the-redactor/parts.json";
 import reveilleJob from "../../../assets/replay/forge/reveille/job.json";
 import reveilleParts from "../../../assets/characters/cast/reveille/parts.json";
+import sirVacantJob from "../../../assets/replay/forge/sir-vacant/job.json";
+import sirVacantParts from "../../../assets/characters/cast/sir-vacant/parts.json";
 import tallymanJob from "../../../assets/replay/forge/the-tallyman/job.json";
 import tallymanParts from "../../../assets/characters/cast/the-tallyman/parts.json";
 import vicarJob from "../../../assets/replay/forge/vicar-of-the-lure/job.json";
@@ -19,6 +21,7 @@ const CAST = [
   { slug: "saint-cardia", job: cardiaJob as unknown, parts: cardiaParts as unknown },
   { slug: "the-redactor", job: redactorJob as unknown, parts: redactorParts as unknown },
   { slug: "reveille", job: reveilleJob as unknown, parts: reveilleParts as unknown },
+  { slug: "sir-vacant", job: sirVacantJob as unknown, parts: sirVacantParts as unknown },
   { slug: "the-tallyman", job: tallymanJob as unknown, parts: tallymanParts as unknown },
   { slug: "vicar-of-the-lure", job: vicarJob as unknown, parts: vicarParts as unknown },
 ];
@@ -50,7 +53,8 @@ describe.each(CAST)("cast rig $slug", ({ job, parts }) => {
       expect(layer?.motion).toBeDefined();
       const pa = a.find((p) => p.name === part.name);
       const pb = b.find((p) => p.name === part.name);
-      const moved = pa !== undefined && pb !== undefined && (Math.abs(pa.x - pb.x) + Math.abs(pa.y - pb.y) > 0.1 || Math.abs(pa.tint - pb.tint) > 0.01);
+      // A pendulum (Sir Vacant's tags, task 7) swings about its pivot: rotation counts as moving.
+      const moved = pa !== undefined && pb !== undefined && (Math.abs(pa.x - pb.x) + Math.abs(pa.y - pb.y) > 0.1 || Math.abs(pa.tint - pb.tint) > 0.01 || Math.abs(pa.rotation - pb.rotation) > 1e-3);
       expect(moved, `${part.name} moves`).toBe(true);
       expect(motionAt(layer?.motion, 1.7, true).dx).toBe(0);
     }

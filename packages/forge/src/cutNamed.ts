@@ -152,7 +152,8 @@ export function cutNamed(portrait: Rgba, parts: readonly NamedPart[], options: N
     const shape = underFront(own, front, reach);
     if (filled && up) addTo(shape, dilateMask(own, feather));
     const carries = carried.get(part.name);
-    if (filled && !up && carries !== undefined) addTo(shape, dilateMask(carries, PLATE_DILATE + feather));
+    const carriedShape = filled && !up && carries !== undefined ? dilateMask(carries, PLATE_DILATE + feather) : undefined;
+    if (carriedShape !== undefined) addTo(shape, carriedShape);
     const backing = filled && !up ? dilateMask(own, backingPx) : undefined;
     if (backing !== undefined) for (let i = 0; i < backing.data.length; i++) backing.data[i] = backing.data[i] !== 0 && plateFront.data[i] !== 0 ? 255 : 0;
     if (backing !== undefined) addTo(shape, backing);
@@ -182,6 +183,9 @@ export function cutNamed(portrait: Rgba, parts: readonly NamedPart[], options: N
       }
       if (own.data[i] !== 0) front.data[i] = 255;
       if (!up && own.data[i] !== 0) plateFront.data[i] = 255;
+      // Task 7: what a plate part carries (a bevor jaw at the helm's foot) counts as in front too,
+      // so the torso behind reaches under its edge and a turned head shows no ground beside it.
+      if (carriedShape !== undefined && carriedShape.data[i] !== 0) plateFront.data[i] = 255;
     }
     const cut = cutLayer(matted ?? (up ? portrait : surface), { width, height, data: m });
     if (cut === undefined) empty.push(part.name);

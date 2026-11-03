@@ -108,6 +108,12 @@ a soft grey smear (task 9's `MOUTH_SHADE` ramp). Now:
   smooth lip, where the edit will not paint a throat (it redrew Reveille's case as a whole clock):
   every column of the jaw uncovers the full drop, in the column's own colour `GAP_INSET` rows under
   the lip when it is dark (`GAP_LUMA`), else the lip's tones. Hard, like the lens.
+  Amended by task 7 (Sir Vacant's visor): with `glow`, a column whose colour lies within
+  `GAP_LIT_NEAR` (48) of the accent in every channel is carried up too, so a gap drawn full of light
+  (a helm's inner light, a furnace mouth) widens in its own light instead of turning dark.
+- **Backing under a carried jaw** (task 7). A plate part's backing (`parallaxBacking`) reaches under
+  everything the plate part in front covers, its carried lifted regions included: a bevor at the
+  helm's foot is carried by the head, and a turned head left a line of ground beside its edge.
 - **Plate matte and pivot** (task 5). `NamedPart.matte: "plate"` (lifted parts): the part keeps only
   what differs from the plate behind it, alpha ramped from `MATTE_LO` to `MATTE_HI` on the largest
   channel difference and colour un-mixed (`plate + (portrait - plate) / alpha`), so it is the

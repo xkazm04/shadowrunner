@@ -36,7 +36,11 @@
   - Six eyes that count: an eye's own `Motion.blink` (rig-core amended, eye layers only), max'ed with
     `Drive.blink`; `motionOf` keeps it. Beads cut by their whole body slide on their rods; the stand
     collar is a front part so a turned neck goes behind it. Format finding: no event-driven motion.
-- [ ] 7. Decompose `sir-vacant` (heraldic miniature) and harden
+- [x] 7. Decompose `sir-vacant` (heraldic miniature) and harden
+  - The bevor is the jaw: the open visor widens the drawn light (`cavity: "gap"` with `glow` carries a
+    lit gap, `GAP_LIT_NEAR`); the torso's backing reaches under a jaw the head carries; the eye slits'
+    light narrows to a line in a blink over a dark slit; the plume sways on its foot, three tags swing
+    from the chain. The cast golden counts rotation as motion; the build writes a blink PNG.
 - [ ] 8. Decompose `lot-ninety` (art nouveau) and harden
 - [ ] 9. Decompose `auntie-asp` (art nouveau, serpents) and harden
   - Each: the procedure in design.md "How a character is decomposed"; done per requirement 3.3; the

@@ -120,6 +120,25 @@ describe("cutNamed", () => {
     for (let y = 200 - backing; y < 200; y++) expect(alpha(200, y), `torso alpha at (200, ${y})`).toBe(255);
   });
 
+  it("task 7: the torso also reaches under a jaw at the head's foot (a bevor), which the head carries", () => {
+    const size = 400;
+    const backing = parallaxBacking(size, size);
+    const parts: NamedPart[] = [
+      { name: "bevor", role: "jaw", box_2d: [0, 0, 1000, 1000], poly: [[450, 300], [450, 700], [500, 700], [500, 300]] },
+      { name: "helm", role: "head", box_2d: [0, 0, 1000, 1000], poly: [[100, 250], [100, 750], [450, 750], [450, 250]] },
+      { name: "body", role: "torso", box_2d: [0, 0, 1000, 1000], poly: [[500, 100], [500, 900], [1000, 900], [1000, 100]] },
+    ];
+    const portrait: Rgba = { width: size, height: size, data: new Uint8ClampedArray(size * size * 4).fill(200) };
+    for (let i = 3; i < portrait.data.length; i += 4) portrait.data[i] = 255;
+    const lifted = liftedNamed(parts, size, size);
+    const body = cutNamed(portrait, parts, { plate: composePlate(portrait, fallbackFill(portrait, lifted), lifted) }).layers.find((l) => l.name === "body");
+    expect(body).toBeDefined();
+    if (body === undefined) return;
+    const [bx, by, bw] = body.bbox;
+    const alpha = (x: number, y: number): number => (y < by ? 0 : (body.image.data[((y - by) * bw + x - bx) * 4 + 3] ?? 0));
+    for (let y = 200 - backing; y < 200; y++) expect(alpha(200, y), `torso alpha under the bevor at (200, ${y})`).toBe(255);
+  });
+
   it("plateNamed: a part with fill extend is painted from around it, the others from the edit", () => {
     const size = 64;
     const flat = (v: number): Rgba => ({ width: size, height: size, data: new Uint8ClampedArray(size * size * 4).map((_, i) => (i % 4 === 3 ? 255 : v)) });

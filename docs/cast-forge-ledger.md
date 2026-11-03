@@ -28,6 +28,11 @@ One section per decomposed character (cast-forge requirement 3.4): what broke, w
      staggered phases); a lit 3D object (a bead, a button) is measured by its whole body, shaded half
      included, never by its highlight; a collar or ruff that wraps the neck is a front part on the
      torso, and the torso starts under it.
+  4f. (task 7) a mouth drawn open over light (a helm's inner light) takes `cavity: "gap"` with the
+     light as `glow`, the jaw's top on the upper edge of the light; a glow inside an ink frame (a visor
+     slit) grows onto the frame by less than the ink's width minus 3 px (the extension fill's reach), so
+     the shut eye is dark ink; after taking a jaw out, check that every piece of the head beside it
+     (hinges, bosses, ears) is still on the head; open `var/cast-forge/<slug>-blink.png`.
   6. add the slug to `CAST` in `packages/forge/src/cast.golden.test.ts`.
      and to `SLUGS` in `api/_tests/forge-replay.test.ts` (it pins the recorded job list), `CAST_FORGE`
      and the cast order in `apps/web/src/creator/gallery/notes.test.ts`, the hours in
@@ -231,3 +236,40 @@ One section per decomposed character (cast-forge requirement 3.4): what broke, w
 - Events: the brief's "each eye blinks once per new viewer" and "beads slide on new follows" are
   driven by chat events; the rig carries only periodic motion (as the Redactor's slam). An engine
   event that fires a part's motion once would carry both.
+
+## Sir Vacant (naive heraldic miniature)
+**What broke**
+- The open visor turned the drawn light grey: `cavity: "gap"` took a column's own colour only when
+  dark, so a gap drawn full of white light fell back to the bevor's tones (grey bars).
+- A line of ground beside the turned helm: the bevor (the jaw) is the helm's foot and borders the
+  gorget; the head carries its lifted region, but the torso's backing reached only under the head's
+  own polygon, so it stopped short along the bevor's edge.
+- The hinge bosses were on no part (separated from the visor once the bevor was out, dropped by
+  `keepBig`) and stayed on the background as a ghost on a turn; the bevor's sideways jaw growth
+  smeared the head's copy of a boss with the extension fill.
+- Eye slits grown by ledger 4e's feather + 3 px: the extension fill reached the pewter past the ink
+  frame, and a blink showed a brown-grey slit instead of a dark one.
+- The cast golden counted only translation and tint as motion, so pendulum tags (rotation only) failed.
+
+**What became code** (`packages/forge`)
+- `mouth.ts`: `GAP_LIT_NEAR` (48); with `glow`, a gap sample within it of the accent in every channel
+  is carried up (`gapTone(..., lit)`), so a lit gap widens in its own light.
+- `cutNamed`: a plate part's carried shape (its lifted regions grown `PLATE_DILATE` + feather) counts
+  as in front for the backing of the plate parts behind it.
+- Tooling: `scripts/cast-forge.mjs` writes `<slug>-blink.png` (the driver's blink, shut); the cast
+  golden counts rotation as motion.
+- Seeded faults red: gap ignores the lit accent (property); torso backing ignores the carried jaw.
+  Vicar of the Lure and Reveille (jaws at the foot of the head) rebuild with torsos reaching under
+  the jaw (rest unchanged: p99 0 and 8/255); Cardia, the Redactor and the Tallyman byte-identical.
+
+**What became a decomposition-prompt rule**
+- A character with no face names what plays the face: a visor or bevor that lifts or drops is the
+  jaw, the light in a slit is the eye (the frame stays on the head).
+- A mouth drawn open over light: `cavity: "gap"` with `glow` the light's colour; the jaw's top edge
+  is the upper edge of the drawn gap, so the gap rides on the jaw.
+- Hanging tags, charms and pendants swing as pendulums: float with `rot_deg` only, `pivot` at the
+  top of the link they hang by, `follow` the chain; each at its own frequency.
+- A plume or crest sways on its foot: `follow: "head"`, `pivot` the foot's middle, `key: false` on a
+  dark ground (a luma key would thin a dark plume).
+- Flat fills with ink outlines: grow each part over ink only (never into a neighbour's fill), cut
+  with feather 1, trace outer edges onto the ground by the ink's width.

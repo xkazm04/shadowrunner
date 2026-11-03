@@ -5,7 +5,7 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { cutNamed } from "./cutNamed.js";
 import { rasterizeMask } from "./mask.js";
-import { GAP_INSET, GAP_LUMA, liftedJaw, paintCavity } from "./mouth.js";
+import { GAP_INSET, GAP_LIT_NEAR, GAP_LUMA, liftedJaw, paintCavity } from "./mouth.js";
 import { parseParts, toCanvas } from "./parts.js";
 import type { NamedPart, Rgba } from "./types.js";
 
@@ -54,6 +54,32 @@ describe("paintCavity with gap", () => {
       }),
       { numRuns: 30 },
     );
+  });
+
+  it("property (task 7): with a glow, a gap drawn lit near the accent is carried up in its own colour", () => {
+    // Sir Vacant's visor: the gap between visor and bevor is star-white light, dark at its ends.
+    const lit = mouth();
+    for (let x = 16; x < 33; x++) for (let k = 0; k <= GAP_INSET; k++) lit.data.set([236, 242, 250, 255], ((LIP_Y + k) * SIZE + x) * 4);
+    fc.assert(
+      fc.property(fc.integer({ min: GAP_INSET + 1, max: 14 }), (drop) => {
+        const surface = { ...lit, data: lit.data.slice() };
+        paintCavity(surface, lit, hard, liftedJaw(hard), drop, { gap: true, glow: "#f2f6ff" });
+        for (let x = 8; x < 41; x++) {
+          const i = ((LIP_Y + drop - 1) * SIZE + x) * 4;
+          const got = Array.from(surface.data.subarray(i, i + 3));
+          if (x >= 16 && x < 33) expect(got, `column ${x}: the light`).toEqual([236, 242, 250]);
+          else if (x !== 30) expect(got, `column ${x}: the dark gap`).toEqual([5, 10, x]);
+        }
+      }),
+      { numRuns: 20 },
+    );
+    // Without the glow the same light is not a gap: the lip's tones, never white.
+    const surface = { ...lit, data: lit.data.slice() };
+    paintCavity(surface, lit, hard, liftedJaw(hard), 8, { gap: true });
+    const i = ((LIP_Y + 7) * SIZE + 20) * 4;
+    expect(surface.data[i] ?? 0).toBeLessThan(160);
+    // Brass is not near the accent: the lit rule never takes the lip's own colour.
+    expect(Math.abs(160 - 0xf2)).toBeGreaterThan(GAP_LIT_NEAR);
   });
 
   it("the gap colour is taken only when dark", () => {

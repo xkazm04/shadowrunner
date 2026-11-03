@@ -1,0 +1,368 @@
+{
+  "slug": "sir-vacant",
+  "name": "Sir Vacant",
+  "fictional": true,
+  "source": "cast-forge offline build: Codex CLI built-in image generation (codex-cli 0.160.0) portrait (contest supporting-cast, entry B/10 style-2, 2026-11-02); named parts measured from pixels; fill Codex CLI image edit",
+  "prompt": "an empty suit of armor that holds me to my stream goals",
+  "promptSha256": "b253732694978cb92fef4fe18d9fa8e052cde0213c6468d19731019a2d32e853",
+  "portrait": "portrait.png",
+  "fill": "edit",
+  "timings": {
+    "cutMs": 3060
+  },
+  "steps": [
+    {
+      "status": "queued",
+      "holdMs": 1500
+    },
+    {
+      "status": "portrait",
+      "holdMs": 1500
+    },
+    {
+      "status": "segmenting",
+      "holdMs": 1500
+    },
+    {
+      "status": "cutting",
+      "holdMs": 1500
+    },
+    {
+      "status": "filling",
+      "holdMs": 1500
+    },
+    {
+      "status": "done"
+    }
+  ],
+  "warnings": [
+    "palette_fallback"
+  ],
+  "rig": {
+    "version": 1,
+    "id": "replay-sir-vacant",
+    "name": "Sir Vacant",
+    "width": 1024,
+    "height": 1024,
+    "source": "forge",
+    "fictional": true,
+    "palette": {
+      "glow": "#d9712c",
+      "eye": "#ff944d",
+      "rim": "#ff944d",
+      "mouth": "#26160c"
+    },
+    "layers": [
+      {
+        "name": "background",
+        "z": 1,
+        "kind": "static",
+        "file": "background.png",
+        "bbox": [
+          0,
+          0,
+          1024,
+          1024
+        ],
+        "anchor": [
+          512,
+          512
+        ],
+        "depth": 0
+      },
+      {
+        "name": "torso",
+        "z": 2,
+        "kind": "body",
+        "file": "torso.png",
+        "bbox": [
+          77,
+          538,
+          867,
+          486
+        ],
+        "anchor": [
+          510.976,
+          788.992
+        ],
+        "depth": 0.3
+      },
+      {
+        "name": "head",
+        "z": 3,
+        "kind": "head",
+        "file": "head.png",
+        "bbox": [
+          364,
+          0,
+          292,
+          693
+        ],
+        "anchor": [
+          509.952,
+          585.728
+        ],
+        "depth": 0.6
+      },
+      {
+        "name": "bevor",
+        "z": 4,
+        "kind": "jaw",
+        "file": "bevor.png",
+        "bbox": [
+          387,
+          524,
+          246,
+          157
+        ],
+        "anchor": [
+          510.464,
+          524.288
+        ],
+        "follow": "head",
+        "depth": 0.62,
+        "drop": 0.02
+      },
+      {
+        "name": "plume",
+        "z": 5,
+        "kind": "crown",
+        "file": "plume.png",
+        "bbox": [
+          425,
+          9,
+          174,
+          258
+        ],
+        "anchor": [
+          512,
+          264.192
+        ],
+        "follow": "head",
+        "depth": 0.6,
+        "motion": {
+          "float": {
+            "amp": [
+              0,
+              0
+            ],
+            "freq": 0.3,
+            "rot_deg": 3,
+            "phase": 0.63
+          }
+        }
+      },
+      {
+        "name": "pauldron_l",
+        "z": 6,
+        "kind": "accessory",
+        "file": "pauldron_l.png",
+        "bbox": [
+          640,
+          551,
+          292,
+          355
+        ],
+        "anchor": [
+          797.4663121544424,
+          725.6104131077681
+        ],
+        "follow": "torso",
+        "depth": 0.3,
+        "motion": {
+          "float": {
+            "amp": [
+              0,
+              1.5
+            ],
+            "freq": 0.2,
+            "phase": 0
+          }
+        }
+      },
+      {
+        "name": "pauldron_r",
+        "z": 7,
+        "kind": "accessory",
+        "file": "pauldron_r.png",
+        "bbox": [
+          89,
+          550,
+          292,
+          356
+        ],
+        "anchor": [
+          224.46076803895528,
+          725.9027408882987
+        ],
+        "follow": "torso",
+        "depth": 0.3,
+        "motion": {
+          "float": {
+            "amp": [
+              0,
+              1.5
+            ],
+            "freq": 0.2,
+            "phase": 0
+          }
+        }
+      },
+      {
+        "name": "chain",
+        "z": 8,
+        "kind": "accessory",
+        "file": "chain.png",
+        "bbox": [
+          321,
+          705,
+          382,
+          132
+        ],
+        "anchor": [
+          511.91267544494286,
+          771.5926783388801
+        ],
+        "follow": "torso",
+        "depth": 0.3
+      },
+      {
+        "name": "slit_l",
+        "z": 9,
+        "kind": "eye",
+        "file": "slit_l.png",
+        "bbox": [
+          538,
+          431,
+          66,
+          16
+        ],
+        "anchor": [
+          570.8269447576099,
+          439.03213077790303
+        ],
+        "follow": "head",
+        "depth": 0.7,
+        "motion": {
+          "pulse": {
+            "amp": 0.3,
+            "freq": 0.3,
+            "phase": 0.25
+          }
+        }
+      },
+      {
+        "name": "slit_r",
+        "z": 10,
+        "kind": "eye",
+        "file": "slit_r.png",
+        "bbox": [
+          418,
+          431,
+          67,
+          16
+        ],
+        "anchor": [
+          451.5,
+          439
+        ],
+        "follow": "head",
+        "depth": 0.7,
+        "motion": {
+          "pulse": {
+            "amp": 0.3,
+            "freq": 0.3,
+            "phase": 0.25
+          }
+        }
+      },
+      {
+        "name": "tag_3",
+        "z": 11,
+        "kind": "accessory",
+        "file": "tag_3.png",
+        "bbox": [
+          595,
+          793,
+          70,
+          178
+        ],
+        "anchor": [
+          628.736,
+          798.72
+        ],
+        "follow": "chain",
+        "depth": 0.3,
+        "motion": {
+          "float": {
+            "amp": [
+              0,
+              0
+            ],
+            "freq": 0.46,
+            "rot_deg": 4,
+            "phase": 0.66
+          }
+        }
+      },
+      {
+        "name": "tag_2",
+        "z": 12,
+        "kind": "accessory",
+        "file": "tag_2.png",
+        "bbox": [
+          476,
+          814,
+          74,
+          171
+        ],
+        "anchor": [
+          513.024,
+          821.248
+        ],
+        "follow": "chain",
+        "depth": 0.3,
+        "motion": {
+          "float": {
+            "amp": [
+              0,
+              0
+            ],
+            "freq": 0.5,
+            "rot_deg": 4,
+            "phase": 0.6
+          }
+        }
+      },
+      {
+        "name": "tag_1",
+        "z": 13,
+        "kind": "accessory",
+        "file": "tag_1.png",
+        "bbox": [
+          356,
+          791,
+          72,
+          178
+        ],
+        "anchor": [
+          392.192,
+          796.672
+        ],
+        "follow": "chain",
+        "depth": 0.3,
+        "motion": {
+          "float": {
+            "amp": [
+              0,
+              0
+            ],
+            "freq": 0.42,
+            "rot_deg": 4,
+            "phase": 0
+          }
+        }
+      }
+    ]
+  }
+}

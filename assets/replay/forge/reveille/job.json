@@ -8,7 +8,7 @@
   "portrait": "portrait.png",
   "fill": "edit",
   "timings": {
-    "cutMs": 4943
+    "cutMs": 4309
   },
   "steps": [
     {
@@ -75,9 +75,9 @@
         "file": "torso.png",
         "bbox": [
           147,
-          760,
+          733,
           722,
-          253
+          280
         ],
         "anchor": [
           508.416,

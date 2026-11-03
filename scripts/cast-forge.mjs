@@ -6,7 +6,8 @@
 // Writes assets/replay/forge/<slug>/ (job.json + portrait + layer PNGs, the presets' shape,
 // `fictional: true`) and two review images:
 // - var/cast-forge/<slug>.png: portrait | rest | jaw open | head turned left | head turned right |
-//   motion at t = 0 | motion at t = 1.7 s | |t0 - t1.7| x4 (what moves), a 4 x 2 grid. Poses come
+//   motion at t = 0 | motion at t = 1.7 s | |t0 - t1.7| x4 (what moves), a 4 x 2 grid; and each pose
+//   alone as var/cast-forge/<slug>-{rest,jaw,left,right,t0,t1,blink}.png (blink: the driver's, shut). Poses come
 //   from @sr/rig `poseLayers` (translation, rotation and scale about the anchor, pulse tint).
 // - var/cast-forge/<slug>-parts.png: the parts' polygons over the portrait, labelled.
 // Fails when a named part comes out with no layer (requirement 3.3: every part its own layer).
@@ -94,7 +95,8 @@ const sheet = { width: top.width, height: top.height * 2, data: new Uint8Clamped
 mkdirSync(REVIEW, { recursive: true });
 writeFileSync(join(REVIEW, `${slug}.png`), forge.encodePng(sheet));
 writeFileSync(join(REVIEW, `${slug}-parts.png`), forge.encodePng(partsOverlay(portrait, named)));
-for (const [name, img] of [["rest", panels[1]], ["jaw", panels[2]], ["left", panels[3]], ["right", panels[4]], ["t0", t0], ["t1", t1]]) {
+// The driver's blink is not a sheet panel (the grid is requirement 3.2's); it gets its own PNG (task 7).
+for (const [name, img] of [["rest", panels[1]], ["jaw", panels[2]], ["left", panels[3]], ["right", panels[4]], ["t0", t0], ["t1", t1], ["blink", posed({ blink: 1 })]]) {
   writeFileSync(join(REVIEW, `${slug}-${name}.png`), forge.encodePng(img));
 }
 const moving = rig.layers.filter((l) => l.motion !== undefined).map((l) => l.name);
