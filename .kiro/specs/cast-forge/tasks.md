@@ -24,7 +24,10 @@
     hard-edged mouth cavity painted from the lip line (`mouth.ts`), the jaw's top edge is the lip line;
     Cardia re-cut with a lips-only jaw (drop 0.016). Turn seams: background painted under the torso,
     `parallaxBacking`. Pixel art: `PartsV2.cut` (feather 0, cell 7), `fill: "extend"` per part.
-- [ ] 4. Decompose `vicar-of-the-lure` (stained glass) and harden
+- [x] 4. Decompose `vicar-of-the-lure` (stained glass) and harden
+  - Lure as a follow chain: a float is carried to followers (rig pose amended), attached parts pivot
+    where they meet their target (`pivotOf`); a maw drawn open takes `cavity: "fill"`; the review
+    sheet draws rotation and scale.
 - [ ] 5. Decompose `reveille` (brass and neon) and harden
 - [ ] 6. Decompose `the-tallyman` (low-poly) and harden
 - [ ] 7. Decompose `sir-vacant` (heraldic miniature) and harden

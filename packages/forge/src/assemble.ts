@@ -3,7 +3,7 @@
 import { DEFAULT_DEPTH, type Layer, type LayerKind, RIG_VERSION, type Result, type Rig, type RigError, validateRig } from "@sr/rig";
 import { CUT_ORDER } from "./cut.js";
 import { encodePng } from "./image.js";
-import { rasterizeMask } from "./mask.js";
+import { dilateMask, rasterizeMask } from "./mask.js";
 import { type NamedLayer, backgroundOf } from "./background.js";
 import { asNamed, cutOrderNamed, followOf, headNameOf, motionOf, scaleMotion } from "./named.js";
 import { samplePalette, type PaletteWarning } from "./palette.js";
@@ -67,6 +67,31 @@ function centroid(points: readonly [number, number][], width: number, height: nu
   return [mean(0), mean(1)];
 }
 
+/** How near (canvas px) a part's pixel must be to its follow target's polygon to count as where it is attached. */
+export const PIVOT_REACH = 4;
+
+/**
+ * Cast-forge task 4: an attached part (an accessory or pulse role with an explicit follow) turns
+ * about where it meets its target, not about its middle: a lure stalk sways about its foot on the
+ * brow, a bulb swings from the stalk's tip. The mean of the part's pixels within PIVOT_REACH px of
+ * the target's polygon; undefined when none are (the part is not attached: the centroid stands).
+ * A part lying wholly on its target (a stamp on the chest) gets its centroid, as before.
+ */
+export function pivotOf(part: Pick<NamedPart, "poly">, target: Pick<NamedPart, "poly">, width: number, height: number): [number, number] | undefined {
+  const own = rasterizeMask(toCanvas(part.poly, width, height), width, height, 0).data;
+  const near = dilateMask(rasterizeMask(toCanvas(target.poly, width, height), width, height, 0), PIVOT_REACH).data;
+  let n = 0;
+  let sx = 0;
+  let sy = 0;
+  own.forEach((a, i) => {
+    if (a === 0 || near[i] === 0) return;
+    n++;
+    sx += (i % width) + 0.5;
+    sy += Math.floor(i / width) + 0.5;
+  });
+  return n === 0 ? undefined : [sx / n, sy / n];
+}
+
 /**
  * Requirement 6.2, on the part's polygon in canvas px (the layer bbox when the part is unknown):
  * jaw = top-centre of its bbox (the hinge); eyes and accessories = centroid; head = bottom-centre;
@@ -90,7 +115,7 @@ function anchorOf(kind: LayerKind, layer: NamedLayer, part: Pick<Part, "poly"> |
  * the plate with the moving layers' cores painted out by `backgroundOf` (task 10)), then the cut
  * layers back to front (reverse CUT_ORDER; named parts: reverse `cutOrderNamed`) at z 2, 3, ...;
  * each is named after its part, has the kind of its role (ROLE_KIND; a v1 part's role is its name),
- * the anchor from `anchorOf`, and the file `<name>.png`. Follow: the part's own, else every
+ * the anchor from `anchorOf` (an attached part's from `pivotOf`), and the file `<name>.png`. Follow: the part's own, else every
  * non-plate role follows the head part (`followOf`); a target with no layer passes the follow on to
  * its own target, and when the head has no layer a `no_head_layer` warning says so. Depth: the
  * kind's default, except that a part with an explicit follow takes its target's depth (a heart on
@@ -161,6 +186,14 @@ export function assembleRig(parts: readonly Part[] | readonly NamedPart[], layer
     return depth;
   };
 
+  /** An attached part's pivot (`pivotOf`) on its explicit follow target, when it has a layer. */
+  const attachedPivot = (part: NamedPart | undefined): [number, number] | undefined => {
+    if (part === undefined || part.follow === undefined || part.role === "float" || ROLE_KIND[part.role] !== "accessory") return undefined;
+    const on = follows.get(part.name);
+    const target = on === undefined ? undefined : byName.get(on);
+    return target === undefined ? undefined : pivotOf(part, target, width, height);
+  };
+
   const files: Record<string, Uint8Array> = {};
   const background = `${BACKGROUND_LAYER}.png`;
   files[background] = encodePng(painted.background);
@@ -181,7 +214,7 @@ export function assembleRig(parts: readonly Part[] | readonly NamedPart[], layer
       kind,
       file,
       bbox: [x, y, w, h],
-      anchor: anchorOf(kind, layer, part, width, height),
+      anchor: attachedPivot(part) ?? anchorOf(kind, layer, part, width, height),
       ...(follow === undefined ? {} : { follow }),
       depth: depthOf(layer.name),
       ...(motion === undefined ? {} : { motion: scaleMotion(motion, width, height, MOTION_CANVAS) }),

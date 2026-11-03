@@ -18,8 +18,11 @@
 //   at full open is the layer's own `drop` (cast-forge task 3) times rig height, JAW_DROP when absent.
 // - Layer motion (cast-forge req 1.3, motion.ts) comes last: the float turns the layer about its
 //   posed anchor and moves it in canvas px, after the inherited follow transform, parallax and jaw
-//   drop, and is not passed on to followers; the pulse multiplies the tint. `Drive.still`
-//   (reduced motion) zeroes both.
+//   drop; the pulse multiplies the tint. `Drive.still` (reduced motion) zeroes both.
+// - A float is carried down the follow chain (cast-forge task 4, amending task 1): a follower is
+//   moved by its parent's float, as a canvas-space turn about the parent's posed anchor and a move,
+//   before its own float, so a lure bulb stays on the tip of a swaying stalk. The pulse and the jaw
+//   drop stay the layer's own.
 import { motionAt } from "./motion.js";
 import type { Gesture, Layer, LayerKind, Look, Rig } from "./types.js";
 
@@ -236,20 +239,50 @@ function tintOf(kind: LayerKind, gesture: Peak): number {
   return eye * (EMISSIVE.has(kind) ? 1 + gesture.glowTint : 1);
 }
 
-/** `sim` followed, in canvas space, by a rotation about the layer's posed anchor and a move. */
-function withFloat(layer: Layer, sim: Sim, rotation: number, dx: number, dy: number): Sim {
-  if (rotation === 0 && dx === 0 && dy === 0) return sim;
-  const [ax, ay] = layer.anchor;
-  const [px, py] = apply(sim, ax, ay);
-  const turned: Sim = { ...sim, rot: sim.rot + rotation, tx: 0, ty: 0 };
-  const [rx, ry] = apply(turned, ax, ay);
-  return { ...turned, tx: px + dx - rx, ty: py + dy - ry };
+/** The canvas-space turn by `rotation` about `[qx, qy]` followed by a move of `(dx, dy)`. */
+function turnAbout(qx: number, qy: number, rotation: number, dx: number, dy: number): Sim {
+  const [rx, ry] = apply({ rot: rotation, k: 1, tx: 0, ty: 0 }, qx, qy);
+  return { rot: rotation, k: 1, tx: qx + dx - rx, ty: qy + dy - ry };
+}
+
+/**
+ * Per layer, the float it carries: its parent's carried float, then its own float (a turn about
+ * its anchor as posed by its gesture transform under the parent's carry, and a move). It is
+ * composed after the gesture transform and before the layer's own parallax and jaw drop (a turn
+ * about the anchor commutes with a move, so the layer's own float is as if applied last), so a
+ * follower turns rigidly with its parent and its parallax stays a pure shift.
+ */
+function carriesOf(rig: Rig, worlds: Map<string, World>, drive: Drive): Map<string, Sim> {
+  const byName = new Map<string, Layer>();
+  for (const layer of rig.layers) if (!byName.has(layer.name)) byName.set(layer.name, layer);
+  const carries = new Map<string, Sim>();
+  const visiting = new Set<string>();
+  const resolve = (layer: Layer): Sim => {
+    const known = carries.get(layer.name);
+    if (known !== undefined) return known;
+    visiting.add(layer.name);
+    const parentLayer = layer.follow === undefined ? undefined : byName.get(layer.follow);
+    const inherited = parentLayer === undefined || visiting.has(parentLayer.name) ? IDENTITY : resolve(parentLayer);
+    const motion = motionAt(layer.motion, drive.t, drive.still === true);
+    let carry = inherited;
+    if (motion.rotation !== 0 || motion.dx !== 0 || motion.dy !== 0) {
+      const posed = compose(inherited, worlds.get(layer.name)?.sim ?? IDENTITY);
+      const [qx, qy] = apply(posed, layer.anchor[0], layer.anchor[1]);
+      carry = compose(turnAbout(qx, qy, motion.rotation, motion.dx, motion.dy), inherited);
+    }
+    visiting.delete(layer.name);
+    carries.set(layer.name, carry);
+    return carry;
+  };
+  for (const layer of rig.layers) resolve(layer);
+  return carries;
 }
 
 /** Per visible layer, in `z` order (ties keep rig order), the pose for this frame. */
 export function poseLayers(rig: Rig, look: Look, drive: Drive): LayerPose[] {
   const frame = frameOf(rig, drive);
   const worlds = worldsOf(rig, frame);
+  const carries = carriesOf(rig, worlds, drive);
   const hidden = new Set(look.hidden);
   return rig.layers
     .map((layer, index) => ({ layer, index }))
@@ -257,8 +290,7 @@ export function poseLayers(rig: Rig, look: Look, drive: Drive): LayerPose[] {
     .sort((a, b) => a.layer.z - b.layer.z || a.index - b.index)
     .map(({ layer }): LayerPose => {
       const motion = motionAt(layer.motion, drive.t, drive.still === true);
-      const posed = finalOf(layer, worlds.get(layer.name)?.sim ?? IDENTITY, frame);
-      const sim = withFloat(layer, posed, motion.rotation, motion.dx, motion.dy);
+      const sim = finalOf(layer, compose(carries.get(layer.name) ?? IDENTITY, worlds.get(layer.name)?.sim ?? IDENTITY), frame);
       const [bx, by] = layer.bbox;
       const [ax, ay] = layer.anchor;
       const [px, py] = apply(sim, ax, ay);

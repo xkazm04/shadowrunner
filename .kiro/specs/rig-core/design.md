@@ -85,7 +85,8 @@ the jaw's followers. Blink in [0,1] scales
 `eye` layers' y-scale by `1 - 0.9 * blink`. Gestures add a short additive offset curve over
 `t` (nod: pitch +6° sine 400 ms; tilt: rotation 5°; lean_in: scale 1.04; recoil: scale .96 and
 dy -1%; glare: eye tint gain 1.6; flare: glow gain 2.0). Layer motion (amended by cast-forge, its design.md "Motion")
-comes last: float about the layer's own anchor after the follow transform, not inherited; pulse
+comes last: float about the layer's own anchor after the follow transform, carried rigidly to its
+followers (cast-forge task 4); pulse
 multiplies the tint; `Drive.still` (reduced motion) zeroes both.
 
 ## Emotion table

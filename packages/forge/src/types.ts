@@ -59,6 +59,13 @@ export interface NamedPart {
   /** Jaw role only: "#rrggbb", an inner glow in the mouth cavity (`paintCavity`). */
   glow?: string;
   /**
+   * Jaw role only (cast-forge task 4): what an open jaw uncovers. "paint" (omitted) paints the
+   * cavity lens (`paintCavity`); "fill" leaves the fill plate, for a mouth the drawing already shows
+   * open (a maw of teeth over a lit throat), where the edit paints the throat behind the jaw and a
+   * flat lens hung from a jagged line between the teeth would read as a zigzag. No `glow` with it.
+   */
+  cavity?: "paint" | "fill";
+  /**
    * Lifted parts only (cast-forge task 3): how the plate behind it is filled. "extend" paints it
    * from the surface around it (`blurExtend`), not from the image edit: for a small part on a flat
    * field (a pupil in a dark lens), where an edit would paint something new. Omitted means "edit".

@@ -255,7 +255,9 @@ One per drawn layer, in `z` order. A layer is drawn unless it is named in `look.
 - **Motion** (amended by cast-forge). With `w = 2*pi*(freq*t + phase)`, a float adds, after the
   inherited follow transform, the parallax and the jaw drop, a canvas-px translation
   `(amp[0]*sin(w), amp[1]*sin(w + pi/2))` and a rotation of `rot_deg*sin(w + pi)` degrees about the
-  layer's posed anchor. It is not inherited by the layer's followers. A pulse multiplies the tint by
+  layer's posed anchor. A float is carried down the follow chain (cast-forge task 4): a follower turns
+  and moves rigidly with its parent's float (about the parent's anchor) before its own float, so a
+  bulb stays on the tip of a swaying stalk; its parallax stays its own. A pulse multiplies the tint by
   `1 + amp*(0.5 + 0.5*sin(w))`. Both are pure functions of `t` (`motionAt` in
   `packages/rig/src/motion.ts`), and both are zero when `drive.still` is true. The WebGL2 renderer
   multiplies the tint into the layer colour; the canvas2D fallback draws it as a `brightness()` filter.

@@ -47,17 +47,18 @@ describe("Listings as the wall of sets (CH 4)", () => {
       "08:00, Saint Cardia of the Glass Heart",
       "09:00, Sister Vesper",
       "10:00, The Understudy",
-      "11:00, before the boiler wakes",
+      "11:00, Vicar of the Lure",
+      "12:00, before the boiler wakes",
       "Channel 9, not built yet",
     ]);
-    expect(wall.map((s) => s.dataset.kind)).toEqual(["live", "cast", "cast", "cast", "cast", "cast", "cast", "cast", "vacant", "sealed"]);
+    expect(wall.map((s) => s.dataset.kind)).toEqual(["live", "cast", "cast", "cast", "cast", "cast", "cast", "cast", "cast", "vacant", "sealed"]);
     expect(wall[0]?.getAttribute("aria-label")).toBe("03:00, Arch-Lich Malakor, on air now");
     expect(wall[0]?.getAttribute("aria-pressed")).toBe("true");
     expect(wall[2]?.getAttribute("aria-label")).toBe("05:00, The Lantern Warden, later tonight");
     expect(wall[2]?.querySelector("img")?.getAttribute("src")).toMatch(/lantern-warden\.webp/);
-    expect(wall[8]?.textContent).toContain("11:00 · VACANT");
-    expect(wall[9]?.textContent).toContain("CH 9 · SEALED");
-    expect(wall[9]?.textContent).toContain("NOT BUILT YET");
+    expect(wall[9]?.textContent).toContain("12:00 · VACANT");
+    expect(wall[10]?.textContent).toContain("CH 9 · SEALED");
+    expect(wall[10]?.textContent).toContain("NOT BUILT YET");
     // The clipping opens on Malakor, from his bible, with what he shows off.
     expect(clip(view)?.textContent).toContain("03:00 · ON AIR NOW · CH 2");
     expect(clip(view)?.textContent).toContain("High Auditor of the Obsidian Spire");

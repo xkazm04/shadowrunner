@@ -37,7 +37,10 @@ Ranges (validate, every error reported, path `$.layers[i].motion.<field>`): `amp
 
 Pose, with `w = 2*pi*(freq*t + phase)`: float adds, about the layer's own anchor and **after** the
 inherited follow transform, a translation `(amp[0]*sin(w), amp[1]*sin(w + pi/2))` and a rotation
-`rot_deg*sin(w + pi)`; it is not inherited by the layer's followers (like the jaw drop). Pulse multiplies
+`rot_deg*sin(w + pi)`. Amended by task 4: a float is carried down the follow chain (a follower turns and
+moves rigidly with its parent's float before its own, so a lure bulb stays on a swaying stalk's tip; the
+jaw drop and the pulse stay the layer's own), and an attached part (accessory or pulse role with an
+explicit follow) is anchored where it meets its target (`pivotOf`). Pulse multiplies
 the layer's tint by `1 + amp*(0.5 + 0.5*sin(w))`. When the drive says still (reduced motion), both are
 zero. Phases: a builder gives sibling floats different phases so a set of shards never moves in lockstep.
 
@@ -89,6 +92,10 @@ a soft grey smear (task 9's `MOUTH_SHADE` ramp). Now:
   of the gap show the fill plate. A layer was rejected: a cavity layer behind the jaw would need its own
   follow and depth and could slide against the head on a turn; painted into the head's surface it
   moves with the head by construction.
+- **Cavity from the plate** (task 4). `NamedPart.cavity: "fill"` (jaw only, no `glow`): the open jaw
+  uncovers the fill plate, unpainted. For a mouth the drawing already shows open (a maw of teeth over
+  a lit throat) the jaw's top runs on a jagged line between the rows of teeth, and a lens hung from
+  it reads as a zigzag; the edit paints the throat behind the jaw instead. Default `"paint"`.
 - **Cut style.** `PartsV2.cut` `{ feather?: 0..8, cell?: 1..32 }`: `feather: 0` is a hard cut (pixel
   art: no smeared cluster edges), `cell` the art's pixel size, on which the cavity steps.
 - **Fill per part.** `NamedPart.fill: "extend"` (lifted parts) paints the plate behind it from the

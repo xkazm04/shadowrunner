@@ -196,7 +196,7 @@ function namedPart(value: unknown, path: string, errors: PartsError[]): NamedPar
     return undefined;
   }
   const before = errors.length;
-  const { name, role, follow, key, drop, glow, fill } = value;
+  const { name, role, follow, key, drop, glow, fill, cavity } = value;
   const nameOk = typeof name === "string" && PART_NAME_PATTERN.test(name) && !RESERVED_PART_NAMES.includes(name);
   if (!nameOk) errors.push({ code: "upstream", path: `${path}.name`, message: NAME_RULE });
   if (!isRole(role)) errors.push({ code: "upstream", path: `${path}.role`, message: `must be one of ${PART_ROLES.join(", ")}` });
@@ -207,7 +207,9 @@ function namedPart(value: unknown, path: string, errors: PartsError[]): NamedPar
   const dropOk = drop === undefined || (typeof drop === "number" && drop >= JAW_DROP_MIN && drop <= JAW_DROP_MAX);
   if (!dropOk) errors.push({ code: "upstream", path: `${path}.drop`, message: `must be a number in [${JAW_DROP_MIN}, ${JAW_DROP_MAX}] when present` });
   if (glow !== undefined && (typeof glow !== "string" || !HEX.test(glow))) errors.push({ code: "upstream", path: `${path}.glow`, message: "must be a \"#rrggbb\" colour when present" });
-  for (const field of ["drop", "glow"] as const) {
+  if (cavity !== undefined && cavity !== "paint" && cavity !== "fill") errors.push({ code: "upstream", path: `${path}.cavity`, message: "must be \"paint\" or \"fill\" when present" });
+  if (cavity === "fill" && glow !== undefined) errors.push({ code: "upstream", path: `${path}.glow`, message: "is painted into the cavity; a jaw with cavity \"fill\" has none" });
+  for (const field of ["drop", "glow", "cavity"] as const) {
     if (value[field] !== undefined && role !== "jaw") errors.push({ code: "upstream", path: `${path}.${field}`, message: "is only for a part with role jaw" });
   }
   const fillOk = fill === undefined || ((fill === "edit" || fill === "extend") && role !== "head" && role !== "torso");
@@ -228,6 +230,7 @@ function namedPart(value: unknown, path: string, errors: PartsError[]): NamedPar
     ...(typeof drop === "number" ? { drop } : {}),
     ...(typeof glow === "string" ? { glow } : {}),
     ...(fill === "edit" || fill === "extend" ? { fill } : {}),
+    ...(cavity === "paint" || cavity === "fill" ? { cavity } : {}),
   };
 }
 

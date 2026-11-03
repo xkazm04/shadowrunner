@@ -1,0 +1,225 @@
+{
+  "slug": "vicar-of-the-lure",
+  "name": "Vicar of the Lure",
+  "fictional": true,
+  "source": "cast-forge offline build: Codex CLI built-in image generation (codex-cli 0.160.0) portrait (contest supporting-cast, entry A/2 style-2, 2026-11-02); named parts measured from pixels; fill Codex CLI image edit",
+  "prompt": "deep sea monster preacher with a glowing light",
+  "promptSha256": "d99b3f43c5a2fec65916af391dea58a2f8efcc11e0c7a902272cef5bc972fa83",
+  "portrait": "portrait.png",
+  "fill": "edit",
+  "timings": {
+    "cutMs": 2882
+  },
+  "steps": [
+    {
+      "status": "queued",
+      "holdMs": 1500
+    },
+    {
+      "status": "portrait",
+      "holdMs": 1500
+    },
+    {
+      "status": "segmenting",
+      "holdMs": 1500
+    },
+    {
+      "status": "cutting",
+      "holdMs": 1500
+    },
+    {
+      "status": "filling",
+      "holdMs": 1500
+    },
+    {
+      "status": "done"
+    }
+  ],
+  "warnings": [],
+  "rig": {
+    "version": 1,
+    "id": "replay-vicar-of-the-lure",
+    "name": "Vicar of the Lure",
+    "width": 1024,
+    "height": 1024,
+    "source": "forge",
+    "fictional": true,
+    "palette": {
+      "glow": "#132c3d",
+      "eye": "#223848",
+      "rim": "#223848",
+      "mouth": "#121e26"
+    },
+    "layers": [
+      {
+        "name": "background",
+        "z": 1,
+        "kind": "static",
+        "file": "background.png",
+        "bbox": [
+          0,
+          0,
+          1024,
+          1024
+        ],
+        "anchor": [
+          512,
+          512
+        ],
+        "depth": 0
+      },
+      {
+        "name": "torso",
+        "z": 2,
+        "kind": "body",
+        "file": "torso.png",
+        "bbox": [
+          74,
+          716,
+          873,
+          303
+        ],
+        "anchor": [
+          510.464,
+          873.9839999999999
+        ],
+        "depth": 0.3
+      },
+      {
+        "name": "head",
+        "z": 3,
+        "kind": "head",
+        "file": "head.png",
+        "bbox": [
+          177,
+          0,
+          668,
+          792
+        ],
+        "anchor": [
+          510.976,
+          777.216
+        ],
+        "depth": 0.6
+      },
+      {
+        "name": "jaw",
+        "z": 4,
+        "kind": "jaw",
+        "file": "jaw.png",
+        "bbox": [
+          275,
+          493,
+          476,
+          287
+        ],
+        "anchor": [
+          513.024,
+          492.544
+        ],
+        "follow": "head",
+        "depth": 0.62,
+        "drop": 0.035
+      },
+      {
+        "name": "lure_stalk",
+        "z": 5,
+        "kind": "accessory",
+        "file": "lure_stalk.png",
+        "bbox": [
+          479,
+          0,
+          227,
+          258
+        ],
+        "anchor": [
+          511.1666666666667,
+          250.12340966921118
+        ],
+        "follow": "head",
+        "depth": 0.6,
+        "motion": {
+          "float": {
+            "amp": [
+              0,
+              0
+            ],
+            "freq": 0.17,
+            "rot_deg": 4,
+            "phase": 0.77
+          }
+        }
+      },
+      {
+        "name": "eye_l",
+        "z": 6,
+        "kind": "eye",
+        "file": "eye_l.png",
+        "bbox": [
+          641,
+          364,
+          54,
+          56
+        ],
+        "anchor": [
+          668.0864262990456,
+          392.0058324496288
+        ],
+        "follow": "head",
+        "depth": 0.7
+      },
+      {
+        "name": "eye_r",
+        "z": 7,
+        "kind": "eye",
+        "file": "eye_r.png",
+        "bbox": [
+          327,
+          364,
+          55,
+          56
+        ],
+        "anchor": [
+          354.03160621761657,
+          391.7150259067358
+        ],
+        "follow": "head",
+        "depth": 0.7
+      },
+      {
+        "name": "lure_bulb",
+        "z": 8,
+        "kind": "accessory",
+        "file": "lure_bulb.png",
+        "bbox": [
+          560,
+          76,
+          132,
+          129
+        ],
+        "anchor": [
+          659.5884353741496,
+          119.73809523809524
+        ],
+        "follow": "lure_stalk",
+        "depth": 0.6,
+        "motion": {
+          "float": {
+            "amp": [
+              0,
+              0
+            ],
+            "freq": 0.31,
+            "rot_deg": 5,
+            "phase": 0.187
+          },
+          "pulse": {
+            "amp": 0.55,
+            "freq": 0.4,
+            "phase": 0.187
+          }
+        }
+      }
+    ]
+  }
+}

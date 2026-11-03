@@ -22,6 +22,7 @@ One section per decomposed character (cast-forge requirement 3.4): what broke, w
   5. `node scripts/cast-forge.mjs <slug>`, open `var/cast-forge/<slug>.png` and the per-pose PNGs
      `var/cast-forge/<slug>-{rest,jaw,left,right,t0,t1}.png` at full size; iterate.
   4b. (task 3) give the jaw part a `drop` (a lips-only human jaw about 0.012-0.02; omit for a skull) and a `glow` if the mouth glows; for hard-edged pixel art set `cut: { feather: 0, cell: <px> }` and trace ground-meeting parts at least one cell out; mark small parts on a flat field `fill: "extend"`.
+  4c. (task 4) a mouth drawn open (rows of teeth over a throat) takes `cavity: "fill"` and a jaw top between the rows of teeth (`corridor` in `recipes/vicar-of-the-lure.mjs`); hanging chains get explicit follows (stalk follows head, bulb follows stalk); the sheet draws rotation, so check sways at t0/t1.
   6. add the slug to `CAST` in `packages/forge/src/cast.golden.test.ts`.
      and to `SLUGS` in `api/_tests/forge-replay.test.ts` (it pins the recorded job list).
   7. If a web replay test then sees one job fewer than the folder holds, the vitest module cache
@@ -107,3 +108,37 @@ One section per decomposed character (cast-forge requirement 3.4): what broke, w
 - Eyes behind dark glasses are the pupils; the lenses stay on the head (a blink narrows the pupil).
 - A hanging pendant swings without its chain; the chain stays on the torso.
 - Small parts on a flat field (pupils in a lens) are filled by extension, not by the edit.
+
+## Vicar of the Lure (leaded stained glass)
+**What broke**
+- The lure: a bulb following a swaying stalk did not move with it (a float was not inherited), and the
+  stalk turned about its centroid, so its foot slid on the dome. The review sheet drew no rotation,
+  so the sway could not be seen at all.
+- The maw: interleaved rows of needle teeth (upper tips lower than lower tips) cannot be split by a
+  smooth line, and 17 lower teeth do not fit a 60-point outline tooth by tooth.
+- A painted cavity hung from that jagged line read as a black-and-magenta zigzag in a mouth that is
+  already drawn open over a lit throat.
+- The bulb's halo tints the stalk's rim; a halo cut left a fleck on the ground, and the bulb's hull
+  swung a sliver of the stalk's tip away.
+
+**What became code**
+- `poseLayers` (rig-core amended): a float is carried rigidly down the follow chain, before the
+  layer's own parallax (which stays a pure shift); pulse and jaw drop stay the layer's own.
+- `pivotOf` / `assembleRig`: an accessory or pulse part with an explicit follow is anchored where it
+  meets its target (within `PIVOT_REACH` px); a part lying wholly on its target keeps its centroid,
+  so Cardia's and the Redactor's rigs rebuild unchanged.
+- `NamedPart.cavity: "fill"` (jaw only, never with `glow`): the open jaw uncovers the fill plate.
+- `compositeRig` `turns`: rotation and scale about the moved anchor; `scripts/cast-forge.mjs` passes
+  the pose's rotation and scale, so sways and swings show on the sheet.
+- Seeded faults red: follower not carried (rig property), compositor ignores turns, no pivot
+  (anchor at the centroid), cutNamed ignores `cavity: "fill"`.
+
+**What became a decomposition-prompt rule**
+- A part rooted on the head (a lure stalk, a horn, an antenna) names `follow: "head"` explicitly, so it
+  keeps the head's depth and does not slide on a turn.
+- A chain of hanging parts is a follow chain: the stalk sways (float with `rot_deg`, no amp), the bulb
+  follows the stalk and pulses; give the bulb its own small swing at another frequency.
+- A mouth drawn open (rows of teeth over a throat): upper teeth stay on the head, lower teeth go with
+  the jaw; the jaw's top runs between the rows; ask the fill edit to remove "the lower jaw, its lower
+  teeth and the chin" (it paints the throat) and set `cavity: "fill"`. A big maw drops about 0.035.
+- A glowing part's halo on the ground belongs to the glowing part, never to its neighbour.

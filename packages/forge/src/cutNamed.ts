@@ -119,7 +119,7 @@ export function cutNamed(portrait: Rgba, parts: readonly NamedPart[], options: N
   const hardOf = (part: NamedPart): Mask => rasterizeMask(polyOf(part, width, height), width, height, 0);
   if (filled) {
     for (const part of parts) {
-      if (part.role !== "jaw") continue;
+      if (part.role !== "jaw" || part.cavity === "fill") continue;
       const hard = hardOf(part);
       const glow = part.glow === undefined ? {} : { glow: part.glow };
       const cell = options.cell === undefined ? {} : { cell: options.cell };

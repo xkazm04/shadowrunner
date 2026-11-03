@@ -1,6 +1,7 @@
 // Layer motion properties (cast-forge task 1, design.md "Testing strategy"): offsets bounded by
 // amp, periodic in 1/freq, `still` gives the identity (the pose of the same rig without motion),
-// float is not inherited by followers, and poseLayers stays deterministic.
+// a follower is carried rigidly by its parent's float (cast-forge task 4: a lure bulb on a swaying
+// stalk), and poseLayers stays deterministic.
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { motionAt, phaseFromName } from "../motion.js";
@@ -97,12 +98,22 @@ describe("poseLayers with motion", () => {
     );
   });
 
-  it("each layer moves off its still pose by at most its own amp (canvas px) and turns by at most rot_deg; followers do not inherit it", () => {
+  it("a layer with no floating ancestor moves off its still pose by at most its own amp (canvas px) and turns by at most rot_deg", () => {
     fc.assert(
       fc.property(arbMoving, arbT, (rig, t) => {
         const moving = byName(poseLayers(rig, lookOf(rig), driveAt(t)));
         const still = byName(poseLayers(strip(rig), lookOf(rig), driveAt(t)));
+        const layers = new Map(rig.layers.map((l) => [l.name, l]));
+        const carried = (layer: Layer): boolean => {
+          const seen = new Set([layer.name]);
+          for (let at = layer.follow === undefined ? undefined : layers.get(layer.follow); at !== undefined && !seen.has(at.name); at = at.follow === undefined ? undefined : layers.get(at.follow)) {
+            if (at.motion?.float !== undefined) return true;
+            seen.add(at.name);
+          }
+          return false;
+        };
         for (const layer of rig.layers) {
+          if (carried(layer)) continue;
           const a = moving.get(layer.name);
           const b = still.get(layer.name);
           if (a === undefined || b === undefined) throw new Error(`no pose for ${layer.name}`);
@@ -118,18 +129,42 @@ describe("poseLayers with motion", () => {
     );
   });
 
-  it("a follower of a floating parent poses as if the parent had no motion", () => {
+  it("a follower of a floating parent is carried rigidly: the parent's float maps its still pose onto its moving pose", () => {
     const scene = rigArb({ minLayers: 2, maxLayers: 6, motion: true })
       .map(visible)
       .filter((rig) => rig.layers.some((l) => l.follow !== undefined));
     fc.assert(
       fc.property(scene, arbT, (rig, t) => {
-        // Only the parents move; every follower's motion is removed, so any change in it is inherited.
+        // Followers lose their own motion, so any change in them is carried from the parent.
         const followers = new Set(rig.layers.flatMap((l) => (l.follow === undefined ? [] : [l.name])));
         const parentsOnly: Rig = { ...rig, layers: rig.layers.map((l) => (followers.has(l.name) ? withoutMotion(l) : l)) };
         const moving = byName(poseLayers(parentsOnly, lookOf(rig), driveAt(t)));
         const still = byName(poseLayers(strip(rig), lookOf(rig), driveAt(t)));
-        for (const name of followers) expect(moving.get(name)).toEqual(still.get(name));
+        const layers = new Map(rig.layers.map((l) => [l.name, l]));
+        /** The layer's posed anchor, canvas px. */
+        const anchorAt = (name: string, pose: LayerPose): [number, number] => {
+          const layer = layers.get(name);
+          if (layer === undefined) throw new Error(`no layer ${name}`);
+          return [layer.anchor[0] + pose.x - layer.bbox[0], layer.anchor[1] + pose.y - layer.bbox[1]];
+        };
+        for (const follower of rig.layers) {
+          const parent = follower.follow === undefined ? undefined : layers.get(follower.follow);
+          if (parent === undefined || parent.name === follower.name) continue;
+          const [pm, ps, fm, fs] = [moving.get(parent.name), still.get(parent.name), moving.get(follower.name), still.get(follower.name)];
+          if (pm === undefined || ps === undefined || fm === undefined || fs === undefined) throw new Error("missing pose");
+          // The parent's float as a canvas turn about its still anchor onto its moving anchor.
+          const turn = pm.rotation - ps.rotation;
+          const [sx, sy] = anchorAt(parent.name, ps);
+          const [mx, my] = anchorAt(parent.name, pm);
+          const [fx, fy] = anchorAt(follower.name, fs);
+          const ex = mx + Math.cos(turn) * (fx - sx) - Math.sin(turn) * (fy - sy);
+          const ey = my + Math.sin(turn) * (fx - sx) + Math.cos(turn) * (fy - sy);
+          const [gx, gy] = anchorAt(follower.name, fm);
+          const tol = 1e-6 * (1 + Math.max(rig.width, rig.height) + Math.abs(fx) + Math.abs(fy));
+          expect(Math.abs(gx - ex)).toBeLessThanOrEqual(tol);
+          expect(Math.abs(gy - ey)).toBeLessThanOrEqual(tol);
+          expect(Math.abs(fm.rotation - fs.rotation - turn)).toBeLessThanOrEqual(1e-9);
+        }
       }),
     );
   });

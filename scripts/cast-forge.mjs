@@ -7,7 +7,7 @@
 // `fictional: true`) and two review images:
 // - var/cast-forge/<slug>.png: portrait | rest | jaw open | head turned left | head turned right |
 //   motion at t = 0 | motion at t = 1.7 s | |t0 - t1.7| x4 (what moves), a 4 x 2 grid. Poses come
-//   from @sr/rig `poseLayers` (translation and pulse tint; rotation and blink scale are not drawn).
+//   from @sr/rig `poseLayers` (translation, rotation and scale about the anchor, pulse tint).
 // - var/cast-forge/<slug>-parts.png: the parts' polygons over the portrait, labelled.
 // Fails when a named part comes out with no layer (requirement 3.3: every part its own layer).
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -62,12 +62,14 @@ const posed = (drive) => {
   const byName = new Map(rig.layers.map((l) => [l.name, l]));
   const offsets = {};
   const gains = {};
+  const turns = {};
   for (const p of poses) {
     const layer = byName.get(p.name);
     offsets[p.name] = [p.x - layer.bbox[0], p.y - layer.bbox[1]];
     gains[p.name] = p.tint;
+    turns[p.name] = { rotation: p.rotation, scale: p.scale };
   }
-  return forge.compositeRig(rig, images, { offsets, gains });
+  return forge.compositeRig(rig, images, { offsets, gains, turns });
 };
 const t0 = posed({ t: 0, still: false });
 const t1 = posed({ t: MOTION_T, still: false });
