@@ -28,6 +28,20 @@
 //   drop stay the layer's own.
 // - An eye layer's own `motion.blink` (cast-forge task 6) is a closure that adds to `Drive.blink`
 //   (the larger wins) and squashes only that eye; it is the layer's own, never inherited.
+// - Character control (character-control design "Moods", "Reshape"; mood.ts): the look's emotion,
+//   crossfaded by `Drive.mood`, holds a head roll (added to the tilt gesture's rotation on the head
+//   group, so followers inherit), a pitch (added to the drive's before the clamp), an eye squint
+//   (eye y-scale `(1 - 0.9 * closure) * (1 - squint)`), a jaw set (added to jawOpen, clamped to 1),
+//   a glow gain (times the tint of emissive layers) and a brow lift (brow layers: a move up in the
+//   parent's frame and a turn about the anchor, inherited). They hold under `still` as well.
+// - `Look.shape` (clamped by clampShape) is part of the layer's own local transform, inside its
+//   follow chain: `move(dx*W, dy*W) . gesture . browTurn . (rot, size*sx, size*sy about the anchor)`,
+//   so the gesture turns a reshaped part about its moved anchor and followers inherit the reshape.
+//   A transform is `R(rot) diag(kx, ky)`; composing a non-uniform parent with a turned child keeps
+//   positions exact and the child's frame as `R(sum of turns) diag(product of scales)` (exact unless
+//   both a stretch and a turn lie on one chain; a similarity cannot carry a shear).
+import type { EmotionDrive } from "./look.js";
+import { browPoses, facesOf, moodOf, shapeOf, type BrowPose } from "./mood.js";
 import { motionAt, ownBlinkAt } from "./motion.js";
 import type { Emotion, ExpressionFamily, Gesture, Layer, LayerKind, Look, Rig } from "./types.js";
 
@@ -149,25 +163,33 @@ function gestureAt(t: number, cue: GestureCue | undefined): Peak {
   };
 }
 
-/** p -> k * R(rot) * p + t. */
+/** p -> R(rot) * diag(kx, ky) * p + t; uniform (kx = ky) unless a reshape stretches a part. */
 interface Sim {
   rot: number;
-  k: number;
+  kx: number;
+  ky: number;
   tx: number;
   ty: number;
 }
-const IDENTITY: Sim = { rot: 0, k: 1, tx: 0, ty: 0 };
+const IDENTITY: Sim = { rot: 0, kx: 1, ky: 1, tx: 0, ty: 0 };
 
 function apply(s: Sim, x: number, y: number): [number, number] {
-  const c = Math.cos(s.rot) * s.k;
-  const n = Math.sin(s.rot) * s.k;
-  return [c * x - n * y + s.tx, n * x + c * y + s.ty];
+  const cos = Math.cos(s.rot);
+  const sin = Math.sin(s.rot);
+  const [cx, nx, cy, ny] = [cos * s.kx, sin * s.kx, cos * s.ky, sin * s.ky];
+  return [cx * x - ny * y + s.tx, nx * x + cy * y + s.ty];
 }
 
-/** outer after inner. */
+/** outer after inner (the linear part is exact when `outer` is uniform or `inner` does not turn). */
 function compose(outer: Sim, inner: Sim): Sim {
   const [tx, ty] = apply(outer, inner.tx, inner.ty);
-  return { rot: outer.rot + inner.rot, k: outer.k * inner.k, tx, ty };
+  return { rot: outer.rot + inner.rot, kx: outer.kx * inner.kx, ky: outer.ky * inner.ky, tx, ty };
+}
+
+/** p -> R(rot) diag(kx, ky) (p - a) + a. */
+function about(ax: number, ay: number, rot: number, kx: number, ky: number): Sim {
+  const [rx, ry] = apply({ rot, kx, ky, tx: 0, ty: 0 }, ax, ay);
+  return { rot, kx, ky, tx: ax - rx, ty: ay - ry };
 }
 
 interface Frame {
@@ -180,19 +202,26 @@ interface Frame {
   liftY: number;
   /** `Drive.blink`, clamped: an eye's own blink (cast-forge task 6) adds to it, the larger wins. */
   blink: number;
+  /** The held mood (character-control), crossfaded by `Drive.mood`. */
+  mood: EmotionDrive;
+  /** Brow layers' lift and turn for the mood's browLift. */
+  brows: Map<string, BrowPose>;
 }
 
-function frameOf(rig: Rig, drive: Drive): Frame {
+function frameOf(rig: Rig, look: Look, drive: Drive): Frame {
   const gesture = gestureAt(finite(drive.t), drive.gesture);
+  const mood = moodOf(look, drive.mood);
   const yaw = clamp(drive.headYaw, -YAW_LIMIT_DEG, YAW_LIMIT_DEG);
-  const pitch = clamp(drive.headPitch + gesture.pitchDeg, -PITCH_LIMIT_DEG, PITCH_LIMIT_DEG);
+  const pitch = clamp(drive.headPitch + gesture.pitchDeg + mood.headPitch, -PITCH_LIMIT_DEG, PITCH_LIMIT_DEG);
   return {
     perDepthX: (yaw / YAW_LIMIT_DEG) * YAW_SHIFT * rig.width,
     perDepthY: (pitch / PITCH_LIMIT_DEG) * PITCH_SHIFT * rig.height,
-    jawPx: clamp(drive.jawOpen, 0, 1) * rig.height,
+    jawPx: clamp(drive.jawOpen + mood.jawSet, 0, 1) * rig.height,
     gesture,
     liftY: gesture.lift * rig.height,
     blink: clamp(drive.blink, 0, 1),
+    mood,
+    brows: browPoses(rig, mood.browLift),
   };
 }
 
@@ -201,9 +230,22 @@ function gestureLocalOf(layer: Layer, frame: Frame, gestured: boolean): Sim {
   if (!gestured) return IDENTITY;
   // Rotate and scale about the anchor, then lift: p -> k R (p - a) + a + (0, lift).
   const [ax, ay] = layer.anchor;
-  const about: Sim = { rot: (frame.gesture.tiltDeg * Math.PI) / 180, k: 1 + frame.gesture.scale, tx: 0, ty: 0 };
-  const [rx, ry] = apply(about, ax, ay);
-  return { ...about, tx: ax - rx, ty: ay - ry + frame.liftY };
+  const k = 1 + frame.gesture.scale;
+  const turned = about(ax, ay, ((frame.gesture.tiltDeg + frame.mood.headTilt) * Math.PI) / 180, k, k);
+  return { ...turned, ty: turned.ty + frame.liftY };
+}
+
+/** The layer's whole local transform: its reshape and brow turn about the anchor, its gesture, then the moves. */
+function localOf(layer: Layer, rig: Rig, look: Look, frame: Frame, gestured: boolean): Sim {
+  const gesture = gestureLocalOf(layer, frame, gestured);
+  const shape = shapeOf(look, layer);
+  const brow = frame.brows.get(layer.name);
+  if (shape === undefined && brow === undefined) return gesture;
+  const [ax, ay] = layer.anchor;
+  let local = brow === undefined ? gesture : compose(gesture, about(ax, ay, (brow.tiltDeg * Math.PI) / 180, 1, 1));
+  if (shape !== undefined) local = compose(local, about(ax, ay, (shape.rot * Math.PI) / 180, shape.size * shape.sx, shape.size * shape.sy));
+  const move: Sim = { ...IDENTITY, tx: (shape?.dx ?? 0) * rig.width, ty: (shape?.dy ?? 0) * rig.width + (brow?.liftY ?? 0) };
+  return compose(move, local);
 }
 
 /**
@@ -228,7 +270,7 @@ interface World {
 }
 
 /** Gesture world transforms for every layer, composed down follow chains (missing or cyclic parents act as roots). */
-function worldsOf(rig: Rig, frame: Frame): Map<string, World> {
+function worldsOf(rig: Rig, look: Look, frame: Frame): Map<string, World> {
   const byName = new Map<string, Layer>();
   for (const layer of rig.layers) if (!byName.has(layer.name)) byName.set(layer.name, layer);
   const worlds = new Map<string, World>();
@@ -241,7 +283,7 @@ function worldsOf(rig: Rig, frame: Frame): Map<string, World> {
     const parent = parentLayer === undefined || visiting.has(parentLayer.name) ? undefined : resolve(parentLayer);
     const parentHeaded = parent?.headed ?? false;
     const gestured = layer.kind === "head" && !parentHeaded;
-    const local = gestureLocalOf(layer, frame, gestured);
+    const local = localOf(layer, rig, look, frame, gestured);
     const world: World = { sim: parent === undefined ? local : compose(parent.sim, local), headed: parentHeaded || gestured };
     visiting.delete(layer.name);
     worlds.set(layer.name, world);
@@ -251,15 +293,15 @@ function worldsOf(rig: Rig, frame: Frame): Map<string, World> {
   return worlds;
 }
 
-function tintOf(layer: Layer, gesture: Peak): number {
+function tintOf(layer: Layer, gesture: Peak, glowGain: number): number {
   if (!isEmissive(layer)) return 1;
-  return (layer.kind === "eye" ? 1 + gesture.eyeTint : 1) * (1 + gesture.glowTint);
+  return (layer.kind === "eye" ? 1 + gesture.eyeTint : 1) * (1 + gesture.glowTint) * glowGain;
 }
 
 /** The canvas-space turn by `rotation` about `[qx, qy]` followed by a move of `(dx, dy)`. */
 function turnAbout(qx: number, qy: number, rotation: number, dx: number, dy: number): Sim {
-  const [rx, ry] = apply({ rot: rotation, k: 1, tx: 0, ty: 0 }, qx, qy);
-  return { rot: rotation, k: 1, tx: qx + dx - rx, ty: qy + dy - ry };
+  const [rx, ry] = apply({ rot: rotation, kx: 1, ky: 1, tx: 0, ty: 0 }, qx, qy);
+  return { rot: rotation, kx: 1, ky: 1, tx: qx + dx - rx, ty: qy + dy - ry };
 }
 
 /**
@@ -297,8 +339,8 @@ function carriesOf(rig: Rig, worlds: Map<string, World>, drive: Drive): Map<stri
 
 /** Per visible layer, in `z` order (ties keep rig order), the pose for this frame. */
 export function poseLayers(rig: Rig, look: Look, drive: Drive): LayerPose[] {
-  const frame = frameOf(rig, drive);
-  const worlds = worldsOf(rig, frame);
+  const frame = frameOf(rig, look, drive);
+  const worlds = worldsOf(rig, look, frame);
   const carries = carriesOf(rig, worlds, drive);
   const hidden = new Set(look.hidden);
   return rig.layers
@@ -311,15 +353,18 @@ export function poseLayers(rig: Rig, look: Look, drive: Drive): LayerPose[] {
       const [bx, by] = layer.bbox;
       const [ax, ay] = layer.anchor;
       const [px, py] = apply(sim, ax, ay);
-      const squash = layer.kind === "eye" ? 1 - BLINK_SQUASH * Math.max(frame.blink, ownBlinkAt(layer.motion, drive.t, drive.still === true)) : 1;
+      const closure = Math.max(frame.blink, ownBlinkAt(layer.motion, drive.t, drive.still === true));
+      const squash = layer.kind === "eye" ? (1 - BLINK_SQUASH * closure) * (1 - clamp(frame.mood.squint, 0, 1)) : 1;
+      const faces = facesOf(layer, look, drive.mood);
       return {
         name: layer.name,
         x: bx + px - ax,
         y: by + py - ay,
-        scale: [sim.k, sim.k * squash],
+        scale: [sim.kx, sim.ky * squash],
         rotation: sim.rot,
         opacity: 1,
-        tint: tintOf(layer, frame.gesture) * motion.gain,
+        tint: tintOf(layer, frame.gesture, frame.mood.glowGain) * motion.gain,
+        ...(faces === undefined ? {} : { faces }),
       };
     });
 }

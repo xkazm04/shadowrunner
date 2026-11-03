@@ -134,24 +134,27 @@ describe("applyLook (req 5.2)", () => {
       fc.property(arbRigAndLook, ([rig, look]) => {
         const dressed = applyLook(rig, look);
         expect(validateRig(dressed).ok).toBe(true);
-        expect(poseLayers(dressed, defaultLook(dressed), drive)).toStrictEqual(poseLayers(rig, look, drive));
+        // The emotion is not a rig field: it still poses (character-control "Moods"), so it is carried over.
+        expect(poseLayers(dressed, { ...defaultLook(dressed), emotion: look.emotion }, drive)).toStrictEqual(poseLayers(rig, look, drive));
       }),
     );
   });
 });
 
 describe("lookToEmotionDrive (req 5.3, design.md emotion table)", () => {
-  const TABLE: readonly [Emotion, number, number, Gesture | undefined][] = [
-    ["neutral", 1.0, 0, undefined],
-    ["amused", 1.2, 1, "tilt"],
-    ["smug", 1.1, 2, "tilt"],
-    ["irritated", 1.3, -2, "glare"],
-    ["furious", 2.0, -3, "flare"],
-    ["delighted", 1.5, 2, "nod"],
-    ["bored", 0.7, -1, undefined],
-    ["suspicious", 1.2, -1, "lean_in"],
-    ["grim", 0.9, -2, undefined],
-    ["theatrical", 1.6, 3, "flare"],
+  // character-control design.md "Moods": eyeGain, brow, gesture, headTilt, headPitch, squint, jawSet, glowGain, browLift.
+  type Row = [Emotion, number, number, Gesture | undefined, number, number, number, number, number, number];
+  const TABLE: readonly Row[] = [
+    ["neutral", 1.0, 0, undefined, 0, 0, 0, 0, 1.0, 0],
+    ["amused", 1.2, 1, "tilt", 4, 0, 0.15, 0.05, 1.1, 0.006],
+    ["smug", 1.1, 2, "tilt", 6, -2, 0.25, 0, 1.1, 0.008],
+    ["irritated", 1.3, -2, "glare", 0, 3, 0.25, 0, 1.2, -0.008],
+    ["furious", 2.0, -3, "flare", 0, 5, 0.35, 0.1, 1.6, -0.012],
+    ["delighted", 1.5, 2, "nod", -3, -2, 0.2, 0.2, 1.3, 0.01],
+    ["bored", 0.7, -1, undefined, 5, 4, 0.35, 0, 0.7, -0.004],
+    ["suspicious", 1.2, -1, "lean_in", -4, 2, 0.4, 0, 1.0, -0.006],
+    ["grim", 0.9, -2, undefined, 0, 4, 0.15, 0, 0.8, -0.008],
+    ["theatrical", 1.6, 3, "flare", -5, -4, 0, 0.25, 1.5, 0.014],
   ];
 
   it("covers exactly the 10 emotions", () => {
@@ -159,9 +162,10 @@ describe("lookToEmotionDrive (req 5.3, design.md emotion table)", () => {
     expect(Object.keys(EMOTION_TABLE).sort()).toStrictEqual([...EMOTIONS].sort());
   });
 
-  it.each(TABLE)("%s -> eyeGain %d, brow %d, gesture %s", (emotion, eyeGain, brow, gesture) => {
+  it.each(TABLE)("%s -> eyeGain %d, brow %d, gesture %s and the mood columns", (emotion, eyeGain, brow, gesture, headTilt, headPitch, squint, jawSet, glowGain, browLift) => {
     const drive = lookToEmotionDrive(emotion);
-    expect(drive).toStrictEqual(gesture === undefined ? { eyeGain, brow } : { eyeGain, brow, gesture });
+    const mood = { headTilt, headPitch, squint, jawSet, glowGain, browLift };
+    expect(drive).toStrictEqual(gesture === undefined ? { eyeGain, brow, ...mood } : { eyeGain, brow, gesture, ...mood });
     expect("gesture" in drive).toBe(gesture !== undefined);
   });
 

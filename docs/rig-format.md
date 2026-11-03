@@ -60,6 +60,8 @@ Four colours, each `#rrggbb`:
 | `motion` | Motion | no | The layer's own float and/or pulse (see "Motion"). Omitted when the layer has none. Amended by cast-forge; the format stays version 1. |
 | `drop` | number | no | `jaw` layers only: the drop at `jawOpen = 1` as a fraction of `height`, in `[0.005, 0.1]`. Omitted means 0.06 (a skull's gape); a human mouth wants about 0.012-0.02. On any other kind, or out of range, it is `bad_shape` at `$.layers[i].drop`. Amended by cast-forge task 3; the format stays version 1. |
 | `emissive` | boolean | no | Whether the layer gives light: its bright pixels feed the glow pass (tinted `palette.glow`), an `eye` takes `palette.eye`, and `glare` / `flare` raise its tint. Omitted means the kind's default: `eye`, `crown` and `accessory` give light, the other kinds do not. `false` on a part drawn without light of its own (a white glove, a silver crown, a painted iris); its own `motion.pulse` still applies. Not a boolean is `bad_shape` at `$.layers[i].emissive`. Amended by cast-forge (emissive fix, task 12 follow-up); the format stays version 1. |
+| `variants` | object | no | Expression faces (see "Variants"): per expression family, a patch drawn over or instead of the layer while that family is on. Omitted when the layer has none. Amended by character-control; the format stays version 1. |
+| `regions` | LayerRegions | no | Recolourable colour regions (see "Regions"): an index map and 1..4 slots. Omitted when the layer has none. Amended by character-control; the format stays version 1. |
 
 ### Layer files
 
@@ -113,6 +115,41 @@ parts never moves in lockstep. An eye's own blink is a half-sine of closure over
 (0.15 s) from each cycle's start, 0 for the rest of the cycle (`ownBlinkAt`); sibling eyes given
 staggered phases blink one at a time (the Tallyman's six eyes counting).
 
+### Variants
+
+Amended by character-control (`.kiro/specs/character-control/design.md`, "Moods"). The ten
+emotions share six **expression families**: `joy` (amused, delighted), `showman` (theatrical),
+`anger` (irritated, furious), `gloom` (bored, grim), `smug` (smug), `suspicion` (suspicious);
+`neutral` is the base art (`EMOTION_FAMILY` in `packages/rig/src/control.ts`). `variants` maps a
+family to a LayerPatch:
+
+| field | type | required | meaning |
+|---|---|---|---|
+| `file` | string | yes | The patch PNG, under the same rules as a layer's `file` (see "Layer files"). |
+| `bbox` | `[x, y, w, h]` | yes | Where the patch sits on the canvas, in px; `w` and `h` > 0, inside the canvas like a layer's bbox. |
+| `mode` | `"over"` \| `"replace"` | yes | `over` draws the patch on top of the layer; `replace` fades the layer's own pixels out by the face's weight. |
+
+A key that is not a family, a bad `file`, a bbox that is not four finite numbers or has `w`/`h` <= 0,
+or a `mode` other than the two is `bad_shape` at `$.layers[i].variants.<family>[.field]`; a patch
+bbox leaving the canvas is `bbox_out_of_bounds` at `$.layers[i].variants.<family>.bbox`. Every fault
+is reported. The serializer writes families in the order above.
+
+### Regions
+
+Amended by character-control (design.md "Regions"). `regions` is `{ map, slots }`:
+
+| field | type | required | meaning |
+|---|---|---|---|
+| `map` | string | yes | An index-map PNG the size of the layer image (rules of "Layer files"): R = slot index + 1, 0 for no region. |
+| `slots` | RegionSlot[] | yes | 1..4 (`MAX_REGION_SLOTS`) slots, in index order. |
+| `slots[j].id` | string | yes | `[a-z0-9_]+`, unique in the layer. A jaw's painted mouth is `cavity`. |
+| `slots[j].name` | string | yes | Non-empty display name (`robe`, `robe 2`, `mouth`). |
+| `slots[j].hex` | string | yes | The region's colour as painted, `#rrggbb`. |
+
+Shape faults are `bad_shape` at `$.layers[i].regions...` (`map`, `slots` with fewer than 1 or more
+than 4 entries, a bad or repeated `id`, an empty `name`); a `hex` that is not `#rrggbb` is
+`bad_color` at `$.layers[i].regions.slots[j].hex`. Every fault is reported.
+
 
 `importLegacyLayers(json, spec?)` (`packages/rig/src/legacy.ts`) converts an Overlord-era
 `layers.json` with `rig_type: "glow"`, plus an optional `m8.spec.json`, into a Rig with
@@ -142,7 +179,8 @@ a valid Rig. It returns `{ rig, warnings }`, where each warning is `{ layer, mes
   move in lockstep. A curve outside the ranges above is dropped with a warning. Malakor imports 11
   floating shards and a pulsing monocle.
 - **Dropped fields.** Numeric follow weights, gains, blend modes and other Overlord-only fields are
-  not carried over.
+  not carried over. A legacy layer's `variants` and `regions` (character-control, merged from a
+  sidecar) are passed through to `validateRig`.
 - **Colours.** From `spec.colors` (0..1 RGB triples, rounded to `#rrggbb`): the eye light `mouth`
   (Malakor's teal) -> `eye` and `mouth`; `line_glow` -> `glow`; `line_core` (the orange monocle
   line) -> `rim`. The renderer multiplies eye texels by `palette.eye`, so the eye colour must be the
@@ -162,6 +200,8 @@ a valid Rig. It returns `{ rig, warnings }`, where each warning is `{ layer, mes
 | `hidden` | string[] | yes | Names of layers to leave out. Empty array when nothing is hidden. |
 | `emotion` | Emotion | yes | Current emotion. |
 | `gesture` | Gesture | no | A gesture to play. Omitted when none. |
+| `regions` | object | no | Region colours: key `"<layer>/<slotId>"` (`regionKey`), value `#rrggbb`. An absent key draws the region as painted. Amended by character-control. |
+| `shape` | object | no | Part reshapes: key a layer name, value a PartShape (see "Reshape"). An absent layer keeps its shape. Amended by character-control. |
 
 **Emotion** is one of `"neutral"`, `"amused"`, `"smug"`, `"irritated"`, `"furious"`,
 `"delighted"`, `"bored"`, `"suspicious"`, `"grim"`, `"theatrical"`.
@@ -183,6 +223,24 @@ a valid Rig. It returns `{ rig, warnings }`, where each warning is `{ layer, mes
   below.
 - `resolveGesture(look)` returns the gesture to play: `look.gesture` when it is set, otherwise the
   emotion's default gesture from `lookToEmotionDrive`, otherwise `undefined`.
+- `moodDrive(to, mood?)` returns the EmotionDrive held this frame: with `mood = { from, mix }` every
+  numeric column is `lerp(from, to, smoothstep(mix))` (mix clamped to `[0, 1]`); absent, `to`'s row.
+- `validateLookControls(look, rig?)` (`packages/rig/src/validateControl.ts`) returns every problem
+  with a decoded look's `regions` (keys `layer/slot`, values `#rrggbb`) and `shape` (six finite
+  numbers within `SHAPE_LIMITS`); with a rig, keys must name its layers and region slots. The web
+  library runs it on read.
+
+### PartShape
+
+| field | range | meaning |
+|---|---|---|
+| `size` | `[0.6, 1.6]` | Uniform scale. |
+| `sx`, `sy` | `[0.6, 1.6]` | Stretch on the layer's own x and y, times `size`. |
+| `dx`, `dy` | `[-0.15, 0.15]` | Offset as fractions of the rig **width** (both axes, so a square offset is square). |
+| `rot` | `[-25, 25]` | Degrees, clockwise on screen. |
+
+`clampShape` fills missing or non-finite fields from the identity `{1, 1, 1, 0, 0, 0}` and clamps
+the rest; the pose reads every shape through it, so a saved value out of range cannot escape.
 
 ### EmotionDrive
 
@@ -191,19 +249,27 @@ a valid Rig. It returns `{ rig, warnings }`, where each warning is `{ layer, mes
 | `eyeGain` | number | yes | Multiplier on the eye light; 1 = as drawn. |
 | `brow` | number | yes | Signed brow offset in table steps; positive raises the brow. The renderer maps one step to `0.004 * height` canvas px (`height` is the rig's). |
 | `gesture` | Gesture | no | The emotion's default gesture. Omitted when it has none. |
+| `headTilt` | number | yes | Held head roll, degrees; positive is clockwise on screen. |
+| `headPitch` | number | yes | Held head pitch, degrees; positive is chin down, added to `Drive.headPitch` before its clamp. |
+| `squint` | number | yes | Extra eye y-squash, combined with the blink as `1 - (1 - blinkSquash) * (1 - squint)`. |
+| `jawSet` | number | yes | Added to `jawOpen`, clamped to 1. |
+| `glowGain` | number | yes | Multiplies the tint of emissive layers. |
+| `browLift` | number | yes | Brow-layer lift as a fraction of `height`; positive raises. |
 
-| emotion | `eyeGain` | `brow` | `gesture` |
-|---|---|---|---|
-| `neutral` | 1.0 | 0 | - |
-| `amused` | 1.2 | +1 | `tilt` |
-| `smug` | 1.1 | +2 | `tilt` |
-| `irritated` | 1.3 | -2 | `glare` |
-| `furious` | 2.0 | -3 | `flare` |
-| `delighted` | 1.5 | +2 | `nod` |
-| `bored` | 0.7 | -1 | - |
-| `suspicious` | 1.2 | -1 | `lean_in` |
-| `grim` | 0.9 | -2 | - |
-| `theatrical` | 1.6 | +3 | `flare` |
+The columns after `gesture` were added by character-control (design.md "Moods").
+
+| emotion | `eyeGain` | `brow` | `gesture` | `headTilt` | `headPitch` | `squint` | `jawSet` | `glowGain` | `browLift` |
+|---|---|---|---|---|---|---|---|---|---|
+| `neutral` | 1.0 | 0 | - | 0 | 0 | 0 | 0 | 1.0 | 0 |
+| `amused` | 1.2 | +1 | `tilt` | 4 | 0 | 0.15 | 0.05 | 1.1 | 0.006 |
+| `smug` | 1.1 | +2 | `tilt` | 6 | -2 | 0.25 | 0 | 1.1 | 0.008 |
+| `irritated` | 1.3 | -2 | `glare` | 0 | 3 | 0.25 | 0 | 1.2 | -0.008 |
+| `furious` | 2.0 | -3 | `flare` | 0 | 5 | 0.35 | 0.1 | 1.6 | -0.012 |
+| `delighted` | 1.5 | +2 | `nod` | -3 | -2 | 0.2 | 0.2 | 1.3 | 0.01 |
+| `bored` | 0.7 | -1 | - | 5 | 4 | 0.35 | 0 | 0.7 | -0.004 |
+| `suspicious` | 1.2 | -1 | `lean_in` | -4 | 2 | 0.4 | 0 | 1.0 | -0.006 |
+| `grim` | 0.9 | -2 | - | 0 | 4 | 0.15 | 0 | 0.8 | -0.008 |
+| `theatrical` | 1.6 | +3 | `flare` | -5 | -4 | 0 | 0.25 | 1.5 | 0.014 |
 
 The same table is exported as `EMOTION_TABLE` (frozen).
 
@@ -225,7 +291,8 @@ The per-frame input from the avatar driver.
 | `jawOpen` | number | yes | 0..1, clamped. |
 | `blink` | number | yes | 0..1, clamped; 1 = eyes shut. |
 | `gesture` | `{ name: Gesture, startedAt: number }` | no | The running gesture; `startedAt` is in seconds on the same clock as `t`. |
-| `still` | boolean | no | Reduced motion: layer float and pulse, and an eye's own blink, are zero. The avatar sets it whenever reduced motion is on. |
+| `still` | boolean | no | Reduced motion: layer float and pulse, and an eye's own blink, are zero. The avatar sets it whenever reduced motion is on. The held mood still applies. |
+| `mood` | `{ from: Emotion, mix: number }` | no | An emotion change in progress (character-control): every mood column is `lerp(from, look.emotion, smoothstep(mix))`, and the faces fade from `from`'s family to the look's. Omitted means mix 1. The avatar advances `mix` over `MOOD_FADE_S` (0.25 s); reduced motion sets it to 1. |
 
 `GESTURE_DURATION_S` is `0.4`: every gesture curve runs for 0.4 s from `startedAt`, shaped as a
 half-sine `sin(pi * elapsed / 0.4)` that peaks halfway at the design value. Outside that window the
@@ -240,10 +307,11 @@ One per drawn layer, in `z` order. A layer is drawn unless it is named in `look.
 |---|---|---|
 | `name` | string | The layer's name. |
 | `x`, `y` | number | Posed bbox top-left, canvas px: the bbox moved by the layer's translation. |
-| `scale` | `[x, y]` | Scale about the posed anchor, `anchor + (x - bbox[0], y - bbox[1])`. Uniform except for an eye's blink squash on y. |
+| `scale` | `[x, y]` | Scale about the posed anchor, `anchor + (x - bbox[0], y - bbox[1])`, in the layer's own frame. Uniform except for an eye's blink and squint squash on y and a `Look.shape` stretch. |
 | `rotation` | number | Radians, clockwise on the y-down canvas, about the posed anchor. |
 | `opacity` | number | 0..1. Currently always 1. |
 | `tint` | number | Light gain multiplied into the layer colour; 1 = as drawn. |
+| `faces` | `{ family, weight }[]` | Only on a layer with `variants`: with `m = smoothstep(mix)`, the outgoing family at `1 - m` and the incoming at `m`, each listed only if the layer has a variant for it (one family on both sides is listed once at 1; zero weights are dropped). Omitted when empty: the base only. The renderer draws the base at opacity `1 - sum(weights of replace faces)`, then each patch at its weight, in the layer's transform. |
 
 ### Rules
 
@@ -274,6 +342,20 @@ One per drawn layer, in `z` order. A layer is drawn unless it is named in `look.
   `eye`, `crown`, `accessory`) to 2.0; a layer with `emissive: false` takes neither (glare only
   raises an emissive eye). `tilt`, `lean_in` and `recoil` act about the anchor of each `head` layer that has no
   `head` ancestor, and reach its followers through the follow rule.
+- **Moods** (amended by character-control). The look's emotion (crossfaded by `drive.mood`) is held
+  while it is on: `headTilt` adds to the tilt gesture's rotation of the head group (followers
+  inherit it); `headPitch` adds to the pitch before the clamp; `eye` layers scale y by
+  `(1 - 0.9 * closure) * (1 - squint)`; `jawSet` adds to `jawOpen` before its clamp; `glowGain`
+  multiplies the tint of emissive layers. **Brow layers** are the layers named `brow` or `brow_*`
+  (`isBrowLayer`): `browLift` moves them up by `browLift * height` in their parent's frame and turns
+  them about their anchor by `-browLift * 600` degrees for the brow on screen left and the opposite
+  on screen right (side from the bbox centre against the brows' mean; an angry V when negative; a
+  single brow is not turned). When a rig has brow layers (`hasBrowLayers`), the renderer does not
+  also shift the eyes by the `brow` steps; without them it does, as before.
+- **Reshape** (amended by character-control). A layer named in `look.shape` is, inside its own
+  follow transform, scaled by `(size * sx, size * sy)` and turned by `rot` about its anchor, then
+  moved by `(dx * width, dy * width)`; a gesture turns it about its moved anchor, and its followers
+  inherit all of it. A layer with no entry poses exactly as before.
 
 ## Example
 

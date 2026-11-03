@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import layersJson from "../../../../assets/characters/malakor/rig/layers.json";
 import specJson from "../../../../assets/characters/malakor/rig/m8.spec.json";
 import { importLegacyLayers } from "../legacy.js";
+import { EMOTION_TABLE } from "../look.js";
 import { JAW_DROP, poseLayers, YAW_LIMIT_DEG, YAW_SHIFT, type Drive, type LayerPose } from "../pose.js";
 import type { Emotion, Gesture, Layer, LayerKind, Look, Rig } from "../types.js";
 import { validateRig } from "../validate.js";
@@ -230,7 +231,9 @@ describe("poseLayers properties", () => {
         const before = byName(poseLayers(rig, look, drive));
         const after = byName(poseLayers(rig, look, { ...drive, jawOpen: jaw2 }));
         const kinds = new Map(rig.layers.map((l) => [l.name, l.kind]));
-        const drop = (clamp01(jaw2) - clamp01(drive.jawOpen)) * JAW_DROP * rig.height;
+        // The look's held jaw set (character-control "Moods") adds to jawOpen before the clamp.
+        const set = EMOTION_TABLE[look.emotion].jawSet;
+        const drop = (clamp01(jaw2 + set) - clamp01(drive.jawOpen + set)) * JAW_DROP * rig.height;
         for (const [name, p] of before) {
           const q = poseOf(after, name);
           // Non-jaw layers, the jaw's non-jaw followers among them, are untouched.
