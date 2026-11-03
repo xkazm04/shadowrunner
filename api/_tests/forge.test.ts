@@ -15,12 +15,17 @@ const M8_PARTS = readFileSync(new URL("packages/forge/test/fixtures/m8-parts.jso
 const M8_RAW = readFileSync(new URL("packages/forge/test/fixtures/m8-parts.raw.txt", ROOT), "utf8");
 const SMALL_PNG: GeminiImage = { mimeType: "image/png", data: new Uint8Array(readFileSync(new URL("assets/characters/malakor/rig/eye_l.png", ROOT))) };
 const SECRET = "SECRET-upstream-body-AIza";
-const STATUS_ORDER = ["queued", "portrait", "segmenting", "cutting", "filling", "done"];
+const STATUS_ORDER = ["queued", "portrait", "segmenting", "cutting", "filling", "expressing", "done"];
+/** character-control: every live job runs six expression edits after assembly, one per GET. */
+const EXPRESSING = Array.from({ length: 6 }, () => "expressing");
+const EXPRESSIONS = Array.from({ length: 6 }, () => "expression");
 
 interface FakeScript {
   partsReplies?: string[];
   likeness?: string;
   edit?: (prompt: string) => Promise<GeminiImage>;
+  /** The expression edits ("Edit this portrait ..."); the portrait unchanged when omitted. */
+  expression?: (prompt: string) => Promise<GeminiImage>;
   portrait?: () => Promise<GeminiImage>;
 }
 
@@ -34,6 +39,10 @@ function fakeGemini(script: FakeScript = {}) {
       return script.portrait ? script.portrait() : PORTRAIT;
     },
     editImage: async (_image, prompt) => {
+      if (prompt.startsWith("Edit this portrait")) {
+        calls.push("expression");
+        return script.expression ? script.expression(prompt) : PORTRAIT;
+      }
       calls.push(prompt.startsWith("Same image") ? "fill" : "restyle");
       return script.edit ? script.edit(prompt) : PORTRAIT;
     },
@@ -78,7 +87,7 @@ const get = (jobId: string, headers: Record<string, string> = {}) => new Request
 async function runToEnd(deps: ForgeDeps, jobId: string): Promise<{ view: JobView; statuses: string[]; bodies: string[] }> {
   const statuses: string[] = [];
   const bodies: string[] = [];
-  for (let i = 0; i < 8; i += 1) {
+  for (let i = 0; i < 16; i += 1) {
     const res = await handleForgeGet(get(jobId), deps);
     const text = await res.text();
     bodies.push(text);
@@ -113,8 +122,8 @@ describe("forge happy path", () => {
     const { deps, gemini } = setup();
     const jobId = await start(deps, { mode: "prompt", prompt: "Arch-Lich Malakor" });
     const { view, statuses } = await runToEnd(deps, jobId);
-    expect(statuses).toEqual(["cutting", "filling", "done"]);
-    expect(gemini.calls).toEqual(["generateImage", "parts", "fill"]);
+    expect(statuses).toEqual(["cutting", "filling", ...EXPRESSING, "done"]);
+    expect(gemini.calls).toEqual(["generateImage", "parts", "fill", ...EXPRESSIONS]);
     expect(view.plane).toBe("live");
     expect(view.fill).toBe("edit");
     const rig = validateRig(view.rig);
@@ -168,8 +177,8 @@ describe("forge failures", () => {
     expect((await runToEnd(bad.deps, await start(bad.deps, upload))).view.error?.code).toBe("refused_content");
     const good = setup();
     const { statuses } = await runToEnd(good.deps, await start(good.deps, upload));
-    expect(statuses).toEqual(["segmenting", "cutting", "filling", "done"]);
-    expect(good.gemini.calls).toEqual(["likeness", "restyle", "parts", "fill"]);
+    expect(statuses).toEqual(["segmenting", "cutting", "filling", ...EXPRESSING, "done"]);
+    expect(good.gemini.calls).toEqual(["likeness", "restyle", "parts", "fill", ...EXPRESSIONS]);
   });
 
   it("the recorded malformed parts reply is re-asked once, then accepted", { timeout: 60_000 }, async () => {

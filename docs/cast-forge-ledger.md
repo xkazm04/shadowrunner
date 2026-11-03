@@ -413,6 +413,42 @@ One section per decomposed character (cast-forge requirement 3.4): what broke, w
   that glows without pulsing says `emissive: true`. The eight replay jobs were rebuilt: layer PNGs
   byte-identical, only `job.json` gained `emissive: false` on the layers that do not glow.
 
+## character-control (task 3): regions and expressions
+- Regions (`packages/forge/src/regions.ts`, design.md "Regions"): per layer, no model call,
+  deterministic (golden SHA-256 of the maps of reveille `jaw`, saint-cardia `head`, Malakor's `torso`
+  in `regions.golden.test.ts`). Measured map sizes: reveille jaw 4 821 B, saint-cardia head 17 637 B,
+  Malakor torso 33 160 B; a whole replay job's maps 30-90 KB (the-tallyman 30 KB, sister-vesper 88 KB),
+  Malakor's imported rig 67 KB. Two additions to the seven steps: semi-transparent edge pixels
+  (alpha 1..127) take their opaque neighbours' slot (`fillFringe`, 8 passes) so a recolour leaves no
+  rim of the painted colour; and the near-grey test is the design's HSL saturation, under which a
+  near-black pixel counts as coloured (#000a0a has saturation 1.0), so a black mouth can split into
+  two slots by hue (reveille's jaw: #000a0a and #000403).
+- The cavity slot: the painted cavity (`paintCavity`) lives in the plate part under the jaw (the
+  head), not in the jaw layer, which is cut from the portrait and shows the lips at rest. Live,
+  `cutNamed` now returns the painted mask and `regionsForRig` gives it to the layer holding most of
+  it (`cavityHolder`: the head), slot `cavity` named "mouth", never merged. A jaw layer (live or an
+  existing rig) infers its own: the darkest class with mean chroma ((max - min) / 255) under 0.1, not
+  the jaw's largest, at least 4% of its opaque pixels, at least 75% in the upper half of the jaw's
+  opaque rows and at most 25% of its pixels on the layer's edge. The retrofit cannot recover the
+  painted mask from a committed rig (re-running the recipe would), so recorded heads get no cavity.
+- Expressions (`packages/forge/src/expressions.ts`): a Rig carries no cut recipe, so `cutVariants`
+  re-cuts each head, eye, jaw and brow layer by its own alpha: colour = `edited` inside the feathered
+  face mask, the base outside, alpha = the base's; the head takes the edit only where no face layer in
+  front of it is opaque (the plate and the cavity under an eye or the jaw stay). Replace patches
+  (eye, jaw, brow) cover the whole layer: a replace patch hides its base, so a crop would erase the
+  unchanged rest; the head's `over` patch is cropped to the change plus 4 px. Drift is the mean
+  |edited - portrait| over the face mask's outer quarter (by distance to its edge).
+- Live: after assembly `expressing`, one family per GET (`api/_lib/forge-expressions.ts`), charged as
+  `COST_USD.expression` (0.14, the fill edit's price); refused charge, drift or no changed layer
+  "skipped", a throw or a wrong-size edit "failed"; the sixth -> `done`. `DEFAULT_LIMITS.dailyUsd` 30.
+- Offline: `node scripts/cast/regions.mjs <slug|--all>` (maps beside the layers, `regions` appended
+  to job.json; `malakor` also writes his imported rig's maps and `regions.json`), and
+  `node scripts/cast/expressions.mjs <slug> [--families a,b] --request` then, per family,
+  `cd var/cast-expr/<slug> && codex exec --skip-git-repo-check --ephemeral --dangerously-bypass-approvals-and-sandbox -i portrait.png -C . - < <family>.request.txt`
+  (the fill recipe of "Tooling", about 50 s each), then `--import` (area-resize, `cutVariants`, a
+  drift over 20/255 refused unless `--force`; `malakor`: his replay job and his rig's
+  `expressions/` + `variants.json`). Both take `--root <dir>` for a dry run on a copy of `assets/`.
+
 ## General rules for any character (folded into `partsPromptFromBrief`, task 11)
 What the eight taught, for a streamer's character. **Forge code** does the first list on its own; the
 **parts prompt** must say the second. Task 11 folded the prompt rules into `partsPromptFromBrief`

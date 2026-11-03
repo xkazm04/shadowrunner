@@ -23,3 +23,5 @@ export * from "./cutNamed.js";
 export * from "./matte.js";
 export * from "./brief.js";
 export * from "./briefParts.js";
+export * from "./regions.js";
+export * from "./expressions.js";

@@ -3,8 +3,8 @@
 // Each function takes raw text, runs the one JSON.parse, and checks the shape. No text is repaired:
 // a reply that is not JSON is an error (task 7: the parts step re-asks once, then fails `upstream`).
 // Messages name the rule broken, never the offending value, so upstream text cannot leak.
-import { type Result, validateRig } from "@sr/rig";
-import { FORGE_STEPS, type ForgeJob, type ForgeStep, type PortraitMime } from "./job.js";
+import { EXPRESSION_FAMILIES, type ExpressionFamily, type Result, validateRig } from "@sr/rig";
+import { FORGE_STEPS, type ExpressionOutcome, type ForgeJob, type ForgeStep, type PortraitMime } from "./job.js";
 import { parseBrief, type BriefError } from "./brief.js";
 import { settleBriefParts } from "./briefParts.js";
 import { parseParts, type ParsedParts, type PartsError } from "./parts.js";
@@ -138,7 +138,8 @@ export function parseBriefPartsJson(text: string, brief: CharacterBrief): Result
   return { ok: true, value: { ...parsed.value, notes: settled.notes } };
 }
 
-const STATUSES: readonly string[] = ["queued", "portrait", "segmenting", "cutting", "filling", "done", "failed"] satisfies ForgeStatus[];
+const STATUSES: readonly string[] = ["queued", "portrait", "segmenting", "cutting", "filling", "expressing", "done", "failed"] satisfies ForgeStatus[];
+const OUTCOMES: readonly string[] = ["ok", "skipped", "failed"] satisfies ExpressionOutcome[];
 const ERROR_CODES: readonly string[] = ["quota", "refused_likeness", "refused_content", "upstream", "bad_input"] satisfies ForgeErrorCode[];
 const MIMES: readonly string[] = ["image/png", "image/jpeg", "image/webp"] satisfies PortraitMime[];
 const STEPS: readonly string[] = FORGE_STEPS;
@@ -157,6 +158,16 @@ function stringMap(v: unknown): Record<string, string> | undefined {
   for (const [k, value] of Object.entries(v)) {
     if (typeof value !== "string") return undefined;
     out[k] = value;
+  }
+  return out;
+}
+
+function expressionsOf(v: unknown): ForgeJob["expressions"] | undefined {
+  if (!isRecord(v)) return undefined;
+  const out: NonNullable<ForgeJob["expressions"]> = {};
+  for (const [k, value] of Object.entries(v)) {
+    if (!(EXPRESSION_FAMILIES as readonly string[]).includes(k) || typeof value !== "string" || !OUTCOMES.includes(value)) return undefined;
+    out[k as ExpressionFamily] = value as ExpressionOutcome;
   }
   return out;
 }
@@ -219,6 +230,15 @@ export function parseForgeJob(text: string): ForgeJob | undefined {
     const assets = stringMap(j.assets);
     if (!assets) return undefined;
     job.assets = assets;
+  }
+  if (j.expressionIndex !== undefined) {
+    if (!isCount(j.expressionIndex) || j.expressionIndex > EXPRESSION_FAMILIES.length) return undefined;
+    job.expressionIndex = j.expressionIndex;
+  }
+  if (j.expressions !== undefined) {
+    const expressions = expressionsOf(j.expressions);
+    if (!expressions) return undefined;
+    job.expressions = expressions;
   }
   if (j.error !== undefined) {
     if (!isRecord(j.error) || !isCode(j.error.code) || !isString(j.error.message)) return undefined;

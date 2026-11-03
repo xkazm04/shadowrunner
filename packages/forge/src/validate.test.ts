@@ -102,7 +102,7 @@ const job: fc.Arbitrary<ForgeJob> = fc
       jobId: fc.stringMatching(/^[a-f0-9]{32}$/),
       plane: fc.constantFrom("replay" as const, "live" as const),
       mode: fc.constantFrom("prompt" as const, "image" as const),
-      status: fc.constantFrom("queued" as const, "portrait" as const, "segmenting" as const, "cutting" as const, "filling" as const, "done" as const, "failed" as const),
+      status: fc.constantFrom("queued" as const, "portrait" as const, "segmenting" as const, "cutting" as const, "filling" as const, "expressing" as const, "done" as const, "failed" as const),
       createdAt: fc.nat(),
       stepStartedAt: fc.nat(),
       prompt: fc.string(),
@@ -113,6 +113,8 @@ const job: fc.Arbitrary<ForgeJob> = fc
       assets: fc.dictionary(fc.stringMatching(/^[a-z_]{1,8}\.png$/), fc.webUrl(), { maxKeys: 4 }),
       error: fc.record({ code: fc.constantFrom("quota" as const, "upstream" as const), message: fc.string() }),
       timings: fc.record({ portrait: fc.nat(), parts: fc.nat() }, { requiredKeys: [] }),
+      expressionIndex: fc.nat({ max: 6 }),
+      expressions: fc.record({ joy: fc.constantFrom("ok" as const, "skipped" as const, "failed" as const), smug: fc.constantFrom("ok" as const, "skipped" as const) }, { requiredKeys: [] }),
     },
     { requiredKeys: ["jobId", "plane", "mode", "status", "createdAt"] },
   )
@@ -129,7 +131,7 @@ describe("parseForgeJob", () => {
 
   it("rejects a record with any field off-contract", () => {
     fc.assert(
-      fc.property(job, fc.constantFrom("status", "createdAt", "plane", "fill", "parts", "error", "assets", "timings"), (j, field) => {
+      fc.property(job, fc.constantFrom("status", "createdAt", "plane", "fill", "parts", "error", "assets", "timings", "expressions", "expressionIndex"), (j, field) => {
         return parseForgeJob(JSON.stringify({ ...j, [field]: { bad: null } })) === undefined;
       }),
     );
@@ -147,6 +149,7 @@ describe("toJobView", () => {
         expect("error" in view).toBe(j.status === "failed" && j.error !== undefined);
         expect("portraitUrl" in view).toBe(j.portraitUrl !== undefined && !["queued", "portrait"].includes(j.status));
         expect(Object.keys(view)).not.toContain("prompt");
+        expect(view.expressions).toEqual(j.expressions);
       }),
     );
   });

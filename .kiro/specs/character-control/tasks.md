@@ -30,7 +30,7 @@
     equal to the rig draws pixel-identical to before; a replace patch hides its base.
   - _Requirements: 1.1-1.4, 2.3, 4.2_
 
-- [ ] 3. Forge: regions and expressions (packages/forge, api/_lib, scripts/cast)
+- [x] 3. Forge: regions and expressions (packages/forge, api/_lib, scripts/cast)
   - `regions.ts`, `expressions.ts` exactly as design; live `"expressing"` steps in
     `api/_lib/forge-steps.ts` (charged, skip on failure, budget or drift); `costs.ts`
     `expression`; `DEFAULT_LIMITS.dailyUsd` 30; replay `STATUS_ORDER`; regions computed in the live

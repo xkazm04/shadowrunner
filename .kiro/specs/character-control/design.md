@@ -62,7 +62,7 @@ floor so a grey robe still turns the chosen colour. Applied:
   `eyeGain` as today. Replaces the old multiply.
 - **Glow**: the glow pass tint, as today, and every pixel of emissive layers whose saturation > 0.25
   (the coloured light, not white highlights).
-- **Mouth light**: the `cavity` region slot of `jaw` layers; and every pixel of a layer named
+- **Mouth light**: the `cavity` region slot of any layer; and every pixel of a layer named
   `mouth_glow` (Malakor).
 - **Region**: pixels whose index-map value is `slot + 1`, when `look.regions` has the key.
 - **Rim**: stays additive; `RIM_STRENGTH` 0.35 -> 0.6.
@@ -76,14 +76,15 @@ within 3/255 per channel on the test fixtures.
 
 Per layer image, offline and live, no model call, deterministic:
 1. Opaque pixels (alpha >= 128) only. Features per pixel: hue (circular), saturation, lightness.
-2. Near-grey pixels (s < 0.12) form a lightness class (dark < 0.35 <= mid < 0.7 <= light); coloured
+2. Near-grey pixels (chroma = max - min channel < 0.12; director ruling: HSL saturation calls near-black coloured) form a lightness class (dark < 0.35 <= mid < 0.7 <= light); coloured
    pixels are binned by hue into 12 bins of 30 degrees.
 3. Classes are merged greedily (smallest first into its nearest neighbour by hue, then lightness)
    until at most `MAX_REGION_SLOTS` remain and none holds < 4% of the opaque pixels.
 4. A 3x3 majority filter on the index map removes speckle (ties keep the centre).
 5. Slots are ordered by pixel count, ids `r1..r4`, names `<part>` for the largest, `<part> 2`... ;
-   on a `jaw` layer the slot covering the painted cavity (`mouth.ts` cavity mask) is id `cavity`,
-   name `mouth`. `hex` is the slot's median colour.
+   the slot covering the painted cavity (`mouth.ts` cavity mask; on live jobs it lies in the head
+   layer, under the jaw) is id `cavity`, name `mouth`; a committed jaw with no mask infers one (the
+   darkest low-chroma non-largest class mostly in the jaw's upper half), else has none. `hex` is the slot's median colour.
 6. The map is a PNG the size of the layer image, R = slot index + 1 (0 none), G = B = 0, A = 255;
    file name `<layer>.regions.png`.
 7. Layers with one class or < 2% opaque pixels get no `regions`; `background` never does.
@@ -158,7 +159,9 @@ export function cutVariants(rig: Rig, layers: ReadonlyMap<string, ImageLike>, po
   outer 25% ring); flagged when > `EXPRESSION_DRIFT_LIMIT`. For every layer of kind `head`, `eye`,
   `jaw` or a brow layer: re-cut the layer from the composite with its own matte; if its pixels differ
   from the base cut (mean > 2/255 within its bbox), emit a patch cropped to the changed area plus
-  4 px: `mode: "replace"` for `eye` and `jaw` layers and brow layers, `mode: "over"` for `head`;
+  4 px (a `replace` patch covers the whole layer bbox, since it hides the base): `mode: "replace"`
+  for `eye` and `jaw` layers and brow layers, `mode: "over"` for `head`; a layer is re-cut by its own
+  alpha (a Rig keeps no cut recipe);
   file name `<layer>.<family>.png`.
 - **Live**: `ForgeStatus` gains `"expressing"`; after assembly the job enters it with an
   `expressionIndex` 0; each GET runs one family: `editImage(portrait, expressionPrompt(...))`

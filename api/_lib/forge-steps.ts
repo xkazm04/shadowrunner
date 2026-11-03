@@ -1,7 +1,7 @@
 // Forge steps on the live plane (forge-pipeline design.md, task 7). A job is client-driven: POST
 // runs the first step (`startJob`), then every GET runs at most one more (`runStep`), each inside one
 // function invocation. Server step order is parts -> fill -> cut -> assemble; the statuses the client
-// sees move forward through queued -> portrait -> segmenting -> cutting -> filling -> done:
+// sees move forward through queued -> portrait -> segmenting -> cutting -> filling -> expressing -> done:
 //   POST, mode prompt   portrait (final image model)                      -> segmenting
 //   POST, mode brief    portrait from the approved brief (cast-forge 4.3)  -> segmenting
 //   POST, mode image    likeness/content check, upload kept               -> portrait
@@ -10,7 +10,9 @@
 //                       brief jobs (cast-forge 4.4): partsPromptFromBrief -> PartsV2, settled against
 //                       the brief; failed twice -> the v1 prompt, `decomposition: "fallback"`
 //   GET  cutting        fill edit, 30 s; on failure the job records fill "fallback" -> filling
-//   GET  filling        compose the plate (edit or blurExtend fallback), cut, assemble, upload -> done
+//   GET  filling        compose the plate (edit or blurExtend fallback), cut, assemble, colour
+//                       regions per layer (character-control), upload -> expressing
+//   GET  expressing     one expression family per GET (forge-expressions.ts); after the sixth -> done
 // Brief jobs with named parts fill, cut and assemble on the cast's path (plateNamed, cutNamed).
 // Every failure becomes `failed` with a spec code and our own message; nothing upstream is copied.
 import {
@@ -41,10 +43,14 @@ import {
   type Part,
   type PartsV2,
   type PortraitMime,
+  regionsForRig,
+  type Mask,
   type Rgba,
 } from "@sr/forge";
+import type { Rig } from "@sr/rig";
 import { COST_USD } from "./costs.js";
 import { ApiError } from "./errors.js";
+import { expressStep } from "./forge-expressions.js";
 import type { GeminiClient, GeminiImage } from "./gemini.js";
 import type { JobStore } from "./jobstore.js";
 
@@ -151,6 +157,8 @@ export async function runStep(job: ForgeJob, ctx: StepContext): Promise<ForgeJob
       return guarded(job, () => fillEdit(job, ctx));
     case "filling":
       return guarded(job, () => cutAndAssemble(job, ctx));
+    case "expressing":
+      return expressStep(job, ctx).then(() => job);
     default:
       return job;
   }
@@ -265,12 +273,24 @@ export function plateFor(portrait: Rgba, parts: readonly Part[], edit?: Rgba): R
 /**
  * Named parts on the cast's path (cast-forge task 11), the one `scripts/cast-forge.mjs` runs
  * (`runPipeline`): `plateNamed` (the edit, or per part the pure fallback), `cutNamed` with the
- * file's cut style, `assembleRig`.
+ * file's cut style, `assembleRig`. `cavity` is the painted mouth (`cutNamed`), for the regions.
  */
 export function assembleNamed(portrait: Rgba, named: PartsV2, meta: { id: string; name: string }, edit?: Rgba) {
   const plate = plateNamed(portrait, named.parts, edit);
   const cut = cutNamed(portrait, named.parts, { plate, ...(named.cut ?? {}) });
-  return assembleRig(named.parts, cut.layers, { ...meta, portrait, plate });
+  return { assembled: assembleRig(named.parts, cut.layers, { ...meta, portrait, plate }), ...(cut.cavity === undefined ? {} : { cavity: cut.cavity }) };
+}
+
+/** Character-control "Regions": every layer's colour regions, the maps added to the rig's files. */
+function withRegions(rig: Rig, files: Record<string, Uint8Array>, cavity?: Mask): { rig: Rig; files: Record<string, Uint8Array> } {
+  const images = new Map<string, Rgba>();
+  for (const layer of rig.layers) {
+    const bytes = files[layer.file];
+    const image = bytes === undefined ? undefined : decodeImage(bytes);
+    if (image?.ok === true) images.set(layer.name, image.value);
+  }
+  const found = regionsForRig(rig, images, cavity);
+  return { rig: found.rig, files: { ...files, ...found.files } };
 }
 
 async function cutAndAssemble(job: ForgeJob, ctx: StepContext): Promise<void> {
@@ -279,7 +299,7 @@ async function cutAndAssemble(job: ForgeJob, ctx: StepContext): Promise<void> {
   const portraitImage = await readJobImage(ctx, job.portraitUrl, job.portraitMime);
   const portrait = decodePortrait(portraitImage.data);
   const meta = { id: `forge-${job.jobId.slice(0, 12)}`, name: job.brief?.name ?? "Forged character" };
-  const assembled = await timed(job, "cut", ctx.now, async () => {
+  const result: { assembled: ReturnType<typeof assembleRig>; cavity?: Mask } = await timed(job, "cut", ctx.now, async () => {
     let edit: Rgba | undefined;
     if (job.fill === "edit" && job.plateUrl !== undefined) edit = decodePortrait(await ctx.store.readImage(job.plateUrl));
     else job.fill = "fallback";
@@ -288,17 +308,20 @@ async function cutAndAssemble(job: ForgeJob, ctx: StepContext): Promise<void> {
     const v1 = parts ?? [];
     const plate = plateFor(portrait, v1, edit);
     const cut = cutAll(portrait, v1, { plate });
-    return assembleRig(v1, cut.layers, { ...meta, portrait, plate });
+    return { assembled: assembleRig(v1, cut.layers, { ...meta, portrait, plate }) };
   });
+  const { assembled, cavity } = result;
   if (!assembled.ok) {
     console.warn(`forge: rig invalid: ${assembled.errors.map((e) => e.code).join(", ")}`);
     throw fail("upstream", "The forge could not assemble a working face. Try again.");
   }
+  const { rig, files } = withRegions(assembled.value.rig, assembled.value.files, cavity);
   const assets: Record<string, string> = {};
-  for (const [file, bytes] of Object.entries(assembled.value.files)) {
+  for (const [file, bytes] of Object.entries(files)) {
     assets[file] = await ctx.store.putImage(job.jobId, file, { bytes, contentType: "image/png" });
   }
-  job.rig = assembled.value.rig;
+  job.rig = rig;
   job.assets = assets;
-  job.status = "done";
+  job.status = "expressing";
+  job.expressionIndex = 0;
 }

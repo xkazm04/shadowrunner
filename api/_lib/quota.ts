@@ -1,7 +1,7 @@
 // Daily quota for paid calls (forge-pipeline requirement 7.3, design.md "Quota"), shared with
 // voice-and-air: `await checkAndCharge(ip, kind, usd)` before every paid call.
 // - per IP and kind: a daily count (`SR_FORGE_PER_IP` 3, `SR_ENGINE_PER_IP` 60, `SR_VOICE_PER_IP` 60);
-// - global: a daily USD estimate against `SR_DAILY_USD_CAP` (5), estimates from costs.ts.
+// - global: a daily USD estimate against `SR_DAILY_USD_CAP` (30; character-control raised it from 5 for the expression edits), estimates from costs.ts.
 // Keys `quota:<yyyy-mm-dd UTC>:<kind>:<ipHash>` and `quota:<date>:usd`; the IP is stored only as
 // HMAC-SHA-256 with a server salt. Counters live in KV (Upstash REST) when `KV_REST_API_URL` is set,
 // in memory otherwise; a Vercel deploy without KV fails closed, because per-instance memory
@@ -34,7 +34,7 @@ export interface QuotaLimits {
   dailyUsd: number;
 }
 
-export const DEFAULT_LIMITS: QuotaLimits = { perIp: { forge: 3, engine: 60, voice: 60 }, dailyUsd: 5 };
+export const DEFAULT_LIMITS: QuotaLimits = { perIp: { forge: 3, engine: 60, voice: 60 }, dailyUsd: 30 };
 
 /** Counters outlive their day by one, so a request across midnight UTC still finds its key. */
 export const QUOTA_TTL_SECONDS = 2 * 24 * 60 * 60;

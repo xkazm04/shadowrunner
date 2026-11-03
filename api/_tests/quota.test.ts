@@ -95,14 +95,14 @@ describe("global daily USD cap", () => {
     expect((await q.checkAndCharge("ip", "forge", 0)).ok).toBe(false);
   });
 
-  it("the default cap of 5 USD holds a realistic forge mix", async () => {
+  it("the default cap of 30 USD holds a realistic forge mix (six expression edits each)", async () => {
     const { q } = quota(DEFAULT_LIMITS);
     let forges = 0;
     for (let i = 0; i < 100; i += 1) {
-      const r = await q.checkAndCharge(`10.0.0.${i}`, "forge", COST_USD.imageDraft + COST_USD.imageFinal + COST_USD.segment + COST_USD.imageEdit);
+      const r = await q.checkAndCharge(`10.0.0.${i}`, "forge", COST_USD.imageDraft + COST_USD.imageFinal + COST_USD.segment + COST_USD.imageEdit + 6 * COST_USD.expression);
       if (r.ok) forges += 1;
     }
-    expect(forges).toBe(Math.floor(5 / 0.33));
+    expect(forges).toBe(Math.floor(30 / 1.17));
   });
 });
 
@@ -140,7 +140,7 @@ describe("safety", () => {
 
 describe("configuration", () => {
   it("reads limits from env with defaults for blank or invalid values", () => {
-    expect(quotaLimits({})).toEqual({ perIp: { forge: 3, engine: 60, voice: 60 }, dailyUsd: 5 });
+    expect(quotaLimits({})).toEqual({ perIp: { forge: 3, engine: 60, voice: 60 }, dailyUsd: 30 });
     expect(quotaLimits({ SR_FORGE_PER_IP: "7", SR_ENGINE_PER_IP: "x", SR_VOICE_PER_IP: "-1", SR_DAILY_USD_CAP: "2.5" })).toEqual({
       perIp: { forge: 7, engine: 60, voice: 60 },
       dailyUsd: 2.5,
