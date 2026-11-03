@@ -8,25 +8,36 @@
 //   that takes the old one's place in the DOM (class and inline style copied); callers that own
 //   the DOM differently pass `replaceCanvas`. The React wrapper keeps its canvas inside a <div> it
 //   owns, so the swap never fights React.
-// - `setLook` only recomputes uniforms; `draw` calls it when handed a different look object.
+// - `setLook` only recomputes uniforms (and the per-layer recolours, render/recolour.ts); `draw`
+//   calls it when handed a different look object.
+// - Region maps and face patches are looked up in the assets like layer images; files missing
+//   there are asked of `loadAsset` when first needed (render/assets.ts).
 import { defaultLook, type LayerPose, type Look, type Rig } from "@sr/rig";
 import { createCanvas2dRenderer } from "../canvas2d/renderer.js";
+import { createAssetCache, type AssetLoader } from "../render/assets.js";
 import { fitView, lookLight, type LookLight } from "../render/frame.js";
+import { rigRecolours, type LayerRecolour } from "../render/recolour.js";
 import type { CanvasHost, FrameClock, Renderer, RendererInfo, RigAssets } from "../render/types.js";
 import { createGlContext, watchContextLoss } from "./context.js";
 import { beginScene, createGlowTargets, deleteGlowTargets, glowGain, runGlow, type GlowTargets } from "./glow.js";
 import { deleteLayers, drawLayers, uploadLayers, type LayerTexture } from "./layers.js";
 import { createPrograms, deletePrograms } from "./programs.js";
+import { createTextureStore, type TextureStore } from "./textures.js";
 
 export interface CreateRendererOptions {
   /** A fresh canvas for the 2D fallback once this one holds a WebGL2 context; null draws nothing. */
   replaceCanvas?: (lost: CanvasHost) => CanvasHost | null;
+  /** Loads a rig file missing from the assets (a region map, a face patch) on first need. */
+  loadAsset?: AssetLoader;
 }
 
 /** The WebGL2 renderer on an existing context. Throws if its programs or targets cannot be built. */
-export function createGlRenderer(gl: WebGL2RenderingContext, canvas: CanvasHost, rig: Rig, assets: RigAssets): Renderer {
+export function createGlRenderer(gl: WebGL2RenderingContext, canvas: CanvasHost, rig: Rig, assets: RigAssets, loadAsset?: AssetLoader): Renderer {
   const programs = createPrograms(gl);
   let textures = new Map<string, LayerTexture>();
+  let store: TextureStore | undefined;
+  let recolours: Map<string, LayerRecolour> = new Map();
+  let storeUploads = 0;
   let targets: GlowTargets = createGlowTargets(gl, canvas.width, canvas.height);
   let currentRig = rig;
   let light: LookLight = lookLight(rig, defaultLook(rig));
@@ -37,14 +48,20 @@ export function createGlRenderer(gl: WebGL2RenderingContext, canvas: CanvasHost,
 
   const setRig = (next: Rig, nextAssets: RigAssets): void => {
     deleteLayers(gl, textures);
-    textures = uploadLayers(gl, next, nextAssets);
+    storeUploads += store?.uploads() ?? 0;
+    store?.dispose();
+    store = createTextureStore(gl, createAssetCache(nextAssets, loadAsset));
+    textures = uploadLayers(gl, next, nextAssets, store);
     uploads += textures.size;
     currentRig = next;
-    light = lookLight(next, lastLook ?? defaultLook(next));
+    const look = lastLook ?? defaultLook(next);
+    light = lookLight(next, look);
+    recolours = rigRecolours(next, look);
   };
   const setLook = (look: Look): void => {
     lastLook = look;
     light = lookLight(currentRig, look);
+    recolours = rigRecolours(currentRig, look);
   };
   setRig(rig, assets);
 
@@ -57,7 +74,7 @@ export function createGlRenderer(gl: WebGL2RenderingContext, canvas: CanvasHost,
       if (look !== lastLook) setLook(look);
       const view = fitView(currentRig, targets.scene.width, targets.scene.height);
       beginScene(gl, targets);
-      drawCalls += drawLayers(gl, programs, textures, poses, view, light);
+      if (store !== undefined) drawCalls += drawLayers(gl, programs, textures, poses, view, { light, recolours, store });
       drawCalls += runGlow(gl, programs, targets, light.glow, glowGain(clock));
     },
     resize(width: number, height: number, dpr: number): void {
@@ -70,12 +87,13 @@ export function createGlRenderer(gl: WebGL2RenderingContext, canvas: CanvasHost,
       targets = createGlowTargets(gl, w, h);
     },
     info(): RendererInfo {
-      return { mode: "webgl2", drawCalls, textureUploads: uploads };
+      return { mode: "webgl2", drawCalls, textureUploads: uploads + storeUploads + (store?.uploads() ?? 0) };
     },
     dispose(): void {
       if (disposed) return;
       disposed = true;
       deleteLayers(gl, textures);
+      store?.dispose();
       deleteGlowTargets(gl, targets);
       deletePrograms(gl, programs);
     },
@@ -97,10 +115,11 @@ export function replaceInDom(lost: CanvasHost): CanvasHost | null {
 /** A 2D renderer for `canvas`, or for its replacement when it cannot give a 2D context. */
 function fallback(canvas: CanvasHost, rig: Rig, assets: RigAssets, options: CreateRendererOptions, glUsed: boolean): Renderer {
   const own = glUsed ? null : canvas.getContext("2d");
-  if (own !== null) return createCanvas2dRenderer(canvas, own, rig, assets);
+  const extra = options.loadAsset === undefined ? {} : { loadAsset: options.loadAsset };
+  if (own !== null) return createCanvas2dRenderer(canvas, own, rig, assets, extra);
   const fresh = (options.replaceCanvas ?? replaceInDom)(canvas) ?? canvas;
   const ctx = fresh === canvas ? null : fresh.getContext("2d");
-  return createCanvas2dRenderer(fresh, ctx, rig, assets);
+  return createCanvas2dRenderer(fresh, ctx, rig, assets, extra);
 }
 
 /**
@@ -115,7 +134,7 @@ export function createRenderer(canvas: CanvasHost, rig: Rig, assets: RigAssets, 
     impl = fallback(canvas, rig, assets, options, false);
   } else {
     try {
-      impl = createGlRenderer(gl, canvas, rig, assets);
+      impl = createGlRenderer(gl, canvas, rig, assets, options.loadAsset);
     } catch {
       impl = fallback(canvas, rig, assets, options, true);
     }
