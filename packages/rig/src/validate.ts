@@ -8,9 +8,13 @@
 // is `bad_shape` at `$.layers[i].drop` when out of [JAW_DROP_MIN, JAW_DROP_MAX] or not on a jaw;
 // Motion.blink (cast-forge task 6) is `bad_shape` at `$.layers[i].motion.blink` on a non-eye layer.
 // Layer.emissive (cast-forge task 12 follow-up) is `bad_shape` at `$.layers[i].emissive` unless boolean.
+// Layer.variants and Layer.regions (character-control) are read by validateControl.ts (`bad_shape`
+// at `$.layers[i].variants.<family>...` / `$.layers[i].regions...`); a patch bbox leaving the canvas
+// is `bbox_out_of_bounds` at its own path and a slot hex that is not "#rrggbb" is `bad_color`.
 import { JAW_DROP_MAX, JAW_DROP_MIN } from "./pose.js";
 import type { Result } from "./result.js";
 import { RIG_VERSION, type Layer, type LayerKind, type Palette, type Rig } from "./types.js";
+import { readLayerControls } from "./validateControl.js";
 import { readMotion, type MotionCanvas } from "./validateMotion.js";
 
 export const RIG_ERROR_CODES = [
@@ -162,6 +166,9 @@ class Reader {
     for (const problem of read.problems) this.fail(problem.path, problem.message.slice(problem.path.length + 2), named);
     const motion = read.motion;
     if (motion?.blink !== undefined && kind !== undefined && kind !== "eye") this.fail(`${path}.motion.blink`, `only an eye layer blinks, this one is ${kind}`, named);
+    const controls = readLayerControls(value, path, fileProblem);
+    for (const problem of controls.problems) this.fail(problem.path, problem.message.slice(problem.path.length + 2), named);
+    const { variants, regions } = controls;
     if (this.errors.length > before) return undefined;
     if (name === undefined || z === undefined || kind === undefined || file === undefined) return undefined;
     if (x === undefined || y === undefined || w === undefined || h === undefined) return undefined;
@@ -179,6 +186,8 @@ class Reader {
       ...(motion === undefined ? {} : { motion }),
       ...(drop === undefined ? {} : { drop }),
       ...(emissive === undefined ? {} : { emissive }),
+      ...(variants === undefined ? {} : { variants }),
+      ...(regions === undefined ? {} : { regions }),
     };
   }
 
@@ -225,9 +234,10 @@ function checkPalette(palette: Palette, errors: RigError[]): void {
 }
 
 function checkBounds(rig: Rig, errors: RigError[]): void {
+  const leaves = ([x, y, w, h]: Layer["bbox"]): boolean => x < 0 || y < 0 || x + w > rig.width + EDGE_TOLERANCE || y + h > rig.height + EDGE_TOLERANCE;
   rig.layers.forEach((layer, i) => {
     const [x, y, w, h] = layer.bbox;
-    if (x < 0 || y < 0 || x + w > rig.width + EDGE_TOLERANCE || y + h > rig.height + EDGE_TOLERANCE) {
+    if (leaves(layer.bbox)) {
       errors.push({
         code: "bbox_out_of_bounds",
         message: `layer "${layer.name}" bbox [${x}, ${y}, ${w}, ${h}] leaves the ${rig.width} x ${rig.height} canvas`,
@@ -235,6 +245,26 @@ function checkBounds(rig: Rig, errors: RigError[]): void {
         path: `$.layers[${i}].bbox`,
       });
     }
+    for (const [family, patch] of Object.entries(layer.variants ?? {})) {
+      if (!leaves(patch.bbox)) continue;
+      errors.push({
+        code: "bbox_out_of_bounds",
+        message: `layer "${layer.name}" ${family} patch bbox [${patch.bbox.join(", ")}] leaves the ${rig.width} x ${rig.height} canvas`,
+        layer: layer.name,
+        path: `$.layers[${i}].variants.${family}.bbox`,
+      });
+    }
+  });
+}
+
+/** Region slot colours (character-control): "#rrggbb" like the palette. */
+function checkRegionColours(rig: Rig, errors: RigError[]): void {
+  rig.layers.forEach((layer, i) => {
+    layer.regions?.slots.forEach((slot, j) => {
+      if (HEX_COLOR.test(slot.hex)) return;
+      const path = `$.layers[${i}].regions.slots[${j}].hex`;
+      errors.push({ code: "bad_color", message: `layer "${layer.name}" region ${slot.id} is ${JSON.stringify(slot.hex)}; expected "#rrggbb"`, layer: layer.name, path });
+    });
   });
 }
 
@@ -299,6 +329,7 @@ export function validateRig(input: unknown): Result<Rig, RigError[]> {
   const errors: RigError[] = [];
   checkPalette(rig.palette, errors);
   checkBounds(rig, errors);
+  checkRegionColours(rig, errors);
   checkUnique(rig, "name", "duplicate_name", errors);
   checkUnique(rig, "z", "duplicate_z", errors);
   checkFollows(rig, errors);

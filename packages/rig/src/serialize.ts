@@ -2,7 +2,8 @@
 // contract order (types.ts), optional fields omitted when undefined, and fields outside the
 // contract dropped. It never writes `null`: a non-finite number (which JSON.stringify would turn
 // into null) throws a RangeError instead.
-import type { Layer, Motion, Palette, Rig } from "./types.js";
+import { EXPRESSION_FAMILIES } from "./control.js";
+import type { ExpressionFamily, Layer, LayerPatch, LayerRegions, Motion, Palette, Rig } from "./types.js";
 
 function wirePalette(palette: Palette): Palette {
   return { glow: palette.glow, eye: palette.eye, rim: palette.rim, mouth: palette.mouth };
@@ -26,6 +27,22 @@ function wireMotion(motion: Motion): Motion {
   };
 }
 
+/** Families in EXPRESSION_FAMILIES order, each patch `{ file, bbox, mode }`. */
+function wireVariants(variants: Partial<Record<ExpressionFamily, LayerPatch>>): Partial<Record<ExpressionFamily, LayerPatch>> {
+  const out: Partial<Record<ExpressionFamily, LayerPatch>> = {};
+  for (const family of EXPRESSION_FAMILIES) {
+    const patch = variants[family];
+    if (patch === undefined) continue;
+    const [x, y, w, h] = patch.bbox;
+    out[family] = { file: patch.file, bbox: [x, y, w, h], mode: patch.mode };
+  }
+  return out;
+}
+
+function wireRegions(regions: LayerRegions): LayerRegions {
+  return { map: regions.map, slots: regions.slots.map((slot) => ({ id: slot.id, name: slot.name, hex: slot.hex })) };
+}
+
 function wireLayer(layer: Layer): Layer {
   const [x, y, w, h] = layer.bbox;
   const [ax, ay] = layer.anchor;
@@ -42,6 +59,8 @@ function wireLayer(layer: Layer): Layer {
     ...(layer.motion === undefined ? {} : { motion: wireMotion(layer.motion) }),
     ...(layer.drop === undefined ? {} : { drop: layer.drop }),
     ...(layer.emissive === undefined ? {} : { emissive: layer.emissive }),
+    ...(layer.variants === undefined ? {} : { variants: wireVariants(layer.variants) }),
+    ...(layer.regions === undefined ? {} : { regions: wireRegions(layer.regions) }),
   };
 }
 

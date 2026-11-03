@@ -9,3 +9,5 @@ export * from "./motion.js";
 export * from "./validateMotion.js";
 export * from "./look.js";
 export * from "./control.js";
+export * from "./mood.js";
+export * from "./validateControl.js";

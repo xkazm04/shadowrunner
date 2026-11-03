@@ -7,7 +7,7 @@
     `ForgeStatus` "expressing" and `JobView.expressions`; gates green with no behaviour change.
   - _Requirements: 7.1_
 
-- [ ] 1. Rig: moods, faces, reshape, validation (packages/rig)
+- [x] 1. Rig: moods, faces, reshape, validation (packages/rig)
   - Extended `EMOTION_TABLE` and `EmotionDrive`; held procedural values in `poseLayers` (tilt,
     pitch, squint, jaw set, glow gain, brow layers or the eye fallback); `Drive.mood` crossfade;
     `LayerPose.faces`; `Look.shape` applied before the follow chain; `validateRig` checks variants

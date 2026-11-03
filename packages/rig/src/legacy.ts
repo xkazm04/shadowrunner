@@ -8,6 +8,8 @@
 // element of the same name, with a phase from the layer-name hash so sibling shards never move in
 // lockstep and the same rig always moves alike. A curve outside the Rig ranges is warned about and
 // dropped. Other legacy-only fields (numeric follow weights, gains, modes) are dropped.
+// `variants` and `regions` (character-control) on a legacy layer are passed through unchanged for
+// validateRig to check, so a sidecar merged into layers.json survives the import.
 import type { Result } from "./result.js";
 import { phaseFromName } from "./motion.js";
 import { RIG_VERSION, type LayerKind, type Motion, type Palette, type Rig } from "./types.js";
@@ -183,6 +185,8 @@ function convertLayers(value: unknown, spec: unknown, canvas: MotionCanvas, erro
       ...(mapping.follow === undefined ? {} : { follow: mapping.follow }),
       ...(depth === undefined ? {} : { depth }),
       ...(motion === undefined ? {} : { motion }),
+      ...(item.variants === undefined ? {} : { variants: item.variants }),
+      ...(item.regions === undefined ? {} : { regions: item.regions }),
     });
   });
   return layers;

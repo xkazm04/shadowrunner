@@ -19,20 +19,40 @@ export interface EmotionDrive {
   brow: number;
   /** Gesture played when the emotion is chosen; absent when there is none. */
   gesture?: Gesture;
+  /** Held head roll, degrees; positive = clockwise on screen (character-control "Moods"). */
+  headTilt: number;
+  /** Held head pitch, degrees; positive = chin down, added to `Drive.headPitch` before its clamp. */
+  headPitch: number;
+  /** Extra eye y-squash, 0..0.4, combined with the blink as `1 - (1 - blink) * (1 - squint)`. */
+  squint: number;
+  /** Extra `jawOpen`, added and clamped to 1. */
+  jawSet: number;
+  /** Multiplier on the tint of emissive layers; 1 = as drawn. */
+  glowGain: number;
+  /** Brow-layer lift as a fraction of rig height; positive raises. */
+  browLift: number;
 }
 
-/** design.md "Emotion table". */
+/** The numeric columns of EmotionDrive, the ones a mood crossfade blends. */
+export type MoodColumn = Exclude<keyof EmotionDrive, "gesture">;
+export const MOOD_COLUMNS: readonly MoodColumn[] = Object.freeze(["eyeGain", "brow", "headTilt", "headPitch", "squint", "jawSet", "glowGain", "browLift"]);
+
+type Row = [eyeGain: number, brow: number, gesture: Gesture | undefined, headTilt: number, headPitch: number, squint: number, jawSet: number, glowGain: number, browLift: number];
+const row = ([eyeGain, brow, gesture, headTilt, headPitch, squint, jawSet, glowGain, browLift]: Row): Readonly<EmotionDrive> =>
+  Object.freeze({ eyeGain, brow, ...(gesture === undefined ? {} : { gesture }), headTilt, headPitch, squint, jawSet, glowGain, browLift });
+
+/** rig-core design.md "Emotion table", extended by character-control design.md "Moods" (verbatim). */
 export const EMOTION_TABLE: Readonly<Record<Emotion, Readonly<EmotionDrive>>> = Object.freeze({
-  neutral: Object.freeze({ eyeGain: 1.0, brow: 0 }),
-  amused: Object.freeze({ eyeGain: 1.2, brow: 1, gesture: "tilt" }),
-  smug: Object.freeze({ eyeGain: 1.1, brow: 2, gesture: "tilt" }),
-  irritated: Object.freeze({ eyeGain: 1.3, brow: -2, gesture: "glare" }),
-  furious: Object.freeze({ eyeGain: 2.0, brow: -3, gesture: "flare" }),
-  delighted: Object.freeze({ eyeGain: 1.5, brow: 2, gesture: "nod" }),
-  bored: Object.freeze({ eyeGain: 0.7, brow: -1 }),
-  suspicious: Object.freeze({ eyeGain: 1.2, brow: -1, gesture: "lean_in" }),
-  grim: Object.freeze({ eyeGain: 0.9, brow: -2 }),
-  theatrical: Object.freeze({ eyeGain: 1.6, brow: 3, gesture: "flare" }),
+  neutral: row([1.0, 0, undefined, 0, 0, 0, 0, 1.0, 0]),
+  amused: row([1.2, 1, "tilt", 4, 0, 0.15, 0.05, 1.1, 0.006]),
+  smug: row([1.1, 2, "tilt", 6, -2, 0.25, 0, 1.1, 0.008]),
+  irritated: row([1.3, -2, "glare", 0, 3, 0.25, 0, 1.2, -0.008]),
+  furious: row([2.0, -3, "flare", 0, 5, 0.35, 0.1, 1.6, -0.012]),
+  delighted: row([1.5, 2, "nod", -3, -2, 0.2, 0.2, 1.3, 0.01]),
+  bored: row([0.7, -1, undefined, 5, 4, 0.35, 0, 0.7, -0.004]),
+  suspicious: row([1.2, -1, "lean_in", -4, 2, 0.4, 0, 1.0, -0.006]),
+  grim: row([0.9, -2, undefined, 0, 4, 0.15, 0, 0.8, -0.008]),
+  theatrical: row([1.6, 3, "flare", -5, -4, 0, 0.25, 1.5, 0.014]),
 });
 
 const copyPalette = (palette: Palette): Palette => ({
@@ -44,10 +64,29 @@ const copyPalette = (palette: Palette): Palette => ({
 
 const copyLayer = (layer: Layer): Layer => ({ ...layer, bbox: [...layer.bbox], anchor: [...layer.anchor] });
 
-/** Eye-light gain, brow offset and default gesture for `emotion`, as a fresh object. */
+/** Every column of `emotion`'s row (gesture omitted when it has none), as a fresh object. */
 export function lookToEmotionDrive(emotion: Emotion): EmotionDrive {
-  const row = EMOTION_TABLE[emotion];
-  return row.gesture === undefined ? { eyeGain: row.eyeGain, brow: row.brow } : { eyeGain: row.eyeGain, brow: row.brow, gesture: row.gesture };
+  return { ...EMOTION_TABLE[emotion] };
+}
+
+/** 0..1 -> 0..1, `3m^2 - 2m^3`; non-finite or out-of-range input is clamped (NaN -> 1, settled). */
+export function smoothstep(mix: number): number {
+  const m = Number.isNaN(mix) ? 1 : Math.min(1, Math.max(0, mix));
+  return m * m * (3 - 2 * m);
+}
+
+/**
+ * The mood held at this frame (character-control design "Moods", "Crossfade"): every numeric
+ * column is `lerp(from, to, smoothstep(mix))`; the gesture is `to`'s. `mood` absent means settled.
+ */
+export function moodDrive(to: Emotion, mood?: { from: Emotion; mix: number }): EmotionDrive {
+  const target = lookToEmotionDrive(to);
+  if (mood === undefined || mood.from === to) return target;
+  const m = smoothstep(mood.mix);
+  if (m === 1) return target;
+  const source = EMOTION_TABLE[mood.from];
+  for (const column of MOOD_COLUMNS) target[column] = source[column] + (target[column] - source[column]) * m;
+  return target;
 }
 
 /** The gesture to play for `look`: `look.gesture` when set, otherwise the emotion's default (or none). */
