@@ -1,0 +1,422 @@
+{
+  "slug": "auntie-asp",
+  "name": "Auntie Asp, Keeper of the Stone Stacks",
+  "fictional": true,
+  "source": "cast-forge offline build: Codex CLI built-in image generation (codex-cli 0.160.0) portrait (contest supporting-cast, entry A/9 style-2, 2026-11-02); named parts measured from pixels; fill Codex CLI image edit",
+  "prompt": "a medusa librarian with snakes for hair who shushes chat",
+  "promptSha256": "a920099c19e05bd2c212818b70a9600abb10beca46b9d8abe14e6a743a05e633",
+  "portrait": "portrait.png",
+  "fill": "edit",
+  "timings": {
+    "cutMs": 4835
+  },
+  "steps": [
+    {
+      "status": "queued",
+      "holdMs": 1500
+    },
+    {
+      "status": "portrait",
+      "holdMs": 1500
+    },
+    {
+      "status": "segmenting",
+      "holdMs": 1500
+    },
+    {
+      "status": "cutting",
+      "holdMs": 1500
+    },
+    {
+      "status": "filling",
+      "holdMs": 1500
+    },
+    {
+      "status": "done"
+    }
+  ],
+  "warnings": [],
+  "rig": {
+    "version": 1,
+    "id": "replay-auntie-asp",
+    "name": "Auntie Asp, Keeper of the Stone Stacks",
+    "width": 1024,
+    "height": 1024,
+    "source": "forge",
+    "fictional": true,
+    "palette": {
+      "glow": "#c15103",
+      "eye": "#e36106",
+      "rim": "#e36106",
+      "mouth": "#261001"
+    },
+    "layers": [
+      {
+        "name": "background",
+        "z": 1,
+        "kind": "static",
+        "file": "background.png",
+        "bbox": [
+          0,
+          0,
+          1024,
+          1024
+        ],
+        "anchor": [
+          512,
+          512
+        ],
+        "depth": 0
+      },
+      {
+        "name": "torso",
+        "z": 2,
+        "kind": "body",
+        "file": "torso.png",
+        "bbox": [
+          120,
+          551,
+          779,
+          470
+        ],
+        "anchor": [
+          509.44,
+          792.576
+        ],
+        "depth": 0.3
+      },
+      {
+        "name": "head",
+        "z": 3,
+        "kind": "head",
+        "file": "head.png",
+        "bbox": [
+          34,
+          0,
+          956,
+          656
+        ],
+        "anchor": [
+          512,
+          652.288
+        ],
+        "depth": 0.6
+      },
+      {
+        "name": "jaw",
+        "z": 4,
+        "kind": "jaw",
+        "file": "jaw.png",
+        "bbox": [
+          471,
+          506,
+          85,
+          36
+        ],
+        "anchor": [
+          513.5360000000001,
+          505.856
+        ],
+        "follow": "head",
+        "depth": 0.62,
+        "drop": 0.014
+      },
+      {
+        "name": "serpent_l1",
+        "z": 5,
+        "kind": "crown",
+        "file": "serpent_l1.png",
+        "bbox": [
+          517,
+          9,
+          375,
+          190
+        ],
+        "anchor": [
+          551.936,
+          178.176
+        ],
+        "follow": "head",
+        "depth": 0.6,
+        "motion": {
+          "float": {
+            "amp": [
+              0,
+              0
+            ],
+            "freq": 0.45,
+            "rot_deg": 5,
+            "phase": 0.65
+          }
+        }
+      },
+      {
+        "name": "serpent_r1",
+        "z": 6,
+        "kind": "crown",
+        "file": "serpent_r1.png",
+        "bbox": [
+          133,
+          9,
+          375,
+          189
+        ],
+        "anchor": [
+          472.064,
+          177.152
+        ],
+        "follow": "head",
+        "depth": 0.6,
+        "motion": {
+          "float": {
+            "amp": [
+              0,
+              0
+            ],
+            "freq": 0.26,
+            "rot_deg": 5,
+            "phase": 0.15
+          }
+        }
+      },
+      {
+        "name": "serpent_l2",
+        "z": 7,
+        "kind": "crown",
+        "file": "serpent_l2.png",
+        "bbox": [
+          592,
+          120,
+          381,
+          134
+        ],
+        "anchor": [
+          616.448,
+          224.256
+        ],
+        "follow": "head",
+        "depth": 0.6,
+        "motion": {
+          "float": {
+            "amp": [
+              0,
+              0
+            ],
+            "freq": 0.37,
+            "rot_deg": 4.5,
+            "phase": 0.8
+          }
+        }
+      },
+      {
+        "name": "serpent_r2",
+        "z": 8,
+        "kind": "crown",
+        "file": "serpent_r2.png",
+        "bbox": [
+          52,
+          120,
+          378,
+          130
+        ],
+        "anchor": [
+          403.456,
+          221.184
+        ],
+        "follow": "head",
+        "depth": 0.6,
+        "motion": {
+          "float": {
+            "amp": [
+              0,
+              0
+            ],
+            "freq": 0.41,
+            "rot_deg": 4.5,
+            "phase": 0.3
+          }
+        }
+      },
+      {
+        "name": "serpent_l3",
+        "z": 9,
+        "kind": "crown",
+        "file": "serpent_l3.png",
+        "bbox": [
+          633,
+          238,
+          344,
+          116
+        ],
+        "anchor": [
+          651.264,
+          305.152
+        ],
+        "follow": "head",
+        "depth": 0.6,
+        "motion": {
+          "float": {
+            "amp": [
+              0,
+              0
+            ],
+            "freq": 0.29,
+            "rot_deg": 4,
+            "phase": 0.55
+          }
+        }
+      },
+      {
+        "name": "serpent_r3",
+        "z": 10,
+        "kind": "crown",
+        "file": "serpent_r3.png",
+        "bbox": [
+          47,
+          238,
+          338,
+          115
+        ],
+        "anchor": [
+          366.592,
+          292.864
+        ],
+        "follow": "head",
+        "depth": 0.6,
+        "motion": {
+          "float": {
+            "amp": [
+              0,
+              0
+            ],
+            "freq": 0.33,
+            "rot_deg": 4,
+            "phase": 0
+          }
+        }
+      },
+      {
+        "name": "collar_back_l",
+        "z": 11,
+        "kind": "accessory",
+        "file": "collar_back_l.png",
+        "bbox": [
+          597,
+          563,
+          33,
+          105
+        ],
+        "anchor": [
+          608.2006737247353,
+          617.1732435033687
+        ],
+        "follow": "torso",
+        "depth": 0.3
+      },
+      {
+        "name": "collar_back_r",
+        "z": 12,
+        "kind": "accessory",
+        "file": "collar_back_r.png",
+        "bbox": [
+          394,
+          563,
+          34,
+          104
+        ],
+        "anchor": [
+          416.7635621699472,
+          617.2758041286606
+        ],
+        "follow": "torso",
+        "depth": 0.3
+      },
+      {
+        "name": "collar",
+        "z": 13,
+        "kind": "accessory",
+        "file": "collar.png",
+        "bbox": [
+          426,
+          583,
+          173,
+          96
+        ],
+        "anchor": [
+          511.8350585058506,
+          646.2480873087309
+        ],
+        "follow": "torso",
+        "depth": 0.3
+      },
+      {
+        "name": "spectacles",
+        "z": 14,
+        "kind": "accessory",
+        "file": "spectacles.png",
+        "bbox": [
+          362,
+          342,
+          300,
+          95
+        ],
+        "anchor": [
+          513.0000321978234,
+          389.99603966771843
+        ],
+        "follow": "head",
+        "depth": 0.6
+      },
+      {
+        "name": "eye_l",
+        "z": 15,
+        "kind": "eye",
+        "file": "eye_l.png",
+        "bbox": [
+          564,
+          354,
+          43,
+          25
+        ],
+        "anchor": [
+          585.5238450074515,
+          366.5178837555887
+        ],
+        "follow": "head",
+        "depth": 0.7,
+        "motion": {
+          "pulse": {
+            "amp": 0.25,
+            "freq": 0.4,
+            "phase": 0.1
+          }
+        }
+      },
+      {
+        "name": "eye_r",
+        "z": 16,
+        "kind": "eye",
+        "file": "eye_r.png",
+        "bbox": [
+          421,
+          354,
+          43,
+          26
+        ],
+        "anchor": [
+          442.34379562043796,
+          366.463503649635
+        ],
+        "follow": "head",
+        "depth": 0.7,
+        "motion": {
+          "pulse": {
+            "amp": 0.25,
+            "freq": 0.4,
+            "phase": 0.1
+          }
+        }
+      }
+    ]
+  }
+}

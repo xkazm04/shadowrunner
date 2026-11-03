@@ -11,11 +11,11 @@
 // behind it (`matteToPlate`). Pure: plain arrays in, fresh images out.
 import { DEFAULT_DEPTH, JAW_DROP, PITCH_SHIFT, YAW_SHIFT } from "@sr/rig";
 import { type Cut, type CutOptions, CUT_FEATHER, HOOD_SHARE, PLATE_DILATE, addTo, blendBy, cutLayer, hoodShare, keyOf, seamReach, underFront } from "./cut.js";
-import { KEY_HI, type Mask, cornerKeyLo, dilateMask, emptyMask, featherMask, rasterizeMask } from "./mask.js";
+import { KEY_HI, type Mask, cornerKeyLo, dilateMask, emptyMask, featherMask, luma, rasterizeMask } from "./mask.js";
 import { matteToPlate } from "./matte.js";
 import { clearAboveLip, liftedJaw, paintCavity } from "./mouth.js";
 import { carrierOf, cutOrderNamed, headNameOf, isKeyed, isLifted } from "./named.js";
-import { composePlate, fallbackFill } from "./plate.js";
+import { PLATE_FEATHER, composePlate, fallbackFill } from "./plate.js";
 import { toCanvas } from "./parts.js";
 import type { NamedPart, PartRole, Polygon, Rgba } from "./types.js";
 
@@ -82,6 +82,7 @@ export function liftedNamed(parts: readonly NamedPart[], width: number, height: 
  * The filled plate for named parts (cast-forge task 3): the portrait with every lifted part painted
  * out, from `edit` (the image edit) where given, else from the pure `fallbackFill`; a part with
  * `fill: "extend"` is always painted from the surface around it (`fallbackFill`), never the edit.
+ * Task 9: under a keyed lifted part, open ground (`groundUnderKeyed`) stays the portrait's ground.
  */
 export function plateNamed(portrait: Rgba, parts: readonly NamedPart[], edit?: Rgba): Rgba {
   const { width, height } = portrait;
@@ -89,7 +90,34 @@ export function plateNamed(portrait: Rgba, parts: readonly NamedPart[], edit?: R
   const fromEdit = liftedNamed(parts, width, height, (p) => !extend(p));
   const fromAround = liftedNamed(parts, width, height, extend);
   const edited = edit === undefined ? portrait : composePlate(portrait, edit, fromEdit);
-  return composePlate(edited, fallbackFill(edited, fromAround), fromAround);
+  const plate = composePlate(edited, fallbackFill(edited, fromAround), fromAround);
+  // Pixel for pixel, never grown: beside the ground lies the part itself (a serpent's rim).
+  const ground = groundUnderKeyed(portrait, parts);
+  for (let i = 0; i < ground.data.length; i++) if (ground.data[i] !== 0) plate.data.set(portrait.data.subarray(i * 4, i * 4 + 4), i * 4);
+  return plate;
+}
+
+/**
+ * Cast-forge task 9 (Auntie Asp's serpents): where the plate must stay the portrait's open ground
+ * (luma at or under the key's floor), 255 inside: inside a keyed lifted part's region, where the key
+ * says nothing of the part is there, and in the ring `composePlate` blends beyond every lifted
+ * region (PLATE_DILATE + PLATE_FEATHER), where no part is at all. What lies behind is the ground the
+ * portrait already shows; an edit that grew the figure into the ground (a bald dome wider than the
+ * gaps between the serpents painted over it), or an extension fill blurred out over it, would
+ * otherwise show as specks or a haze in the ground when a part moves or the head turns. Inside an
+ * unkeyed part (black hair, a dark plume) dark pixels are content, and keep the fill.
+ */
+export function groundUnderKeyed(portrait: Rgba, parts: readonly NamedPart[]): Mask {
+  const { width, height, data } = portrait;
+  const all = liftedNamed(parts, width, height);
+  const ring = dilateMask(all, PLATE_DILATE + PLATE_FEATHER);
+  const out = liftedNamed(parts, width, height, isKeyed);
+  const floor = Math.min(cornerKeyLo(portrait), KEY_HI - 1);
+  for (let i = 0; i < out.data.length; i++) {
+    const near = out.data[i] !== 0 || (ring.data[i] !== 0 && all.data[i] === 0);
+    out.data[i] = near && luma(data[i * 4] ?? 0, data[i * 4 + 1] ?? 0, data[i * 4 + 2] ?? 0) <= floor ? 255 : 0;
+  }
+  return out;
 }
 
 /**

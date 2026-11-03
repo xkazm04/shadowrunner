@@ -47,9 +47,14 @@
     head layer no longer stretches to the gloves). The neck reaches under a wing collar split in two
     (a polygon is one outline); a showman's grin drops the lower teeth and lip onto a dark cavity lit
     emerald. Cardia's spires and the Vicar's bulb rebuild uncarried (rest unchanged).
-- [ ] 9. Decompose `auntie-asp` (art nouveau, serpents) and harden
-  - Each: the procedure in design.md "How a character is decomposed"; done per requirement 3.3; the
-    ledger names what became code and what became a prompt rule.
+- [x] 9. Decompose `auntie-asp` (art nouveau, serpents) and harden
+  - Six serpents cut along the fill's bald dome, each swaying on its root at its own frequency and
+    phase; the plate keeps the portrait's open ground under keyed parts and around every lifted part
+    (`groundUnderKeyed`), so no scalp specks between the roots. Spectacles as a monocle part; a stand
+    collar in three pieces the neck reaches under; a lips-only jaw under the seam's ink. The ledger
+    closes with the general rules for any character (task 11 folds them into the parts prompt).
+    Format findings: the 60-point cap holds for thin curving parts; parallax backing copies the
+    front part's edge.
   - _Requirements: 3.1-3.4_
 
 - [ ] 10. The brief and the handshake (parallel lane after task 2)

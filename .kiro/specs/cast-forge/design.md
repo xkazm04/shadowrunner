@@ -118,6 +118,12 @@ a soft grey smear (task 9's `MOUTH_SHADE` ramp). Now:
   `PLATE_DILATE` px from every plate part's polygon (a disembodied glove, a spire high above a
   crown) is carried by no plate part: only ground is behind it, which the background paints.
   Carried, it stretched the head layer out to it as a moving patch of painted ground.
+- **Open ground stays ground** (task 9). `plateNamed` ends with `groundUnderKeyed`: inside a keyed
+  lifted part's region, and in the ring the plate blends around every lifted region
+  (`PLATE_DILATE + PLATE_FEATHER`), a pixel the portrait shows as open ground (luma at or under the
+  key's floor) is the portrait's in the plate, pixel for pixel. Auntie Asp's fill painted a bald
+  dome wider than the gaps between her serpents' roots, and a swaying serpent uncovered specks of
+  scalp in the ground. Unkeyed parts (black hair, a dark plume) keep the fill.
 - **Plate matte and pivot** (task 5). `NamedPart.matte: "plate"` (lifted parts): the part keeps only
   what differs from the plate behind it, alpha ramped from `MATTE_LO` to `MATTE_HI` on the largest
   channel difference and colour un-mixed (`plate + (portrait - plate) / alpha`), so it is the

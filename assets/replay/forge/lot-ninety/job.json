@@ -8,7 +8,7 @@
   "portrait": "portrait.png",
   "fill": "edit",
   "timings": {
-    "cutMs": 4989
+    "cutMs": 5114
   },
   "steps": [
     {
@@ -264,10 +264,10 @@
         "kind": "accessory",
         "file": "hand_l.png",
         "bbox": [
-          795,
-          118,
-          194,
-          488
+          796,
+          119,
+          192,
+          486
         ],
         "anchor": [
           887.808,
@@ -293,10 +293,10 @@
         "kind": "accessory",
         "file": "hand_r.png",
         "bbox": [
-          35,
-          118,
-          194,
-          486
+          36,
+          119,
+          192,
+          485
         ],
         "anchor": [
           135.168,
@@ -322,10 +322,10 @@
         "kind": "accessory",
         "file": "wisp_l.png",
         "bbox": [
-          851,
+          852,
           554,
-          72,
-          160
+          70,
+          159
         ],
         "anchor": [
           883.712,
@@ -356,10 +356,10 @@
         "kind": "accessory",
         "file": "wisp_r.png",
         "bbox": [
-          101,
+          102,
           554,
-          72,
-          161
+          70,
+          160
         ],
         "anchor": [
           139.264,

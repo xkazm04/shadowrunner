@@ -154,6 +154,27 @@ describe("cutNamed", () => {
     expect(at(725, 725)).toBe(250);
   });
 
+  it("task 9: under a keyed lifted part open ground stays ground; content and unkeyed parts take the edit", () => {
+    const size = 64;
+    // Ground (luma 2) with a grey band of content across the middle third; the edit paints 200 everywhere.
+    const portrait: Rgba = { width: size, height: size, data: new Uint8ClampedArray(size * size * 4).map((_, i) => (i % 4 === 3 ? 255 : Math.floor(i / 4 / size) >= 24 && Math.floor(i / 4 / size) < 40 ? 120 : 2)) };
+    const edit: Rgba = { width: size, height: size, data: new Uint8ClampedArray(size * size * 4).fill(200) };
+    const column = (x0: number, x1: number): [number, number][] => [[100, x0], [100, x1], [900, x1], [900, x0]];
+    const parts: NamedPart[] = [
+      { name: "face", role: "head", box_2d: [0, 0, 1000, 1000], poly: column(400, 600) },
+      { name: "serpent", role: "hair", box_2d: [0, 0, 1000, 1000], poly: column(100, 300) },
+      { name: "plume", role: "hair", box_2d: [0, 0, 1000, 1000], poly: column(700, 900), key: false },
+    ];
+    const plate = plateNamed(portrait, parts, edit);
+    const at = (x: number, y: number): number => plate.data[(y * size + x) * 4] ?? 0;
+    expect(at(13, 12), "keyed part over ground").toBe(2);
+    expect(at(13, 32), "keyed part over content").toBe(200);
+    expect(at(51, 12), "unkeyed part over ground").toBe(200);
+    // Beside any lifted part, where the plate blends toward the fill, open ground stays ground.
+    expect(at(60, 12), "beside the unkeyed part, on ground").toBe(2);
+    expect(at(22, 12), "beside the keyed part, on ground").toBe(2);
+  });
+
   it("task 8: a part floating on the ground is carried by no plate part; one on the head still is", () => {
     const size = 96;
     const box = (y0: number, x0: number, y1: number, x1: number): [number, number][] => [

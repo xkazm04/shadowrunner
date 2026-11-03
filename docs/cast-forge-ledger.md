@@ -39,6 +39,12 @@ One section per decomposed character (cast-forge requirement 3.4): what broke, w
      for every part, a polygon is ONE outline (split a part in two pieces, e.g. collar wings); a neck
      inside a collar reaches under it by the head's travel (16 px) and the collar takes
      `fill: "extend"` and all the ink between it and the neck.
+  4h. (task 9) parts that grow out of the head with no ink at the root (serpents, tentacles,
+     antlers) are cut along the fill edit's bald scalp: the part is the figure outside it, its root
+     reaching 4 px inside, pivoted on the root's middle, rotation only; check per part the pixels it
+     must carry (body, tongue, iris), not only `uncovered` (its 1 px erosion hides a 3 px tongue), and
+     that every figure pixel is in some outline; render a pose one layer at a time
+     (`compositeRig` over a rig holding only that layer) to find which layer holds a ghost.
   6. add the slug to `CAST` in `packages/forge/src/cast.golden.test.ts`.
      and to `SLUGS` in `api/_tests/forge-replay.test.ts` (it pins the recorded job list), `CAST_FORGE`
      and the cast order in `apps/web/src/creator/gallery/notes.test.ts`, the hours in
@@ -315,3 +321,108 @@ One section per decomposed character (cast-forge requirement 3.4): what broke, w
 **Format finding (not widened)**
 - "Points at bidders", "slams down SOLD", "glances" are chat events and gaze; the rig carries only
   periodic motion (as the Tallyman's), so the gloves only bob and turn.
+
+## Auntie Asp, Keeper of the Stone Stacks (art nouveau poster, six serpents)
+**What broke**
+- Six serpents grow out of the scalp with no ink at the root. Cut along the fill edit's bald dome,
+  they come out as six clean components, but the dome is wider than the scalp the drawing shows:
+  the black wedges between the roots were bald scalp in the plate, and a swaying serpent uncovered
+  specks of it (the key keeps a ground pixel when the plate under it differs).
+- The edit drew ground under the collar's back band, and the neck reaching under the band pulled a
+  black bar out from under it on a turn; the extension fill painted there instead spread a grey haze
+  over the ground beside the band (the plate blends PLATE_DILATE + PLATE_FEATHER px past a lifted
+  region), and a neck reach longer than the band is wide hung out over the ground at full yaw.
+- 60-point outlines: the chords along a curved scalp left a 1 px sliver of each root on the head; the
+  frill's wavy top ink and the neck's antialiased edge beside the band fell outside their outlines.
+- The lip seam's ink, dropped with a lips-only jaw, drew a line across the lower lip and two dashes
+  under the mouth's corners.
+
+**What became code** (`packages/forge`)
+- `groundUnderKeyed` (cutNamed.ts), applied last in `plateNamed`, pixel for pixel: the plate is the
+  portrait's open ground (luma at or under the key's floor) inside a keyed lifted part's region and in
+  the ring the plate blends around every lifted region. Unkeyed parts (black hair, a dark plume) keep
+  the fill. The other seven rebuild with rest unchanged (max 5/255); turned, only Cardia differs
+  (79 px inside the crown's open filigree, now ground through the gaps).
+- Seeded faults red: the rule removed (a keyed part over ground keeps the edit), applied to unkeyed
+  parts too (a dark plume loses its fill), the ring term removed (beside an unkeyed part the plate
+  blends toward the edit on the ground).
+
+**What became a decomposition-prompt rule**
+- Hair made of separate creatures (serpents, tentacles) is one part per strand, role `hair`,
+  `follow: "head"`, pivot at the root, float with `rot_deg` only (4-5 deg), each strand its own
+  frequency and phase; the lower strands are listed first (in front). Ask the fill edit for the
+  strands removed: it paints the bald scalp the cut runs along.
+- Spectacles are a monocle-role part following the head with no motion: the filled rings, bridge and
+  arms; the eyes inside are cut off the wire.
+- A neck in a stand collar whose back band shows beside the neck: the collar is three parts (front,
+  two back sides); the back sides take `fill: "extend"` and the ink between them and the neck; the
+  neck reaches under the collar but stops the head's travel (13 px) inside the collar's outer edges.
+- A closed mouth: the jaw starts under the seam's ink (the seam stays with the upper lip) and spans
+  only where the lower lip has body; the corners stay on the head.
+
+**Format findings (not widened)**
+- The 60-point cap held for long thin curving parts: a serpent of about 1,000 px of outline with a
+  3 px forked tongue fits 53-56 points with no body or tongue pixel missed when traced 8 px onto the
+  ground. Parts bordered by another figure part, not ground (a frill, a neck beside a band), need
+  their outline traced a few px over a neighbour that moves with them or is in front of them.
+- Parallax backing copies the portrait: a plate part reaching under the one in front (the torso under
+  a neck) shows the front part's edge, ink included, on a turn (Lot Ninety's faint line, Auntie Asp's
+  3 x 13 px stub beside the neck). Painting the backing from the plate part's own surface would
+  remove it; it changes every rig's torso, so it is left for the owner.
+- "Turns toward whoever speaks" and "glare on timeouts" are gaze and events (the Tallyman's finding).
+
+## General rules for any character (folded into `partsPromptFromBrief`, task 11)
+What the eight taught, for a streamer's character. **Forge code** does the first list on its own; the
+**parts prompt** must say the second.
+
+**Forge-code behaviour (automatic in `packages/forge`, nothing to ask for)**
+- Cut order front to back by role, disjoint cores; every non-plate part lifted and the plate filled
+  behind it; a lifted region carried by the plate part at the root of its follow chain, and by none
+  when the part floats on the ground (task 8).
+- A part with an explicit follow takes its target's depth; a float is carried rigidly down the follow
+  chain; an attached accessory or pulse part turns where it meets its target (`pivotOf`) unless it
+  names a `pivot`.
+- A jaw's lifted region stops at its lip line and its layer is clear above it; the mouth it uncovers
+  is painted (`paintCavity`), or the fill (`cavity: "fill"`), or the drawn gap (`"gap"`, lit with `glow`).
+- The background is painted under the torso; a plate part reaches `parallaxBacking` px under the plate
+  part in front of it and under what that part carries.
+- `matte: "plate"` keys a part against the plate; `fill: "extend"` paints its plate from around it;
+  the plate keeps the portrait's open ground under keyed lifted parts and around every lifted part.
+- Own eye blinks (`motion.blink`) combine with the driver's blink; reduced motion stills every curve;
+  float and pulse parts without motion get a default, phases from the part's name.
+
+**Prompt rules (the parts model must be told)**
+- Outlines: trace a part whose edge meets the background a few px outside its silhouette (rim light
+  and ink inside the polygon); a polygon is one outline, so a part drawn in two pieces is two parts;
+  grow each part over its own ink, never into a neighbour's fill; extend an eye outline past the iris
+  by the feather plus 3 px; take lit 3D objects by their whole body, shaded side included.
+- Cuts: cut the head from the body along a fold or hem ending in a concave corner, never straight
+  across a hood, veil or hair; a collar, ruff or gorget around the neck is its own front part
+  following `torso`, and the neck reaches under it, stopping the head's travel short of its outer
+  edges; parts growing out of the head with no ink at the root (strands, serpents, horns) end
+  at the scalp, the root's middle their pivot.
+- Follows: anything worn on the chest follows `torso`; anything rooted on the head (horn, stalk,
+  plume, serpent, spectacles) names `follow: "head"`; a floating finial follows what it tops; a hanging
+  chain is a follow chain (stalk, then bulb); a glow's halo belongs to the glowing part; a trail
+  (flame, ribbon, ectoplasm) follows what it trails from and is listed before it.
+- Motion: sibling floats get different frequencies and phases (shards, gloves, serpents, tags never in
+  lockstep); hanging tags and charms swing as pendulums (`rot_deg` only, pivot at the link); a plume
+  or strand sways on its foot (`rot_deg` only); disembodied hands float with no follow, pivot at the
+  wrist, pairs half a cycle apart; a part that turns on a hub names its pivot; many eyes that count
+  blink on their own phases; one neon circuit pulses in phase, a cracked tube flickers alone; floats
+  stay under 2 Hz (no rattles).
+- Mouth: a human jaw is the lower lip under the seam's ink (plus the chin only for a skull or a
+  puppet), a drop of about 0.012-0.02 of the height; a grin of teeth drops the lower teeth and lip
+  (about 0.024); a maw drawn open takes `cavity: "fill"` and drops about 0.035; a mouth drawn open
+  over a dark gap takes `cavity: "gap"`, over light the same with `glow`; a glowing mouth names `glow`
+  on the jaw, never a separate light part; a character with no face names what plays it (a visor is
+  the jaw, a slit's light the eye).
+- Keys and fills: glowing parts and thin dark parts on a light surface take `matte: "plate"`; small
+  parts on a flat field, parts floating on the ground and collars whose plate the edit redrew take
+  `fill: "extend"`; a dark plume or hair on a dark ground takes `key: false`; pixel art asks for
+  `cut: { feather: 0, cell }`, flat fills with ink `feather: 1`.
+- The fill edit: ask for the parts removed (it paints the bald scalp, the throat, the neck under a
+  collar); ask for the eyes closed, not skin, so a squashed eye reads as a shut lid; for a machine
+  with a hollow, plan `cavity: "gap"` and `fill: "extend"` instead of trusting the edit.
+- Events are not motion: "when chat...", "on a timeout", "turns toward the speaker" do not become rig
+  motion; plan a periodic stand-in or leave it to the engine.

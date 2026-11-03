@@ -3,6 +3,8 @@
 // and pulse layers move; an eye's own blink reaches its layer. Built by scripts/cast-forge.mjs; no network.
 import { motionAt, poseLayers, validateRig } from "@sr/rig";
 import { describe, expect, it } from "vitest";
+import auntieAspJob from "../../../assets/replay/forge/auntie-asp/job.json";
+import auntieAspParts from "../../../assets/characters/cast/auntie-asp/parts.json";
 import cardiaJob from "../../../assets/replay/forge/saint-cardia/job.json";
 import cardiaParts from "../../../assets/characters/cast/saint-cardia/parts.json";
 import redactorJob from "../../../assets/replay/forge/the-redactor/job.json";
@@ -27,6 +29,7 @@ const CAST = [
   { slug: "sir-vacant", job: sirVacantJob as unknown, parts: sirVacantParts as unknown },
   { slug: "the-tallyman", job: tallymanJob as unknown, parts: tallymanParts as unknown },
   { slug: "vicar-of-the-lure", job: vicarJob as unknown, parts: vicarParts as unknown },
+  { slug: "auntie-asp", job: auntieAspJob as unknown, parts: auntieAspParts as unknown },
 ];
 
 describe.each(CAST)("cast rig $slug", ({ job, parts }) => {

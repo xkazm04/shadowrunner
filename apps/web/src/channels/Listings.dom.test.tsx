@@ -44,29 +44,30 @@ describe("Listings as the wall of sets (CH 4)", () => {
     expect(wall.map((s) => s.getAttribute("aria-label")?.split(", ").slice(0, 2).join(", "))).toEqual([
       "03:00, Arch-Lich Malakor",
       "04:00, Announcer of Dead Air",
-      "05:00, The Lantern Warden",
-      "06:00, Lot Ninety",
-      "07:00, The Moth Widow",
-      "08:00, The Redactor",
-      // The label is split on ", ", and this name holds one.
-      "09:00, Reveille",
-      "10:00, Saint Cardia of the Glass Heart",
-      "11:00, Sir Vacant",
-      "12:00, Sister Vesper",
-      "13:00, The Tallyman",
-      "14:00, The Understudy",
-      "15:00, Vicar of the Lure",
-      "16:00, before the boiler wakes",
+      // The label is split on ", ", and these names hold one.
+      "05:00, Auntie Asp",
+      "06:00, The Lantern Warden",
+      "07:00, Lot Ninety",
+      "08:00, The Moth Widow",
+      "09:00, The Redactor",
+      "10:00, Reveille",
+      "11:00, Saint Cardia of the Glass Heart",
+      "12:00, Sir Vacant",
+      "13:00, Sister Vesper",
+      "14:00, The Tallyman",
+      "15:00, The Understudy",
+      "16:00, Vicar of the Lure",
+      "17:00, before the boiler wakes",
       "Channel 9, not built yet",
     ]);
-    expect(wall.map((s) => s.dataset.kind)).toEqual(["live", "cast", "cast", "cast", "cast", "cast", "cast", "cast", "cast", "cast", "cast", "cast", "cast", "vacant", "sealed"]);
+    expect(wall.map((s) => s.dataset.kind)).toEqual(["live", "cast", "cast", "cast", "cast", "cast", "cast", "cast", "cast", "cast", "cast", "cast", "cast", "cast", "vacant", "sealed"]);
     expect(wall[0]?.getAttribute("aria-label")).toBe("03:00, Arch-Lich Malakor, on air now");
     expect(wall[0]?.getAttribute("aria-pressed")).toBe("true");
-    expect(wall[2]?.getAttribute("aria-label")).toBe("05:00, The Lantern Warden, later tonight");
-    expect(wall[2]?.querySelector("img")?.getAttribute("src")).toMatch(/lantern-warden\.webp/);
-    expect(wall[13]?.textContent).toContain("16:00 · VACANT");
-    expect(wall[14]?.textContent).toContain("CH 9 · SEALED");
-    expect(wall[14]?.textContent).toContain("NOT BUILT YET");
+    expect(wall[3]?.getAttribute("aria-label")).toBe("06:00, The Lantern Warden, later tonight");
+    expect(wall[3]?.querySelector("img")?.getAttribute("src")).toMatch(/lantern-warden\.webp/);
+    expect(wall[14]?.textContent).toContain("17:00 · VACANT");
+    expect(wall[15]?.textContent).toContain("CH 9 · SEALED");
+    expect(wall[15]?.textContent).toContain("NOT BUILT YET");
     // The clipping opens on Malakor, from his bible, with what he shows off.
     expect(clip(view)?.textContent).toContain("03:00 · ON AIR NOW · CH 2");
     expect(clip(view)?.textContent).toContain("High Auditor of the Obsidian Spire");
@@ -83,7 +84,7 @@ describe("Listings as the wall of sets (CH 4)", () => {
     expect(warden?.getAttribute("aria-pressed")).toBe("true");
     expect(sets(view)[0]?.getAttribute("aria-pressed")).toBe("false");
     const text = clip(view)?.textContent ?? "";
-    expect(text).toContain("05:00 · LATER · CH 3");
+    expect(text).toContain("06:00 · LATER · CH 3");
     expect(text).toContain("The Lantern Warden");
     expect(text).toContain("He counts the gourds every hour");
     expect(text).toContain("Shows offHat and a lit jaw.");
