@@ -100,7 +100,27 @@
           513.024,
           623.616
         ],
-        "depth": 0.6
+        "depth": 0.6,
+        "regions": {
+          "map": "head.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "head",
+              "hex": "#020202"
+            },
+            {
+              "id": "r2",
+              "name": "head 2",
+              "hex": "#e6e5e5"
+            },
+            {
+              "id": "r3",
+              "name": "head 3",
+              "hex": "#a8a2a2"
+            }
+          ]
+        }
       },
       {
         "name": "jaw",
@@ -119,7 +139,27 @@
         ],
         "follow": "head",
         "depth": 0.62,
-        "drop": 0.0205078125
+        "drop": 0.0205078125,
+        "regions": {
+          "map": "jaw.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "jaw",
+              "hex": "#e5e3e3"
+            },
+            {
+              "id": "r2",
+              "name": "jaw 2",
+              "hex": "#aca6a5"
+            },
+            {
+              "id": "r3",
+              "name": "jaw 3",
+              "hex": "#070706"
+            }
+          ]
+        }
       },
       {
         "name": "inkstamp",
@@ -167,7 +207,27 @@
           384.0657894736842
         ],
         "follow": "head",
-        "depth": 0.7
+        "depth": 0.7,
+        "regions": {
+          "map": "eye_l.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "eye_l",
+              "hex": "#f1ec06"
+            },
+            {
+              "id": "r2",
+              "name": "eye_l 2",
+              "hex": "#090701"
+            },
+            {
+              "id": "r3",
+              "name": "eye_l 3",
+              "hex": "#b9b903"
+            }
+          ]
+        }
       },
       {
         "name": "eye_r",
@@ -185,7 +245,27 @@
           384.08940397350995
         ],
         "follow": "head",
-        "depth": 0.7
+        "depth": 0.7,
+        "regions": {
+          "map": "eye_r.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "eye_r",
+              "hex": "#020203"
+            },
+            {
+              "id": "r2",
+              "name": "eye_r 2",
+              "hex": "#f3f008"
+            },
+            {
+              "id": "r3",
+              "name": "eye_r 3",
+              "hex": "#eded04"
+            }
+          ]
+        }
       },
       {
         "name": "censor_bar",
@@ -219,6 +299,21 @@
             "freq": 0.45,
             "phase": 0.397
           }
+        },
+        "regions": {
+          "map": "censor_bar.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "censor_bar",
+              "hex": "#101011"
+            },
+            {
+              "id": "r2",
+              "name": "censor_bar 2",
+              "hex": "#f6f503"
+            }
+          ]
         }
       }
     ]

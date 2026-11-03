@@ -83,7 +83,27 @@
           510.464,
           873.9839999999999
         ],
-        "depth": 0.3
+        "depth": 0.3,
+        "regions": {
+          "map": "torso.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "torso",
+              "hex": "#0f1421"
+            },
+            {
+              "id": "r2",
+              "name": "torso 2",
+              "hex": "#242f47"
+            },
+            {
+              "id": "r3",
+              "name": "torso 3",
+              "hex": "#aca9a1"
+            }
+          ]
+        }
       },
       {
         "name": "head",
@@ -100,7 +120,32 @@
           510.976,
           777.216
         ],
-        "depth": 0.6
+        "depth": 0.6,
+        "regions": {
+          "map": "head.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "head",
+              "hex": "#0a0309"
+            },
+            {
+              "id": "r2",
+              "name": "head 2",
+              "hex": "#273954"
+            },
+            {
+              "id": "r3",
+              "name": "head 3",
+              "hex": "#350427"
+            },
+            {
+              "id": "r4",
+              "name": "head 4",
+              "hex": "#747679"
+            }
+          ]
+        }
       },
       {
         "name": "jaw",
@@ -119,7 +164,32 @@
         ],
         "follow": "head",
         "depth": 0.62,
-        "drop": 0.035
+        "drop": 0.035,
+        "regions": {
+          "map": "jaw.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "jaw",
+              "hex": "#11070d"
+            },
+            {
+              "id": "r2",
+              "name": "jaw 2",
+              "hex": "#7e7c79"
+            },
+            {
+              "id": "r3",
+              "name": "jaw 3",
+              "hex": "#370325"
+            },
+            {
+              "id": "r4",
+              "name": "jaw 4",
+              "hex": "#c9c5be"
+            }
+          ]
+        }
       },
       {
         "name": "lure_stalk",
@@ -149,7 +219,27 @@
             "phase": 0.77
           }
         },
-        "emissive": false
+        "emissive": false,
+        "regions": {
+          "map": "lure_stalk.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "lure_stalk",
+              "hex": "#020202"
+            },
+            {
+              "id": "r2",
+              "name": "lure_stalk 2",
+              "hex": "#9c9486"
+            },
+            {
+              "id": "r3",
+              "name": "lure_stalk 3",
+              "hex": "#cec8bd"
+            }
+          ]
+        }
       },
       {
         "name": "eye_l",
@@ -168,7 +258,27 @@
         ],
         "follow": "head",
         "depth": 0.7,
-        "emissive": false
+        "emissive": false,
+        "regions": {
+          "map": "eye_l.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "eye_l",
+              "hex": "#d8d4cc"
+            },
+            {
+              "id": "r2",
+              "name": "eye_l 2",
+              "hex": "#070909"
+            },
+            {
+              "id": "r3",
+              "name": "eye_l 3",
+              "hex": "#ada9a0"
+            }
+          ]
+        }
       },
       {
         "name": "eye_r",
@@ -187,7 +297,32 @@
         ],
         "follow": "head",
         "depth": 0.7,
-        "emissive": false
+        "emissive": false,
+        "regions": {
+          "map": "eye_r.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "eye_r",
+              "hex": "#d9d6cd"
+            },
+            {
+              "id": "r2",
+              "name": "eye_r 2",
+              "hex": "#090b0b"
+            },
+            {
+              "id": "r3",
+              "name": "eye_r 3",
+              "hex": "#aea9a1"
+            },
+            {
+              "id": "r4",
+              "name": "eye_r 4",
+              "hex": "#1d3244"
+            }
+          ]
+        }
       },
       {
         "name": "lure_bulb",
@@ -221,6 +356,21 @@
             "freq": 0.4,
             "phase": 0.187
           }
+        },
+        "regions": {
+          "map": "lure_bulb.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "lure_bulb",
+              "hex": "#dc03bd"
+            },
+            {
+              "id": "r2",
+              "name": "lure_bulb 2",
+              "hex": "#0c0107"
+            }
+          ]
         }
       }
     ]

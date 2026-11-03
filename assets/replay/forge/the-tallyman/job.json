@@ -100,7 +100,22 @@
           512,
           634.88
         ],
-        "depth": 0.6
+        "depth": 0.6,
+        "regions": {
+          "map": "head.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "head",
+              "hex": "#737273"
+            },
+            {
+              "id": "r2",
+              "name": "head 2",
+              "hex": "#464645"
+            }
+          ]
+        }
       },
       {
         "name": "jaw",
@@ -119,7 +134,22 @@
         ],
         "follow": "head",
         "depth": 0.62,
-        "drop": 0.014
+        "drop": 0.014,
+        "regions": {
+          "map": "jaw.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "jaw",
+              "hex": "#5f5e5e"
+            },
+            {
+              "id": "r2",
+              "name": "jaw 2",
+              "hex": "#494949"
+            }
+          ]
+        }
       },
       {
         "name": "collar",
@@ -182,6 +212,21 @@
             "freq": 0.25,
             "phase": 0.6
           }
+        },
+        "regions": {
+          "map": "pince_nez.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "pince_nez",
+              "hex": "#27251a"
+            },
+            {
+              "id": "r2",
+              "name": "pince_nez 2",
+              "hex": "#877b51"
+            }
+          ]
         }
       },
       {
@@ -206,6 +251,26 @@
             "freq": 0.25,
             "phase": 0.594
           }
+        },
+        "regions": {
+          "map": "eye_l3.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "eye_l3",
+              "hex": "#33342e"
+            },
+            {
+              "id": "r2",
+              "name": "eye_l3 2",
+              "hex": "#acca2d"
+            },
+            {
+              "id": "r3",
+              "name": "eye_l3 3",
+              "hex": "#6a6868"
+            }
+          ]
         }
       },
       {
@@ -230,6 +295,26 @@
             "freq": 0.25,
             "phase": 0.679
           }
+        },
+        "regions": {
+          "map": "eye_r3.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "eye_r3",
+              "hex": "#33332f"
+            },
+            {
+              "id": "r2",
+              "name": "eye_r3 2",
+              "hex": "#adca2d"
+            },
+            {
+              "id": "r3",
+              "name": "eye_r3 3",
+              "hex": "#6c6c6c"
+            }
+          ]
         }
       },
       {
@@ -254,6 +339,26 @@
             "freq": 0.25,
             "phase": 0.764
           }
+        },
+        "regions": {
+          "map": "eye_l2.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "eye_l2",
+              "hex": "#32322d"
+            },
+            {
+              "id": "r2",
+              "name": "eye_l2 2",
+              "hex": "#afcd30"
+            },
+            {
+              "id": "r3",
+              "name": "eye_l2 3",
+              "hex": "#6b6a6a"
+            }
+          ]
         }
       },
       {
@@ -278,6 +383,26 @@
             "freq": 0.25,
             "phase": 0.849
           }
+        },
+        "regions": {
+          "map": "eye_r2.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "eye_r2",
+              "hex": "#33332d"
+            },
+            {
+              "id": "r2",
+              "name": "eye_r2 2",
+              "hex": "#adc931"
+            },
+            {
+              "id": "r3",
+              "name": "eye_r2 3",
+              "hex": "#6c6c6b"
+            }
+          ]
         }
       },
       {
@@ -302,6 +427,26 @@
             "freq": 0.25,
             "phase": 0.934
           }
+        },
+        "regions": {
+          "map": "eye_l1.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "eye_l1",
+              "hex": "#363631"
+            },
+            {
+              "id": "r2",
+              "name": "eye_l1 2",
+              "hex": "#b0cf2e"
+            },
+            {
+              "id": "r3",
+              "name": "eye_l1 3",
+              "hex": "#646463"
+            }
+          ]
         }
       },
       {
@@ -326,6 +471,26 @@
             "freq": 0.25,
             "phase": 0.019
           }
+        },
+        "regions": {
+          "map": "eye_r1.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "eye_r1",
+              "hex": "#35352f"
+            },
+            {
+              "id": "r2",
+              "name": "eye_r1 2",
+              "hex": "#b0d030"
+            },
+            {
+              "id": "r3",
+              "name": "eye_r1 3",
+              "hex": "#696868"
+            }
+          ]
         }
       },
       {
@@ -355,7 +520,27 @@
             "phase": 0.85
           }
         },
-        "emissive": false
+        "emissive": false,
+        "regions": {
+          "map": "beads_3r.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "beads_3r",
+              "hex": "#3f3a2d"
+            },
+            {
+              "id": "r2",
+              "name": "beads_3r 2",
+              "hex": "#a19881"
+            },
+            {
+              "id": "r3",
+              "name": "beads_3r 3",
+              "hex": "#8f8772"
+            }
+          ]
+        }
       },
       {
         "name": "beads_3l",
@@ -384,7 +569,27 @@
             "phase": 0.48
           }
         },
-        "emissive": false
+        "emissive": false,
+        "regions": {
+          "map": "beads_3l.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "beads_3l",
+              "hex": "#413c2e"
+            },
+            {
+              "id": "r2",
+              "name": "beads_3l 2",
+              "hex": "#a09780"
+            },
+            {
+              "id": "r3",
+              "name": "beads_3l 3",
+              "hex": "#978f7a"
+            }
+          ]
+        }
       },
       {
         "name": "beads_2r",
@@ -413,7 +618,27 @@
             "phase": 0.11
           }
         },
-        "emissive": false
+        "emissive": false,
+        "regions": {
+          "map": "beads_2r.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "beads_2r",
+              "hex": "#423c2d"
+            },
+            {
+              "id": "r2",
+              "name": "beads_2r 2",
+              "hex": "#a19780"
+            },
+            {
+              "id": "r3",
+              "name": "beads_2r 3",
+              "hex": "#938b77"
+            }
+          ]
+        }
       },
       {
         "name": "beads_2l",
@@ -442,7 +667,27 @@
             "phase": 0.74
           }
         },
-        "emissive": false
+        "emissive": false,
+        "regions": {
+          "map": "beads_2l.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "beads_2l",
+              "hex": "#403b2c"
+            },
+            {
+              "id": "r2",
+              "name": "beads_2l 2",
+              "hex": "#a19780"
+            },
+            {
+              "id": "r3",
+              "name": "beads_2l 3",
+              "hex": "#928a76"
+            }
+          ]
+        }
       },
       {
         "name": "beads_1r",
@@ -471,7 +716,27 @@
             "phase": 0.37
           }
         },
-        "emissive": false
+        "emissive": false,
+        "regions": {
+          "map": "beads_1r.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "beads_1r",
+              "hex": "#413c2c"
+            },
+            {
+              "id": "r2",
+              "name": "beads_1r 2",
+              "hex": "#a29881"
+            },
+            {
+              "id": "r3",
+              "name": "beads_1r 3",
+              "hex": "#908872"
+            }
+          ]
+        }
       },
       {
         "name": "beads_1l",
@@ -500,7 +765,27 @@
             "phase": 0
           }
         },
-        "emissive": false
+        "emissive": false,
+        "regions": {
+          "map": "beads_1l.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "beads_1l",
+              "hex": "#3e392b"
+            },
+            {
+              "id": "r2",
+              "name": "beads_1l 2",
+              "hex": "#a0967f"
+            },
+            {
+              "id": "r3",
+              "name": "beads_1l 3",
+              "hex": "#8d8570"
+            }
+          ]
+        }
       }
     ]
   }

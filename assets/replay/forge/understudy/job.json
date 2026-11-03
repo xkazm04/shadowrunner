@@ -86,7 +86,32 @@
           519.168,
           796.1600000000001
         ],
-        "depth": 0.3
+        "depth": 0.3,
+        "regions": {
+          "map": "torso.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "torso",
+              "hex": "#a6a39c"
+            },
+            {
+              "id": "r2",
+              "name": "torso 2",
+              "hex": "#210707"
+            },
+            {
+              "id": "r3",
+              "name": "torso 3",
+              "hex": "#360b0e"
+            },
+            {
+              "id": "r4",
+              "name": "torso 4",
+              "hex": "#422b1b"
+            }
+          ]
+        }
       },
       {
         "name": "head",
@@ -103,7 +128,32 @@
           512,
           679.936
         ],
-        "depth": 0.6
+        "depth": 0.6,
+        "regions": {
+          "map": "head.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "head",
+              "hex": "#382a22"
+            },
+            {
+              "id": "r2",
+              "name": "head 2",
+              "hex": "#c9bfab"
+            },
+            {
+              "id": "r3",
+              "name": "head 3",
+              "hex": "#897d6f"
+            },
+            {
+              "id": "r4",
+              "name": "head 4",
+              "hex": "#947164"
+            }
+          ]
+        }
       },
       {
         "name": "jaw",
@@ -121,7 +171,32 @@
           577.536
         ],
         "follow": "head",
-        "depth": 0.62
+        "depth": 0.62,
+        "regions": {
+          "map": "jaw.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "jaw",
+              "hex": "#473b31"
+            },
+            {
+              "id": "r2",
+              "name": "jaw 2",
+              "hex": "#84796a"
+            },
+            {
+              "id": "r3",
+              "name": "jaw 3",
+              "hex": "#926b61"
+            },
+            {
+              "id": "r4",
+              "name": "jaw 4",
+              "hex": "#ab9d87"
+            }
+          ]
+        }
       },
       {
         "name": "accessory",
@@ -139,7 +214,22 @@
           213.30588235294118
         ],
         "follow": "head",
-        "depth": 0.75
+        "depth": 0.75,
+        "regions": {
+          "map": "accessory.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "accessory",
+              "hex": "#2e201e"
+            },
+            {
+              "id": "r2",
+              "name": "accessory 2",
+              "hex": "#7f645a"
+            }
+          ]
+        }
       },
       {
         "name": "eye_r",
@@ -157,7 +247,27 @@
           391.8107843137255
         ],
         "follow": "head",
-        "depth": 0.7
+        "depth": 0.7,
+        "regions": {
+          "map": "eye_r.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "eye_r",
+              "hex": "#3c2b25"
+            },
+            {
+              "id": "r2",
+              "name": "eye_r 2",
+              "hex": "#7a4642"
+            },
+            {
+              "id": "r3",
+              "name": "eye_r 3",
+              "hex": "#7f7168"
+            }
+          ]
+        }
       },
       {
         "name": "eye_l",
@@ -175,7 +285,32 @@
           391.51311303435614
         ],
         "follow": "head",
-        "depth": 0.7
+        "depth": 0.7,
+        "regions": {
+          "map": "eye_l.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "eye_l",
+              "hex": "#3d2b27"
+            },
+            {
+              "id": "r2",
+              "name": "eye_l 2",
+              "hex": "#756a60"
+            },
+            {
+              "id": "r3",
+              "name": "eye_l 3",
+              "hex": "#653934"
+            },
+            {
+              "id": "r4",
+              "name": "eye_l 4",
+              "hex": "#cb5357"
+            }
+          ]
+        }
       }
     ]
   }

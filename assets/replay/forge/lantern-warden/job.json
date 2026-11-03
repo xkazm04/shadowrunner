@@ -103,7 +103,32 @@
           526.336,
           552.96
         ],
-        "depth": 0.6
+        "depth": 0.6,
+        "regions": {
+          "map": "head.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "head",
+              "hex": "#6e5418"
+            },
+            {
+              "id": "r2",
+              "name": "head 2",
+              "hex": "#160f06"
+            },
+            {
+              "id": "r3",
+              "name": "head 3",
+              "hex": "#642d09"
+            },
+            {
+              "id": "r4",
+              "name": "head 4",
+              "hex": "#b1af9d"
+            }
+          ]
+        }
       },
       {
         "name": "jaw",
@@ -121,7 +146,27 @@
           497.664
         ],
         "follow": "head",
-        "depth": 0.62
+        "depth": 0.62,
+        "regions": {
+          "map": "jaw.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "jaw",
+              "hex": "#7a5819"
+            },
+            {
+              "id": "r2",
+              "name": "jaw 2",
+              "hex": "#1c1207"
+            },
+            {
+              "id": "r3",
+              "name": "jaw 3",
+              "hex": "#552a09"
+            }
+          ]
+        }
       },
       {
         "name": "hat",
@@ -139,7 +184,22 @@
           226.4978831256508
         ],
         "follow": "head",
-        "depth": 0.75
+        "depth": 0.75,
+        "regions": {
+          "map": "hat.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "hat",
+              "hex": "#12100b"
+            },
+            {
+              "id": "r2",
+              "name": "hat 2",
+              "hex": "#5b543d"
+            }
+          ]
+        }
       },
       {
         "name": "eye_r",
@@ -157,7 +217,22 @@
           347.9348134152102
         ],
         "follow": "head",
-        "depth": 0.7
+        "depth": 0.7,
+        "regions": {
+          "map": "eye_r.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "eye_r",
+              "hex": "#9b4816"
+            },
+            {
+              "id": "r2",
+              "name": "eye_r 2",
+              "hex": "#d89b42"
+            }
+          ]
+        }
       },
       {
         "name": "eye_l",
@@ -175,7 +250,22 @@
           352.8026941362916
         ],
         "follow": "head",
-        "depth": 0.7
+        "depth": 0.7,
+        "regions": {
+          "map": "eye_l.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "eye_l",
+              "hex": "#873d0c"
+            },
+            {
+              "id": "r2",
+              "name": "eye_l 2",
+              "hex": "#ba721f"
+            }
+          ]
+        }
       }
     ]
   }

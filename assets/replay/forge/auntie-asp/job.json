@@ -83,7 +83,22 @@
           509.44,
           792.576
         ],
-        "depth": 0.3
+        "depth": 0.3,
+        "regions": {
+          "map": "torso.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "torso",
+              "hex": "#2b2526"
+            },
+            {
+              "id": "r2",
+              "name": "torso 2",
+              "hex": "#7a6f63"
+            }
+          ]
+        }
       },
       {
         "name": "head",
@@ -100,7 +115,22 @@
           512,
           652.288
         ],
-        "depth": 0.6
+        "depth": 0.6,
+        "regions": {
+          "map": "head.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "head",
+              "hex": "#020202"
+            },
+            {
+              "id": "r2",
+              "name": "head 2",
+              "hex": "#7a7167"
+            }
+          ]
+        }
       },
       {
         "name": "jaw",
@@ -119,7 +149,22 @@
         ],
         "follow": "head",
         "depth": 0.62,
-        "drop": 0.014
+        "drop": 0.014,
+        "regions": {
+          "map": "jaw.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "jaw",
+              "hex": "#726a61"
+            },
+            {
+              "id": "r2",
+              "name": "jaw 2",
+              "hex": "#45413a"
+            }
+          ]
+        }
       },
       {
         "name": "serpent_l1",
@@ -149,7 +194,22 @@
             "phase": 0.65
           }
         },
-        "emissive": false
+        "emissive": false,
+        "regions": {
+          "map": "serpent_l1.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "serpent_l1",
+              "hex": "#756c62"
+            },
+            {
+              "id": "r2",
+              "name": "serpent_l1 2",
+              "hex": "#4a443d"
+            }
+          ]
+        }
       },
       {
         "name": "serpent_r1",
@@ -179,7 +239,22 @@
             "phase": 0.15
           }
         },
-        "emissive": false
+        "emissive": false,
+        "regions": {
+          "map": "serpent_r1.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "serpent_r1",
+              "hex": "#766d63"
+            },
+            {
+              "id": "r2",
+              "name": "serpent_r1 2",
+              "hex": "#453f39"
+            }
+          ]
+        }
       },
       {
         "name": "serpent_l2",
@@ -209,7 +284,22 @@
             "phase": 0.8
           }
         },
-        "emissive": false
+        "emissive": false,
+        "regions": {
+          "map": "serpent_l2.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "serpent_l2",
+              "hex": "#766d63"
+            },
+            {
+              "id": "r2",
+              "name": "serpent_l2 2",
+              "hex": "#443f38"
+            }
+          ]
+        }
       },
       {
         "name": "serpent_r2",
@@ -239,7 +329,22 @@
             "phase": 0.3
           }
         },
-        "emissive": false
+        "emissive": false,
+        "regions": {
+          "map": "serpent_r2.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "serpent_r2",
+              "hex": "#766d64"
+            },
+            {
+              "id": "r2",
+              "name": "serpent_r2 2",
+              "hex": "#433e38"
+            }
+          ]
+        }
       },
       {
         "name": "serpent_l3",
@@ -269,7 +374,22 @@
             "phase": 0.55
           }
         },
-        "emissive": false
+        "emissive": false,
+        "regions": {
+          "map": "serpent_l3.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "serpent_l3",
+              "hex": "#756c63"
+            },
+            {
+              "id": "r2",
+              "name": "serpent_l3 2",
+              "hex": "#443e38"
+            }
+          ]
+        }
       },
       {
         "name": "serpent_r3",
@@ -299,7 +419,22 @@
             "phase": 0
           }
         },
-        "emissive": false
+        "emissive": false,
+        "regions": {
+          "map": "serpent_r3.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "serpent_r3",
+              "hex": "#756c63"
+            },
+            {
+              "id": "r2",
+              "name": "serpent_r3 2",
+              "hex": "#46403a"
+            }
+          ]
+        }
       },
       {
         "name": "collar_back_l",
@@ -318,7 +453,22 @@
         ],
         "follow": "torso",
         "depth": 0.3,
-        "emissive": false
+        "emissive": false,
+        "regions": {
+          "map": "collar_back_l.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "collar_back_l",
+              "hex": "#786d61"
+            },
+            {
+              "id": "r2",
+              "name": "collar_back_l 2",
+              "hex": "#2b2722"
+            }
+          ]
+        }
       },
       {
         "name": "collar_back_r",
@@ -337,7 +487,22 @@
         ],
         "follow": "torso",
         "depth": 0.3,
-        "emissive": false
+        "emissive": false,
+        "regions": {
+          "map": "collar_back_r.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "collar_back_r",
+              "hex": "#7c7165"
+            },
+            {
+              "id": "r2",
+              "name": "collar_back_r 2",
+              "hex": "#37322c"
+            }
+          ]
+        }
       },
       {
         "name": "collar",
@@ -356,7 +521,22 @@
         ],
         "follow": "torso",
         "depth": 0.3,
-        "emissive": false
+        "emissive": false,
+        "regions": {
+          "map": "collar.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "collar",
+              "hex": "#7b7064"
+            },
+            {
+              "id": "r2",
+              "name": "collar 2",
+              "hex": "#26221d"
+            }
+          ]
+        }
       },
       {
         "name": "spectacles",
@@ -375,7 +555,22 @@
         ],
         "follow": "head",
         "depth": 0.6,
-        "emissive": false
+        "emissive": false,
+        "regions": {
+          "map": "spectacles.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "spectacles",
+              "hex": "#736a61"
+            },
+            {
+              "id": "r2",
+              "name": "spectacles 2",
+              "hex": "#363028"
+            }
+          ]
+        }
       },
       {
         "name": "eye_l",
@@ -400,6 +595,26 @@
             "freq": 0.4,
             "phase": 0.1
           }
+        },
+        "regions": {
+          "map": "eye_l.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "eye_l",
+              "hex": "#d55c09"
+            },
+            {
+              "id": "r2",
+              "name": "eye_l 2",
+              "hex": "#16100d"
+            },
+            {
+              "id": "r3",
+              "name": "eye_l 3",
+              "hex": "#71665a"
+            }
+          ]
         }
       },
       {
@@ -425,6 +640,26 @@
             "freq": 0.4,
             "phase": 0.1
           }
+        },
+        "regions": {
+          "map": "eye_r.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "eye_r",
+              "hex": "#d35c09"
+            },
+            {
+              "id": "r2",
+              "name": "eye_r 2",
+              "hex": "#140d09"
+            },
+            {
+              "id": "r3",
+              "name": "eye_r 3",
+              "hex": "#726558"
+            }
+          ]
         }
       }
     ]

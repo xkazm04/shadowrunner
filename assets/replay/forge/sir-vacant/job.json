@@ -85,7 +85,22 @@
           510.976,
           788.992
         ],
-        "depth": 0.3
+        "depth": 0.3,
+        "regions": {
+          "map": "torso.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "torso",
+              "hex": "#261c18"
+            },
+            {
+              "id": "r2",
+              "name": "torso 2",
+              "hex": "#7a6656"
+            }
+          ]
+        }
       },
       {
         "name": "head",
@@ -102,7 +117,32 @@
           509.952,
           585.728
         ],
-        "depth": 0.6
+        "depth": 0.6,
+        "regions": {
+          "map": "head.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "head",
+              "hex": "#000000"
+            },
+            {
+              "id": "r2",
+              "name": "head 2",
+              "hex": "#77604f"
+            },
+            {
+              "id": "r3",
+              "name": "head 3",
+              "hex": "#7f7063"
+            },
+            {
+              "id": "r4",
+              "name": "head 4",
+              "hex": "#e7eef7"
+            }
+          ]
+        }
       },
       {
         "name": "bevor",
@@ -121,7 +161,32 @@
         ],
         "follow": "head",
         "depth": 0.62,
-        "drop": 0.02
+        "drop": 0.02,
+        "regions": {
+          "map": "bevor.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "bevor",
+              "hex": "#775e4d"
+            },
+            {
+              "id": "r2",
+              "name": "bevor 2",
+              "hex": "#0e0502"
+            },
+            {
+              "id": "cavity",
+              "name": "mouth",
+              "hex": "#d0d2d6"
+            },
+            {
+              "id": "r3",
+              "name": "bevor 3",
+              "hex": "#857463"
+            }
+          ]
+        }
       },
       {
         "name": "plume",
@@ -180,7 +245,32 @@
             "phase": 0
           }
         },
-        "emissive": false
+        "emissive": false,
+        "regions": {
+          "map": "pauldron_l.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "pauldron_l",
+              "hex": "#795947"
+            },
+            {
+              "id": "r2",
+              "name": "pauldron_l 2",
+              "hex": "#010000"
+            },
+            {
+              "id": "r3",
+              "name": "pauldron_l 3",
+              "hex": "#867669"
+            },
+            {
+              "id": "r4",
+              "name": "pauldron_l 4",
+              "hex": "#8c7965"
+            }
+          ]
+        }
       },
       {
         "name": "pauldron_r",
@@ -209,7 +299,32 @@
             "phase": 0
           }
         },
-        "emissive": false
+        "emissive": false,
+        "regions": {
+          "map": "pauldron_r.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "pauldron_r",
+              "hex": "#7a5d4a"
+            },
+            {
+              "id": "r2",
+              "name": "pauldron_r 2",
+              "hex": "#020100"
+            },
+            {
+              "id": "r3",
+              "name": "pauldron_r 3",
+              "hex": "#87776a"
+            },
+            {
+              "id": "r4",
+              "name": "pauldron_r 4",
+              "hex": "#8a7764"
+            }
+          ]
+        }
       },
       {
         "name": "chain",
@@ -228,7 +343,22 @@
         ],
         "follow": "torso",
         "depth": 0.3,
-        "emissive": false
+        "emissive": false,
+        "regions": {
+          "map": "chain.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "chain",
+              "hex": "#713a28"
+            },
+            {
+              "id": "r2",
+              "name": "chain 2",
+              "hex": "#0f0503"
+            }
+          ]
+        }
       },
       {
         "name": "slit_l",
@@ -253,6 +383,26 @@
             "freq": 0.3,
             "phase": 0.25
           }
+        },
+        "regions": {
+          "map": "slit_l.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "slit_l",
+              "hex": "#edf2fd"
+            },
+            {
+              "id": "r2",
+              "name": "slit_l 2",
+              "hex": "#0c0806"
+            },
+            {
+              "id": "r3",
+              "name": "slit_l 3",
+              "hex": "#797a7d"
+            }
+          ]
         }
       },
       {
@@ -278,6 +428,26 @@
             "freq": 0.3,
             "phase": 0.25
           }
+        },
+        "regions": {
+          "map": "slit_r.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "slit_r",
+              "hex": "#ecf2fd"
+            },
+            {
+              "id": "r2",
+              "name": "slit_r 2",
+              "hex": "#0b0b0b"
+            },
+            {
+              "id": "r3",
+              "name": "slit_r 3",
+              "hex": "#7f7d81"
+            }
+          ]
         }
       },
       {
@@ -308,7 +478,27 @@
             "phase": 0.66
           }
         },
-        "emissive": false
+        "emissive": false,
+        "regions": {
+          "map": "tag_3.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "tag_3",
+              "hex": "#caa276"
+            },
+            {
+              "id": "r2",
+              "name": "tag_3 2",
+              "hex": "#6f321f"
+            },
+            {
+              "id": "r3",
+              "name": "tag_3 3",
+              "hex": "#0d0403"
+            }
+          ]
+        }
       },
       {
         "name": "tag_2",
@@ -338,7 +528,27 @@
             "phase": 0.6
           }
         },
-        "emissive": false
+        "emissive": false,
+        "regions": {
+          "map": "tag_2.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "tag_2",
+              "hex": "#cba378"
+            },
+            {
+              "id": "r2",
+              "name": "tag_2 2",
+              "hex": "#70321f"
+            },
+            {
+              "id": "r3",
+              "name": "tag_2 3",
+              "hex": "#0d0403"
+            }
+          ]
+        }
       },
       {
         "name": "tag_1",
@@ -368,7 +578,27 @@
             "phase": 0
           }
         },
-        "emissive": false
+        "emissive": false,
+        "regions": {
+          "map": "tag_1.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "tag_1",
+              "hex": "#cca479"
+            },
+            {
+              "id": "r2",
+              "name": "tag_1 2",
+              "hex": "#703320"
+            },
+            {
+              "id": "r3",
+              "name": "tag_1 3",
+              "hex": "#0d0503"
+            }
+          ]
+        }
       }
     ]
   }

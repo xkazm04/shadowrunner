@@ -83,7 +83,22 @@
           508.416,
           879.104
         ],
-        "depth": 0.3
+        "depth": 0.3,
+        "regions": {
+          "map": "torso.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "torso",
+              "hex": "#0e0a02"
+            },
+            {
+              "id": "r2",
+              "name": "torso 2",
+              "hex": "#392409"
+            }
+          ]
+        }
       },
       {
         "name": "head",
@@ -100,7 +115,27 @@
           506.88,
           585.728
         ],
-        "depth": 0.6
+        "depth": 0.6,
+        "regions": {
+          "map": "head.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "head",
+              "hex": "#000000"
+            },
+            {
+              "id": "r2",
+              "name": "head 2",
+              "hex": "#665c3a"
+            },
+            {
+              "id": "r3",
+              "name": "head 3",
+              "hex": "#6a7356"
+            }
+          ]
+        }
       },
       {
         "name": "jaw",
@@ -119,7 +154,22 @@
         ],
         "follow": "head",
         "depth": 0.62,
-        "drop": 0.03
+        "drop": 0.03,
+        "regions": {
+          "map": "jaw.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "jaw",
+              "hex": "#020704"
+            },
+            {
+              "id": "r2",
+              "name": "jaw 2",
+              "hex": "#4c3a1b"
+            }
+          ]
+        }
       },
       {
         "name": "teeth",
@@ -145,7 +195,32 @@
             "phase": 0
           }
         },
-        "drop": 0.03
+        "drop": 0.03,
+        "regions": {
+          "map": "teeth.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "teeth",
+              "hex": "#016779"
+            },
+            {
+              "id": "r2",
+              "name": "teeth 2",
+              "hex": "#727d5d"
+            },
+            {
+              "id": "r3",
+              "name": "teeth 3",
+              "hex": "#67a59b"
+            },
+            {
+              "id": "r4",
+              "name": "teeth 4",
+              "hex": "#4a5239"
+            }
+          ]
+        }
       },
       {
         "name": "key",
@@ -205,7 +280,27 @@
             "phase": 0.5
           }
         },
-        "emissive": false
+        "emissive": false,
+        "regions": {
+          "map": "brow_l.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "brow_l",
+              "hex": "#12130b"
+            },
+            {
+              "id": "r2",
+              "name": "brow_l 2",
+              "hex": "#003946"
+            },
+            {
+              "id": "r3",
+              "name": "brow_l 3",
+              "hex": "#143128"
+            }
+          ]
+        }
       },
       {
         "name": "brow_r",
@@ -235,7 +330,27 @@
             "phase": 0
           }
         },
-        "emissive": false
+        "emissive": false,
+        "regions": {
+          "map": "brow_r.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "brow_r",
+              "hex": "#13160e"
+            },
+            {
+              "id": "r2",
+              "name": "brow_r 2",
+              "hex": "#07383d"
+            },
+            {
+              "id": "r3",
+              "name": "brow_r 3",
+              "hex": "#14332a"
+            }
+          ]
+        }
       },
       {
         "name": "hammer",
@@ -265,7 +380,22 @@
             "phase": 0.6
           }
         },
-        "emissive": false
+        "emissive": false,
+        "regions": {
+          "map": "hammer.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "hammer",
+              "hex": "#080500"
+            },
+            {
+              "id": "r2",
+              "name": "hammer 2",
+              "hex": "#3e2609"
+            }
+          ]
+        }
       },
       {
         "name": "bell_l",
@@ -295,7 +425,22 @@
             "phase": 0.37
           }
         },
-        "emissive": false
+        "emissive": false,
+        "regions": {
+          "map": "bell_l.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "bell_l",
+              "hex": "#0e0901"
+            },
+            {
+              "id": "r2",
+              "name": "bell_l 2",
+              "hex": "#402b10"
+            }
+          ]
+        }
       },
       {
         "name": "bell_r",
@@ -325,7 +470,22 @@
             "phase": 0
           }
         },
-        "emissive": false
+        "emissive": false,
+        "regions": {
+          "map": "bell_r.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "bell_r",
+              "hex": "#0e0901"
+            },
+            {
+              "id": "r2",
+              "name": "bell_r 2",
+              "hex": "#3f2b10"
+            }
+          ]
+        }
       },
       {
         "name": "eye_l",
@@ -350,6 +510,21 @@
             "freq": 0.5,
             "phase": 0
           }
+        },
+        "regions": {
+          "map": "eye_l.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "eye_l",
+              "hex": "#025d6b"
+            },
+            {
+              "id": "r2",
+              "name": "eye_l 2",
+              "hex": "#001214"
+            }
+          ]
         }
       },
       {
@@ -375,6 +550,21 @@
             "freq": 0.5,
             "phase": 0
           }
+        },
+        "regions": {
+          "map": "eye_r.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "eye_r",
+              "hex": "#025d6b"
+            },
+            {
+              "id": "r2",
+              "name": "eye_r 2",
+              "hex": "#001113"
+            }
+          ]
         }
       },
       {
@@ -400,6 +590,26 @@
             "freq": 2,
             "phase": 0.25
           }
+        },
+        "regions": {
+          "map": "crack.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "crack",
+              "hex": "#65a29b"
+            },
+            {
+              "id": "r2",
+              "name": "crack 2",
+              "hex": "#49b0b7"
+            },
+            {
+              "id": "r3",
+              "name": "crack 3",
+              "hex": "#2d3f33"
+            }
+          ]
         }
       }
     ]

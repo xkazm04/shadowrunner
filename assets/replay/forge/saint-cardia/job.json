@@ -83,7 +83,22 @@
           509.44,
           811.008
         ],
-        "depth": 0.3
+        "depth": 0.3,
+        "regions": {
+          "map": "torso.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "torso",
+              "hex": "#7d7977"
+            },
+            {
+              "id": "r2",
+              "name": "torso 2",
+              "hex": "#4b4a48"
+            }
+          ]
+        }
       },
       {
         "name": "head",
@@ -100,7 +115,22 @@
           502.27200000000005,
           753.664
         ],
-        "depth": 0.6
+        "depth": 0.6,
+        "regions": {
+          "map": "head.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "head",
+              "hex": "#23211f"
+            },
+            {
+              "id": "r2",
+              "name": "head 2",
+              "hex": "#807876"
+            }
+          ]
+        }
       },
       {
         "name": "jaw",
@@ -119,7 +149,27 @@
         ],
         "follow": "head",
         "depth": 0.62,
-        "drop": 0.016
+        "drop": 0.016,
+        "regions": {
+          "map": "jaw.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "jaw",
+              "hex": "#4b413c"
+            },
+            {
+              "id": "r2",
+              "name": "jaw 2",
+              "hex": "#736461"
+            },
+            {
+              "id": "r3",
+              "name": "jaw 3",
+              "hex": "#6c4c49"
+            }
+          ]
+        }
       },
       {
         "name": "crown",
@@ -138,7 +188,27 @@
         ],
         "follow": "head",
         "depth": 0.65,
-        "emissive": false
+        "emissive": false,
+        "regions": {
+          "map": "crown.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "crown",
+              "hex": "#7f7d7c"
+            },
+            {
+              "id": "r2",
+              "name": "crown 2",
+              "hex": "#43403e"
+            },
+            {
+              "id": "r3",
+              "name": "crown 3",
+              "hex": "#c5c2c1"
+            }
+          ]
+        }
       },
       {
         "name": "cage",
@@ -157,7 +227,27 @@
         ],
         "follow": "torso",
         "depth": 0.3,
-        "emissive": false
+        "emissive": false,
+        "regions": {
+          "map": "cage.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "cage",
+              "hex": "#38312e"
+            },
+            {
+              "id": "r2",
+              "name": "cage 2",
+              "hex": "#7d7875"
+            },
+            {
+              "id": "r3",
+              "name": "cage 3",
+              "hex": "#431b1a"
+            }
+          ]
+        }
       },
       {
         "name": "eye_l",
@@ -176,7 +266,22 @@
         ],
         "follow": "head",
         "depth": 0.7,
-        "emissive": false
+        "emissive": false,
+        "regions": {
+          "map": "eye_l.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "eye_l",
+              "hex": "#443633"
+            },
+            {
+              "id": "r2",
+              "name": "eye_l 2",
+              "hex": "#7a6c68"
+            }
+          ]
+        }
       },
       {
         "name": "eye_r",
@@ -195,7 +300,27 @@
         ],
         "follow": "head",
         "depth": 0.7,
-        "emissive": false
+        "emissive": false,
+        "regions": {
+          "map": "eye_r.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "eye_r",
+              "hex": "#403533"
+            },
+            {
+              "id": "r2",
+              "name": "eye_r 2",
+              "hex": "#776765"
+            },
+            {
+              "id": "r3",
+              "name": "eye_r 3",
+              "hex": "#5d2428"
+            }
+          ]
+        }
       },
       {
         "name": "heart",
@@ -220,6 +345,31 @@
             "freq": 1.1,
             "phase": 0.057
           }
+        },
+        "regions": {
+          "map": "heart.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "heart",
+              "hex": "#6c181e"
+            },
+            {
+              "id": "r2",
+              "name": "heart 2",
+              "hex": "#672d2a"
+            },
+            {
+              "id": "r3",
+              "name": "heart 3",
+              "hex": "#756e6f"
+            },
+            {
+              "id": "r4",
+              "name": "heart 4",
+              "hex": "#2a1313"
+            }
+          ]
         }
       },
       {
@@ -250,7 +400,27 @@
             "phase": 0.984
           }
         },
-        "emissive": false
+        "emissive": false,
+        "regions": {
+          "map": "spire_5.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "spire_5",
+              "hex": "#2a2a28"
+            },
+            {
+              "id": "r2",
+              "name": "spire_5 2",
+              "hex": "#7c7b7a"
+            },
+            {
+              "id": "r3",
+              "name": "spire_5 3",
+              "hex": "#c4c1bc"
+            }
+          ]
+        }
       },
       {
         "name": "spire_4",
@@ -280,7 +450,27 @@
             "phase": 0.988
           }
         },
-        "emissive": false
+        "emissive": false,
+        "regions": {
+          "map": "spire_4.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "spire_4",
+              "hex": "#34312f"
+            },
+            {
+              "id": "r2",
+              "name": "spire_4 2",
+              "hex": "#7a7776"
+            },
+            {
+              "id": "r3",
+              "name": "spire_4 3",
+              "hex": "#c7c3c0"
+            }
+          ]
+        }
       },
       {
         "name": "spire_3",
@@ -310,7 +500,27 @@
             "phase": 0.008
           }
         },
-        "emissive": false
+        "emissive": false,
+        "regions": {
+          "map": "spire_3.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "spire_3",
+              "hex": "#757270"
+            },
+            {
+              "id": "r2",
+              "name": "spire_3 2",
+              "hex": "#3c3936"
+            },
+            {
+              "id": "r3",
+              "name": "spire_3 3",
+              "hex": "#cbc7c3"
+            }
+          ]
+        }
       },
       {
         "name": "spire_2",
@@ -340,7 +550,27 @@
             "phase": 0.011
           }
         },
-        "emissive": false
+        "emissive": false,
+        "regions": {
+          "map": "spire_2.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "spire_2",
+              "hex": "#373535"
+            },
+            {
+              "id": "r2",
+              "name": "spire_2 2",
+              "hex": "#8b8783"
+            },
+            {
+              "id": "r3",
+              "name": "spire_2 3",
+              "hex": "#c9c4c0"
+            }
+          ]
+        }
       },
       {
         "name": "spire_1",
@@ -370,7 +600,27 @@
             "phase": 0
           }
         },
-        "emissive": false
+        "emissive": false,
+        "regions": {
+          "map": "spire_1.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "spire_1",
+              "hex": "#2b2928"
+            },
+            {
+              "id": "r2",
+              "name": "spire_1 2",
+              "hex": "#8c8a89"
+            },
+            {
+              "id": "r3",
+              "name": "spire_1 3",
+              "hex": "#c1bbb7"
+            }
+          ]
+        }
       }
     ]
   }

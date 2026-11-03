@@ -1,0 +1,327 @@
+{
+  "torso": {
+    "map": "torso.regions.png",
+    "slots": [
+      {
+        "id": "r1",
+        "name": "torso",
+        "hex": "#080807"
+      },
+      {
+        "id": "r2",
+        "name": "torso 2",
+        "hex": "#865926"
+      },
+      {
+        "id": "r3",
+        "name": "torso 3",
+        "hex": "#5c3a1c"
+      }
+    ]
+  },
+  "head": {
+    "map": "head.regions.png",
+    "slots": [
+      {
+        "id": "r1",
+        "name": "head",
+        "hex": "#c2af96"
+      },
+      {
+        "id": "r2",
+        "name": "head 2",
+        "hex": "#0b0d0a"
+      },
+      {
+        "id": "r3",
+        "name": "head 3",
+        "hex": "#81593e"
+      },
+      {
+        "id": "r4",
+        "name": "head 4",
+        "hex": "#786d5f"
+      }
+    ]
+  },
+  "jaw": {
+    "map": "jaw.regions.png",
+    "slots": [
+      {
+        "id": "r1",
+        "name": "jaw",
+        "hex": "#a08f79"
+      },
+      {
+        "id": "r2",
+        "name": "jaw 2",
+        "hex": "#4e4437"
+      },
+      {
+        "id": "r3",
+        "name": "jaw 3",
+        "hex": "#766b5c"
+      },
+      {
+        "id": "r4",
+        "name": "jaw 4",
+        "hex": "#816f60"
+      }
+    ]
+  },
+  "shard_r5": {
+    "map": "shard_r5.regions.png",
+    "slots": [
+      {
+        "id": "r1",
+        "name": "shard_r5",
+        "hex": "#040607"
+      },
+      {
+        "id": "r2",
+        "name": "shard_r5 2",
+        "hex": "#306a62"
+      },
+      {
+        "id": "r3",
+        "name": "shard_r5 3",
+        "hex": "#667177"
+      }
+    ]
+  },
+  "shard_l5": {
+    "map": "shard_l5.regions.png",
+    "slots": [
+      {
+        "id": "r1",
+        "name": "shard_l5",
+        "hex": "#030506"
+      },
+      {
+        "id": "r2",
+        "name": "shard_l5 2",
+        "hex": "#29655f"
+      },
+      {
+        "id": "r3",
+        "name": "shard_l5 3",
+        "hex": "#5d6971"
+      }
+    ]
+  },
+  "shard_r4": {
+    "map": "shard_r4.regions.png",
+    "slots": [
+      {
+        "id": "r1",
+        "name": "shard_r4",
+        "hex": "#090a09"
+      },
+      {
+        "id": "r2",
+        "name": "shard_r4 2",
+        "hex": "#62696f"
+      }
+    ]
+  },
+  "shard_l4": {
+    "map": "shard_l4.regions.png",
+    "slots": [
+      {
+        "id": "r1",
+        "name": "shard_l4",
+        "hex": "#050708"
+      },
+      {
+        "id": "r2",
+        "name": "shard_l4 2",
+        "hex": "#1d574f"
+      },
+      {
+        "id": "r3",
+        "name": "shard_l4 3",
+        "hex": "#5f686e"
+      }
+    ]
+  },
+  "shard_r3": {
+    "map": "shard_r3.regions.png",
+    "slots": [
+      {
+        "id": "r1",
+        "name": "shard_r3",
+        "hex": "#0b0e0f"
+      },
+      {
+        "id": "r2",
+        "name": "shard_r3 2",
+        "hex": "#727b82"
+      },
+      {
+        "id": "r3",
+        "name": "shard_r3 3",
+        "hex": "#336765"
+      }
+    ]
+  },
+  "shard_l3": {
+    "map": "shard_l3.regions.png",
+    "slots": [
+      {
+        "id": "r1",
+        "name": "shard_l3",
+        "hex": "#090c0d"
+      },
+      {
+        "id": "r2",
+        "name": "shard_l3 2",
+        "hex": "#24514d"
+      },
+      {
+        "id": "r3",
+        "name": "shard_l3 3",
+        "hex": "#70787e"
+      }
+    ]
+  },
+  "shard_r2": {
+    "map": "shard_r2.regions.png",
+    "slots": [
+      {
+        "id": "r1",
+        "name": "shard_r2",
+        "hex": "#101315"
+      },
+      {
+        "id": "r2",
+        "name": "shard_r2 2",
+        "hex": "#767d87"
+      },
+      {
+        "id": "r3",
+        "name": "shard_r2 3",
+        "hex": "#214f49"
+      }
+    ]
+  },
+  "shard_l2": {
+    "map": "shard_l2.regions.png",
+    "slots": [
+      {
+        "id": "r1",
+        "name": "shard_l2",
+        "hex": "#090c0d"
+      },
+      {
+        "id": "r2",
+        "name": "shard_l2 2",
+        "hex": "#6b747b"
+      },
+      {
+        "id": "r3",
+        "name": "shard_l2 3",
+        "hex": "#20574f"
+      }
+    ]
+  },
+  "shard_r1": {
+    "map": "shard_r1.regions.png",
+    "slots": [
+      {
+        "id": "r1",
+        "name": "shard_r1",
+        "hex": "#0c1214"
+      },
+      {
+        "id": "r2",
+        "name": "shard_r1 2",
+        "hex": "#94a1a4"
+      }
+    ]
+  },
+  "shard_l1": {
+    "map": "shard_l1.regions.png",
+    "slots": [
+      {
+        "id": "r1",
+        "name": "shard_l1",
+        "hex": "#070a0b"
+      },
+      {
+        "id": "r2",
+        "name": "shard_l1 2",
+        "hex": "#767e87"
+      }
+    ]
+  },
+  "shard_c": {
+    "map": "shard_c.regions.png",
+    "slots": [
+      {
+        "id": "r1",
+        "name": "shard_c",
+        "hex": "#0a0f10"
+      },
+      {
+        "id": "r2",
+        "name": "shard_c 2",
+        "hex": "#707982"
+      },
+      {
+        "id": "r3",
+        "name": "shard_c 3",
+        "hex": "#25625a"
+      }
+    ]
+  },
+  "eye_l": {
+    "map": "eye_l.regions.png",
+    "slots": [
+      {
+        "id": "r1",
+        "name": "eye_l",
+        "hex": "#000000"
+      },
+      {
+        "id": "r2",
+        "name": "eye_l 2",
+        "hex": "#146258"
+      }
+    ]
+  },
+  "eye_r": {
+    "map": "eye_r.regions.png",
+    "slots": [
+      {
+        "id": "r1",
+        "name": "eye_r",
+        "hex": "#000000"
+      },
+      {
+        "id": "r2",
+        "name": "eye_r 2",
+        "hex": "#16685c"
+      }
+    ]
+  },
+  "monocle": {
+    "map": "monocle.regions.png",
+    "slots": [
+      {
+        "id": "r1",
+        "name": "monocle",
+        "hex": "#040000"
+      },
+      {
+        "id": "r2",
+        "name": "monocle 2",
+        "hex": "#531c00"
+      },
+      {
+        "id": "r3",
+        "name": "monocle 3",
+        "hex": "#8d793d"
+      }
+    ]
+  }
+}
