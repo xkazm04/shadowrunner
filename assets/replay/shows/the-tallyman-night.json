@@ -1,0 +1,23 @@
+{
+  "id": "the-tallyman-night",
+  "characterId": "the-tallyman",
+  "fictional": true,
+  "audience": [
+    {"id":"a01","user":"GraveMoth","text":"first!","ts":2000,"fictional":true},
+    {"id":"a02","user":"LanternWick","text":"how many are watching","ts":4500,"fictional":true},
+    {"id":"a03","user":"MireHag","text":"do you know my name","ts":7000,"fictional":true},
+    {"id":"a04","user":"Bonefolder","text":"why six eyes","ts":9500,"fictional":true},
+    {"id":"a05","user":"OwlLedger","text":"i'm lurking, don't count me","ts":12000,"fictional":true},
+    {"id":"a06","user":"CandleEater","text":"lol the audit","ts":14500,"fictional":true},
+    {"id":"a07","user":"DampCellar","text":"what do you count","ts":17000,"fictional":true},
+    {"id":"a08","user":"RookAndRot","text":"is the count right","ts":19500,"fictional":true}
+  ],
+  "beats": [
+    {"at":0,"reply":{"line":"Good evening. Tallyman, Census of the Ninth Dark. Six eyes open, one blink per new arrival. Please do not be alarmed by the sound of being counted.","emotion":"neutral","gesture":"nod"},"wav":"the-tallyman-night/b00.wav"},
+    {"at":9000,"replyTo":"a02","reply":{"line":"Seventy-one. Seventy-two. Seventy-three, with the late arrival who thought I would not notice. I always notice. It is quite literally my job.","emotion":"amused","gesture":"glare","answeredId":"a02"},"wav":"the-tallyman-night/b01.wav"},
+    {"at":18000,"replyTo":"a03","reply":{"line":"Yes. I have it here, in a ledger that is not supposed to exist. Spelled correctly, with a note about your typing. Do not worry about the note.","emotion":"suspicious","gesture":"lean_in","answeredId":"a03"},"wav":"the-tallyman-night/b02.wav"},
+    {"at":27000,"replyTo":"a05","reply":{"line":"Lurking is also counted, I am afraid. Quietly, politely, with a small tick beside your name. We call it presence. It is the main thing I audit.","emotion":"smug","gesture":"tilt","answeredId":"a05"},"wav":"the-tallyman-night/b03.wav"},
+    {"at":36000,"reply":{"line":"One eye blinks for each new viewer, and one for each who leaves. The sixth is spare. It blinks when someone says something that does not add up.","emotion":"suspicious","gesture":"glare"},"wav":"the-tallyman-night/b04.wav"},
+    {"at":45000,"reply":{"line":"A fine count tonight. Every head accounted for, every name in its row. If anyone is missing from the ledger, please report to the ledger.","emotion":"amused","gesture":"nod"},"wav":"the-tallyman-night/b05.wav"}
+  ]
+}

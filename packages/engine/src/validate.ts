@@ -195,6 +195,8 @@ export function parseEngineRequest(value: unknown, keepChat: number): EngineRequ
 export interface VoiceRequest {
   text: string;
   voice: VoiceId;
+  /** Who speaks (library id or cast slug): replay plays that character's own recording. */
+  characterId?: string;
 }
 
 /** The longest text /api/voice speaks (requirement 3.2). */
@@ -206,5 +208,7 @@ export function parseVoiceRequest(value: unknown): VoiceRequest | undefined {
   const text = value.text.trim();
   if (text.length === 0 || text.length > MAX_VOICE_CHARS) return undefined;
   const voice = VOICE_IDS.find((v) => v === value.voice);
-  return voice === undefined ? undefined : { text, voice };
+  if (voice === undefined) return undefined;
+  const id = typeof value.characterId === "string" ? value.characterId.trim().slice(0, 64) : "";
+  return id === "" ? { text, voice } : { text, voice, characterId: id };
 }

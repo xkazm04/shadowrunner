@@ -1,16 +1,17 @@
-// POST /api/voice { text, voice } -> audio/wav (voice-and-air requirement 3). Vercel Node function.
+// POST /api/voice { text, voice, characterId? } -> audio/wav (voice-and-air requirement 3). Vercel Node function.
 // - replay plane (default, or `x-sr-plane: replay`): a 303 redirect to the static recording of the
-//   show line with that text, or of the recorded fallback phrase, under /replay/shows/ (the deploy
-//   copies assets/replay/** to static /replay/**); no file read, no network call, no quota;
+//   character's show line with that text, or of its recorded fallback phrase, under /replay/shows/
+//   (the deploy copies assets/replay/** to static /replay/**); no file read, no network call, no
+//   quota. A line nobody recorded in that voice answers 404 `not_recorded` (caption only);
 // - live plane: `checkAndCharge(ip, "voice", usd)` first, then one Gemini TTS call.
 // `voice` must be one of VOICES and `text` at most 300 characters, else `bad_input`.
-import { decodeJson, parseVoiceRequest, type ShowScript } from "@sr/engine";
+import { decodeJson, findRecording, parseVoiceRequest, type Recording, type VoiceRequest } from "@sr/engine";
 import { COST_USD } from "./_lib/costs.js";
 import { ApiError, errorResponse } from "./_lib/errors.js";
 import type { FetchLike } from "./_lib/kv.js";
 import { planeFromRequest, type Env } from "./_lib/plane.js";
 import { checkAndCharge, clientIp, type Quota } from "./_lib/quota.js";
-import { replayShow } from "./_lib/show.js";
+import { replayBank } from "./_lib/show.js";
 import { synthesize, ttsModel } from "./_lib/tts.js";
 
 export interface VoiceDeps {
@@ -35,16 +36,14 @@ export function recordingUrl(wav: string): string {
 }
 
 /**
- * The WAV for `text` on replay: the beat whose line is exactly the text, else the recorded
- * fallback phrase (the show's last generic line, which answers anything).
+ * The WAV for `text` on replay (the engine's `findRecording`): the speaking character's own recorded
+ * line, else its recorded generic line; a forged character gets any line recorded in its voice. A
+ * voice nobody recorded in has no clip: 404 `not_recorded`, and the stage shows a caption.
  */
-export function recordedWav(show: ShowScript, text: string): { wav: string; fallback: boolean } {
-  const hit = show.beats.find((b) => b.reply.line === text.trim());
-  if (hit) return { wav: hit.wav, fallback: false };
-  const generic = show.beats.filter((b) => b.replyTo === undefined);
-  const last = generic.at(-1) ?? show.beats.at(-1);
-  if (last === undefined) throw new ApiError("upstream", "No recording is available.");
-  return { wav: last.wav, fallback: true };
+export function recordedWav(body: VoiceRequest): Recording {
+  const found = findRecording(replayBank(), body.text, body.voice, body.characterId);
+  if (found === undefined) throw new ApiError("not_recorded", "This voice has no recording of this line yet.", 404);
+  return found;
 }
 
 function defaultDeps(): VoiceDeps {
@@ -66,7 +65,7 @@ export async function handleVoice(request: Request, deps: VoiceDeps): Promise<Re
 
     if (planeFromRequest(request, deps.env) === "replay") {
       // 303: the client's fetch follows with a GET and receives the static WAV itself.
-      const { wav, fallback } = recordedWav(replayShow(), body.text);
+      const { wav, fallback } = recordedWav(body);
       return new Response(null, {
         status: 303,
         headers: { location: recordingUrl(wav), "cache-control": "no-store", "x-sr-recorded": fallback ? "fallback" : "line" },

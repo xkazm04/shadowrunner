@@ -148,7 +148,7 @@ async function requestVoice(fetch: Fetcher, text: string, persona: Persona): Pro
   const res = await fetch("/api/voice", {
     method: "POST",
     headers: { "content-type": "application/json", accept: "audio/wav" },
-    body: JSON.stringify({ text, voice: persona.voice }),
+    body: JSON.stringify({ text, voice: persona.voice, characterId: persona.characterId }),
   });
   if (!res.ok) throw new Error(`voice ${res.status}`);
   const blob = await res.blob();

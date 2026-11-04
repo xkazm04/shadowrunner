@@ -1,0 +1,23 @@
+{
+  "id": "announcer-of-dead-air-night",
+  "characterId": "announcer-of-dead-air",
+  "fictional": true,
+  "audience": [
+    {"id":"a01","user":"GraveMoth","text":"first!","ts":2000,"fictional":true},
+    {"id":"a02","user":"LanternWick","text":"who is this","ts":4500,"fictional":true},
+    {"id":"a03","user":"MireHag","text":"what station is this","ts":7000,"fictional":true},
+    {"id":"a04","user":"Bonefolder","text":"is there a show","ts":9500,"fictional":true},
+    {"id":"a05","user":"OwlLedger","text":"why third person","ts":12000,"fictional":true},
+    {"id":"a06","user":"CandleEater","text":"hello?","ts":14500,"fictional":true},
+    {"id":"a07","user":"DampCellar","text":"lol dead air","ts":17000,"fictional":true},
+    {"id":"a08","user":"RookAndRot","text":"what time is it","ts":19500,"fictional":true}
+  ],
+  "beats": [
+    {"at":0,"reply":{"line":"This is the Announcer. The Announcer is on the air. The next programme is unscheduled, and will begin shortly. Please stand by.","emotion":"neutral","gesture":"nod"},"wav":"announcer-of-dead-air-night/b00.wav"},
+    {"at":9000,"replyTo":"a03","reply":{"line":"The Announcer reads the station identification. The Announcer has read it many times. No one has ever checked the call letters, and the Announcer is relieved.","emotion":"smug","gesture":"tilt","answeredId":"a03"},"wav":"announcer-of-dead-air-night/b01.wav"},
+    {"at":18000,"replyTo":"a04","reply":{"line":"There is no programme. The Announcer confirms there is no programme. There will be a programme at the top of the hour, and it, too, will not exist.","emotion":"grim","gesture":"glare","answeredId":"a04"},"wav":"announcer-of-dead-air-night/b02.wav"},
+    {"at":27000,"replyTo":"a05","reply":{"line":"The Announcer speaks in the third person, because the Announcer is not certain who the first person was. The Announcer asks listeners not to inquire further.","emotion":"suspicious","gesture":"recoil","answeredId":"a05"},"wav":"announcer-of-dead-air-night/b03.wav"},
+    {"at":36000,"reply":{"line":"It is the top of the hour. The Announcer repeats: it is the top of the hour. Silence will now be observed for the benefit of those at home.","emotion":"grim","gesture":"lean_in"},"wav":"announcer-of-dead-air-night/b04.wav"},
+    {"at":45000,"reply":{"line":"The Announcer thanks you for your continued attention. The programme, which did not begin, has ended. Please remain tuned for further nothing.","emotion":"amused","gesture":"tilt"},"wav":"announcer-of-dead-air-night/b05.wav"}
+  ]
+}

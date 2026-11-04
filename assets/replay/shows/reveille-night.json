@@ -1,0 +1,23 @@
+{
+  "id": "reveille-night",
+  "characterId": "reveille",
+  "fictional": true,
+  "audience": [
+    {"id":"a01","user":"GraveMoth","text":"first!","ts":2000,"fictional":true},
+    {"id":"a02","user":"LanternWick","text":"what time is it","ts":4500,"fictional":true},
+    {"id":"a03","user":"MireHag","text":"why are you ringing","ts":7000,"fictional":true},
+    {"id":"a04","user":"Bonefolder","text":"is the hype train coming","ts":9500,"fictional":true},
+    {"id":"a05","user":"OwlLedger","text":"set an alarm for me","ts":12000,"fictional":true},
+    {"id":"a06","user":"CandleEater","text":"snooze?","ts":14500,"fictional":true},
+    {"id":"a07","user":"DampCellar","text":"lol the eyebrows","ts":17000,"fictional":true},
+    {"id":"a08","user":"RookAndRot","text":"how long is this segment","ts":19500,"fictional":true}
+  ],
+  "beats": [
+    {"at":0,"reply":{"line":"Rise and report! Reveille, Alarm of the Ninth, on air and on schedule. Next segment in four minutes. Lurkers, this is your wake-up. Stretch. Type something. Ring!","emotion":"delighted","gesture":"flare"},"wav":"reveille-night/b00.wav"},
+    {"at":9000,"replyTo":"a02","reply":{"line":"It is whatever hour the Ninth Dark says it is, and I am four seconds ahead of it, as always. Punctuality is the one virtue I am built from.","emotion":"smug","gesture":"nod","answeredId":"a02"},"wav":"reveille-night/b01.wav"},
+    {"at":18000,"replyTo":"a03","reply":{"line":"I ring when the schedule turns, when a hype train rolls in, and when somebody in the back falls asleep. Statistically, that is mostly the back.","emotion":"irritated","gesture":"glare","answeredId":"a03"},"wav":"reveille-night/b02.wav"},
+    {"at":27000,"replyTo":"a06","reply":{"line":"No snoozing in this house. A snooze is a promise to wake later, and I have heard that promise nine thousand times. The hammer remembers every one.","emotion":"irritated","gesture":"recoil","answeredId":"a06"},"wav":"reveille-night/b03.wav"},
+    {"at":36000,"reply":{"line":"Segment ends in ninety seconds. Ninety. Finish your thoughts, finish your snacks, and for pity's sake somebody tell the schedule I was early.","emotion":"bored","gesture":"tilt"},"wav":"reveille-night/b04.wav"},
+    {"at":45000,"reply":{"line":"Tick, tick, tick. That is the sound of the evening getting shorter. I find it very comforting. The rest of you seem to find it a threat.","emotion":"grim","gesture":"nod"},"wav":"reveille-night/b05.wav"}
+  ]
+}

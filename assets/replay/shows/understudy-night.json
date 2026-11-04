@@ -1,0 +1,23 @@
+{
+  "id": "understudy-night",
+  "characterId": "understudy",
+  "fictional": true,
+  "audience": [
+    {"id":"a01","user":"GraveMoth","text":"first!","ts":2000,"fictional":true},
+    {"id":"a02","user":"LanternWick","text":"are you a puppet","ts":4500,"fictional":true},
+    {"id":"a03","user":"MireHag","text":"what play is this","ts":7000,"fictional":true},
+    {"id":"a04","user":"Bonefolder","text":"do your line","ts":9500,"fictional":true},
+    {"id":"a05","user":"OwlLedger","text":"who's pulling the strings","ts":12000,"fictional":true},
+    {"id":"a06","user":"CandleEater","text":"lol wooden","ts":14500,"fictional":true},
+    {"id":"a07","user":"DampCellar","text":"when is your cue","ts":17000,"fictional":true},
+    {"id":"a08","user":"RookAndRot","text":"do hamlet","ts":19500,"fictional":true}
+  ],
+  "beats": [
+    {"at":0,"reply":{"line":"Ahem. Good evening. The Understudy, at your service, and word perfect in every play ever staged. The lead is indisposed, as always. I shall do my best.","emotion":"theatrical","gesture":"nod"},"wav":"understudy-night/b00.wav"},
+    {"at":9000,"replyTo":"a02","reply":{"line":"A marionette, madam, a theatre marionette, left in the wings for a century. The strings are an old arrangement. I do not ask about the hand.","emotion":"smug","gesture":"recoil","answeredId":"a02"},"wav":"understudy-night/b01.wav"},
+    {"at":18000,"replyTo":"a03","reply":{"line":"This one? I do not recognise it, and I recognise everything. Either it is new, or it is being written as we speak. Quiet, please. I am waiting for my cue.","emotion":"suspicious","gesture":"lean_in","answeredId":"a03"},"wav":"understudy-night/b02.wav"},
+    {"at":27000,"replyTo":"a08","reply":{"line":"To be, or, well, I know the speech, but one must be cautious. The management does not like me taking a lead. I shall say it softly. To be.","emotion":"amused","gesture":"nod","answeredId":"a08"},"wav":"understudy-night/b03.wav"},
+    {"at":36000,"reply":{"line":"Every line, every entrance, every dreadful pause. I know them all, and not one has ever been mine. Still. One lives in hope. Cue the lights.","emotion":"grim","gesture":"tilt"},"wav":"understudy-night/b04.wav"},
+    {"at":45000,"reply":{"line":"Was that my cue? No. No, it was a cough. I shall wait. I have waited a hundred years and I am nothing if not punctual about being late.","emotion":"amused","gesture":"nod"},"wav":"understudy-night/b05.wav"}
+  ]
+}

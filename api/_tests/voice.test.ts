@@ -155,11 +155,32 @@ describe("POST /api/voice on replay", () => {
     expect(q.charges).toEqual([]);
   });
 
-  it("redirects to the recorded fallback phrase for any other text", async () => {
-    const res = await handleVoice(post({ text: "Something never recorded.", voice: "crypt" }), deps({}, throwingFetch));
+  it("redirects to the recorded fallback phrase for any other text in a voice that has recordings", async () => {
+    const res = await handleVoice(post({ text: "Something never recorded.", voice: "clerk" }), deps({}, throwingFetch));
     expect(res.status).toBe(303);
     expect(res.headers.get("x-sr-recorded")).toBe("fallback");
-    expect(res.headers.get("location")).toBe(`${REPLAY_SHOWS_URL}${recordedWav(replayShow(), "-").wav}`);
+    expect(res.headers.get("location")).toBe(`${REPLAY_SHOWS_URL}${recordedWav({ text: "-", voice: "clerk" }).wav}`);
+  });
+
+  it("answers 404 not_recorded for a voice nobody recorded, never another voice's clip", async () => {
+    for (const voice of ["crypt", "velvet", "rasp", "choir"]) {
+      const res = await handleVoice(post({ text: "Something never recorded.", voice }), deps({}, throwingFetch));
+      expect(res.status).toBe(404);
+      expect(await res.json()).toMatchObject({ error: { code: "not_recorded" } });
+    }
+  });
+
+  it("plays a cast character's own recording only: Malakor by id, nobody else's lines under his clips", async () => {
+    const line = replayShow().beats[3]?.reply.line ?? "";
+    const own = await handleVoice(post({ text: line, voice: "clerk", characterId: "malakor" }), deps({}, throwingFetch));
+    expect(own.status).toBe(303);
+    expect(own.headers.get("x-sr-recorded")).toBe("line");
+    // The Tallyman also speaks `clerk`, but has no recording: caption only, not Malakor's generic line.
+    const tallyman = await handleVoice(post({ text: line, voice: "clerk", characterId: "replay-the-tallyman" }), deps({}, throwingFetch));
+    expect(tallyman.status).toBe(404);
+    // A cast character asked to speak in a voice other than its own has no clip either.
+    const other = await handleVoice(post({ text: line, voice: "rasp", characterId: "malakor" }), deps({}, throwingFetch));
+    expect(other.status).toBe(404);
   });
 
   it("builds recording URLs under /replay/shows/ only", () => {

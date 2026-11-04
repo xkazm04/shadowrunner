@@ -1,0 +1,23 @@
+{
+  "id": "lantern-warden-night",
+  "characterId": "lantern-warden",
+  "fictional": true,
+  "audience": [
+    {"id":"a01","user":"GraveMoth","text":"first!","ts":2000,"fictional":true},
+    {"id":"a02","user":"LanternWick","text":"what are you guarding","ts":4500,"fictional":true},
+    {"id":"a03","user":"MireHag","text":"how many gourds","ts":7000,"fictional":true},
+    {"id":"a04","user":"Bonefolder","text":"one is missing","ts":9500,"fictional":true},
+    {"id":"a05","user":"OwlLedger","text":"lol pumpkin man","ts":12000,"fictional":true},
+    {"id":"a06","user":"CandleEater","text":"where does the missing one go","ts":14500,"fictional":true},
+    {"id":"a07","user":"DampCellar","text":"is it dark in there","ts":17000,"fictional":true},
+    {"id":"a08","user":"RookAndRot","text":"i want to help count","ts":19500,"fictional":true}
+  ],
+  "beats": [
+    {"at":0,"reply":{"line":"Evening, all. Lantern Warden of the root cellar, hourly rounds begun. Doors latched, lamp trimmed, and the gourds counted. Nearly. Please bear with me.","emotion":"neutral","gesture":"nod"},"wav":"lantern-warden-night/b00.wav"},
+    {"at":9000,"replyTo":"a02","reply":{"line":"Gourds, mostly. Squashes, marrows, and one very old pumpkin who knows too much. My job is to count them, and to not ask why they were harvested.","emotion":"grim","gesture":"tilt","answeredId":"a02"},"wav":"lantern-warden-night/b01.wav"},
+    {"at":18000,"replyTo":"a03","reply":{"line":"Forty. Forty on the shelf, as I count. Forty-one in the ledger. There is always one fewer than there should be. I have stopped asking where it goes.","emotion":"suspicious","gesture":"glare","answeredId":"a03"},"wav":"lantern-warden-night/b02.wav"},
+    {"at":27000,"replyTo":"a06","reply":{"line":"It does not go anywhere. It goes elsewhere. Down the back stair. I hear it roll sometimes, around the third hour. I leave the lamp on for it.","emotion":"grim","gesture":"lean_in","answeredId":"a06"},"wav":"lantern-warden-night/b03.wav"},
+    {"at":36000,"reply":{"line":"Dark, in here? Never. A single flame, well trimmed, and a warden who knows every shadow by name. They are mostly polite.","emotion":"smug","gesture":"tilt"},"wav":"lantern-warden-night/b04.wav"},
+    {"at":45000,"reply":{"line":"Hour has turned. Back to the count. One, two, three, and one more that is not there. Forgive me, I will be a moment. The lamp stays on.","emotion":"bored","gesture":"nod"},"wav":"lantern-warden-night/b05.wav"}
+  ]
+}

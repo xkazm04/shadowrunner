@@ -1,0 +1,29 @@
+{
+ "note": "WAVs recorded under assets/replay/shows/. A show beat plays audio only when its wav is listed here; shows.test.ts keeps this list equal to the files on disk.",
+ "recorded": [
+  "malakor-night/b00.wav",
+  "malakor-night/b01.wav",
+  "malakor-night/b02.wav",
+  "malakor-night/b03.wav",
+  "malakor-night/b04.wav",
+  "malakor-night/b05.wav",
+  "malakor-night/b06.wav",
+  "malakor-night/b07.wav",
+  "malakor-night/b08.wav",
+  "malakor-night/b09.wav",
+  "malakor-night/b10.wav",
+  "malakor-night/b11.wav",
+  "malakor-night/b12.wav",
+  "malakor-night/b13.wav",
+  "malakor-night/b14.wav",
+  "malakor-night/b15.wav",
+  "malakor-night/b16.wav",
+  "malakor-night/b17.wav",
+  "malakor-night/b18.wav",
+  "malakor-night/b19.wav",
+  "malakor-night/b20.wav",
+  "malakor-night/b21.wav",
+  "malakor-night/b22.wav",
+  "malakor-night/b23.wav"
+ ]
+}

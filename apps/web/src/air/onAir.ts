@@ -7,6 +7,7 @@ import type { RigAssets } from "@sr/avatar";
 import { useEffect, useState } from "react";
 import { rigAssetsOf } from "../creator/library/assets";
 import { openLibrary, type CharacterRecord, type LibraryStore } from "../creator/library/libraryStore";
+import type { VoiceId } from "@sr/engine";
 import type { OnAirCharacter } from "../landing/cast";
 
 export const ON_AIR_KEY = "sr.onAir";
@@ -30,27 +31,33 @@ export function readOnAirId(): string | undefined {
   }
 }
 
+/** The on-air character with who it is (its library id) and the voice saved for it. */
+export interface OnAirRecord extends OnAirCharacter {
+  id: string;
+  voice: VoiceId;
+}
+
 export interface OnAirOptions {
   open?: () => Promise<LibraryStore>;
   decode?: (record: CharacterRecord) => Promise<RigAssets>;
 }
 
 /** The on-air character from the library with its saved look, or undefined (Malakor stands in). */
-export async function loadOnAir({ open = () => openLibrary(), decode = (r) => rigAssetsOf(r.rig, r.assets) }: OnAirOptions = {}): Promise<OnAirCharacter | undefined> {
+export async function loadOnAir({ open = () => openLibrary(), decode = (r) => rigAssetsOf(r.rig, r.assets) }: OnAirOptions = {}): Promise<OnAirRecord | undefined> {
   const id = readOnAirId();
   if (id === undefined) return undefined;
   try {
     const entry = await (await open()).get(id);
     if (entry?.kind !== "ok") return undefined;
     const { record } = entry;
-    return { name: record.rig.name, rig: record.rig, look: record.look, assets: await decode(record) };
+    return { id: record.id, voice: record.voice, name: record.rig.name, rig: record.rig, look: record.look, assets: await decode(record) };
   } catch {
     return undefined;
   }
 }
 
 /** Where the on-air lookup stands: still looking, nobody (Malakor), or the character. */
-export type OnAirState = "looking" | "none" | OnAirCharacter;
+export type OnAirState = "looking" | "none" | OnAirRecord;
 
 /** `loadOnAir` once per mount; "none" straight away when no id is recorded. */
 export function useOnAir(options?: OnAirOptions): OnAirState {

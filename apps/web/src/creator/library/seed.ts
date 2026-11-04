@@ -9,6 +9,7 @@
 //   (voices.ts: "Malakor uses `clerk`").
 // - "Empty" means no stored value at all: a library holding only damaged records is not reseeded
 //   over, so nothing the user had is silently replaced.
+import { castVoice } from "@sr/engine";
 import { defaultLook, importLegacyLayers, validateRig, type Layer, type Rig } from "@sr/rig";
 import layersJson from "../../../../../assets/characters/malakor/rig/layers.json";
 import specJson from "../../../../../assets/characters/malakor/rig/m8.spec.json";
@@ -156,7 +157,8 @@ export async function seedCast(store: LibraryStore, cast: readonly CastSeed[], o
       }
       // The id is the record key: a member whose record says otherwise is not the member.
       if (record.id !== member.id) continue;
-      await store.put({ ...record, createdAt: new Date(base + i).toISOString() });
+      // A new cast member starts in its own voice (engine cast.ts); the user can change it later.
+      await store.put({ ...record, voice: castVoice(record.id) ?? record.voice, createdAt: new Date(base + i).toISOString() });
       present.add(member.id);
       added.push(member.id);
     }

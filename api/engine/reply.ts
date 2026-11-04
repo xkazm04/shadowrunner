@@ -19,7 +19,7 @@ import { COST_USD } from "../_lib/costs.js";
 import { ApiError, errorResponse } from "../_lib/errors.js";
 import { planeFromRequest, type Env } from "../_lib/plane.js";
 import { checkAndCharge, clientIp, type Quota } from "../_lib/quota.js";
-import { replayShow } from "../_lib/show.js";
+import { replayShowFor } from "../_lib/show.js";
 
 /** Bodies above this are refused before parsing (a 20 x 300 chat plus a bible fits easily). */
 export const MAX_BODY_BYTES = 256 * 1024;
@@ -51,7 +51,7 @@ export async function handleReply(request: Request, deps: ReplyDeps): Promise<Re
     const req = await readRequest(request);
     let reply: EngineReply;
     if (planeFromRequest(request, deps.env) === "replay") {
-      reply = await new ScriptedEngine(replayShow()).reply(req);
+      reply = await new ScriptedEngine(replayShowFor(req.characterId)).reply(req);
     } else {
       const apiKey = deps.env.ANTHROPIC_API_KEY?.trim();
       if (!apiKey) throw new ApiError("upstream", "The engine is offline.");

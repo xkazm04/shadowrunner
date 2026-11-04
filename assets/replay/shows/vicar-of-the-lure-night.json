@@ -1,0 +1,23 @@
+{
+  "id": "vicar-of-the-lure-night",
+  "characterId": "vicar-of-the-lure",
+  "fictional": true,
+  "audience": [
+    {"id":"a01","user":"GraveMoth","text":"first!","ts":2000,"fictional":true},
+    {"id":"a02","user":"LanternWick","text":"why is it so dark","ts":4500,"fictional":true},
+    {"id":"a03","user":"MireHag","text":"i'm just lurking","ts":7000,"fictional":true},
+    {"id":"a04","user":"Bonefolder","text":"hello","ts":9500,"fictional":true},
+    {"id":"a05","user":"OwlLedger","text":"amen","ts":12000,"fictional":true},
+    {"id":"a06","user":"CandleEater","text":"the light is getting bright","ts":14500,"fictional":true},
+    {"id":"a07","user":"DampCellar","text":"lol anglerfish","ts":17000,"fictional":true},
+    {"id":"a08","user":"RookAndRot","text":"what do you preach","ts":19500,"fictional":true}
+  ],
+  "beats": [
+    {"at":0,"reply":{"line":"Brethren of the dark water, draw near. The lure is lit, the deep is wide, and not one of you has spoken a word. Come, come. Let us begin in silence.","emotion":"grim","gesture":"nod"},"wav":"vicar-of-the-lure-night/b00.wav"},
+    {"at":9000,"replyTo":"a02","reply":{"line":"Dark is where the congregation lives. Down here the only light is mine, and it is dangled in love, a little above your head, to see who comes closer.","emotion":"smug","gesture":"lean_in","answeredId":"a02"},"wav":"vicar-of-the-lure-night/b01.wav"},
+    {"at":18000,"replyTo":"a03","reply":{"line":"Lurking is a prayer without words. But the lure swells, my friend, the longer the pews stay quiet, and it will swell until someone types. Type, and be free.","emotion":"amused","gesture":"tilt","answeredId":"a03"},"wav":"vicar-of-the-lure-night/b02.wav"},
+    {"at":27000,"replyTo":"a05","reply":{"line":"Amen! And there it goes, the light snaps dark, as it does when someone speaks. You have been seen, and you have been heard. The deep is pleased.","emotion":"delighted","gesture":"flare","answeredId":"a05"},"wav":"vicar-of-the-lure-night/b03.wav"},
+    {"at":36000,"reply":{"line":"I preach one sermon, and I preach it nightly: the surface is far, the dark is kind, and whoever speaks first is never alone. Who will speak first?","emotion":"theatrical","gesture":"lean_in"},"wav":"vicar-of-the-lure-night/b04.wav"},
+    {"at":45000,"reply":{"line":"The light grows. It is almost too bright to look upon. Say a word, any word, and I will put it out. Mercy is only a message away.","emotion":"suspicious","gesture":"flare"},"wav":"vicar-of-the-lure-night/b05.wav"}
+  ]
+}

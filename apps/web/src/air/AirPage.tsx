@@ -9,7 +9,7 @@
 // and opens on top-edge hover, focus, or the C key; Esc closes it before Esc may leave the page.
 // character-control 6: the face is the character "Put on air" recorded (onAir.ts), with its saved
 // look; Malakor with his default look when none is recorded or it is gone. The reply's emotion
-// still sets look.emotion. The persona and the recorded show stay Malakor's.
+// still sets look.emotion. The persona, the voice and the recorded show are the character's own (cast.ts).
 import { AvatarCanvas, type RigAssets } from "@sr/avatar";
 import { MAX_CHAT_CHARS } from "@sr/engine";
 import { defaultLook, type Look, type Rig } from "@sr/rig";
@@ -19,9 +19,10 @@ import styles from "./air.module.css";
 import { Captions } from "./Captions";
 import { CatacombFront, CatacombLights, CatacombPlate } from "./Catacomb";
 import { Chat } from "./Chat";
-import { loadRigAssets, MALAKOR_NAME, MALAKOR_PERSONA, malakorRig, malakorShow } from "./malakor";
+import { castFor } from "./cast";
+import { loadRigAssets, MALAKOR_NAME, malakorRig } from "./malakor";
 import { OnAirLamp, VoiceTally } from "./OnAirLamp";
-import { useOnAir } from "./onAir";
+import { useOnAir, type OnAirState } from "./onAir";
 import { useLoudness } from "./useLoudness";
 import { useShow } from "./useShow";
 import { useStageLights } from "./useStageLights";
@@ -47,8 +48,7 @@ export const TALLY_OFF = 0.04;
 type Loaded = { rig: Rig; assets: RigAssets; look?: Look; name?: string } | "loading" | "failed";
 
 /** The on-air character with its look, else Malakor (loaded only when he is the one on air). */
-function useFace(): Loaded {
-  const onAir = useOnAir();
+function useFace(onAir: OnAirState): Loaded {
   const malakor = useMalakor(onAir === "none");
   if (onAir === "looking") return "loading";
   return onAir === "none" ? malakor : { rig: onAir.rig, assets: onAir.assets, look: onAir.look, name: onAir.name };
@@ -138,15 +138,19 @@ export function useStripKeys(holder: RefObject<HTMLElement | null>): boolean {
 }
 
 export function AirPage({ plane, badge, controls, strip }: AirPageProps) {
-  const loaded = useFace();
+  const who = useOnAir();
+  const loaded = useFace(who);
   const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
   const loudness = useLoudness(audio);
-  const show = useMemo(() => malakorShow(), []);
+  const speaker = typeof who === "object" ? who : undefined;
+  const { id, name, voice } = speaker ?? {};
+  const cast = useMemo(() => castFor(id === undefined || name === undefined || voice === undefined ? undefined : { id, name, voice }), [id, name, voice]);
   const { snapshot, now, post, soundOn } = useShow({
-    show,
-    persona: MALAKOR_PERSONA,
-    self: MALAKOR_NAME,
-    audio,
+    show: cast.show,
+    persona: cast.persona,
+    self: cast.self,
+    // The show waits for the on-air lookup, so Malakor never starts talking in someone else's place.
+    audio: who === "looking" ? null : audio,
     ensureRunning: loudness.ensureRunning,
   });
   const { status, caption, chat, sound } = snapshot;
@@ -157,7 +161,7 @@ export function AirPage({ plane, badge, controls, strip }: AirPageProps) {
 
   const root = useRef<HTMLDivElement>(null);
   const candles = useRef<(HTMLElement | null)[]>([]);
-  const lights = useStageLights({ root, candles, chat, self: MALAKOR_NAME, now, jawOpen: loudness.jawOpen, speaking, dead });
+  const lights = useStageLights({ root, candles, chat, self: cast.self, now, jawOpen: loudness.jawOpen, speaking, dead });
 
   const stripBox = useRef<HTMLDivElement>(null);
   const stripOpen = useStripKeys(stripBox);
@@ -180,7 +184,7 @@ export function AirPage({ plane, badge, controls, strip }: AirPageProps) {
 
   return (
     <div ref={root} className={styles.stage} data-page="air" data-state={status} data-plane={plane} data-sound={sound}>
-      <section className={styles.set} aria-label={`${MALAKOR_NAME} on air`}>
+      <section className={styles.set} aria-label={`${cast.self} on air`}>
         {/* Inside the set: the set's size containment makes it the strip's frame, so the strip
             lowers from the vault on the set's centre line, over the lamp. */}
         {strip && (
@@ -217,7 +221,7 @@ export function AirPage({ plane, badge, controls, strip }: AirPageProps) {
             {controls}
           </div>
         </header>
-        <Captions caption={speaking ? caption : undefined} speaker={MALAKOR_NAME} dead={dead} audio={audio} />
+        <Captions caption={speaking ? caption : undefined} speaker={cast.self} dead={dead} audio={audio} />
         {sound === "blocked" && (
           <button type="button" className={styles.soundOn} onClick={soundOn}>
             Sound on
@@ -226,7 +230,7 @@ export function AirPage({ plane, badge, controls, strip }: AirPageProps) {
       </section>
       <Chat
         chat={chat}
-        self={MALAKOR_NAME}
+        self={cast.self}
         onPost={post}
         maxLength={MAX_CHAT_CHARS}
         answered={answered}

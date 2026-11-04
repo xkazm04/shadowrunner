@@ -5,6 +5,17 @@ export const PACKAGE = "@sr/engine";
 export { ENGINE_STATES, PLANE_HEADER, PLANES, type EngineState, type Health, type Plane } from "./health.js";
 export { parseHealth } from "./validate.js";
 export type { ChatMsg, Engine, EngineReply, EngineRequest, Persona } from "./types.js";
+export {
+  CAST_VOICES,
+  castBible,
+  castSlug,
+  castVoice,
+  findRecording,
+  showOf,
+  showRecording,
+  type Recording,
+  type ShowBank,
+} from "./cast.js";
 export { VOICE_IDS, VOICES, type Voice, type VoiceId } from "./voices.js";
 export {
   initialPickState,
