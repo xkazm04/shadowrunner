@@ -168,7 +168,8 @@ describe("haunt bound to status in the stage CSS", () => {
   it("drives the dead line from data-state: haunt glow to zero, the face dimmed, the corridor cold", () => {
     const dead = air.find((r) => r.selector === '.stage[data-state="dead_line"]');
     expect(dead?.decls.get("--sr-haunt-glow")).toBe("0");
-    expect(air.find((r) => r.selector === '.stage[data-state="dead_line"] .face')?.decls.get("filter")).toMatch(/brightness\(0\.\d+\)/);
+    // the face is dimmed by the renderer to its eyes (AirPage `dim`), not by a whole-face brightness filter
+    expect(air.find((r) => r.selector === '.stage[data-state="dead_line"] .face')?.decls.get("filter")).not.toMatch(/brightness/);
     const deadSel = (part: string) => catacomb.filter((r) => r.selector.split(",").some((s) => s.trim() === `:global([data-page="air"][data-state="dead_line"]) ${part}`) && !r.selector.includes("data-motion"));
     // the candles burn down to embers, their halos and reflections go out, the tunnel light too
     expect(deadSel(".tip")[0]?.decls.get("transform")).toMatch(/scaleY\(0\.\d+\)/);

@@ -201,6 +201,8 @@ export function AirPage({ plane, badge, controls, strip }: AirPageProps) {
               look={look}
               assets={loaded.assets}
               className={styles.face}
+              // LINE DEAD: only the eyes stay lit (the renderer's eyes-only dim; instant under reduced motion).
+              dim={dead ? 1 : 0}
               {...(loudness.source === undefined ? {} : { audio: loudness.source })}
               {...(gesture === undefined ? {} : { gesture })}
             />

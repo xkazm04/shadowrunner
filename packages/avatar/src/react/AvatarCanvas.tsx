@@ -18,6 +18,8 @@
 //   `mood: { from: previous, mix }` with mix rising 0 -> 1 over MOOD_FADE_S of driver time; under
 //   reduced motion the change is instant (no `mood`). A change mid-fade starts a new fade from the
 //   emotion it was fading to. A `drive` prop passes through untouched.
+// - `dim` (stage LINE DEAD) is eased on the browser gap between frames and handed to the renderer
+//   in the frame clock; both renderers apply it per layer (render/frame.ts `dimGain`).
 // - `loadAsset` (character-control): region maps and face patches missing from `assets` are
 //   loaded through it on first need (render/assets.ts); read once, at mount.
 import { applyLook, MOOD_FADE_S, poseLayers, type Drive, type Emotion, type Gesture, type Look, type Rig } from "@sr/rig";
@@ -27,6 +29,7 @@ import type { LookAtPoint } from "../driver/lookAt.js";
 import { initialState, type Gaze } from "../driver/state.js";
 import { createRenderer } from "../gl/renderer.js";
 import type { AssetLoader } from "../render/assets.js";
+import { easeDim } from "../render/frame.js";
 import type { RigAssets } from "../render/types.js";
 import { advanceFrame, isReducedMotion } from "./loop.js";
 
@@ -64,6 +67,12 @@ export interface AvatarCanvasProps {
   lookAt?: LookAtPoint | LookAtRef;
   /** Loads a rig file missing from `assets` (a region map, a face patch) on first need. */
   loadAsset?: AssetLoader;
+  /**
+   * Eyes-only dim, 0..1, read every frame (default 0: the face lit as today). Every layer but an
+   * emissive eye falls toward a hint of its light; the eyes keep theirs. It eases over about a
+   * second (`easeDim`) and is instant under reduced motion.
+   */
+  dim?: number;
 }
 
 /** Tracks emotion changes on the driver clock; returns the drive's `mood` for this frame. */
@@ -134,6 +143,7 @@ export function AvatarCanvas(props: AvatarCanvasProps): ReactElement {
     const fadeMood = moodFader();
     let state = initialState(first.seed ?? 1);
     let lastNow: number | undefined;
+    let dimShown = 0;
     let raf = 0;
     let alive = true;
 
@@ -163,7 +173,8 @@ export function AvatarCanvas(props: AvatarCanvasProps): ReactElement {
       const mood = fadeMood(p.look.emotion, state.t, reducedMotion);
       const drive = p.drive !== undefined || mood === undefined ? next.drive : { ...next.drive, mood };
       const poses = poseLayers(dress(p.rig, p.look), p.look, drive);
-      renderer.draw(poses, p.look, { t: p.drive?.t ?? state.t, reducedMotion });
+      dimShown = easeDim(dimShown, p.dim ?? 0, dt, reducedMotion);
+      renderer.draw(poses, p.look, { t: p.drive?.t ?? state.t, reducedMotion, ...(dimShown > 0 ? { dim: dimShown } : {}) });
       raf = win.requestAnimationFrame(frame);
     };
     raf = win.requestAnimationFrame(frame);
