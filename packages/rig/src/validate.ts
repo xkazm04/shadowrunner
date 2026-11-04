@@ -69,15 +69,16 @@ const isDrop = (value: unknown): value is number => isFinite(value) && value >= 
 
 /** Right and bottom edges may overshoot the canvas by this much (float bboxes from the forge). */
 const EDGE_TOLERANCE = 1e-6;
-/** design.md: a layer file may be a "data:" URL from the forge; only PNG ones are accepted. */
-const PNG_DATA_URL = "data:image/png;base64,";
+/** design.md: a layer file may be a "data:" URL from the forge; only PNG and (asset-webp amendment) WebP ones are accepted. */
+const DATA_URL_PREFIXES: readonly string[] = ["data:image/png;base64,", "data:image/webp;base64,"];
 
 /**
- * Why `file` is not a relative POSIX path inside the rig folder (or a non-empty PNG data: URL),
+ * Why `file` is not a relative POSIX path inside the rig folder (or a non-empty PNG or WebP data: URL),
  * or undefined when it is.
  */
 function fileProblem(file: string): string | undefined {
-  if (file.startsWith(PNG_DATA_URL)) return file.length > PNG_DATA_URL.length ? undefined : "is an empty data: URL";
+  const prefix = DATA_URL_PREFIXES.find((p) => file.startsWith(p));
+  if (prefix !== undefined) return file.length > prefix.length ? undefined : "is an empty data: URL";
   if (file === "") return "must not be empty";
 
   if (file.startsWith("/")) return "must be relative (no leading /)";

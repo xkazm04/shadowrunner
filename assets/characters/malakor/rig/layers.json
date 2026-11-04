@@ -10,7 +10,7 @@
    "name": "background",
    "z": 1,
    "kind": "static",
-   "file": "background.png",
+   "file": "background.webp",
    "bbox": [
     0,
     0,
@@ -26,7 +26,7 @@
    "name": "torso",
    "z": 2,
    "kind": "body",
-   "file": "torso.png",
+   "file": "torso.webp",
    "bbox": [
     0,
     445,
@@ -44,7 +44,7 @@
    "name": "head",
    "z": 3,
    "kind": "head",
-   "file": "head.png",
+   "file": "head.webp",
    "bbox": [
     317,
     153,
@@ -70,7 +70,7 @@
    "name": "jaw",
    "z": 5,
    "kind": "aperture_lower",
-   "file": "jaw.png",
+   "file": "jaw.webp",
    "bbox": [
     370,
     511,
@@ -89,7 +89,7 @@
    "name": "shard_r5",
    "z": 6,
    "kind": "float",
-   "file": "shard_r5.png",
+   "file": "shard_r5.webp",
    "bbox": [
     735,
     267,
@@ -116,7 +116,7 @@
    "name": "shard_l5",
    "z": 7,
    "kind": "float",
-   "file": "shard_l5.png",
+   "file": "shard_l5.webp",
    "bbox": [
     241,
     268,
@@ -143,7 +143,7 @@
    "name": "shard_r4",
    "z": 8,
    "kind": "float",
-   "file": "shard_r4.png",
+   "file": "shard_r4.webp",
    "bbox": [
     687,
     211,
@@ -170,7 +170,7 @@
    "name": "shard_l4",
    "z": 9,
    "kind": "float",
-   "file": "shard_l4.png",
+   "file": "shard_l4.webp",
    "bbox": [
     282,
     211,
@@ -197,7 +197,7 @@
    "name": "shard_r3",
    "z": 10,
    "kind": "float",
-   "file": "shard_r3.png",
+   "file": "shard_r3.webp",
    "bbox": [
     733,
     124,
@@ -224,7 +224,7 @@
    "name": "shard_l3",
    "z": 11,
    "kind": "float",
-   "file": "shard_l3.png",
+   "file": "shard_l3.webp",
    "bbox": [
     227,
     129,
@@ -251,7 +251,7 @@
    "name": "shard_r2",
    "z": 12,
    "kind": "float",
-   "file": "shard_r2.png",
+   "file": "shard_r2.webp",
    "bbox": [
     651,
     58,
@@ -278,7 +278,7 @@
    "name": "shard_l2",
    "z": 13,
    "kind": "float",
-   "file": "shard_l2.png",
+   "file": "shard_l2.webp",
    "bbox": [
     298,
     59,
@@ -305,7 +305,7 @@
    "name": "shard_r1",
    "z": 14,
    "kind": "float",
-   "file": "shard_r1.png",
+   "file": "shard_r1.webp",
    "bbox": [
     579,
     75,
@@ -332,7 +332,7 @@
    "name": "shard_l1",
    "z": 15,
    "kind": "float",
-   "file": "shard_l1.png",
+   "file": "shard_l1.webp",
    "bbox": [
     387,
     75,
@@ -359,7 +359,7 @@
    "name": "shard_c",
    "z": 16,
    "kind": "float",
-   "file": "shard_c.png",
+   "file": "shard_c.webp",
    "bbox": [
     456,
     0,
@@ -387,7 +387,7 @@
    "name": "eye_l",
    "z": 17,
    "kind": "eye",
-   "file": "eye_l.png",
+   "file": "eye_l.webp",
    "bbox": [
     324,
     263,
@@ -408,7 +408,7 @@
    "name": "eye_r",
    "z": 18,
    "kind": "eye",
-   "file": "eye_r.png",
+   "file": "eye_r.webp",
    "bbox": [
     534,
     268,
@@ -429,7 +429,7 @@
    "name": "monocle",
    "z": 19,
    "kind": "pulse",
-   "file": "monocle.png",
+   "file": "monocle.webp",
    "bbox": [
     519,
     224,

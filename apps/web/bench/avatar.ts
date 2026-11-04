@@ -11,7 +11,7 @@ import { createRoot } from "react-dom/client";
 import layersJson from "../../../assets/characters/malakor/rig/layers.json";
 import specJson from "../../../assets/characters/malakor/rig/m8.spec.json";
 
-const PNG_URLS = import.meta.glob<string>("../../../assets/characters/malakor/rig/*.png", { query: "?url", import: "default", eager: true });
+const IMAGE_URLS = import.meta.glob<string>("../../../assets/characters/malakor/rig/*.webp", { query: "?url", import: "default", eager: true });
 
 export interface BenchResult {
   mode: "webgl2" | "2d";
@@ -52,7 +52,7 @@ function malakor(): Rig {
 }
 
 async function loadAssets(rig: Rig): Promise<RigAssets> {
-  const byName = new Map(Object.entries(PNG_URLS).map(([path, url]) => [path.slice(path.lastIndexOf("/") + 1), url]));
+  const byName = new Map(Object.entries(IMAGE_URLS).map(([path, url]) => [path.slice(path.lastIndexOf("/") + 1), url]));
   const assets: RigAssets = {};
   await Promise.all(
     rig.layers.map(async (layer) => {
