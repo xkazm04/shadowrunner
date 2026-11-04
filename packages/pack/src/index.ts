@@ -7,6 +7,7 @@ export { writePack, PACK_MTIME } from "./write.js";
 export { readPack, loadPack } from "./read.js";
 export { packFileName, packReadme, LICENCE_LABELS, PACK_FORMAT_DOC } from "./readme.js";
 export { rigFiles, mimeOf } from "./files.js";
+export { packErrorSentence } from "./sentences.js";
 
 export const PACKAGE = "@sr/pack";
 

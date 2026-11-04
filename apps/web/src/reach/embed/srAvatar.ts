@@ -9,12 +9,11 @@
 //   putting it back loads again. A new `src` cancels the load in flight.
 // - `mood`, `setLevel` and `attachAudio` set before the pack has loaded are kept and applied when
 //   the player starts. Unknown moods and gestures are ignored.
-// - Pack failures are the creator's import sentences (creator/library/packing.ts), restated here
-//   because the bundle may not import app modules.
+// - Pack failures read as the creator's import sentences: both use @sr/pack's `packErrorSentence`.
 // - The shadow style has no colours of its own: it inherits the host page's text colour and font,
 //   and the stage background is the `background` attribute (default transparent).
 import { createAvatarPlayer, type AttachAudioOptions, type AvatarPlayer, type PlayerAudio } from "@sr/avatar/core";
-import { decodePackImages, loadPack, type PackError, type PackErrorCode } from "@sr/pack";
+import { decodePackImages, loadPack, packErrorSentence } from "@sr/pack";
 import { isLookEmotion, isLookGesture, type Emotion, type Gesture } from "@sr/rig";
 
 export const SR_AVATAR_TAG = "sr-avatar";
@@ -26,21 +25,8 @@ export const MIC_REFUSED = "The microphone was not allowed.";
 export const MIC_UNAVAILABLE = "This browser cannot listen to a microphone here.";
 export const LISTEN = "Click to listen";
 
-const SENTENCES: Readonly<Record<PackErrorCode, (detail: string) => string>> = {
-  not_a_pack: () => "That file is not a Shadowrunner pack.",
-  newer_version: () => "That pack was made by a newer Shadowrunner.",
-  bad_manifest: () => "That pack's details are damaged.",
-  bad_rig: () => "That pack's character is damaged.",
-  bad_look: () => "That pack's saved look is damaged.",
-  missing_file: (detail) => `That pack is missing ${detail === "" ? "an image" : detail}.`,
-  too_large: () => "That pack is over 50 MB.",
-  fetch_failed: () => "That pack could not be fetched.",
-};
-
-/** The sentence a failed pack load shows (and `sr-error` carries). */
-export function packErrorSentence(error: PackError): string {
-  return SENTENCES[error.code](error.detail);
-}
+/** The sentence a failed pack load shows (and `sr-error` carries): the shared map in @sr/pack. */
+export { packErrorSentence };
 
 /** The element's JS API, on top of HTMLElement. */
 export interface SrAvatarElement extends HTMLElement {

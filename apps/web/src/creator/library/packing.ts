@@ -1,7 +1,7 @@
 // Library records to and from avatar packs (spec .kiro/specs/avatar-pack, design "Creator"):
 // which records may leave, what a pack carries, how an imported pack joins the library without
 // replacing anything, and the sentence a failed import shows.
-import type { AvatarPack, PackError, PackErrorCode, PackInput, PackLicence } from "@sr/pack";
+import { packErrorSentence, type AvatarPack, type PackError, type PackInput, type PackLicence } from "@sr/pack";
 import { DEFAULT_VOICE, isVoiceId, type CharacterRecord } from "./libraryStore";
 
 /** Every character but the seeded house character (Malakor, pre-existing art) may leave. */
@@ -43,18 +43,5 @@ export function recordOfPack(pack: AvatarPack, takenIds: ReadonlySet<string>, no
   };
 }
 
-const SENTENCES: Readonly<Record<PackErrorCode, (detail: string) => string>> = {
-  not_a_pack: () => "That file is not a Shadowrunner pack.",
-  newer_version: () => "That pack was made by a newer Shadowrunner.",
-  bad_manifest: () => "That pack's details are damaged.",
-  bad_rig: () => "That pack's character is damaged.",
-  bad_look: () => "That pack's saved look is damaged.",
-  missing_file: (detail) => `That pack is missing ${detail === "" ? "an image" : detail}.`,
-  too_large: () => "That pack is over 50 MB.",
-  fetch_failed: () => "That pack could not be fetched.",
-};
-
-/** The user-facing sentence for a failed import. */
-export function importError(error: PackError): string {
-  return SENTENCES[error.code](error.detail);
-}
+/** The user-facing sentence for a failed import (one map for every pack consumer, in @sr/pack). */
+export const importError: (error: PackError) => string = packErrorSentence;
