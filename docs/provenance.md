@@ -62,3 +62,6 @@ Designed and generated art is stylised and labelled as such in the UI; no real p
   `assets/characters/malakor/rig/expressions/`). All 84 kept by the owner's verdict, including the
   19 whose drift exceeded the 20/255 flag. Colour region maps (`<layer>.regions.png`) are computed
   from the committed layers with no model call.
+- **Avatar packs (avatar-pack, 2026-11-04).** Malakor (pre-existing art, above) is never packed:
+  `scripts/build-packs.mjs` skips him when it publishes the cast as `/packs/<slug>.srpack`, and the
+  creator offers no Export for him, so he is never exported or published as a pack.

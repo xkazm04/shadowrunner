@@ -47,6 +47,14 @@ Check it locally with `pnpm vercel-build`. Vercel project settings:
   KV and Blob a live deploy refuses paid calls. All names are listed in
   [`.env.example`](.env.example).
 
+## Avatar packs
+A character leaves Shadowrunner as an **avatar pack** (`.srpack`): one zip with the rig, its
+images, the saved look, the voice and a manifest with author and licence. The creator exports and
+imports them; `@sr/pack` (`loadPack`, `decodePackImages`) reads one in any app. `pnpm dev` and
+`pnpm build` publish the recorded cast as sample packs under `/packs/` (`/packs/<slug>.srpack`,
+listed in `/packs/index.json`; generated, not committed). Format reference:
+[docs/pack-format.md](docs/pack-format.md).
+
 ## How it is built
 Shadowrunner is built **spec-first with Kiro**. Everything Kiro reads lives in [`.kiro/`](.kiro):
 - `steering/`: product, tech and structure rules, always in context.

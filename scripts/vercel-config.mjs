@@ -67,7 +67,7 @@ function bySpecificity(a, b) {
  * The route table. Order matters:
  * 1. `filesystem`: static files (the app, /replay/**) and functions by their exact name win;
  * 2. dynamic function rewrites, the most specific first;
- * 3. an unknown /api/* or a missing /replay/* file is a 404 (never the SPA's HTML);
+ * 3. an unknown /api/* or a missing /replay/* or /packs/* file is a 404 (never the SPA's HTML);
  * 4. every other path is the SPA's index.html (the client router owns it).
  */
 export function routesFor(names) {
@@ -77,6 +77,7 @@ export function routesFor(names) {
     ...dynamic.map(dynamicRoute),
     { src: "^/api(?:/.*)?$", status: 404 },
     { src: "^/replay(?:/.*)?$", status: 404 },
+    { src: "^/packs(?:/.*)?$", status: 404 },
     { src: "^/(.*)$", dest: "/index.html" },
   ];
 }

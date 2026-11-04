@@ -66,6 +66,7 @@ describe("vercel-output config.json", () => {
     expect(resolve(config, "/api/forge/a/b")).toEqual({ status: 404 });
     expect(resolve(config, "/api")).toEqual({ status: 404 });
     expect(resolve(config, "/replay/shows/missing.wav")).toEqual({ status: 404 });
+    expect(resolve(config, "/packs/missing.srpack")).toEqual({ status: 404 });
     expect(resolve(config, "/")).toEqual({ file: "/index.html" });
     expect(resolve(config, "/creator/forge")).toEqual({ file: "/index.html" });
     expect(resolve(config, "/assets/app.js")).toEqual({ file: "/assets/app.js" });
