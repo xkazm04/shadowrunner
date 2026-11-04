@@ -20,6 +20,10 @@ import { nextTheme, usePreferences, useTheme, type Motion, type ThemeName } from
 
 /** The on-air stage (voice-and-air 5.3), loaded on first visit to /air: the renderer stays off the set. */
 const AirPage = lazy(() => import("../air/AirPage"));
+/** Avatar reach (spec avatar-reach): each page its own lazy chunk. */
+const EmbedPage = lazy(() => import("../reach/embed/EmbedPage"));
+const OverlayPage = lazy(() => import("../reach/overlay/OverlayPage"));
+const StudioPage = lazy(() => import("../reach/studio/StudioPage"));
 /** CH 3, the creator (spec creator): its own chunk, so the set does not carry it. */
 const CreatorPage = lazy(() => import("../creator/CreatorPage").then((m) => ({ default: m.CreatorPage })));
 /** Forge new, the rite (costume 3.2): its own chunk too. */
@@ -110,6 +114,14 @@ function ChannelBody({ page, plane, health, lost }: { page: PageDef; plane: Plan
     );
   }
   if (page.id === "daemon") return <Daemon health={health} plane={plane} lost={lost} />;
+  if (page.id === "embed" || page.id === "studio") {
+    const Page = page.id === "embed" ? EmbedPage : StudioPage;
+    return (
+      <Suspense fallback={<p data-page={page.id}>Tuning in…</p>}>
+        <Page plane={plane} />
+      </Suspense>
+    );
+  }
   if (page.id === "forge-new") {
     // Costume task 3.2: the rite page (creator lane).
     return (
@@ -209,6 +221,16 @@ export function ShellView({
   const badge = plane === "replay" && <RecordedBadge />;
   // On the set the toggle is an icon button in the status bar (spec landing task 5.0).
   const toggle = <ThemeToggle theme={theme} onToggle={onToggleTheme} icon={onSet || onStage} />;
+  // The overlay is an OBS browser source: the character alone, no chrome (avatar-reach 3.1).
+  if (page?.id === "overlay") {
+    return (
+      <div data-shell data-motion={motion} data-plane={plane}>
+        <Suspense fallback={<section data-page="overlay" aria-label={page.title} />}>
+          <OverlayPage plane={plane} />
+        </Suspense>
+      </div>
+    );
+  }
   return (
     <div
       data-shell

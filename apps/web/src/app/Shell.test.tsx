@@ -34,6 +34,12 @@ describe("Shell", () => {
   it("shows the RECORDED badge on replay, on every page and outside it, and not on live", () => {
     for (const page of [...PAGES, undefined]) {
       const recorded = view(page, { plane: "replay" });
+      // avatar-reach 3.1: the overlay is an OBS source of the user's own microphone, nothing
+      // recorded plays there, so it carries no chrome and no badge.
+      if (page?.id === "overlay") {
+        expect(recorded).not.toContain("RECORDED");
+        continue;
+      }
       const badge = recorded.indexOf('data-badge="recorded"');
       expect(badge).toBeGreaterThan(-1);
       if (page?.id === "landing") {
@@ -67,7 +73,7 @@ describe("Shell", () => {
       expect(other).not.toContain("data-status-bar");
       // Channels behind the set open in their frame; the stage (off the dial) is full screen, for
       // a stream's browser source, with no shell header at all.
-      if (page.id === "air") {
+      if (page.id === "air" || page.id === "overlay") {
         expect(other).not.toContain('aria-label="Channels"');
         expect(other).not.toContain("<header");
         continue;

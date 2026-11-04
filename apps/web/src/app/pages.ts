@@ -3,7 +3,7 @@
 // subtitles follow the landing verdict, The Harvest Floor (spec landing, design.md).
 export type PageStatus = "live" | "sealed";
 
-export type PageId = "landing" | "creator" | "forge-new" | "air" | "characters" | "daemon" | "sealed";
+export type PageId = "landing" | "creator" | "forge-new" | "air" | "characters" | "daemon" | "sealed" | "embed" | "overlay" | "studio";
 
 export interface PageDef {
   id: PageId;
@@ -19,6 +19,8 @@ export interface PageDef {
   subtitle?: string;
   /** The frame's bar keeps the breadcrumb for screen readers only; the room goes to the page. */
   bareBar?: true;
+  /** Not on the channel strip (avatar-reach: the embed, overlay and studio pages). */
+  offStrip?: true;
 }
 
 export const PAGES: readonly PageDef[] = [
@@ -69,6 +71,9 @@ export const PAGES: readonly PageDef[] = [
     bareBar: true,
   },
   { id: "air", title: "The stage", path: "/air", hotkey: "O", status: "live", subtitle: "full screen, for the stream" },
+  { id: "embed", title: "Embed", path: "/embed", hotkey: "E", status: "live", subtitle: "a character on any site", offStrip: true },
+  { id: "overlay", title: "Overlay", path: "/overlay", hotkey: "B", status: "live", subtitle: "a character for OBS", offStrip: true },
+  { id: "studio", title: "Studio", path: "/studio", hotkey: "V", status: "live", subtitle: "a character on video", offStrip: true },
 ];
 
 /** Pages on the dial, in ascending channel order. */

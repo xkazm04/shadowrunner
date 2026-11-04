@@ -45,7 +45,7 @@ function within(path: string, parent: string): boolean {
  */
 export function stripPages(pages: readonly PageDef[] = PAGES): PageDef[] {
   const dial = channelPages(pages);
-  const off = pages.filter((p) => p.channel === undefined && !dial.some((d) => within(p.path, d.path)));
+  const off = pages.filter((p) => p.channel === undefined && p.offStrip !== true && !dial.some((d) => within(p.path, d.path)));
   return [...dial, ...off];
 }
 

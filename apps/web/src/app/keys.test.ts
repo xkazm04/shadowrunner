@@ -141,9 +141,13 @@ describe("the shipped manifest", () => {
         { channel: undefined, id: "air", path: "/air", hotkey: "O", status: "live" },
         // costume design.md "Route": Forge new, off the dial like the stage.
         { channel: undefined, id: "forge-new", path: "/creator/new", hotkey: "N", status: "live" },
+        // avatar-reach: the embed, overlay and studio pages, off the dial and off the strip.
+        { channel: undefined, id: "embed", path: "/embed", hotkey: "E", status: "live" },
+        { channel: undefined, id: "overlay", path: "/overlay", hotkey: "B", status: "live" },
+        { channel: undefined, id: "studio", path: "/studio", hotkey: "V", status: "live" },
       ]),
     );
-    expect(table).toHaveLength(7);
+    expect(table).toHaveLength(10);
   });
 
   it("binds the dial keys of landing 5.3: 2 3 4 6 9, arrows, Esc and D", () => {
