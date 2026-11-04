@@ -179,6 +179,13 @@
   text-decoration: none;
 }
 
+/* Export pack is a button among links: the same key, without the button chrome. */
+.exportAction {
+  inline-size: 100%;
+  cursor: pointer;
+  text-align: start;
+}
+
 .action:hover {
   border-color: var(--sr-face-glow);
 }

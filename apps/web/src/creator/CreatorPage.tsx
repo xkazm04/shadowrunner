@@ -145,6 +145,7 @@ export function CreatorPage() {
         }}
         onRemove={library.remove}
         onOpenGallery={() => setGalleryOpen(true)}
+        onImport={library.add}
         extra={<ForgeNewSlot />}
         offers={offers}
         variant={slot === null ? "reel" : "bar"}

@@ -3,12 +3,17 @@
 // listed but never rendered, the private-mode notice, and the way to the replay gallery.
 // Since creator task 9 the whole cast lives here, so the strip is a grid of portrait tiles that
 // shows every character at once (it wraps rather than scrolls).
+// Avatar packs (spec avatar-pack): an Export key on every card but Malakor's, and "Import pack" in
+// the header (or a pack dropped anywhere on the region).
 import { useEffect, useState, type ReactNode } from "react";
+import { ExportSheet } from "./ExportSheet";
+import { ImportButton, usePackImport } from "./ImportPack";
 import type {
   CharacterRecord,
   LibraryEntry,
   RemoveResult,
 } from "./libraryStore";
+import { canExport } from "./packing";
 import { thumbnailOf } from "./thumbnail";
 import styles from "./Library.module.css";
 
@@ -28,6 +33,8 @@ export interface LibraryProps {
   onSelect: (id: string) => void;
   onRemove: (id: string) => Promise<RemoveResult>;
   onOpenGallery: () => void;
+  /** Keeps an imported pack's record; without it there is no Import pack. */
+  onImport?: (record: CharacterRecord) => Promise<void>;
   /** The strip's last slot (the Forge's "+ Forge new"). */
   extra?: ReactNode;
   /** Gallery characters not kept yet, after the kept ones (the cast-forge eight). */
@@ -114,13 +121,18 @@ export function Library({
   onSelect,
   onRemove,
   onOpenGallery,
+  onImport,
   extra,
   offers = [],
   variant = "reel",
 }: LibraryProps) {
   const [confirming, setConfirming] = useState<string | undefined>(undefined);
   const [refused, setRefused] = useState<string | undefined>(undefined);
+  const [exportId, setExportId] = useState<string | undefined>(undefined);
   const count = entries.filter((e) => e.kind === "ok").length;
+  const takenIds = new Set(entries.map((e) => (e.kind === "ok" ? e.record.id : e.id)));
+  const pack = usePackImport({ takenIds, ...(onImport === undefined ? {} : { onImport }) });
+  const exporting = entries.find((e) => e.kind === "ok" && e.record.id === exportId);
 
   const remove = async (id: string): Promise<void> => {
     const result = await onRemove(id);
@@ -134,6 +146,8 @@ export function Library({
       aria-labelledby="library-title"
       data-region="library"
       data-variant={variant}
+      data-dropping={pack.dragging ? "" : undefined}
+      {...pack.dropProps}
     >
       <header className={styles.head}>
         <h2 id="library-title" className={styles.title}>
@@ -142,6 +156,13 @@ export function Library({
             {status === "loading" ? "…" : count}
           </span>
         </h2>
+        {pack.enabled && (
+          <ImportButton
+            pack={pack}
+            className={styles.galleryButton}
+            short={variant === "bar"}
+          />
+        )}
         <button
           type="button"
           className={styles.galleryButton}
@@ -154,6 +175,15 @@ export function Library({
       {!persistent && status !== "loading" && (
         <p className={styles.notice} role="status">
           This window keeps nothing: characters last until the tab closes.
+        </p>
+      )}
+      {pack.notice !== undefined && (
+        <p
+          className={pack.notice.kind === "done" ? styles.done : styles.notice}
+          role="status"
+          data-import-notice={pack.notice.kind}
+        >
+          {pack.notice.text}
         </p>
       )}
       {status === "loading" && (
@@ -208,6 +238,18 @@ export function Library({
                   {name.replace(/^the\s+/i, "")}
                 </span>
               </button>
+              {canExport(record) && confirming !== record.id && (
+                <button
+                  type="button"
+                  className={`${styles.small} ${styles.export}`}
+                  aria-label={`Export ${name}`}
+                  title={`Export ${name}`}
+                  data-export=""
+                  onClick={() => setExportId(record.id)}
+                >
+                  ↓
+                </button>
+              )}
               {confirming === record.id ? (
                 <span
                   className={styles.confirm}
@@ -254,6 +296,12 @@ export function Library({
         ))}
         {extra !== undefined && <li className={styles.item}>{extra}</li>}
       </ul>
+      {exporting?.kind === "ok" && (
+        <ExportSheet
+          record={exporting.record}
+          onClose={() => setExportId(undefined)}
+        />
+      )}
     </section>
   );
 }

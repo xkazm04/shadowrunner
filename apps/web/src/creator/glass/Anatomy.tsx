@@ -201,7 +201,7 @@ export function Anatomy({ record, library, cast, badge, readPixels = decodePixel
             ),
           }}
         />
-        <ChannelActions recordId={record.id} />
+        <ChannelActions recordId={record.id} record={record} />
       </aside>
     </div>
   );

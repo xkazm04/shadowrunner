@@ -1,0 +1,154 @@
+/* The Export sheet (ExportSheet.tsx): a small card over a dimmed page, in the gallery drawer's
+   manner (Anatomy.module.css .drawer). It rises in; under reduced motion it simply appears. */
+
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 9;
+  display: grid;
+  place-items: center;
+  padding: var(--sr-space-4);
+  background-image: linear-gradient(color-mix(in srgb, var(--sr-surface-0) 78%, transparent), color-mix(in srgb, var(--sr-surface-0) 78%, transparent));
+}
+
+.sheet {
+  box-sizing: border-box;
+  display: grid;
+  gap: var(--sr-space-3);
+  inline-size: min(100%, 26rem);
+  max-block-size: 100%;
+  overflow: auto;
+  padding: var(--sr-space-4);
+  border: thin solid color-mix(in srgb, var(--sr-accent) 40%, transparent);
+  border-radius: var(--sr-radius-1);
+  background-color: var(--sr-surface-2);
+  color: var(--sr-text);
+  animation: rise 160ms ease-out;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+}
+
+.title {
+  margin: 0;
+  color: var(--sr-text-strong);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.lead {
+  margin: 0;
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text);
+  line-height: 1.35;
+}
+
+.lead b {
+  color: var(--sr-text-strong);
+}
+
+.form {
+  display: grid;
+  gap: var(--sr-space-3);
+}
+
+.field {
+  display: grid;
+  gap: var(--sr-space-1);
+}
+
+.label {
+  color: var(--sr-text-muted);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.input {
+  box-sizing: border-box;
+  inline-size: 100%;
+  min-block-size: 2.5rem;
+  padding: 0 var(--sr-space-2);
+  border: thin solid var(--sr-line);
+  border-radius: var(--sr-radius-1);
+  background-color: var(--sr-surface-0);
+  color: var(--sr-text-strong);
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text);
+}
+
+.error {
+  margin: 0;
+  color: var(--sr-signal-warn);
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text);
+  font-weight: 600;
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sr-space-2);
+}
+
+.primary,
+.secondary {
+  min-block-size: 2.5rem;
+  padding: 0 var(--sr-space-4);
+  border: thin solid var(--sr-line);
+  border-radius: var(--sr-radius-1);
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.primary {
+  border-color: var(--sr-accent);
+  background-color: var(--sr-surface-1);
+  background-image: linear-gradient(color-mix(in srgb, var(--sr-accent) 28%, transparent), color-mix(in srgb, var(--sr-accent) 28%, transparent));
+  color: var(--sr-text-strong);
+}
+
+.primary:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+.secondary {
+  background-color: var(--sr-surface-1);
+  color: var(--sr-text);
+}
+
+.primary:hover:not(:disabled) {
+  border-color: var(--sr-face-glow);
+}
+
+.secondary:hover {
+  background-color: var(--sr-surface-3);
+}
+
+.input:focus-visible,
+.primary:focus-visible,
+.secondary:focus-visible {
+  outline: 0.1875rem solid var(--sr-accent);
+  outline-offset: 0.125rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet {
+    animation: none;
+  }
+}
+
+:global([data-motion="reduced"]) .sheet {
+  animation: none;
+}

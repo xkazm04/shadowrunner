@@ -64,6 +64,27 @@
   font-weight: 600;
 }
 
+/* An import that worked. */
+.done {
+  margin: 0;
+  color: var(--sr-signal-ok);
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text);
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+/* A pack dragged over the region: the whole strip lights as the drop target. */
+.library {
+  outline: 0.125rem dashed transparent;
+  outline-offset: 0.125rem;
+  transition: outline-color 120ms ease-out;
+}
+
+.library[data-dropping] {
+  outline-color: var(--sr-accent);
+}
+
 /* One row of frames; a long cast scrolls sideways along the reel. */
 .list {
   display: grid;
@@ -179,6 +200,18 @@
   text-decoration: none;
 }
 
+/* Export: a key beside Delete (to its inline start); Malakor's card has neither. */
+.export {
+  position: absolute;
+  inset-block-start: var(--sr-space-1);
+  inset-inline-end: calc(var(--sr-space-1) * 2 + 2rem);
+  min-inline-size: 2rem;
+  border-color: var(--sr-line);
+  background-image: linear-gradient(color-mix(in srgb, var(--sr-surface-0) 85%, transparent), color-mix(in srgb, var(--sr-surface-0) 85%, transparent));
+  color: var(--sr-text-strong);
+  text-decoration: none;
+}
+
 .danger {
   border-color: var(--sr-signal-onair);
   color: var(--sr-text-strong);
@@ -226,7 +259,8 @@
 
 .galleryButton:focus-visible,
 .card:focus-visible,
-.small:focus-visible {
+.small:focus-visible,
+.export:focus-visible {
   outline: 0.1875rem solid var(--sr-accent);
   outline-offset: 0.125rem;
 }
@@ -319,8 +353,21 @@
   font-size: var(--sr-size-text-sm);
 }
 
+.bar .export {
+  display: none;
+  inset-block-start: 0;
+  inset-inline-end: auto;
+  inset-inline-start: 0;
+  min-inline-size: 1.25rem;
+  min-block-size: 1.25rem;
+  padding: 0;
+  font-size: var(--sr-size-text-sm);
+}
+
 .bar .item:hover .remove,
-.bar .remove:focus-visible {
+.bar .remove:focus-visible,
+.bar .item:hover .export,
+.bar .export:focus-visible {
   display: block;
 }
 
@@ -331,4 +378,14 @@
   z-index: 3;
   margin-block-start: var(--sr-space-6);
   border: thin solid var(--sr-line);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .library {
+    transition: none;
+  }
+}
+
+:global([data-motion="reduced"]) .library {
+  transition: none;
 }

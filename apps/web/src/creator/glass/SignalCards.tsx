@@ -2,12 +2,16 @@
 // six gestures, the five voices with "speak a line" and its transcript typed out, and the two
 // channel actions (Put on air to CH 2, Characters to CH 4) taken from the page manifest. Put on air
 // records the character first (`sr.onAir`, character-control), so the stage shows it.
+// "Export pack" (spec avatar-pack) opens the Export sheet for any character but the seeded Malakor.
 import { VOICE_IDS, VOICES, type VoiceId } from "@sr/engine";
 import type { Gesture } from "@sr/rig";
 import { useEffect, useState } from "react";
 import { PAGES } from "../../app/pages";
 import { handleLinkClick } from "../../app/router";
 import { writeOnAir } from "../../air/onAir";
+import { ExportSheet } from "../library/ExportSheet";
+import type { CharacterRecord } from "../library/libraryStore";
+import { canExport } from "../library/packing";
 import { GESTURES, gestureLabel } from "./gestures";
 import anatomy from "./Anatomy.module.css";
 import styles from "./Signal.module.css";
@@ -91,7 +95,8 @@ export function VoiceCard({ voice, onVoice, onSpeak, speaking, line }: VoiceCard
 const onAir = PAGES.find((p) => p.id === "landing");
 const characters = PAGES.find((p) => p.id === "characters");
 
-export function ChannelActions({ recordId }: { recordId?: string }) {
+export function ChannelActions({ recordId, record }: { recordId?: string; record?: CharacterRecord }) {
+  const [exporting, setExporting] = useState(false);
   return (
     <nav className={styles.actions} aria-label="Channels from the forge">
       {onAir !== undefined && (
@@ -112,6 +117,12 @@ export function ChannelActions({ recordId }: { recordId?: string }) {
           Characters <kbd>CH {characters.channel}</kbd>
         </a>
       )}
+      {record !== undefined && canExport(record) && (
+        <button type="button" className={`${styles.action} ${styles.exportAction}`} data-export-pack="" onClick={() => setExporting(true)}>
+          Export pack <kbd>.srpack</kbd>
+        </button>
+      )}
+      {exporting && record !== undefined && <ExportSheet record={record} onClose={() => setExporting(false)} />}
     </nav>
   );
 }
