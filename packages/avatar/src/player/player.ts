@@ -20,7 +20,14 @@ export interface AvatarPlayerOptions {
   reducedMotion?: boolean | "auto";
   /** Size the canvas to its parent with a ResizeObserver (default true). */
   autoSize?: boolean;
+  /**
+   * Draw the rig's painted backdrop (the layer named `BACKDROP_LAYER`). Default false: the player
+   * is a cutout on whatever the page, the stream or the video puts behind it, as the stage hides it.
+   */
+  backdrop?: boolean;
 }
+
+export { BACKDROP_LAYER, cutoutLook } from "./cutout.js";
 
 export type PlayerAudio = AudioNode | HTMLMediaElement | MediaStream;
 

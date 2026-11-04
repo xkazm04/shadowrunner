@@ -203,7 +203,7 @@ function elementClass(): CustomElementConstructor {
       this.#followMotion();
       const mood = this.#mood();
       const { rig, look } = result.pack;
-      const player = createAvatarPlayer(this.#canvas, { rig, look: mood === undefined ? look : { ...look, emotion: mood }, assets });
+      const player = createAvatarPlayer(this.#canvas, { rig, look: mood === undefined ? look : { ...look, emotion: mood }, assets, backdrop: this.hasAttribute("backdrop") });
       this.#player = player;
       if (this.#audio !== undefined) player.attachAudio(this.#audio.source, this.#audio.options);
       if (this.#level !== undefined) player.setLevel(this.#level);

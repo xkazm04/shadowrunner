@@ -6,6 +6,7 @@ import * as rigModule from "@sr/rig";
 import { defaultLook, GESTURE_DURATION_S, MOOD_FADE_S, type Drive, type Look } from "@sr/rig";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FrameInputs } from "../react/loop.js";
+import { BACKDROP_LAYER, cutoutLook } from "../player/cutout.js";
 import { createAvatarPlayer } from "../player/player.js";
 import { runPlayer, type RendererFactory } from "../player/run.js";
 import type { FrameClock, Renderer } from "../render/types.js";
@@ -123,9 +124,25 @@ describe("createAvatarPlayer", () => {
     player.renderFrame(0.05);
     player.renderFrame(0.05);
     expect(renderer.draws).toHaveLength(2);
-    expect(renderer.draws[0]?.poses).toBe(rig.layers.length);
+    // The cutout hides the backdrop layer, so it is not posed.
+    expect(renderer.draws[0]?.poses).toBe(rig.layers.length - 1);
     expect(renderer.draws[1]?.clock?.t).toBeCloseTo(0.1, 9);
     expect(seen.inputs.map((i) => i.dt)).toEqual([0.05, 0.05]);
+  });
+
+  it("draws a cutout: the backdrop layer is hidden unless backdrop is kept, also after setLook", () => {
+    const { factory, renderer } = fakeRenderer();
+    expect(rig.layers.some((l) => l.name === BACKDROP_LAYER)).toBe(true);
+    const player = runPlayer(canvasIn(), { rig, look, assets }, factory);
+    player.renderFrame(0.05);
+    player.setLook({ ...look, hidden: [] });
+    player.renderFrame(0.05);
+    for (const draw of renderer.draws) expect(draw.look.hidden).toContain(BACKDROP_LAYER);
+    const kept = fakeRenderer();
+    runPlayer(canvasIn(), { rig, look, assets, backdrop: true }, kept.factory).renderFrame(0.05);
+    expect(kept.renderer.draws[0]?.look.hidden).not.toContain(BACKDROP_LAYER);
+    expect(cutoutLook(look).hidden.filter((n) => n === BACKDROP_LAYER)).toHaveLength(1);
+    expect(cutoutLook(cutoutLook(look))).toEqual(cutoutLook(look));
   });
 
   it("runs its own rAF loop with the gap between frames as dt, the first at 0", () => {
@@ -247,7 +264,8 @@ describe("createAvatarPlayer", () => {
     const player = createAvatarPlayer(canvasIn(), { rig, look, assets });
     gl.reset();
     player.renderFrame(1 / 30);
-    expect(gl.count("drawArrays")).toBe(rig.layers.length + 4);
+    // Every layer but the hidden backdrop, plus the glow passes.
+    expect(gl.count("drawArrays")).toBe(rig.layers.length - 1 + 4);
     player.dispose();
   });
 });

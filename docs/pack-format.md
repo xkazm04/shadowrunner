@@ -149,6 +149,7 @@ copies this snippet for you:
 | `src` | The pack's URL (relative URLs resolve against the page). Changing it loads the new pack. |
 | `mood` | An emotion (`neutral`, `amused`, `smug`, ...); crossfades on change. Absent: the pack's saved look. |
 | `background` | A CSS colour under the character. Default `transparent`. |
+| `backdrop` | Boolean. Draw the rig's own painted backdrop (the layer named `background`). Absent: the character is a cutout over `background` and the page. |
 | `mic` | Present: a "Click to listen" button lip-syncs the character to the microphone (the browser asks first). |
 
 From script: `el.setMood(emotion)`, `el.gesture("nod")` (any rig gesture), `el.setLevel(0.6)`

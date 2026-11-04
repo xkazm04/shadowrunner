@@ -19,6 +19,7 @@ import type { CreateRendererOptions } from "../gl/renderer.js";
 import type { CanvasHost, Renderer, RigAssets } from "../render/types.js";
 import { isReducedMotion } from "../react/loop.js";
 import { createFrameBody } from "./frame.js";
+import { cutoutLook } from "./cutout.js";
 import type { AvatarPlayer, AvatarPlayerOptions, PlayerAudio } from "./player.js";
 
 export type RendererFactory = (canvas: CanvasHost, rig: Rig, assets: RigAssets, options: CreateRendererOptions) => Renderer;
@@ -32,7 +33,8 @@ export function runPlayer(canvas: HTMLCanvasElement, options: AvatarPlayerOption
   const renderer = makeRenderer(canvas, options.rig, options.assets, options.loadAsset === undefined ? {} : { loadAsset: options.loadAsset });
   const body = createFrameBody(options.seed ?? 1);
   const media = options.reducedMotion === undefined || options.reducedMotion === "auto" ? win?.matchMedia?.(REDUCED_QUERY) : undefined;
-  let look: Look = options.look;
+  // Callers hold the look they set; the player draws it as a cutout unless `backdrop` (player.ts).
+  let look: Look = cutoutLook(options.look, options.backdrop);
   let tap: AudioLevelTap | undefined;
   let override: number | undefined;
   let pendingGesture: Gesture | undefined;
@@ -91,7 +93,7 @@ export function runPlayer(canvas: HTMLCanvasElement, options: AvatarPlayerOption
 
   const player: AvatarPlayer = {
     setLook(next: Look): void {
-      if (!disposed) look = next;
+      if (!disposed) look = cutoutLook(next, options.backdrop);
     },
     setEmotion(emotion: Emotion): void {
       player.setLook({ ...look, emotion });
