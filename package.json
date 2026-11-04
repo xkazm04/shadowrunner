@@ -16,7 +16,8 @@
     "test": "vitest run --testTimeout=30000",
     "test:gates": "node scripts/gate-fixtures/run.mjs",
     "test:visual": "pnpm build && pnpm --filter @sr/web test:visual",
-    "test:visual:update": "pnpm build && pnpm --filter @sr/web test:visual:update"
+    "test:visual:update": "pnpm build && pnpm --filter @sr/web test:visual:update",
+    "test:e2e": "pnpm build && pnpm --filter @sr/web test:e2e"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

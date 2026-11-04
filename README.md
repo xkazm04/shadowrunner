@@ -26,6 +26,10 @@ check gets no health answer and it stays on replay.
 
 The gates every change must pass: `pnpm typecheck && pnpm lint && pnpm test`.
 
+Browser checks, outside the gates: `pnpm test:visual` (the landing's screenshots) and `pnpm test:e2e`
+(avatar packs and their reach, live in headless Chromium with a fake microphone: the overlay, the
+studio's WebM recorder, export/import in the creator and `<sr-avatar>` on another origin).
+
 ## Deploy
 `vercel.json` hands the build to the root `vercel-build` script: `pnpm build` writes the static
 app to `apps/web/dist`, then `scripts/vercel-output.mjs` writes the Vercel Build Output
