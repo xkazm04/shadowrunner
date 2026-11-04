@@ -66,7 +66,7 @@ describe("Malakor golden import", () => {
     const { rig, warnings } = malakor();
     const zs = rig.layers.map((l) => l.z);
     expect(zs).toEqual([...zs].sort((a, b) => a - b));
-    for (const layer of rig.layers) expect(layer.file).toBe(`${layer.name}.png`);
+    for (const layer of rig.layers) expect(layer.file).toBe(`${layer.name}.webp`);
     expect(warnings.map((w) => w.layer)).toEqual(["mouth_glow"]);
   });
 

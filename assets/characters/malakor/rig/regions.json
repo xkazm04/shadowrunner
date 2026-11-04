@@ -1,6 +1,6 @@
 {
   "torso": {
-    "map": "torso.regions.png",
+    "map": "torso.regions.webp",
     "slots": [
       {
         "id": "r1",
@@ -20,7 +20,7 @@
     ]
   },
   "head": {
-    "map": "head.regions.png",
+    "map": "head.regions.webp",
     "slots": [
       {
         "id": "r1",
@@ -45,7 +45,7 @@
     ]
   },
   "jaw": {
-    "map": "jaw.regions.png",
+    "map": "jaw.regions.webp",
     "slots": [
       {
         "id": "r1",
@@ -70,7 +70,7 @@
     ]
   },
   "shard_r5": {
-    "map": "shard_r5.regions.png",
+    "map": "shard_r5.regions.webp",
     "slots": [
       {
         "id": "r1",
@@ -90,7 +90,7 @@
     ]
   },
   "shard_l5": {
-    "map": "shard_l5.regions.png",
+    "map": "shard_l5.regions.webp",
     "slots": [
       {
         "id": "r1",
@@ -110,7 +110,7 @@
     ]
   },
   "shard_r4": {
-    "map": "shard_r4.regions.png",
+    "map": "shard_r4.regions.webp",
     "slots": [
       {
         "id": "r1",
@@ -125,7 +125,7 @@
     ]
   },
   "shard_l4": {
-    "map": "shard_l4.regions.png",
+    "map": "shard_l4.regions.webp",
     "slots": [
       {
         "id": "r1",
@@ -145,7 +145,7 @@
     ]
   },
   "shard_r3": {
-    "map": "shard_r3.regions.png",
+    "map": "shard_r3.regions.webp",
     "slots": [
       {
         "id": "r1",
@@ -165,7 +165,7 @@
     ]
   },
   "shard_l3": {
-    "map": "shard_l3.regions.png",
+    "map": "shard_l3.regions.webp",
     "slots": [
       {
         "id": "r1",
@@ -185,7 +185,7 @@
     ]
   },
   "shard_r2": {
-    "map": "shard_r2.regions.png",
+    "map": "shard_r2.regions.webp",
     "slots": [
       {
         "id": "r1",
@@ -205,7 +205,7 @@
     ]
   },
   "shard_l2": {
-    "map": "shard_l2.regions.png",
+    "map": "shard_l2.regions.webp",
     "slots": [
       {
         "id": "r1",
@@ -225,7 +225,7 @@
     ]
   },
   "shard_r1": {
-    "map": "shard_r1.regions.png",
+    "map": "shard_r1.regions.webp",
     "slots": [
       {
         "id": "r1",
@@ -240,7 +240,7 @@
     ]
   },
   "shard_l1": {
-    "map": "shard_l1.regions.png",
+    "map": "shard_l1.regions.webp",
     "slots": [
       {
         "id": "r1",
@@ -255,7 +255,7 @@
     ]
   },
   "shard_c": {
-    "map": "shard_c.regions.png",
+    "map": "shard_c.regions.webp",
     "slots": [
       {
         "id": "r1",
@@ -275,7 +275,7 @@
     ]
   },
   "eye_l": {
-    "map": "eye_l.regions.png",
+    "map": "eye_l.regions.webp",
     "slots": [
       {
         "id": "r1",
@@ -290,7 +290,7 @@
     ]
   },
   "eye_r": {
-    "map": "eye_r.regions.png",
+    "map": "eye_r.regions.webp",
     "slots": [
       {
         "id": "r1",
@@ -305,7 +305,7 @@
     ]
   },
   "monocle": {
-    "map": "monocle.regions.png",
+    "map": "monocle.regions.webp",
     "slots": [
       {
         "id": "r1",

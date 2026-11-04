@@ -51,7 +51,7 @@ Four colours, each `#rrggbb`:
 | `name` | string | yes | Unique within the rig; characters `[a-z0-9_]` only. |
 | `z` | integer | yes | Unique within the rig. Low values are drawn at the back. |
 | `kind` | LayerKind | yes | What the layer is; drives animation (see below). |
-| `file` | string | yes | PNG path relative to the rig folder, or a PNG `data:` URL produced by the forge (see "Layer files"). |
+| `file` | string | yes | PNG or WebP path relative to the rig folder, or a PNG or WebP `data:` URL (see "Layer files"). |
 | `bbox` | `[x, y, w, h]` | yes | Where the PNG sits on the canvas, in px. `w` and `h` are > 0. Must lie inside `[0, width] x [0, height]`; the right and bottom edges may overshoot by at most 1e-6 px (float bboxes from the forge), the left and top edges not at all. |
 | `anchor` | `[x, y]` | yes | Pivot point in canvas px; rotation and followers turn about it. |
 | `follow` | string | no | Name of a parent layer. The layer inherits the parent's gesture translation, rotation and scale about the parent's anchor, but not its parallax or jaw drop (see "Pose"). Must name an existing layer, with no cycles. |
@@ -67,13 +67,22 @@ Four colours, each `#rrggbb`:
 
 `file` is one of:
 
-- a relative POSIX path inside the rig folder, such as `head.png` or `parts/eye_l.png`. It must
+- a relative POSIX path inside the rig folder, such as `head.png`, `head.webp` or `parts/eye_l.png`. It must
   not be empty, start with `/`, contain a backslash or a `:` (no scheme or drive letter), have an
   empty segment (`a//b.png`, a trailing `/`) or a `..` segment. `.` segments are allowed.
-- a `data:image/png;base64,` URL with a non-empty payload, as the forge produces. No other
+- a `data:image/png;base64,` or `data:image/webp;base64,` URL with a non-empty payload (the forge produces PNG). No other
   `data:` type is accepted.
 
 Anything else is `bad_shape` at `$.layers[i].file`.
+
+**Lossless WebP (asset-webp amendment; additive, the format stays version 1).** A path is not checked for
+its extension, so `.webp` paths were already legal; the amendment adds the `data:image/webp;base64,` URL and
+fixes the convention: committed layer images, region maps and variant patches are lossless WebP
+(`scripts/rig-webp.mjs` converts a folder, `exact` so even colour under alpha 0 survives, and refuses unless
+every decoded RGBA byte is equal). A loader decodes by content, never by extension. The rig-core design.md
+still says "PNG"; spec design edits are denied to the builder, so this note is the amendment of record.
+Not yet converted: `assets/replay/forge/**`, because `api/_lib/forge-replay.ts` only accepts `.png`/`.jpg`
+layer names (its `FILE` and `EXTRA_FILE` patterns) and `api/` was out of this task's scope.
 
 ### LayerKind and default depth
 

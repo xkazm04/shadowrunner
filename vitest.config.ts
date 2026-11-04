@@ -8,7 +8,7 @@ export default defineConfig({
       "packages/*",
       "apps/*",
       "api",
-      { test: { name: "scripts", include: ["scripts/vercel-config.test.mjs"], environment: "node" } },
+      { test: { name: "scripts", include: ["scripts/vercel-config.test.mjs", "scripts/rig-webp.test.mjs"], environment: "node" } },
     ],
   },
 });

@@ -15,8 +15,8 @@ import { malakorFiles, withSidecars } from "../creator/library/seed";
 import { RESIDENT, type OnAirCharacter } from "./cast";
 
 /** The rig's layer images only: the source portrait and the depth map are not drawn. */
-const PNG_URLS = import.meta.glob<string>(
-  ["../../../../assets/characters/malakor/rig/*.png", "!../../../../assets/characters/malakor/rig/{portrait,depth}.png"],
+const IMAGE_URLS = import.meta.glob<string>(
+  "../../../../assets/characters/malakor/rig/*.webp",
   { query: "?url", import: "default", eager: true },
 );
 
@@ -33,7 +33,7 @@ export function loadMalakor(): Promise<OnAirCharacter> {
     if (!result.ok) throw new Error(`Malakor did not import: ${result.errors.map((e) => e.message).join("; ")}`);
     // The retrofit's region and face sidecars, when committed (character-control; seed.ts).
     const rig = withSidecars(result.value.rig);
-    const urls = new Map(Object.entries(PNG_URLS).map(([path, url]) => [fileOf(path), url]));
+    const urls = new Map(Object.entries(IMAGE_URLS).map(([path, url]) => [fileOf(path), url]));
     const extra = malakorFiles();
     const layerFiles = new Set(rig.layers.map((l) => l.file));
     const assets: RigAssets = {};

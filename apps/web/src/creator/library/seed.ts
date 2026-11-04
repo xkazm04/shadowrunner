@@ -18,13 +18,13 @@ import type { CharacterRecord, LibraryStore } from "./libraryStore";
 export const MALAKOR_ID = "malakor";
 export const MALAKOR_NAME = "Arch-Lich Malakor";
 
-const PNG_URLS = import.meta.glob<string>(["../../../../../assets/characters/malakor/rig/*.png", "!**/depth.png"], {
+const IMAGE_URLS = import.meta.glob<string>(["../../../../../assets/characters/malakor/rig/*.webp", "../../../../../assets/characters/malakor/rig/portrait.png"], {
   eager: true,
   query: "?url",
   import: "default",
 });
 
-/** His expression patches (character-control retrofit), when committed: `rig/expressions/*.png`. */
+/** His expression patches (character-control retrofit), when committed: `rig/expressions/*.{png,webp}`. */
 const FACE_URLS = import.meta.glob<string>("../../../../../assets/characters/malakor/rig/expressions/*.{png,webp}", {
   eager: true,
   query: "?url",
@@ -42,7 +42,7 @@ const sidecar = (name: "regions" | "variants"): unknown => Object.entries(SIDECA
 
 /** File name (relative to his rig folder) -> bundled URL; a face also under its bare name. */
 export function malakorFiles(): Record<string, string> {
-  const out = Object.fromEntries(Object.entries(PNG_URLS).map(([path, url]) => [path.slice(path.lastIndexOf("/") + 1), url]));
+  const out = Object.fromEntries(Object.entries(IMAGE_URLS).map(([path, url]) => [path.slice(path.lastIndexOf("/") + 1), url]));
   for (const [path, url] of Object.entries(FACE_URLS)) {
     const name = path.slice(path.lastIndexOf("/") + 1);
     out[`expressions/${name}`] = url;
