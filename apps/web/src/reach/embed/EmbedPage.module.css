@@ -1,0 +1,159 @@
+/* The /embed page (EmbedPage.tsx): the live <sr-avatar> on a dark stage beside its controls, the
+   snippet below. Controls follow the Export sheet's inputs and keys (ExportSheet.module.css). No
+   animation here (the character's own motion honours reduced motion in the player). */
+
+.page {
+  display: grid;
+  gap: var(--sr-space-4);
+  min-inline-size: 0;
+  padding: var(--sr-space-4);
+  color: var(--sr-text);
+}
+
+.head {
+  display: grid;
+  gap: var(--sr-space-1);
+}
+
+.title,
+.label {
+  margin: 0;
+  color: var(--sr-text-strong);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.label {
+  color: var(--sr-text-muted);
+  letter-spacing: 0.12em;
+}
+
+.lead,
+.note {
+  margin: 0;
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text);
+  line-height: 1.35;
+}
+
+.note {
+  color: var(--sr-text-muted);
+}
+
+.body {
+  display: grid;
+  grid-template-columns: minmax(0, 20rem) minmax(0, 1fr);
+  gap: var(--sr-space-4);
+  align-items: start;
+}
+
+@media (width <= 40rem) {
+  .body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.stage {
+  aspect-ratio: 1;
+  border: thin solid var(--sr-line);
+  border-radius: var(--sr-radius-1);
+  background-color: var(--sr-surface-0);
+  color: var(--sr-text-muted);
+  font-family: var(--sr-font-body);
+  overflow: hidden;
+}
+
+.avatar {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+.controls,
+.field {
+  display: grid;
+  gap: var(--sr-space-3);
+  min-inline-size: 0;
+}
+
+.field {
+  gap: var(--sr-space-1);
+}
+
+.input {
+  box-sizing: border-box;
+  inline-size: 100%;
+  min-block-size: 2.5rem;
+  padding: 0 var(--sr-space-2);
+  border: thin solid var(--sr-line);
+  border-radius: var(--sr-radius-1);
+  background-color: var(--sr-surface-0);
+  color: var(--sr-text-strong);
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text);
+}
+
+.keys,
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sr-space-2);
+}
+
+.key,
+.primary {
+  min-block-size: 2.25rem;
+  padding: 0 var(--sr-space-3);
+  border: thin solid var(--sr-line);
+  border-radius: var(--sr-radius-1);
+  background-color: var(--sr-surface-1);
+  color: var(--sr-text);
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.key:hover {
+  background-color: var(--sr-surface-3);
+}
+
+.key[aria-pressed="true"] {
+  border-color: var(--sr-accent);
+  color: var(--sr-text-strong);
+}
+
+.primary {
+  border-color: var(--sr-accent);
+  background-image: linear-gradient(color-mix(in srgb, var(--sr-accent) 28%, transparent), color-mix(in srgb, var(--sr-accent) 28%, transparent));
+  color: var(--sr-text-strong);
+}
+
+.primary:hover {
+  border-color: var(--sr-face-glow);
+}
+
+.snippet {
+  margin: 0;
+  padding: var(--sr-space-3);
+  overflow-x: auto;
+  border: thin solid var(--sr-line);
+  border-radius: var(--sr-radius-1);
+  background-color: var(--sr-surface-0);
+  color: var(--sr-text-strong);
+  font-family: var(--sr-font-mono);
+  font-size: var(--sr-size-text-sm);
+  user-select: all;
+  white-space: pre;
+}
+
+.input:focus-visible,
+.key:focus-visible,
+.primary:focus-visible {
+  outline: 0.1875rem solid var(--sr-accent);
+  outline-offset: 0.125rem;
+}

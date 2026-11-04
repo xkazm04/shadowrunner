@@ -132,3 +132,32 @@ requestAnimationFrame(function frame(now) {
 
 `level` is the audio level, 0..1, that opens the jaw (take it from audio with `@sr/avatar` `attachAudio(node).level()`).
 `@sr/*` are workspace packages of this repository, not published to npm.
+
+## Embed
+To show a pack on any web page without a build step, load the `<sr-avatar>` element from a
+Shadowrunner deploy (`pnpm build` writes it to `apps/web/dist/embed/sr-avatar.js`, served at
+`/embed/sr-avatar.js`; one ES module, no React). The `/embed` page shows it live on the cast and
+copies this snippet for you:
+
+```html
+<script type="module" src="https://<deploy>/embed/sr-avatar.js"></script>
+<sr-avatar src="https://<deploy>/packs/moth-widow.srpack" mood="smug" style="width: 320px; height: 320px"></sr-avatar>
+```
+
+| Attribute | Meaning |
+| --- | --- |
+| `src` | The pack's URL (relative URLs resolve against the page). Changing it loads the new pack. |
+| `mood` | An emotion (`neutral`, `amused`, `smug`, ...); crossfades on change. Absent: the pack's saved look. |
+| `background` | A CSS colour under the character. Default `transparent`. |
+| `mic` | Present: a "Click to listen" button lip-syncs the character to the microphone (the browser asks first). |
+
+From script: `el.setMood(emotion)`, `el.gesture("nod")` (any rig gesture), `el.setLevel(0.6)`
+(a mouth level 0..1 that wins over audio; `undefined` hands back), `el.attachAudio(audioElementOrNodeOrStream)`
+(`undefined` detaches). Events: `sr-ready` once the character draws, `sr-error` with a sentence in
+`event.detail` when the pack cannot be fetched or read (the element shows the same sentence).
+
+The element sizes to its box (an inline block, 300 x 300 unless you style its width and height), shows a line while
+loading, honours `prefers-reduced-motion`, and disposes its renderer, microphone and audio when
+removed from the page. Packs and the script are fetched by the embedding page, so a cross-origin
+embed needs the serving site to allow it (CORS); otherwise host your own copy of `sr-avatar.js`
+and the `.srpack`.

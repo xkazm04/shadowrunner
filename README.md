@@ -54,6 +54,7 @@ imports them; `@sr/pack` (`loadPack`, `decodePackImages`) reads one in any app. 
 `pnpm build` publish the recorded cast as sample packs under `/packs/` (`/packs/<slug>.srpack`,
 listed in `/packs/index.json`; generated, not committed). Format reference:
 [docs/pack-format.md](docs/pack-format.md).
+Put one on any site with `<sr-avatar>` (`/embed/sr-avatar.js`, built by `pnpm build`; see `/embed`).
 
 ## How it is built
 Shadowrunner is built **spec-first with Kiro**. Everything Kiro reads lives in [`.kiro/`](.kiro):
