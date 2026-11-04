@@ -2,6 +2,7 @@
   "files": [],
   "references": [
     { "path": "packages/rig" },
+    { "path": "packages/pack" },
     { "path": "packages/avatar" },
     { "path": "packages/forge" },
     { "path": "packages/engine" },

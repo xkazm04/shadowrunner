@@ -20,6 +20,7 @@
     "@sr/avatar": "workspace:*",
     "@sr/engine": "workspace:*",
     "@sr/forge": "workspace:*",
+    "@sr/pack": "workspace:*",
     "@sr/rig": "workspace:*",
     "@sr/theme": "workspace:*",
     "react": "^19.3.1",

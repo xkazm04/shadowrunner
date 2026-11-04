@@ -22,16 +22,17 @@ const ELEMENTS = [
   ["theme", "packages/theme"],
 ].map(([type, pattern]) => ({ type, pattern, partialMatch: false }));
 
-const PACKAGES = ["rig", "avatar", "forge", "engine", "theme"];
+const PACKAGES = ["rig", "pack", "avatar", "forge", "engine", "theme"];
 
 /**
  * structure.md layering: apps/web -> packages/*; api/ -> packages/*; packages/rig -> nothing;
- * packages/avatar -> rig; packages/forge -> rig; packages/engine -> rig; no package imports apps/
+ * packages/pack -> rig; packages/avatar -> rig; packages/forge -> rig; packages/engine -> rig; no package imports apps/
  * (or api/). Anything not listed is disallowed, so theme may import no other member.
  */
 const LAYERING = [
   { from: "web", to: PACKAGES },
   { from: "api", to: PACKAGES },
+  { from: "pack", to: ["rig"] },
   { from: "avatar", to: ["rig"] },
   { from: "forge", to: ["rig"] },
   { from: "engine", to: ["rig"] },
