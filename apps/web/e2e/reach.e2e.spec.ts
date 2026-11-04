@@ -83,10 +83,15 @@ test("studio: a borrowed recorded line, recorded into a WebM with video and audi
   expect(bytes.subarray(0, 4).toString("hex"), "EBML (Matroska/WebM) header").toBe("1a45dfa3");
   expect(bytes.includes("V_VP"), "a VP8/VP9 video track").toBe(true);
   expect(bytes.includes("A_OPUS"), "an Opus audio track").toBe(true);
+  // MediaRecorder writes no Duration; the studio adds it so editors can seek (webmDuration.ts).
+  const at = bytes.subarray(0, 512).indexOf(Buffer.from([0x44, 0x89, 0x88]));
+  expect(at, "a Duration element in the header").toBeGreaterThan(0);
+  expect(bytes.readDoubleBE(at + 3), "the take's length, ms").toBeGreaterThan(1000);
   try {
-    const probe = execFileSync("ffprobe", ["-v", "error", "-show_entries", "stream=codec_type", "-of", "csv=p=0", file]).toString();
-    expect(probe).toMatch(/video/);
-    expect(probe).toMatch(/audio/);
+    const probe = execFileSync("ffprobe", ["-v", "error", "-show_entries", "stream=codec_type:format=duration", "-of", "default=nw=1", file]).toString();
+    expect(probe).toMatch(/codec_type=video/);
+    expect(probe).toMatch(/codec_type=audio/);
+    expect(Number(/duration=([\d.]+)/.exec(probe)?.[1]), "ffprobe reads a duration, s").toBeGreaterThan(1);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; // ffprobe is optional
   }

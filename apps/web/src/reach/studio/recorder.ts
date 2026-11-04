@@ -12,6 +12,7 @@
 // - Progress is the time recorded over the line's duration plus the 0.5 s tail.
 // - Browser APIs come in through small structural types, so the pipeline is tested with fakes.
 import type { AvatarPlayer } from "@sr/avatar/core";
+import { blobWithDuration } from "./webmDuration";
 
 /** MediaRecorder types in order of preference (design "Studio"). */
 export const RECORD_TYPES = ["video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm"] as const;
@@ -174,6 +175,9 @@ export function recordLine(job: RecordJob): Promise<Blob> {
     let playback: Playback | undefined;
     let settled = false;
     let failed = false;
+    // The take's wall-clock length, written into the WebM (MediaRecorder leaves it out; webmDuration.ts).
+    let startedAt: number | undefined;
+    let stoppedAt: number | undefined;
 
     const cleanup = (): void => {
       if (handle !== undefined) job.frames.cancel(handle);
@@ -187,6 +191,7 @@ export function recordLine(job: RecordJob): Promise<Blob> {
     const finish = (): void => {
       if (settled) return;
       settled = true;
+      stoppedAt = performance.now();
       cleanup();
       if (recorder.state !== "inactive") recorder.stop();
       else stopped();
@@ -200,7 +205,10 @@ export function recordLine(job: RecordJob): Promise<Blob> {
     }
     function stopped(): void {
       if (failed || chunks.length === 0) reject(new RecordError(RECORD_FAILED));
-      else resolve(new Blob(chunks, { type: "video/webm" }));
+      else {
+        const blob = new Blob(chunks, { type: "video/webm" });
+        resolve(startedAt === undefined || stoppedAt === undefined ? blob : blobWithDuration(blob, stoppedAt - startedAt));
+      }
     }
 
     recorder.ondataavailable = (event) => {
@@ -227,6 +235,7 @@ export function recordLine(job: RecordJob): Promise<Blob> {
     };
     try {
       recorder.start(1000);
+      startedAt = performance.now();
       playback = playLine(job.context, job.buffer, player, audio);
     } catch {
       fail();
