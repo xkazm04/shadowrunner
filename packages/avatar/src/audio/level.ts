@@ -13,6 +13,10 @@
 //   `speechLevel` maps it as clamp((rms - SPEECH_FLOOR) * SPEECH_GAIN, 0, 1). The driver's own
 //   floor (JAW_FLOOR) then applies to this level.
 // - After `detach()`, `level()` returns 0.
+// - A `MediaStream` (a microphone, spec avatar-reach) is wrapped by `createMediaStreamSource` in
+//   `options.context` or a new AudioContext, per attach. It is tapped only, never routed to the
+//   speakers (a live mic would echo). `detach()` disconnects the wrapper and closes the context
+//   when the tap created it; the stream's tracks belong to the caller and keep running.
 
 /** Samples per analysed frame (about 43 ms at 48 kHz, about one jaw attack). */
 export const LEVEL_FFT_SIZE = 2048;
@@ -26,8 +30,8 @@ export interface AudioLevelTap {
 
 export interface AttachAudioOptions {
   /**
-   * Context for an `HTMLMediaElement` source; a new AudioContext when absent. An element already
-   * attached once keeps its first context.
+   * Context for an `HTMLMediaElement` or `MediaStream` source; a new AudioContext when absent. An
+   * element already attached once keeps its first context.
    */
   context?: AudioContext;
 }
@@ -51,7 +55,37 @@ function routeElement(element: HTMLMediaElement, context: AudioContext | undefin
   return route;
 }
 
-const isAudioNode = (source: AudioNode | HTMLMediaElement): source is AudioNode => "connect" in source && "context" in source;
+/** Anything `attachAudio` can tap. */
+export type AudioSource = AudioNode | HTMLMediaElement | MediaStream;
+
+const isAudioNode = (source: AudioSource): source is AudioNode => "connect" in source && "context" in source;
+const isMediaStream = (source: AudioSource): source is MediaStream => "getAudioTracks" in source && typeof source.getAudioTracks === "function";
+
+interface Route {
+  context: BaseAudioContext;
+  node: AudioNode;
+  /** Runs once on detach, after the analyser is disconnected. */
+  release?: () => void;
+}
+
+function routeStream(stream: MediaStream, context: AudioContext | undefined): Route {
+  const ctx = context ?? new AudioContext();
+  const node = ctx.createMediaStreamSource(stream);
+  return {
+    context: ctx,
+    node,
+    release: () => {
+      node.disconnect();
+      if (context === undefined) void ctx.close().catch(() => undefined);
+    },
+  };
+}
+
+function routeOf(source: AudioSource, context: AudioContext | undefined): Route {
+  if (isAudioNode(source)) return { context: source.context, node: source };
+  if (isMediaStream(source)) return routeStream(source, context);
+  return routeElement(source, context);
+}
 
 /** RMS below this is room noise, not speech (task 7 ruling). */
 export const SPEECH_FLOOR = 0.02;
@@ -77,8 +111,8 @@ export function rms(samples: ArrayLike<number>): number {
 }
 
 /** Taps `source` with an AnalyserNode; read `level()` once per frame. */
-export function attachAudio(source: AudioNode | HTMLMediaElement, options: AttachAudioOptions = {}): AudioLevelTap {
-  const { context, node } = isAudioNode(source) ? { context: source.context, node: source } : routeElement(source, options.context);
+export function attachAudio(source: AudioSource, options: AttachAudioOptions = {}): AudioLevelTap {
+  const { context, node, release } = routeOf(source, options.context);
   const analyser = context.createAnalyser();
   analyser.fftSize = LEVEL_FFT_SIZE;
   node.connect(analyser);
@@ -94,6 +128,7 @@ export function attachAudio(source: AudioNode | HTMLMediaElement, options: Attac
       if (!attached) return;
       attached = false;
       node.disconnect(analyser);
+      release?.();
     },
   };
 }

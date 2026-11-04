@@ -1,10 +1,13 @@
 // React-free avatar player (spec avatar-reach, design "Player core"): the AvatarCanvas frame loop
 // for pages and elements that are not React (the <sr-avatar> element, the overlay, the studio).
-// Task 0 stub: final signatures; the body lands in task 1.
+// The body is player/run.ts (its renderer factory is a test seam); the frame body, shared with
+// AvatarCanvas, is player/frame.ts.
 import type { Emotion, Gesture, Look, Rig } from "@sr/rig";
 import type { AttachAudioOptions } from "../audio/level.js";
+import { createRenderer } from "../gl/renderer.js";
 import type { AssetLoader } from "../render/assets.js";
 import type { RigAssets } from "../render/types.js";
+import { runPlayer } from "./run.js";
 
 export interface AvatarPlayerOptions {
   rig: Rig;
@@ -41,8 +44,7 @@ export interface AvatarPlayer {
   dispose(): void;
 }
 
+/** A React-free player on `canvas`: AvatarCanvas's renderer and frame body, driven from outside React. */
 export function createAvatarPlayer(canvas: HTMLCanvasElement, options: AvatarPlayerOptions): AvatarPlayer {
-  void canvas;
-  void options;
-  throw new Error("@sr/avatar: createAvatarPlayer is not implemented yet (avatar-reach task 1)");
+  return runPlayer(canvas, options, createRenderer);
 }

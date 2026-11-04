@@ -5,7 +5,7 @@
     `player.ts` with final signatures, stub `playable.ts`; gates green.
   - _Requirements: 5.1_
 
-- [ ] 1. Player core and playable (packages/avatar, apps/web/src/reach/playable.ts)
+- [x] 1. Player core and playable (packages/avatar, apps/web/src/reach/playable.ts)
   - As design "Player core" and "Playable"; `attachAudio` takes a MediaStream.
   - _Requirements: 1.1-1.4_
 

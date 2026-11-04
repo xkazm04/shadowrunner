@@ -22,16 +22,20 @@
 //   in the frame clock; both renderers apply it per layer (render/frame.ts `dimGain`).
 // - `loadAsset` (character-control): region maps and face patches missing from `assets` are
 //   loaded through it on first need (render/assets.ts); read once, at mount.
-import { applyLook, MOOD_FADE_S, poseLayers, type Drive, type Emotion, type Gesture, type Look, type Rig } from "@sr/rig";
+// - The frame body (driver step, mood fade, dressed rig, dim) is player/frame.ts, shared with the
+//   React-free player (spec avatar-reach); `moodFader` is re-exported from here as before.
+import type { Drive, Gesture, Look, Rig } from "@sr/rig";
 import { useEffect, useRef, type ReactElement } from "react";
 import { attachAudio, type AudioLevelTap } from "../audio/level.js";
 import type { LookAtPoint } from "../driver/lookAt.js";
-import { initialState, type Gaze } from "../driver/state.js";
+import type { Gaze } from "../driver/state.js";
 import { createRenderer } from "../gl/renderer.js";
+import { createFrameBody } from "../player/frame.js";
 import type { AssetLoader } from "../render/assets.js";
-import { easeDim } from "../render/frame.js";
 import type { RigAssets } from "../render/types.js";
-import { advanceFrame, isReducedMotion } from "./loop.js";
+import { isReducedMotion } from "./loop.js";
+
+export { moodFader } from "../player/frame.js";
 
 /** A mutable holder of the look-at point, e.g. React's `useRef<LookAtPoint | null>(null)`. */
 export interface LookAtRef {
@@ -75,36 +79,7 @@ export interface AvatarCanvasProps {
   dim?: number;
 }
 
-/** Tracks emotion changes on the driver clock; returns the drive's `mood` for this frame. */
-export function moodFader(): (emotion: Emotion, t: number, reducedMotion: boolean) => Drive["mood"] {
-  let shown: Emotion | undefined;
-  let fade: { from: Emotion; start: number } | undefined;
-  return (emotion, t, reducedMotion) => {
-    if (shown !== undefined && emotion !== shown) fade = { from: shown, start: t };
-    shown = emotion;
-    if (fade === undefined || reducedMotion || fade.from === emotion) {
-      fade = undefined;
-      return undefined;
-    }
-    const mix = (t - fade.start) / MOOD_FADE_S;
-    if (!(mix < 1)) {
-      fade = undefined;
-      return undefined;
-    }
-    return { from: fade.from, mix: Math.max(0, mix) };
-  };
-}
-
 const REDUCED_QUERY = "(prefers-reduced-motion: reduce)";
-
-/** The rig dressed by the look, recomputed only when either changes. */
-function dresser(): (rig: Rig, look: Look) => Rig {
-  let last: { rig: Rig; look: Look; dressed: Rig } | undefined;
-  return (rig, look) => {
-    if (last === undefined || last.rig !== rig || last.look !== look) last = { rig, look, dressed: applyLook(rig, look) };
-    return last.dressed;
-  };
-}
 
 export function AvatarCanvas(props: AvatarCanvasProps): ReactElement {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -139,11 +114,8 @@ export function AvatarCanvas(props: AvatarCanvasProps): ReactElement {
     observer?.observe(host);
 
     const media = typeof win.matchMedia === "function" ? win.matchMedia(REDUCED_QUERY) : undefined;
-    const dress = dresser();
-    const fadeMood = moodFader();
-    let state = initialState(first.seed ?? 1);
+    const body = createFrameBody(first.seed ?? 1);
     let lastNow: number | undefined;
-    let dimShown = 0;
     let raf = 0;
     let alive = true;
 
@@ -160,7 +132,9 @@ export function AvatarCanvas(props: AvatarCanvasProps): ReactElement {
       const lookAt = resolveLookAt(p.lookAt);
       const dt = lastNow === undefined ? 0 : (now - lastNow) / 1000;
       lastNow = now;
-      const next = advanceFrame(state, {
+      const out = body({
+        rig: p.rig,
+        look: p.look,
         dt,
         level: tapRef.current?.level() ?? 0,
         gaze: p.gaze ?? "host",
@@ -168,13 +142,9 @@ export function AvatarCanvas(props: AvatarCanvasProps): ReactElement {
         ...(gesture === undefined ? {} : { gesture }),
         ...(lookAt === undefined ? {} : { lookAt }),
         ...(p.drive === undefined ? {} : { drive: p.drive }),
+        ...(p.dim === undefined ? {} : { dim: p.dim }),
       });
-      state = next.state;
-      const mood = fadeMood(p.look.emotion, state.t, reducedMotion);
-      const drive = p.drive !== undefined || mood === undefined ? next.drive : { ...next.drive, mood };
-      const poses = poseLayers(dress(p.rig, p.look), p.look, drive);
-      dimShown = easeDim(dimShown, p.dim ?? 0, dt, reducedMotion);
-      renderer.draw(poses, p.look, { t: p.drive?.t ?? state.t, reducedMotion, ...(dimShown > 0 ? { dim: dimShown } : {}) });
+      renderer.draw(out.poses, p.look, out.clock);
       raf = win.requestAnimationFrame(frame);
     };
     raf = win.requestAnimationFrame(frame);

@@ -1,0 +1,97 @@
+// The avatar frame body shared by <AvatarCanvas> and the React-free player (spec avatar-reach,
+// design "Player core"): one driver step, the mood crossfade, the dressed rig posed, the dim eased,
+// and the arguments for `renderer.draw`. Both callers own their clock, canvas and renderer; this
+// owns the per-mount state (driver state, mood fade, dressed-rig cache, eased dim).
+//
+// Decisions the spec leaves open:
+// - Mood crossfade (character-control "Moods"): when `look.emotion` changes, the drive carries
+//   `mood: { from: previous, mix }` with mix rising 0 -> 1 over MOOD_FADE_S of driver time; under
+//   reduced motion the change is instant (no `mood`). A change mid-fade starts a new fade from the
+//   emotion it was fading to. A `drive` override passes through untouched.
+// - `dim` is eased on the frame's dt and handed to the renderer in the frame clock.
+import { applyLook, MOOD_FADE_S, poseLayers, type Drive, type Emotion, type Gesture, type LayerPose, type Look, type Rig } from "@sr/rig";
+import type { LookAtPoint } from "../driver/lookAt.js";
+import { initialState, type Gaze } from "../driver/state.js";
+import { easeDim } from "../render/frame.js";
+import type { FrameClock } from "../render/types.js";
+import { advanceFrame } from "../react/loop.js";
+
+/** Tracks emotion changes on the driver clock; returns the drive's `mood` for this frame. */
+export function moodFader(): (emotion: Emotion, t: number, reducedMotion: boolean) => Drive["mood"] {
+  let shown: Emotion | undefined;
+  let fade: { from: Emotion; start: number } | undefined;
+  return (emotion, t, reducedMotion) => {
+    if (shown !== undefined && emotion !== shown) fade = { from: shown, start: t };
+    shown = emotion;
+    if (fade === undefined || reducedMotion || fade.from === emotion) {
+      fade = undefined;
+      return undefined;
+    }
+    const mix = (t - fade.start) / MOOD_FADE_S;
+    if (!(mix < 1)) {
+      fade = undefined;
+      return undefined;
+    }
+    return { from: fade.from, mix: Math.max(0, mix) };
+  };
+}
+
+/** The rig dressed by the look, recomputed only when either changes. */
+export function dresser(): (rig: Rig, look: Look) => Rig {
+  let last: { rig: Rig; look: Look; dressed: Rig } | undefined;
+  return (rig, look) => {
+    if (last === undefined || last.rig !== rig || last.look !== look) last = { rig, look, dressed: applyLook(rig, look) };
+    return last.dressed;
+  };
+}
+
+export interface FrameBodyInputs {
+  rig: Rig;
+  look: Look;
+  /** Seconds since the previous frame; the driver clamps it. */
+  dt: number;
+  level: number;
+  gaze: Gaze;
+  reducedMotion: boolean;
+  /** Present only on the frame a gesture starts. */
+  gesture?: Gesture;
+  lookAt?: LookAtPoint;
+  /** Overrides the driver (tests, screenshots). */
+  drive?: Drive;
+  /** Target eyes-only dim, 0..1 (default 0). */
+  dim?: number;
+}
+
+/** What one frame hands to `renderer.draw(poses, look, clock)`. */
+export interface FrameOutput {
+  poses: LayerPose[];
+  clock: FrameClock;
+  /** The driver's clock after this frame, seconds. */
+  t: number;
+}
+
+/** A frame body with its own driver state, seeded with `seed`. */
+export function createFrameBody(seed: number): (inputs: FrameBodyInputs) => FrameOutput {
+  const dress = dresser();
+  const fadeMood = moodFader();
+  let state = initialState(seed);
+  let dimShown = 0;
+  return (p) => {
+    const next = advanceFrame(state, {
+      dt: p.dt,
+      level: p.level,
+      gaze: p.gaze,
+      reducedMotion: p.reducedMotion,
+      ...(p.gesture === undefined ? {} : { gesture: p.gesture }),
+      ...(p.lookAt === undefined ? {} : { lookAt: p.lookAt }),
+      ...(p.drive === undefined ? {} : { drive: p.drive }),
+    });
+    state = next.state;
+    const mood = fadeMood(p.look.emotion, state.t, p.reducedMotion);
+    const drive = p.drive !== undefined || mood === undefined ? next.drive : { ...next.drive, mood };
+    const poses = poseLayers(dress(p.rig, p.look), p.look, drive);
+    dimShown = easeDim(dimShown, p.dim ?? 0, p.dt, p.reducedMotion);
+    const clock: FrameClock = { t: p.drive?.t ?? state.t, reducedMotion: p.reducedMotion, ...(dimShown > 0 ? { dim: dimShown } : {}) };
+    return { poses, clock, t: state.t };
+  };
+}
