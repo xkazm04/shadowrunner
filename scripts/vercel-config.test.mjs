@@ -20,6 +20,7 @@ function resolve(config, path, files = FILES) {
   const target = (p) => (functions.has(p.split("?")[0]) ? { fn: p } : { file: p });
   let filesystem = false;
   for (const route of config.routes) {
+    if (route.continue === true) continue; // header-only routes (CORS) never decide the target
     if (route.handle === "filesystem") {
       filesystem = true;
       if (exists(path)) return target(path);
@@ -39,9 +40,11 @@ function resolve(config, path, files = FILES) {
 describe("vercel-output config.json", () => {
   const config = outputConfig(FILES);
 
-  it("is Build Output API v3 with the filesystem phase first and the SPA fallback last", () => {
+  it("is Build Output API v3 with the filesystem phase first (after header-only routes) and the SPA fallback last", () => {
     expect(config.version).toBe(3);
-    expect(config.routes[0]).toEqual({ handle: "filesystem" });
+    const firstDecision = config.routes.findIndex((r) => r.continue !== true);
+    expect(config.routes.slice(0, firstDecision).every((r) => r.headers !== undefined)).toBe(true);
+    expect(config.routes[firstDecision]).toEqual({ handle: "filesystem" });
     expect(config.routes.at(-1)).toEqual({ src: "^/(.*)$", dest: "/index.html" });
     const apiNotFound = config.routes.findIndex((r) => r.src === "^/api(?:/.*)?$");
     const dynamic = config.routes.findIndex((r) => r.dest?.startsWith("/api/forge/[jobId]"));
@@ -67,6 +70,8 @@ describe("vercel-output config.json", () => {
     expect(resolve(config, "/api")).toEqual({ status: 404 });
     expect(resolve(config, "/replay/shows/missing.wav")).toEqual({ status: 404 });
     expect(resolve(config, "/packs/missing.srpack")).toEqual({ status: 404 });
+    expect(resolve(config, "/embed/missing.js")).toEqual({ status: 404 });
+    expect(resolve(config, "/embed")).toEqual({ file: "/index.html" });
     expect(resolve(config, "/")).toEqual({ file: "/index.html" });
     expect(resolve(config, "/creator/forge")).toEqual({ file: "/index.html" });
     expect(resolve(config, "/assets/app.js")).toEqual({ file: "/assets/app.js" });
@@ -85,6 +90,13 @@ describe("vercel-output config.json", () => {
     expect(resolve(generic, "/api/files/7/meta", files)).toEqual({ fn: "/api/files/[id]/meta?id=7" });
     expect(resolve(generic, "/api/files/7", files)).toEqual({ fn: "/api/files/[id]?id=7" });
     expect(resolve(generic, "/api/files/a/b/c", files)).toEqual({ fn: "/api/files/[...path]?path=a/b/c" });
+  });
+
+  it("lets other sites fetch the embed script and the packs (CORS), before any routing decision", () => {
+    const [first] = config.routes;
+    expect(first).toEqual({ src: "^/(?:embed|packs)/.+$", headers: { "Access-Control-Allow-Origin": "*" }, continue: true });
+    for (const path of ["/embed/sr-avatar.js", "/packs/moth-widow.srpack", "/packs/index.json"]) expect(new RegExp(first.src).test(path)).toBe(true);
+    for (const path of ["/embed", "/", "/api/voice", "/replay/forge/malakor/head.png"]) expect(new RegExp(first.src).test(path)).toBe(false);
   });
 
   it("refuses two files that answer the same path", () => {
