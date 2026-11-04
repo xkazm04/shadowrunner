@@ -49,6 +49,21 @@ describe("ChannelFrame", () => {
     expect(order.every((at, i) => at > -1 && (i === 0 || at > (order[i - 1] ?? -1)))).toBe(true);
   });
 
+  it("gives the room to CH 3, 4, 6 and 9 alike: the breadcrumb is read, not shown, and the page owns its title", () => {
+    for (const id of ["creator", "characters", "daemon", "sealed"] as const) {
+      expect(page(id).bareBar, id).toBe(true);
+      const html = renderToString(
+        <ChannelFrame page={page(id)}>
+          <p />
+        </ChannelFrame>,
+      );
+      expect(html, id).toMatch(/<nav aria-label="Breadcrumb" class="[^"]*srOnly[^"]*"/);
+      expect(html, id).toContain('data-header-slot=""');
+    }
+    // channels that keep a visible breadcrumb are only those with no room of their own
+    expect(PAGES.filter((p) => p.channel !== undefined && p.bareBar !== true).map((p) => p.id)).toEqual(["landing"]);
+  });
+
   it("hands the daemon-lost state to the strip's lamp", () => {
     const html = renderToString(
       <ChannelFrame page={page("daemon")} daemonLost>

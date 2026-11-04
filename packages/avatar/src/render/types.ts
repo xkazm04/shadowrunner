@@ -20,6 +20,11 @@ export interface FrameClock {
   /** Seconds, the driver's `t`. */
   t: number;
   reducedMotion: boolean;
+  /**
+   * Eyes-only dim, 0..1 (absent = 0, none): every layer but an emissive eye falls toward
+   * `DIM_FLOOR` of its light (`dimGain`), in both renderers. The caller eases it (`easeDim`).
+   */
+  dim?: number;
 }
 
 export interface Renderer {

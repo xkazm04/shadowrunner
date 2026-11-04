@@ -45,7 +45,18 @@ export const PAGES: readonly PageDef[] = [
     subtitle: "tonight's listings",
     bareBar: true,
   },
-  { id: "daemon", title: "Daemon", path: "/daemon", hotkey: "6", status: "live", channel: 6, subtitle: "the carrier" },
+  // CH 6 and CH 9 own the whole room like CH 3 and CH 4 (the vault plate; the dark set and its
+  // glass): the bar keeps the strip and the badge, the breadcrumb is read, not shown.
+  {
+    id: "daemon",
+    title: "Daemon",
+    path: "/daemon",
+    hotkey: "6",
+    status: "live",
+    channel: 6,
+    subtitle: "the carrier",
+    bareBar: true,
+  },
   {
     id: "sealed",
     title: "Sealed",
@@ -55,6 +66,7 @@ export const PAGES: readonly PageDef[] = [
     channel: 9,
     subtitle: "not built yet",
     lore: "Nothing is broadcast on nine. Something tunes in anyway.",
+    bareBar: true,
   },
   { id: "air", title: "The stage", path: "/air", hotkey: "O", status: "live", subtitle: "full screen, for the stream" },
 ];

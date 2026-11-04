@@ -74,7 +74,7 @@ export function createGlRenderer(gl: WebGL2RenderingContext, canvas: CanvasHost,
       if (look !== lastLook) setLook(look);
       const view = fitView(currentRig, targets.scene.width, targets.scene.height);
       beginScene(gl, targets);
-      if (store !== undefined) drawCalls += drawLayers(gl, programs, textures, poses, view, { light, recolours, store });
+      if (store !== undefined) drawCalls += drawLayers(gl, programs, textures, poses, view, { light, recolours, store, ...(clock?.dim === undefined ? {} : { dim: clock.dim }) });
       drawCalls += runGlow(gl, programs, targets, light.glow, glowGain(clock));
     },
     resize(width: number, height: number, dpr: number): void {

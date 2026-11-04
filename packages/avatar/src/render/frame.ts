@@ -10,7 +10,7 @@
 //   0.004 * height; positive raises). It is canvas-space and not inherited, like the jaw drop.
 //   A rig with brow layers (`hasBrowLayers`, character-control "Moods") moves those in the pose
 //   instead, so its eyes get no brow shift here.
-import { hasBrowLayers, lookToEmotionDrive, type Layer, type LayerPose, type Look, type Rig } from "@sr/rig";
+import { hasBrowLayers, isEmissive, lookToEmotionDrive, type Layer, type LayerPose, type Look, type Rig } from "@sr/rig";
 
 /** Brow offset per table step, as a fraction of rig height (rig-core ruling). */
 export const BROW_STEP = 0.004;
@@ -93,4 +93,33 @@ export function lookLight(rig: Pick<Rig, "height" | "layers">, look: Look): Look
     glow: hexToRgb(look.palette.glow),
     browY: hasBrowLayers(rig) ? 0 : -brow * BROW_STEP * rig.height,
   };
+}
+
+/** The light left on a dimmed layer at full dim (`dim` 1): a hint of the face, not black. */
+export const DIM_FLOOR = 0.12;
+/** Dim level per second: a full dim takes about 1.25 s (the old CSS filter transition). */
+export const DIM_RATE = 0.8;
+
+/** Clamps a dim level to 0..1; absent or non-finite is 0 (no dim). */
+export const clampDim = (dim: number | undefined): number => (dim === undefined || !Number.isFinite(dim) ? 0 : Math.min(1, Math.max(0, dim)));
+
+/**
+ * The eyes-only dim (stage "LINE DEAD"): the light gain of `layer` at `dim` 0..1. An emissive eye
+ * keeps its light (1); every other layer falls toward DIM_FLOOR. At dim 0 every layer is 1, so
+ * the default draw is untouched. Both renderers multiply a layer's gain by this.
+ */
+export function dimGain(layer: Pick<Layer, "kind" | "emissive">, dim: number | undefined): number {
+  const d = clampDim(dim);
+  return d === 0 || (layer.kind === "eye" && isEmissive(layer)) ? 1 : 1 - d * (1 - DIM_FLOOR);
+}
+
+/**
+ * Pure: the shown dim one frame closer to `target` (both 0..1) at DIM_RATE per second, so it eases
+ * like a CSS transition; under reduced motion it is the target at once.
+ */
+export function easeDim(shown: number, target: number, dt: number, reducedMotion: boolean): number {
+  const to = clampDim(target);
+  if (reducedMotion) return to;
+  const step = Math.max(0, Number.isFinite(dt) ? dt : 0) * DIM_RATE;
+  return shown < to ? Math.min(to, shown + step) : Math.max(to, shown - step);
 }

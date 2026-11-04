@@ -153,13 +153,15 @@
 }
 
 /* The dead line (requirement 5.1): haunt glow off, ON AIR dark (OnAirLamp), the face dimmed down
-   to its eye glow, the corridor cold (Catacomb), and the words where the captions were. */
+   to its eye glow (the renderer's eyes-only `dim`, eased there and instant under reduced motion:
+   AirPage), the corridor cold (Catacomb), and the words where the captions were. */
 .stage[data-state="dead_line"] {
   --sr-haunt-glow: 0;
 }
 
+/* The eyes keep their light, so the face is not filtered as a whole; only its saturation drops. */
 .stage[data-state="dead_line"] .face {
-  filter: brightness(0.3) saturate(0.6);
+  filter: drop-shadow(0 1.875rem 2.5rem var(--sr-surface-0)) saturate(0.6);
 }
 
 /* Reduced-motion twins (requirement 10.3): the same states, held still. */

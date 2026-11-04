@@ -13,9 +13,9 @@
 // every layer's own image, exactly as before.
 import type { Layer, LayerPose, Look, Rig } from "@sr/rig";
 import { createAssetCache, type AssetCache, type AssetImage, type AssetLoader } from "../render/assets.js";
-import { fitView, layerAffine, lookLight, type LookLight } from "../render/frame.js";
+import { dimGain, fitView, layerAffine, lookLight, type LookLight } from "../render/frame.js";
 import { mapRect, needsMap, rigRecolours, type LayerRecolour } from "../render/recolour.js";
-import type { CanvasHost, Renderer, RendererInfo, RigAssets } from "../render/types.js";
+import type { CanvasHost, FrameClock, Renderer, RendererInfo, RigAssets } from "../render/types.js";
 import { createRecolourCache, type SurfaceFactory } from "./recolour.js";
 
 interface Entry {
@@ -106,7 +106,7 @@ export function createCanvas2dRenderer(canvas: CanvasHost, ctx: CanvasRenderingC
   return {
     setRig,
     setLook,
-    draw(poses: LayerPose[], look: Look): void {
+    draw(poses: LayerPose[], look: Look, clock?: FrameClock): void {
       drawCalls = 0;
       if (disposed || ctx === null) return;
       if (look !== lastLook || light === undefined) setLook(look);
@@ -124,7 +124,7 @@ export function createCanvas2dRenderer(canvas: CanvasHost, ctx: CanvasRenderingC
         const m = layerAffine(layer, pose, view, browY);
         const eyeGain = recolours.get(layer.name)?.light?.name === "eye" ? (light?.eyeGain ?? 1) : 1;
         ctx.setTransform(m[0], m[1], m[2], m[3], m[4], m[5]);
-        ctx.filter = tintFilter(pose.tint * eyeGain);
+        ctx.filter = tintFilter(pose.tint * eyeGain * dimGain(layer, clock?.dim));
         for (const draw of drawsOf(entry, pose)) {
           ctx.globalAlpha = draw.alpha;
           ctx.drawImage(draw.image, draw.rect[0] ?? 0, draw.rect[1] ?? 0, draw.rect[2] ?? 0, draw.rect[3] ?? 0);

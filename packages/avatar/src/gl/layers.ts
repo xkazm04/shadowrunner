@@ -3,7 +3,7 @@
 // `LayerPose`, in the order `poseLayers` returns, blended premultiplied-over. Character-control
 // adds the recolour uniforms (render/recolour.ts), the region map on unit 1, and face patches.
 import { EMISSIVE_KINDS as RIG_EMISSIVE_KINDS, isEmissive, type Layer, type LayerKind, type LayerPose, type Rig } from "@sr/rig";
-import { layerAffine, type LookLight, type Rgb, type View } from "../render/frame.js";
+import { dimGain, layerAffine, type LookLight, type Rgb, type View } from "../render/frame.js";
 import { mapRect, needsMap, type LayerRecolour } from "../render/recolour.js";
 import type { RigAssets } from "../render/types.js";
 import type { Programs } from "./programs.js";
@@ -53,6 +53,8 @@ export interface LayerLighting {
   /** By layer name; absent = drawn as painted (u_recolour 0). */
   recolours: ReadonlyMap<string, LayerRecolour>;
   store: TextureStore;
+  /** Eyes-only dim 0..1 (frame.ts `dimGain`); absent = 0. */
+  dim?: number;
 }
 
 const LIGHT_MODE = { all: 1, saturated: 2 } as const;
@@ -120,7 +122,7 @@ export function drawLayers(
   view: View,
   lighting: LayerLighting,
 ): number {
-  const { light, recolours, store } = lighting;
+  const { light, recolours, store, dim } = lighting;
   const { program, u } = programs.base;
   gl.useProgram(program);
   gl.bindVertexArray(programs.quad.vao);
@@ -138,12 +140,14 @@ export function drawLayers(
     const plan = recolours.get(layer.name);
     const rimOn = NO_RIM_KINDS.has(layer.kind) ? 0 : 1;
     gl.uniformMatrix3fv(u.u_m, false, [m[0], m[1], 0, m[2], m[3], 0, m[4], m[5], 1]);
+    const dimmed = dimGain(layer, dim);
     const gain = gainOf(layer, pose, light, plan);
-    gl.uniform3f(u.u_gain, gain[0], gain[1], gain[2]);
+    gl.uniform3f(u.u_gain, gain[0] * dimmed, gain[1] * dimmed, gain[2] * dimmed);
     gl.uniform1f(u.u_emissive, isEmissive(layer) ? 1 : 0);
     const map = plan !== undefined && needsMap(plan) && layer.regions !== undefined ? store.get(layer.regions.map, "map") : undefined;
     setRecolour(gl, programs, plan, map);
-    const quads = quadsOf(entry, pose, store, [light.rim[0] * rimOn, light.rim[1] * rimOn, light.rim[2] * rimOn]);
+    const rimK = rimOn * dimmed;
+    const quads = quadsOf(entry, pose, store, [light.rim[0] * rimK, light.rim[1] * rimK, light.rim[2] * rimK]);
     for (const quad of quads) {
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, quad.texture.texture);
