@@ -1,0 +1,211 @@
+/* /studio (StudioPage.tsx): the controls beside the live stage, stacked on a phone. Colours are
+   roles; the stage's background is the user's pick (inline), which is also what the video gets. */
+
+.studio {
+  display: grid;
+  grid-template-columns: minmax(16rem, 22rem) minmax(0, 1fr);
+  gap: var(--sr-space-4);
+  padding: var(--sr-space-4);
+  color: var(--sr-text);
+  font-family: var(--sr-font-body);
+}
+
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sr-space-3);
+  min-inline-size: 0;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sr-space-2);
+  margin: 0;
+  padding: var(--sr-space-3);
+  border: 0.0625rem solid var(--sr-line);
+  border-radius: var(--sr-radius-1);
+  background: var(--sr-surface-1);
+}
+
+.legend {
+  padding: 0 var(--sr-space-1);
+  color: var(--sr-text-strong);
+  font-family: var(--sr-font-display);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sr-space-1);
+  font-size: var(--sr-size-text-sm);
+}
+
+.field select,
+.field input,
+.text {
+  font: inherit;
+  color: var(--sr-text-strong);
+  background: var(--sr-surface-2);
+  border: 0.0625rem solid var(--sr-line);
+  border-radius: var(--sr-radius-1);
+  padding: var(--sr-space-1) var(--sr-space-2);
+}
+
+.text {
+  resize: vertical;
+  font-size: var(--sr-size-text);
+}
+
+.hint {
+  margin: 0;
+  color: var(--sr-text-muted);
+  font-size: var(--sr-size-text-sm);
+}
+
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sr-space-2);
+}
+
+.swatch {
+  inline-size: 2rem;
+  block-size: 2rem;
+  border: 0.125rem solid var(--sr-line);
+  border-radius: var(--sr-radius-pill);
+  cursor: pointer;
+  transition: transform 0.15s ease-out;
+}
+
+.swatch:hover {
+  transform: scale(1.1);
+}
+
+.swatch[aria-pressed="true"] {
+  border-color: var(--sr-accent);
+  outline: 0.125rem solid var(--sr-accent);
+  outline-offset: 0.125rem;
+}
+
+.colour {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sr-space-1);
+  font-size: var(--sr-size-text-sm);
+}
+
+.lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sr-space-1);
+  max-block-size: 16rem;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.line {
+  display: flex;
+  gap: var(--sr-space-2);
+  align-items: flex-start;
+  font-size: var(--sr-size-text-sm);
+  cursor: pointer;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sr-space-2);
+}
+
+.button {
+  font: inherit;
+  padding: var(--sr-space-2) var(--sr-space-4);
+  color: var(--sr-surface-0);
+  background: var(--sr-accent);
+  border: 0;
+  border-radius: var(--sr-radius-pill);
+  cursor: pointer;
+  transition: opacity 0.15s ease-out;
+}
+
+.button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.status p {
+  margin: 0;
+}
+
+.progress {
+  inline-size: 10rem;
+  vertical-align: middle;
+  accent-color: var(--sr-accent);
+}
+
+.error {
+  color: var(--sr-signal-warn);
+}
+
+.download {
+  color: var(--sr-accent);
+}
+
+.stage {
+  position: relative;
+  min-block-size: 24rem;
+  aspect-ratio: 1;
+  max-block-size: 80dvh;
+  border: 0.0625rem solid var(--sr-line);
+  border-radius: var(--sr-radius-1);
+  overflow: hidden;
+}
+
+.canvas {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+.stageNote {
+  position: absolute;
+  inset: auto 0 var(--sr-space-3);
+  margin: 0;
+  text-align: center;
+  color: var(--sr-text-muted);
+}
+
+@media (max-width: 48rem) {
+  .studio {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .stage {
+    order: -1;
+    min-block-size: 16rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .swatch,
+  .button {
+    transition: none;
+  }
+
+  .swatch:hover {
+    transform: none;
+  }
+}
+
+:global([data-motion="reduced"]) .swatch,
+:global([data-motion="reduced"]) .button {
+  transition: none;
+}
+
+:global([data-motion="reduced"]) .swatch:hover {
+  transform: none;
+}

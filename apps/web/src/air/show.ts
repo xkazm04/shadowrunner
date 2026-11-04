@@ -144,7 +144,8 @@ async function requestReply(fetch: Fetcher, req: EngineRequest): Promise<EngineR
   return parseReply(await res.text());
 }
 
-async function requestVoice(fetch: Fetcher, text: string, persona: Persona): Promise<Blob> {
+/** POST /api/voice -> the WAV Blob (also the studio's live voice, spec avatar-reach). */
+export async function requestVoice(fetch: Fetcher, text: string, persona: Persona): Promise<Blob> {
   const res = await fetch("/api/voice", {
     method: "POST",
     headers: { "content-type": "application/json", accept: "audio/wav" },
