@@ -1,12 +1,12 @@
 # Implementation plan: avatar-pack
 
-- [ ] 0. Wire types and stubs (director)
+- [x] 0. Wire types and stubs (director)
   - `packages/pack` package (package.json, tsconfig, `fflate` dependency), `src/types.ts` exactly
     as design, `src/index.ts` exporting stubs with the final signatures; root tsconfig reference;
     ESLint layering `pack -> rig`; gates green with no behaviour change.
   - _Requirements: 1.1, 2.5_
 
-- [ ] 1. Pack core and readLook (packages/pack, packages/rig)
+- [x] 1. Pack core and readLook (packages/pack, packages/rig)
   - `writePack`, `readPack`, `loadPack`, `decodePackImages`, `packFileName`, `packReadme` exactly
     as design "Container" and "API"; `readLook` moved to `@sr/rig` and re-exported from
     `apps/web/src/creator/library/libraryStore.ts` (callers unchanged).

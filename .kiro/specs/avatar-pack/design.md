@@ -18,8 +18,11 @@ A zip with **stored** (level 0) entries - the images are already compressed. Ent
 | `README.txt` | plain text: name, what a .srpack is, licence, author, fictional note, link to the format doc |
 | `files/<name>` | one entry per image, `<name>` = the rig's file key (`Layer.file`, region map, patch file), sorted |
 
-Entry modification times are fixed (`2026-01-01T00:00:00Z`) so a pack's bytes depend only on its
-inputs. Only file keys returned by `rigFiles(rig)` (the order the renderer loads) are written;
+Entry modification times are the zone-less DOS stamp 2026-01-01 00:00:00 (`PACK_MTIME`, built from
+local fields because fflate writes local time) so a pack's bytes depend only on its inputs, on any
+machine. Inline `data:` region maps and patches move to `files/` as well (`<layer>.regions.<ext>`,
+`<layer>.<family>.<ext>`); unzipping reads only `pack.json`, `rig.json` and `files/*` and caps the
+unpacked total at `PACK_MAX_BYTES`. Only file keys returned by `rigFiles(rig)` (the order the renderer loads) are written;
 images given that the rig does not reference are dropped. A file key is a relative POSIX path
 (the rig validator already refuses others); a rig whose layer `file` is a `data:` URL is written
 with that image moved to `files/<layer name>.<png|webp>` (extension from the data URL's MIME; the

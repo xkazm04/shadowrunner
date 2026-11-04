@@ -14,8 +14,8 @@
 // - The cast seed (creator task 9) keeps a ledger of the character ids it has ever placed, in a
 //   second object store `meta` (database version 2), so a preset the user deleted is not put back
 //   and a new recorded job still joins an old library once.
-import { isEmotion, isGesture, VOICE_IDS, type VoiceId } from "@sr/engine";
-import { defaultLook, validateLookControls, validateRig, type Look, type Palette, type PartShape, type Rig } from "@sr/rig";
+import { VOICE_IDS, type VoiceId } from "@sr/engine";
+import { defaultLook, readLook, validateRig, type Look, type Rig } from "@sr/rig";
 import { extraFiles } from "./assets";
 
 export const DB_NAME = "sr-library";
@@ -77,47 +77,10 @@ const ledgerOf = (ids: readonly string[]) => ({ key: SEED_KEY, version: SEED_VER
 
 type Fields = Record<string, unknown>;
 const isRecord = (v: unknown): v is Fields => typeof v === "object" && v !== null && !Array.isArray(v);
-const HEX = /^#[0-9a-fA-F]{6}$/;
-const PALETTE_KEYS: readonly (keyof Palette)[] = ["glow", "eye", "rim", "mouth"];
 
 export const isVoiceId = (v: unknown): v is VoiceId => typeof v === "string" && (VOICE_IDS as readonly string[]).includes(v);
 
-/**
- * The entries of a stored look's `regions` or `shape` that `validateLookControls` passes, one by
- * one (character-control): an invalid entry is dropped, never the whole look. Undefined when none
- * is left.
- */
-function readControls<T>(field: "regions" | "shape", value: unknown, rig: Rig | undefined): Record<string, T> | undefined {
-  if (!isRecord(value)) return undefined;
-  const kept = Object.entries(value).filter(([key, item]) => validateLookControls({ [field]: { [key]: item } }, rig).length === 0);
-  return kept.length === 0 ? undefined : (Object.fromEntries(kept) as Record<string, T>);
-}
-
-/**
- * A stored look, or undefined when any of its base fields is off. Its region colours and part
- * shapes are checked entry by entry (against `rig` when given) and the bad ones dropped.
- */
-export function readLook(value: unknown, rig?: Rig): Look | undefined {
-  if (!isRecord(value) || !isRecord(value.palette) || !Array.isArray(value.hidden) || !isEmotion(value.emotion)) return undefined;
-  const palette = value.palette;
-  const read = (key: keyof Palette): string | undefined => {
-    const v = palette[key];
-    return typeof v === "string" && HEX.test(v) ? v : undefined;
-  };
-  const [glow, eye, rim, mouth] = PALETTE_KEYS.map(read);
-  if (glow === undefined || eye === undefined || rim === undefined || mouth === undefined) return undefined;
-  if (!value.hidden.every((n): n is string => typeof n === "string")) return undefined;
-  const look: Look = { palette: { glow, eye, rim, mouth }, hidden: [...value.hidden], emotion: value.emotion };
-  if (value.gesture !== undefined) {
-    if (!isGesture(value.gesture)) return undefined;
-    look.gesture = value.gesture;
-  }
-  const regions = readControls<string>("regions", value.regions, rig);
-  if (regions !== undefined) look.regions = regions;
-  const shape = readControls<PartShape>("shape", value.shape, rig);
-  if (shape !== undefined) look.shape = shape;
-  return look;
-}
+export { readLook };
 
 /** One stored value as a library entry: a checked record, or damaged with the reason. */
 export function readRecord(value: unknown): LibraryEntry {

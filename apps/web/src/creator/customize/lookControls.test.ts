@@ -3,7 +3,7 @@
 import { clampShape, defaultLook, IDENTITY_SHAPE, isIdentityShape, SHAPE_LIMITS, type Look, type PartShape } from "@sr/rig";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { memoryLibrary, readLook, type CharacterRecord } from "../library/libraryStore";
+import { memoryLibrary, type CharacterRecord } from "../library/libraryStore";
 import { testRig } from "../testFixtures";
 import { lookReducer } from "./lookReducer";
 
@@ -71,20 +71,6 @@ describe("lookReducer: shape", () => {
 });
 
 describe("the library keeps regions and shape", () => {
-  it("readLook drops only the bad entries, checked against the rig", () => {
-    const good = { ...IDENTITY_SHAPE, size: 1.4 };
-    const stored = {
-      ...base(),
-      regions: { "head/r1": "#ff0000", "head/r9": "#ff0000", "torso/r1": "#00ff00", "head/oops": "red" },
-      shape: { crown: good, jaw: { ...good, rot: 400 }, nobody: good, eye_l: "x" },
-    };
-    const look = readLook(stored, rig);
-    expect(look?.palette).toEqual(base().palette);
-    expect(look?.regions).toEqual({ "head/r1": "#ff0000" });
-    expect(look?.shape).toEqual({ crown: good });
-    expect(readLook({ ...base(), regions: { "torso/r1": "#000000" }, shape: 3 }, rig)).toEqual(base());
-  });
-
   it("a look with regions and shape survives saveLook and a read back", async () => {
     const store = memoryLibrary();
     const assets: Record<string, Blob> = {};
