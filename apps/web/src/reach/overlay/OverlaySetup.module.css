@@ -1,0 +1,114 @@
+/* The overlay's setup card (OverlaySetup.tsx): /overlay without a source. The shell draws no chrome
+   on this page, so the card brings its own surface, text and focus ring. No animation, so no
+   reduced-motion twin is needed. */
+
+.page {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  min-block-size: 100vh;
+  padding: var(--sr-space-4);
+  background-color: var(--sr-surface-0);
+  color: var(--sr-text);
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text);
+  line-height: 1.5;
+}
+
+.card {
+  display: grid;
+  gap: var(--sr-space-3);
+  box-sizing: border-box;
+  inline-size: min(100%, 34rem);
+  padding: var(--sr-space-4);
+  border: thin solid var(--sr-line);
+  border-radius: var(--sr-radius-1);
+  background-color: var(--sr-surface-1);
+}
+
+.title {
+  margin: 0;
+  color: var(--sr-text-strong);
+  font-family: var(--sr-font-display);
+  font-size: var(--sr-size-headline);
+  line-height: 1.1;
+}
+
+.lede,
+.note {
+  margin: 0;
+}
+
+.note {
+  color: var(--sr-text-muted);
+  font-size: var(--sr-size-text-sm);
+}
+
+.field {
+  display: grid;
+  gap: var(--sr-space-1);
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.field legend {
+  padding: 0;
+  margin-block-end: var(--sr-space-1);
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: var(--sr-space-2);
+}
+
+.field select,
+.field input[type="text"] {
+  box-sizing: border-box;
+  inline-size: 100%;
+  padding: var(--sr-space-1) var(--sr-space-2);
+  border: thin solid var(--sr-line);
+  border-radius: var(--sr-radius-1);
+  background-color: var(--sr-surface-2);
+  color: var(--sr-text-strong);
+  font: inherit;
+}
+
+.field input[type="text"] {
+  font-family: var(--sr-font-mono);
+  font-size: var(--sr-size-text-sm);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sr-space-3);
+}
+
+.actions button {
+  padding: var(--sr-space-1) var(--sr-space-3);
+  border: thin solid var(--sr-accent);
+  border-radius: var(--sr-radius-pill);
+  background-color: var(--sr-surface-2);
+  color: var(--sr-text-strong);
+  font: inherit;
+  cursor: pointer;
+}
+
+.actions button:disabled {
+  border-color: var(--sr-line);
+  color: var(--sr-text-muted);
+  cursor: default;
+}
+
+.actions a {
+  color: var(--sr-text-strong);
+}
+
+.card :focus-visible {
+  outline: medium solid var(--sr-accent);
+  outline-offset: var(--sr-space-1);
+}

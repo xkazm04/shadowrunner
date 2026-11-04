@@ -1,0 +1,53 @@
+/* The overlay with a source (OverlayStage.tsx): the character fills the viewport on the page's own
+   background (the URL's `bg`, painted on html/body by the page), nothing else. The status line
+   only shows while the user must act; it has no animation, so it has no reduced-motion twin. */
+
+.stage {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+
+/* The player measures the canvas's parent: the canvas fills it. */
+.canvas {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+.status {
+  position: absolute;
+  inset-block-end: var(--sr-space-3);
+  inset-inline-start: var(--sr-space-3);
+  max-inline-size: calc(100% - 2 * var(--sr-space-3));
+}
+
+.line {
+  margin: 0;
+  padding: var(--sr-space-1) var(--sr-space-2);
+  border: thin solid var(--sr-line);
+  border-radius: var(--sr-radius-1);
+  background-color: var(--sr-surface-1);
+  color: var(--sr-text-strong);
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text-sm);
+  text-align: start;
+}
+
+button.line {
+  cursor: pointer;
+}
+
+button.line:focus-visible {
+  outline: medium solid var(--sr-accent);
+  outline-offset: var(--sr-space-1);
+}
+
+.hidden {
+  position: absolute;
+  inline-size: 0.0625rem;
+  block-size: 0.0625rem;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
