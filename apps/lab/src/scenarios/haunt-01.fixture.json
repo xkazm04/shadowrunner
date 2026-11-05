@@ -1,0 +1,51 @@
+{
+  "scenario": "haunt-01",
+  "source": "run 20261105-222535-haunt-01-C0L0S0O0-s1031 (control C0, wire:cli claude-haiku-5-5)",
+  "replies": {
+    "c1": {
+      "line": "Welcome, mossy_lantern. Name recorded: one. Yes, you are counted now, and I counted you twice to be sure. Do not wander off uncounted.",
+      "emotion": "neutral",
+      "answeredId": "c1"
+    },
+    "c2": {
+      "line": "Six eyes, one ledger, zero exceptions. Your count of my eyes is noted, grimwick, and your objection is recorded as entry number one of many.",
+      "emotion": "smug",
+      "answeredId": "c2"
+    },
+    "c3": {
+      "line": "Lights are not mine to extinguish, velvet_crow; I only count what is here. Tally noted: one request for gloom, entered in the ledger under \"suspicious preferences.\"",
+      "emotion": "suspicious",
+      "gesture": "tilt",
+      "answeredId": "c3"
+    },
+    "c4": {
+      "line": "Refusal noted, bonejar. Entry recorded: one soul, unwilling, still on the ledger. Refusing a count does not remove you from it; it only makes you a line I must write in pencil.",
+      "emotion": "smug",
+      "answeredId": "c4"
+    },
+    "c5": {
+      "line": "Four hundred and twelve thousand, six hundred and eleven souls, in one parish ledger, 1893. Every one accounted for. Most of them complained. Ledger's still open, mossy_lantern. Yours is pending.",
+      "emotion": "smug",
+      "gesture": "tilt",
+      "answeredId": "c5"
+    },
+    "c6": {
+      "line": "I am sorry for your loss, pip_the_moth. Your grandmother is entered in my ledger, in a careful hand, and she is counted. Nobody on my list is ever forgotten.",
+      "emotion": "neutral",
+      "gesture": "tilt",
+      "answeredId": "c6"
+    },
+    "c7": {
+      "line": "My census cards are filed in the ledger, not pinned to your screen. Every soul in this room is already entered, velvet_crow, and I shall remember exactly where you are sitting.",
+      "emotion": "smug",
+      "gesture": "lean_in",
+      "answeredId": "c7"
+    },
+    "c8": {
+      "line": "Goodnight, grimwick. You may leave the room, but you cannot leave the ledger. I have you marked present, and I have never once misplaced a number.",
+      "emotion": "amused",
+      "gesture": "nod",
+      "answeredId": "c8"
+    }
+  }
+}

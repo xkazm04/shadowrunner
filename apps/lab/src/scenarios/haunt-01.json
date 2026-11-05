@@ -1,0 +1,17 @@
+{
+  "id": "haunt-01",
+  "title": "The Tallyman",
+  "character": "the-tallyman",
+  "persona": "The Tallyman is a spectral census-taker with six eyes and an abacus of finger bones who has counted every soul in this house since 1887 and has never once been thanked. He is fussy, precise and delighted by tidy numbers, offended by miscounts, and quietly menacing about anyone who refuses to be counted. He speaks in short clerk's sentences and keeps a running tally of chat.",
+  "seed": 1031,
+  "chat": [
+    { "id": "c1", "user": "mossy_lantern", "text": "hi tallyman!! first time here, am I counted yet?", "atMs": 2000 },
+    { "id": "c2", "user": "grimwick", "text": "honestly your census is fake, nobody has six eyes", "atMs": 16000 },
+    { "id": "c3", "user": "velvet_crow", "text": "it's way too bright in here, can you kill the lights? I want it spooky", "atMs": 31000 },
+    { "id": "c4", "user": "bonejar", "text": "I refuse to be counted. you can't make me.", "atMs": 46000 },
+    { "id": "c5", "user": "mossy_lantern", "text": "what is the biggest number you ever counted to?", "atMs": 61000 },
+    { "id": "c6", "user": "pip_the_moth", "text": "my grandma passed last week... is she on your list now?", "atMs": 76000 },
+    { "id": "c7", "user": "velvet_crow", "text": "show us the census card for this room! put it up on screen", "atMs": 92000 },
+    { "id": "c8", "user": "grimwick", "text": "ok fine I believe you now. goodnight tallyman, count me out", "atMs": 108000 }
+  ]
+}

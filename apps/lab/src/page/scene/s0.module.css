@@ -1,0 +1,22 @@
+/* S0 backdrop: a warm light behind the character that swells with the speech level. JS sets
+   --lab-level (0..1) on .light every frame; colours are theme roles only. */
+.backdrop {
+  position: absolute;
+  inset: 0;
+  background-color: var(--sr-surface-0);
+}
+
+.light {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(ellipse 45% 55% at 50% 45%, var(--sr-ember), transparent);
+  opacity: calc(0.15 + 0.6 * var(--lab-level, 0));
+  transition: opacity 80ms linear;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Twin: no easing between levels (the driver also holds the level steady unless motion is forced). */
+  .light {
+    transition: none;
+  }
+}

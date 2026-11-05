@@ -17,7 +17,8 @@
     "test:gates": "node scripts/gate-fixtures/run.mjs",
     "test:visual": "pnpm build && pnpm --filter @sr/web test:visual",
     "test:visual:update": "pnpm build && pnpm --filter @sr/web test:visual:update",
-    "test:e2e": "pnpm build && pnpm --filter @sr/web test:e2e"
+    "test:e2e": "pnpm build && pnpm --filter @sr/web test:e2e",
+    "lab": "node --import ./apps/lab/src/hooks.mjs apps/lab/src/cli.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

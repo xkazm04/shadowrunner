@@ -1,0 +1,23 @@
+{
+  "name": "@sr/lab",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lab": "node --import ./src/hooks.mjs src/cli.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "~1.4.0",
+    "@sr/avatar": "workspace:*",
+    "@sr/engine": "workspace:*",
+    "@sr/pack": "workspace:*",
+    "@sr/rig": "workspace:*",
+    "@sr/theme": "workspace:*",
+    "playwright": "1.64.1",
+    "ws": "^8.22.1"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.18.2",
+    "vite": "^8.3.5"
+  }
+}

@@ -14,6 +14,7 @@ import tseslint from "typescript-eslint";
  */
 const ELEMENTS = [
   ["web", "apps/web"],
+  ["lab", "apps/lab"],
   ["api", "api"],
   ["rig", "packages/rig"],
   ["avatar", "packages/avatar"],
@@ -25,12 +26,14 @@ const ELEMENTS = [
 const PACKAGES = ["rig", "pack", "avatar", "forge", "engine", "theme"];
 
 /**
- * structure.md layering: apps/web -> packages/*; api/ -> packages/*; packages/rig -> nothing;
+ * structure.md layering: apps/web -> packages/*; api/ -> packages/*; apps/lab (the Avatar Lab,
+ * docs/lab.md) -> packages/*, never apps/web; packages/rig -> nothing;
  * packages/pack -> rig; packages/avatar -> rig; packages/forge -> rig; packages/engine -> rig; no package imports apps/
  * (or api/). Anything not listed is disallowed, so theme may import no other member.
  */
 const LAYERING = [
   { from: "web", to: PACKAGES },
+  { from: "lab", to: PACKAGES },
   { from: "api", to: PACKAGES },
   { from: "pack", to: ["rig"] },
   { from: "avatar", to: ["rig"] },
@@ -99,7 +102,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ["apps/web/src/**/*.{ts,tsx}"],
+    files: ["apps/web/src/**/*.{ts,tsx}", "apps/lab/src/page/**/*.ts"],
     languageOptions: { globals: { ...globals.browser } },
   },
   {

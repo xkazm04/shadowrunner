@@ -65,3 +65,10 @@ Designed and generated art is stylised and labelled as such in the UI; no real p
 - **Avatar packs (avatar-pack, 2026-11-04).** Malakor (pre-existing art, above) is never packed:
   `scripts/build-packs.mjs` skips him when it publishes the cast as `/packs/<slug>.srpack`, and the
   creator offers no Export for him, so he is never exported or published as a pack.
+- **Avatar Lab voice (spark llm-avatar-lab, 2026-11-05).** `tools/lab-voice` speaks with Kokoro-82M
+  v1.0 (hexgrad, Apache-2.0 weights, stock voices only, no cloning) through `kokoro-onnx` 0.6.1
+  (MIT), model files `kokoro-v1.0.onnx` and `voices-v1.0.bin` from the kokoro-onnx
+  `model-files-v1.1` release, downloaded by `pnpm lab setup` into `var/lab/models/` (never
+  committed). The lab's ideas (a TTS sidecar that returns per-phoneme timing, phoneme-to-viseme
+  spans, A/B arms compiled into one event timeline) are concepts re-derived from the author's
+  earlier Overlord project; no Overlord code was copied.

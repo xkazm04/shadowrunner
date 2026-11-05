@@ -1,5 +1,8 @@
-# runtime output
+# runtime output (the Avatar Lab writes var/lab/: runs, models, cli-cwd)
 var/
+# Avatar Lab voice sidecar venv (pnpm lab setup)
+tools/lab-voice/.venv/
+__pycache__/
 node_modules/
 dist/
 target/

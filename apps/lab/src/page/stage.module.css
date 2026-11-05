@@ -1,0 +1,56 @@
+/* The bare 1920x1080 stage (the browser viewport is exactly that size). */
+.body {
+  margin: 0;
+  overflow: hidden;
+  background-color: var(--sr-surface-0);
+}
+
+.stage {
+  position: relative;
+  inline-size: 100vw;
+  block-size: 100vh;
+  overflow: hidden;
+}
+
+.avatar {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+.debug {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-end: 0;
+  inline-size: 32rem;
+  max-block-size: 100%;
+  margin: 0;
+  padding: var(--sr-space-2);
+  overflow: hidden;
+  list-style: none;
+  font-family: var(--sr-font-mono);
+  font-size: var(--sr-size-text-sm);
+  color: var(--sr-text);
+  background-color: var(--sr-surface-1);
+  opacity: 0.85;
+}
+
+.debugItem {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  animation: arrive 300ms ease-out;
+}
+
+@keyframes arrive {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .debugItem {
+    animation: none;
+  }
+}
