@@ -13,14 +13,15 @@
 //   parent, or with `autoSize: false`, the caller calls `resize`.
 // - Gaze is "host" (the face looks out of the frame, at the viewer), as AvatarCanvas's default.
 // - After `dispose` every method is a no-op.
-import type { Emotion, Gesture, Look, Rig } from "@sr/rig";
+import type { Emotion, Gesture, LayerPose, Look, Rig } from "@sr/rig";
 import { attachAudio, type AttachAudioOptions, type AudioLevelTap } from "../audio/level.js";
 import type { CreateRendererOptions } from "../gl/renderer.js";
+import { fitView, layerAffine, lookLight } from "../render/frame.js";
 import type { CanvasHost, Renderer, RigAssets } from "../render/types.js";
 import { isReducedMotion } from "../react/loop.js";
 import { createFrameBody } from "./frame.js";
 import { cutoutLook } from "./cutout.js";
-import type { AvatarPlayer, AvatarPlayerOptions, PlayerAudio } from "./player.js";
+import type { AvatarPlayer, AvatarPlayerOptions, LayerFrame, PlayerAudio } from "./player.js";
 
 export type RendererFactory = (canvas: CanvasHost, rig: Rig, assets: RigAssets, options: CreateRendererOptions) => Renderer;
 
@@ -41,6 +42,9 @@ export function runPlayer(canvas: HTMLCanvasElement, options: AvatarPlayerOption
   let raf: number | undefined;
   let lastNow: number | undefined;
   let disposed = false;
+  // The last frame's poses and look, for `layerFrames` (read only, never fed back into a draw).
+  let drawn: { poses: LayerPose[]; look: Look } | undefined;
+  const layersByName = new Map(options.rig.layers.map((layer) => [layer.name, layer]));
 
   const reducedMotion = (): boolean => {
     if (typeof options.reducedMotion === "boolean") return options.reducedMotion;
@@ -60,6 +64,7 @@ export function runPlayer(canvas: HTMLCanvasElement, options: AvatarPlayerOption
       ...(gesture === undefined ? {} : { gesture }),
     });
     renderer.draw(out.poses, look, out.clock);
+    drawn = { poses: out.poses, look };
   };
 
   const frame = (now: number): void => {
@@ -120,10 +125,21 @@ export function runPlayer(canvas: HTMLCanvasElement, options: AvatarPlayerOption
     renderFrame(dt: number): void {
       if (!disposed) step(Math.max(0, dt));
     },
+    layerFrames(): LayerFrame[] {
+      if (disposed || drawn === undefined) return [];
+      // The renderers' own math: the undressed rig fitted into the drawing buffer, the look's brow.
+      const view = fitView(options.rig, canvas.width, canvas.height);
+      const { browY } = lookLight(options.rig, drawn.look);
+      return drawn.poses.flatMap((pose) => {
+        const layer = layersByName.get(pose.name);
+        return layer === undefined ? [] : [{ layer, affine: layerAffine(layer, pose, view, browY), opacity: pose.opacity }];
+      });
+    },
     dispose(): void {
       if (disposed) return;
       stop();
       disposed = true;
+      drawn = undefined;
       tap?.detach();
       tap = undefined;
       observer?.disconnect();

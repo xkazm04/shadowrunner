@@ -3,8 +3,11 @@
 import type { LipArmId, LipDriver } from "../../contract.js";
 import type { LipContext, LipDriverFactory } from "../types.js";
 import { createL0 } from "./l0.js";
+import { createL1 } from "./l1.js";
+import { createL2 } from "./l2.js";
 
-function notBuilt(id: LipArmId, what: string): LipDriverFactory {
+/** Every lip slot is built; kept for the next arm id. */
+export function notBuilt(id: LipArmId, what: string): LipDriverFactory {
   return () => {
     throw new Error(`Lip arm ${id} is not built yet: it is ${what}. Run with lip L0, or add apps/lab/src/page/lip/${id.toLowerCase()}.ts and register it here.`);
   };
@@ -12,8 +15,8 @@ function notBuilt(id: LipArmId, what: string): LipDriverFactory {
 
 export const LIP_DRIVERS: Readonly<Record<LipArmId, LipDriverFactory>> = {
   L0: createL0,
-  L1: notBuilt("L1", "WP3's viseme lip driver"),
-  L2: notBuilt("L2", "WP3's second lip driver"),
+  L1: createL1,
+  L2: createL2,
 };
 
 export function createLipDriver(id: LipArmId, ctx: LipContext): LipDriver {

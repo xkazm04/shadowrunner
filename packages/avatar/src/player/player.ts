@@ -2,10 +2,11 @@
 // for pages and elements that are not React (the <sr-avatar> element, the overlay, the studio).
 // The body is player/run.ts (its renderer factory is a test seam); the frame body, shared with
 // AvatarCanvas, is player/frame.ts.
-import type { Emotion, Gesture, Look, Rig } from "@sr/rig";
+import type { Emotion, Gesture, Layer, Look, Rig } from "@sr/rig";
 import type { AttachAudioOptions } from "../audio/level.js";
 import { createRenderer } from "../gl/renderer.js";
 import type { AssetLoader } from "../render/assets.js";
+import type { Affine } from "../render/frame.js";
 import type { RigAssets } from "../render/types.js";
 import { runPlayer } from "./run.js";
 
@@ -31,6 +32,15 @@ export { BACKDROP_LAYER, cutoutLook } from "./cutout.js";
 
 export type PlayerAudio = AudioNode | HTMLMediaElement | MediaStream;
 
+/** Where one layer was drawn by the last frame (read-only; spark llm-avatar-lab, lip arms). */
+export interface LayerFrame {
+  /** The rig's layer as drawn (its rest `bbox` and `anchor` are rig canvas px). */
+  layer: Layer;
+  /** Rig canvas px -> the canvas's device px, exactly the renderer's `layerAffine` for this frame. */
+  affine: Affine;
+  opacity: number;
+}
+
 export interface AvatarPlayer {
   /** An emotion change crossfades (MOOD_FADE_S), as in AvatarCanvas. */
   setLook(look: Look): void;
@@ -47,6 +57,12 @@ export interface AvatarPlayer {
   stop(): void;
   /** One step of `dt` seconds plus a draw, outside the loop (video, tests). */
   renderFrame(dt: number): void;
+  /**
+   * Where each posed layer was drawn by the last frame, back to front; empty before the first
+   * frame and after `dispose`. Read-only: it changes nothing the player draws. Always present on
+   * `createAvatarPlayer`'s player; optional so hand-made players (test fakes) need not carry it.
+   */
+  layerFrames?(): LayerFrame[];
   /** Stop, detach, dispose the renderer. */
   dispose(): void;
 }
