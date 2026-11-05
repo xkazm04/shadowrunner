@@ -1,0 +1,211 @@
+/* S1 live view. Every value that moves is a custom property the driver sets each frame from the
+   same SceneFrame the recording paints (s1/model.ts), so nothing here transitions or animates: the
+   reduced-motion twin lives in the model (eases become cuts; no flicker, sway, spike or shake).
+   Theme roles only. The front layer is laid out at half the stage size and scaled 2x, so the
+   theme's type and space scales read at stream size on the 1920x1080 stage. */
+.back {
+  position: absolute;
+  inset: 0;
+  background-color: var(--sr-surface-0);
+}
+
+.warm,
+.cold {
+  position: absolute;
+  inset: 0;
+  opacity: var(--s1-alpha, 0);
+}
+
+.warm {
+  background-image: radial-gradient(ellipse 45% 60% at 50% 45%, var(--sr-ember), transparent);
+}
+
+.cold {
+  background-image: radial-gradient(ellipse 45% 60% at 50% 45%, var(--sr-phosphor-2), transparent);
+}
+
+.front {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  inline-size: 50%;
+  block-size: 50%;
+  pointer-events: none;
+  transform-origin: 0 0;
+  scale: 2;
+}
+
+.dark {
+  position: absolute;
+  inset: 0;
+  background-color: var(--sr-surface-0);
+  opacity: var(--s1-alpha, 0);
+}
+
+.candle {
+  position: absolute;
+  inset-block-end: 1.25rem;
+  inline-size: 0.8rem;
+  translate: -50% 0;
+}
+
+.wax {
+  position: relative;
+  block-size: var(--s1-wax, 2.2rem);
+  background-color: var(--sr-paper);
+}
+
+.flame {
+  position: absolute;
+  inset-block-end: 100%;
+  inset-inline-start: 50%;
+  inline-size: 0.55rem;
+  block-size: 1.4rem;
+  border-radius: var(--sr-radius-pill);
+  background-image: radial-gradient(ellipse 40% 55% at 50% 65%, var(--sr-catacomb-flame), var(--sr-ember));
+  transform-origin: 50% 100%;
+  translate: -50% 0;
+  scale: var(--s1-flame-w, 0) var(--s1-flame, 0);
+}
+
+.halo {
+  position: absolute;
+  inset-block-end: 100%;
+  inset-inline-start: 50%;
+  inline-size: 7rem;
+  block-size: 7rem;
+  translate: -50% 40%;
+  background-image: radial-gradient(circle, var(--sr-ember), transparent 70%);
+  opacity: var(--s1-alpha, 0);
+  scale: var(--s1-halo, 1);
+}
+
+.card,
+.poll {
+  position: absolute;
+  inset-block-start: 3.75rem;
+  box-sizing: border-box;
+  padding: var(--sr-space-4);
+  border-radius: var(--sr-radius-1);
+  opacity: var(--s1-alpha, 0);
+  translate: 0 var(--s1-rise, 0);
+}
+
+.card {
+  inset-inline-start: 3rem;
+  inline-size: 19.4rem;
+  border: 0.1rem solid var(--sr-paper-ink-signal);
+  background-color: var(--sr-paper);
+  color: var(--sr-paper-ink);
+}
+
+.cardTitle,
+.pollQuestion {
+  margin: 0;
+  font-family: var(--sr-font-display);
+  font-size: var(--sr-size-text-lg);
+  font-weight: 700;
+}
+
+.cardBody {
+  margin: var(--sr-space-2) 0 0;
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text);
+}
+
+.poll {
+  inset-inline-end: 3rem;
+  inline-size: 18.75rem;
+  border: 0.1rem solid var(--sr-line);
+  background-color: var(--sr-surface-2);
+  color: var(--sr-text-strong);
+}
+
+.pollOptions {
+  margin: var(--sr-space-3) 0 0;
+  padding-inline-start: var(--sr-space-5);
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text);
+  color: var(--sr-text);
+}
+
+.pollOptions li::marker {
+  color: var(--sr-accent);
+}
+
+.pollClosed {
+  margin: var(--sr-space-2) 0 0;
+  font-family: var(--sr-font-display);
+  font-size: var(--sr-size-text-lg);
+  font-weight: 700;
+  color: var(--sr-signal-onair);
+}
+
+.caption {
+  position: absolute;
+  inset-inline-start: 50%;
+  inset-block-end: 1.75rem;
+  box-sizing: border-box;
+  inline-size: 58%;
+  margin: 0;
+  padding: var(--sr-space-2) var(--sr-space-4);
+  text-align: center;
+  opacity: var(--s1-alpha, 0);
+  translate: calc(-50% + var(--s1-shake, 0rem)) 0;
+  isolation: isolate;
+}
+
+.caption::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: var(--sr-radius-1);
+  background-color: var(--sr-surface-1);
+  opacity: 0.7;
+}
+
+.plain {
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text-lg);
+  color: var(--sr-text-strong);
+}
+
+.whisper {
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text);
+  font-style: italic;
+  color: var(--sr-text-muted);
+}
+
+.whisper::before {
+  opacity: 0.4;
+}
+
+.shout {
+  font-family: var(--sr-font-display);
+  font-size: var(--sr-size-display);
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--sr-signal-onair);
+}
+
+.shout::before {
+  opacity: 0.82;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Nothing above transitions or animates (the model cuts instead of easing); this keeps the twin
+     in place should a transition ever be added to these classes. */
+  .warm,
+  .cold,
+  .dark,
+  .flame,
+  .halo,
+  .card,
+  .poll,
+  .caption {
+    transition: none;
+    animation: none;
+  }
+}
