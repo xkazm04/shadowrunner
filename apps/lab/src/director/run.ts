@@ -87,6 +87,9 @@ export async function runOnStage(
       onStage: (s) => {
         stage = s;
       },
+      mark: (name) => {
+        session.emit({ kind: "mark", name });
+      },
       log: deps.log,
     });
     server.send({ type: "load", runId: run.runId, character: run.character, config: run.config });

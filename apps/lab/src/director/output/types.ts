@@ -11,6 +11,8 @@ export interface OutputContext {
   launch(url: string): Promise<Stage>;
   /** Hand the opened stage to the director (CPU sampling, diagnostics). Call once per launch. */
   onStage(stage: Stage): void;
+  /** Records a `mark` event in timeline.jsonl (publisher died, reconnected, ...). */
+  mark(name: string): void;
   log(line: string): void;
 }
 

@@ -89,7 +89,7 @@ prompt, `REPLY_SCHEMA`, `parseReply`) and swaps only the wire under it: the engi
 the key (`api`), `llm/messagesFetch.ts` (`cli`, answers the Messages body through the transport),
 or the fixture.
 
-## Where WP2-4 plug in
+## Adding an arm
 
 One file per arm; a registry maps each id to a factory. To add an arm, add the file and replace
 the arm's one `notBuilt(...)` line in its registry. Every unbuilt slot throws
@@ -123,6 +123,310 @@ the arm's one `notBuilt(...)` line in its registry. Every unbuilt slot throws
 - **Metrics** (WP4): `metrics.ts` `computeMetrics` omits what was not measured; `avOffsetMs` is
   WP4's (from the recorded file) and is never written here. The page's `audioStarted.atMs` is on
   the AudioContext clock; latency uses the director's receive time.
+
+## Control arms C1 and C2 (`src/director/arms/control/`)
+
+Both use C0's persona (the engine's `personaPrompt`, with its "one spoken line, no stage
+directions" rule swapped for the arm's direction channel, `prompts.ts`), C0's quoted chat window,
+and C0's default model (`claude-haiku-5-5`). `usage()` meters tokens and cost like C0.
+`--control-fixture` works for both: each recorded reply is fed through the arm's own channel
+(C1: written as tags and parsed; C2: as emote/gesture/say calls), so no model is called.
+
+**C1 - inline cue grammar, streamed** (`c1.ts`, `cues.ts`). One plain-text `complete()` with
+`stream: true`. The model writes speech with tags in square brackets:
+
+```
+[smug 0.7] Name recorded. [gesture nod] [light warm] Do not wander off.
+[<emotion>] | [<emotion> <0-1>] | [emotion <name> <0-1>]
+[gesture <name>] | [<gesture>]            (lean_in may be written "lean in")
+[scene <op> ...] or [<op> ...]:  light dim|warm|cold|flicker|blackout,  candles burst|dim|steady,
+  caption plain|whisper|shout,  card show <id> [| title [| body]],  card hide <id>,
+  poll open <question> | <option> | <option> (2-4),  poll close
+```
+
+`CueStream` parses chunk by chunk: a sentence becomes a `say` as soon as its terminator and the
+following whitespace (or a tag) arrive, so Kokoro starts on sentence one while the model writes
+sentence two. A tag's event is emitted before the sentence it precedes. Unknown or malformed tags,
+a stray `]`, a `[` with no `]` within 200 characters and a tag open at turn end are dropped and
+counted in `controlErrors`; their text never reaches a `say`. A failed transport or a turn with no
+spoken line counts one more. Say ids are `say-<chatId>-<n>`.
+
+**C2 - tool calls** (`c2.ts`, `tools.ts`). Tools `say(text)`, `emote(emotion, intensity?)`,
+`gesture(name)`, and one per scene op: `light(cue)`, `candles(action)`, `card(action, id, title?,
+body?)`, `caption(style)`, `poll(action, question?, options?)`. Enums come from the contract
+(`vocab.ts`, compile-time checked against `SceneArgs`). Limits are stated in descriptions, not
+schema keywords, and enforced by `validateCall`: unknown tool, bad enum, missing/empty text,
+intensity outside 0..1, a card id that is not one word, a poll opened without a question and 2-4
+options -> skipped and counted in `controlErrors`. C2 yields each `toolCall` chunk as it arrives;
+over `cli` they all arrive at turn end (schema emulation), over `api` after the message completes
+(see `apiTransport.ts`). No tool_result round trip.
+
+Emotion intensity (both arms) is parsed and validated, but the contract's `emotion` event has no
+field for it, so it is not carried.
+
+## Scene arm S1 (`src/page/scene/s1.ts`, `s1/`)
+
+`s1/model.ts` is the pure state: `apply(op, nowMs)`, `utter(line)` (from `onUtterance`) and
+`sample(nowMs, speech)` -> one `SceneFrame` per frame. The live DOM view (`s1/view.ts`,
+`s1.module.css`) and the recorded painters (`s1/paint.ts`, `addPainter("back" | "front")`) both
+draw that same frame.
+
+| Op | What it does |
+|---|---|
+| light dim/warm/cold/flicker/blackout | backlight eases (900 ms; blackout 250 ms) between looks: brightness, warm (ember) vs cold (phosphor-2) mix, darkness over the stage; flicker drops out on a 60 ms step |
+| candles burst/dim/steady | six painted candles at the stage edges, unlit until the first op; burst spikes and settles, flames sway |
+| card show/hide | paper card top left (title, body); a hide with another id is ignored |
+| caption plain/whisper/shout | every spoken line is captioned at the bottom from its audio start to 700 ms after its end, in the style in force when it was scheduled |
+| poll open/close | panel top right with numbered options; close shows "POLL CLOSED" for 1.5 s, then fades |
+
+Reduced-motion twin: eases become cuts, no flicker, no flame sway or burst spike, no shout shake,
+no speech-following light. Recording runs force motion on. Colours and fonts are theme roles read
+once from the stage (`s1/palette.ts`); the CSS uses tokens only, laid out at half size and scaled
+2x so the type scale reads on the 1920x1080 stage.
+
+## Lip arms L1 and L2 (WP3)
+
+Both arms share one driver body (`src/page/lip/mouth/driver.ts`). Neither attaches the stage audio
+to the player: the jaw opens through `player.setLevel`, and the mouth is painted through
+`LipContext.addPainter` into the recorded composite (after the avatar, before the scene's front
+layer). Live, without `record=webm`, the page shows the avatar canvas only, so the drawn mouth is
+visible in `run.webm`, not in the headed window.
+
+**Scheduler** (`mouth/track.ts`, `mouth/shapes.ts`). The 15 Oculus visemes are grouped into eight
+shapes: rest (sil), closed (PP), teeth (FF), tongue (TH, DD, nn), openMid (kk, E), narrow (CH, SS, ih),
+round (RR, oh, ou), openWide (aa). A span waits until its utterance's audio start is known
+(`onAudio`), then becomes a window on the audio clock. Each span's weight rises over `BLEND_MS`
+(50 ms) centred on its start and falls over 50 ms centred on its end (smoothstep edges), so
+neighbours crossfade with no hard cut, a span is dominant 17 ms after its start, and the mouth is at
+rest 25 ms after the last span. Rest takes whatever weight is left. Each shape has a geometry (width,
+opening, pucker, teeth, tongue, press) and a jaw value. Shapes blend linearly, and the jaw is asked
+30 ms early to cover the player's jaw attack. A line that arrives with no visemes falls back to the
+speech level (a mid-open mouth as loud as the line).
+
+**Where the mouth is.** `@sr/avatar`'s player gained `layerFrames()` (additive and read-only): where
+each layer was drawn by the last frame, as the renderer's own affine. The mouth line is the jaw
+layer's top edge. Its width is 0.85 of the jaw's width, capped at 0.32 of the head's. It is drawn in
+the head's frame, so it follows every head motion, and the jaw's drop is measured in that frame.
+
+**L1, procedural.** The arm samples skin colour from the composite above the lip and on the chin. It
+samples once and again at every utterance start, before anything is painted. From those samples it
+derives the lips, the dark inside, the teeth and the tongue. It then paints:
+
+1. a feathered skin patch over the painted rest mouth;
+2. the lips;
+3. the inside, with teeth and tongue clipped to it;
+4. a lip line when the mouth is closed.
+
+The drawn mouth covers the art only while it differs from rest (`coverOf`): in silence the
+character's own mouth shows untouched.
+
+**L2, forge mouths.** `pnpm lab mouths <character>
+[--placeholder] [--draft] [--model id] [--only shape,...]` writes `var/lab/mouths/<character>/`:
+
+- `rest.png`: the face layers at rest, cropped to a square around the mouth;
+- one PNG per other shape;
+- `manifest.json`: the crop in rig px, shape to file, and the source;
+- `cost.json`.
+
+Without `--placeholder` the command calls Gemini from Node: seven image edits of the rest crop, at
+the forge's request shape and price (0.14 USD each, 0.04 with `--draft`). It stops with a sentence,
+before any read or write, when `GEMINI_API_KEY` is unset. A shape the model refuses is left out
+(`failed` in the manifest), and L2 draws L1's mouth for it. `--placeholder` draws flat stand-in
+shapes on the crop with ffmpeg (deterministic, no model call, cost 0). Image work uses the system
+`ffmpeg`. The page finds sets with `import.meta.glob` when the stage starts, so a set generated
+later needs a new run.
+
+At runtime L2 cuts each shape image by the rest crop's alpha (the face outline) and a feathered
+ellipse. It crossfades the shapes by their weights, then draws the mix in the head's frame over the
+crop square. A missing shape, and every shape until the set has loaded, is drawn by L1. The jaw
+opens only for those shapes, because the art carries its own opening. With no set for the
+character, L2 fails at creation with the command to run.
+
+**Reduced motion.** When the viewer asks for reduced motion and the run does not force motion, the
+mouth does not articulate per viseme. While a line plays it eases (150 ms) to one soft, half-open
+shape, and back to rest after the line. Recording runs force motion, as for every arm.
+
+**Known limits.**
+
+- Expression variants (`smug` and the like) paint their own mouth on the head. The patch covers the
+  centre, but a smirk crease that reaches past it stays visible beside the drawn mouth.
+- The mouth's placement is derived from the jaw box. A rig whose jaw art is not a lower lip under the
+  mouth line needs per-rig tuning (`MOUTH_OF_JAW`, `MOUTH_OF_HEAD`).
+- L2's Gemini art is unverified here: there is no key on this machine. Only the placeholder set has
+  been run.
+
+## Output O1: the streamed path (`src/director/output/o1.ts`, `o1/`)
+
+O1 sends the stage through a real streaming chain: Playwright Chromium -> MediaRecorder -> ffmpeg
+publisher -> RTMP -> a local ffmpeg sink. The sink writes `run.flv` in the run folder. Nothing
+leaves 127.0.0.1: the publisher only ever targets the sink it started.
+
+```
+page (record=webm composite + stage audio)
+  -> MediaRecorder, live chunks every 250 ms (Matroska H.264 + Opus; WebM VP8 when H.264 is missing)
+  -> Playwright binding __labO1Chunk -> director
+  -> ffmpeg publisher stdin: H.264 (h264_nvenc, else libx264 veryfast) CBR 6 Mb/s, keyframe every 2 s,
+     AAC 160 kb/s 48 kHz, frame timing passed through (no CFR resampling)
+  -> rtmp://127.0.0.1:<free port>/live/lab
+  -> ffmpeg -listen 1 sink, stream copy -> run.part<n>.flv -> run.flv
+```
+
+- **No page change.** An init script (`o1/capture.ts`) replaces `MediaRecorder` before the page
+  runs. The page's O0 recorder becomes inert, so the whole run is not buffered in memory. The
+  stream the page hands it is recorded live instead, with a keyframe every second
+  (`videoKeyFrameIntervalDuration`), so a restarted publisher can join at the next Cluster.
+- **Why MediaRecorder and not a CDP screencast.** The screencast's video is good (59.4 fps, dt p95
+  16.8 ms on a 1080p canvas page) but it has no audio. Adding audio would mean a second channel
+  and aligning two clocks in Node, and that alignment error lands exactly in the A/V offset the
+  lab measures. The recorder muxes picture and sound on the browser's own media clock.
+- **Publisher death.** When the publisher exits, the sink closes its segment. O1 then opens a new
+  sink and publisher, feeds them the stream's init segment and continues from the next Cluster,
+  counts a reconnect, and records the marks `o1:publisher-died:<code>` and `o1:reconnect:<n>`.
+  The segments are joined on the recorder's own clock (ffconcat `duration` from the Cluster
+  timecodes), so the outage stays a gap in the timestamps: measure counts it as dropped frames.
+- **`o1.json`** sits next to `run.flv`: encoder, settings, the page's container, chunks, bytes,
+  out-of-order chunks (should be 0), segments, reconnects, and marks with their wall time.
+- `SR_LAB_FFMPEG` overrides `ffmpeg` on PATH.
+
+### Long runs without a model or TTS: `loop`
+
+```
+pnpm lab loop <runId> --times 5 --output O1
+pnpm lab replay <runId>-x5-O1 --headless
+```
+
+`loop` writes a replay source that plays a recorded run's timeline N times back to back. Each
+copy shifts by one period (the last audio's end plus 3 s), renumbers its turns and play marks,
+and suffixes its utterance and chat ids. The replay then exercises O1 for 10+ minutes with zero
+LLM and zero Kokoro calls. This is the fixture control at its cheapest: the output is what is
+under test, not the reply.
+
+## Measure: numbers from the recorded file alone (`src/measure/`)
+
+```
+pnpm lab measure <file> [--roi x,y,w,h] [--run <runId>]
+pnpm lab synth <out.flv|out.webm> [--offset 120]
+```
+
+Measure reads only the file: `run.webm`, `run.flv`, `run.mp4`, or any capture. That makes it the
+same instrument for every renderer, Overlord included. Results:
+
+- `fpsP50`, `fpsP5` and `droppedFrames` come from video packet timestamps (ffprobe), using the
+  page meter's method: per-frame `1/dt`, and a frame interval over 1.5x the median counts its
+  missing frames. Measure never trusts a duration header, since MediaRecorder WebM has none.
+- `avOffsetMs` is the lag in ±500 ms (1 ms steps) that maximises Pearson r between two signals:
+  - mouth-region motion energy: the mean absolute difference between consecutive gray frames
+    inside the ROI;
+  - the change of the audio RMS envelope over the same frame interval, `|E(t_k) - E(t_{k-1})|`,
+    where `E` is the RMS over a frame-long window centred on `t`.
+  Positive means the mouth lags the audio. Change is compared with change because the mouth
+  moves fastest while the level rises, not while it is high, so correlating motion with the
+  level itself biases the lag by about a quarter syllable. A window that ends at `t` would bias it
+  by half a frame (the synthetic test caught that: 103 instead of 120).
+- Measure merges these four keys into the run's `metrics.json` and writes `measure.json` beside
+  it. `measure.json` holds the ROI and its source, the frame interval, the sync result
+  (`peakR`, `runnerUpR` = the best r at least 100 ms away, `z`, `confidence`, `frames`), and in
+  `replaced` the page meter's fps and drop values that the file-based ones overwrote.
+- Confidence:
+  - **high**: `peakR >= 0.5` and a margin over the runner-up of at least 0.1;
+  - **medium**: `peakR >= 0.25` and a margin of at least 0.05;
+  - **low**: anything else. Treat a low-confidence offset as unmeasured.
+- **ROI.** Lab runs get it automatically. Measure takes the union of the cast rig's jaw layer
+  bboxes (`assets/replay/forge/<id>/job.json`, the rig the pack is built from), grows it by the
+  jaw's full drop below and margins around, and maps it through the player's contain-fit onto
+  the 1920x1080 stage, then onto the file's resolution. `measure-roi.png` shows the ROI on the
+  frame with the most mouth motion, for a check by eye. External runs need `--roi`.
+- **Validation.** `synth` encodes a box "mouth" that follows a seeded speech-like envelope, plus a
+  220 Hz tone on the same envelope, shifted by `--offset`. Measure recovers +120 → 119 (FLV,
+  H.264/AAC) and 120 (WebM, VP9/Opus), -80 → -81/-80, and 0 → -2/-2. The FLV case also runs in
+  `measure.test.ts` whenever ffmpeg is present.
+
+## Overlord baseline (`src/overlord/`)
+
+Overlord (`C:\Users\kazda\kiro\overlord`) runs as a black box, from its own build. The lab never
+writes into that repo: runs, data and logs go to a folder you choose.
+
+**The input differs.** Overlord has no way to take haunt-01's chat:
+- sandbox chat comes only from its simulated room;
+- Twitch chat feeds only the moderator;
+- no RPC op injects viewer chat;
+- `--scripted` replaces the LLM, not the room.
+
+The baseline is therefore a scripted 5-minute sandbox session, recorded for haunt-01's length
+(125 s). `config.json` says so: `external: "overlord"`, `inputDiffers: true`, and a `note`.
+
+### Runbook (about 10 minutes once; 3 minutes for each run after that)
+
+1. Build: `cargo build --release -p shadowrunr-daemon` in the Overlord repo (2 m 45 s cold). This
+   writes only `target/`. The stage needs `node_modules` in that repo, which is already installed.
+2. Write a `shadowrunr.toml` outside the repo, as a copy of its own, with these changes:
+   - `[engine] scripted = true`;
+   - `[paths]`: `characters`, `policy`, `sim` and `segments` as absolute paths into the repo;
+     `runs` and `data` pointing to your folder;
+   - copy the repo's `data/` into your folder (small), with `data/avatar` as a junction to the
+     repo's `data/avatar` (398 MB, read only);
+   - a `[voice]` section using the installs already on this machine:
+     ```toml
+     [voice]
+     enabled = true
+     python = "C:/Users/kazda/.shadowrunr/venvs/voice/Scripts/python.exe"   # sherpa-onnx 1.13.8
+     sidecar = "C:/Users/kazda/kiro/overlord/tools/voice"
+     engine_dir = "C:/Users/kazda/.personas/companion-tts"                  # kokoro/ = kokoro-multi-lang-v1_0
+     durations_model = "C:/Users/kazda/.shadowrunr/models/kokoro-durations.onnx"
+     voices_dir = "C:/Users/kazda/.shadowrunr/voices"                       # malakor-voices.bin
+     ```
+3. Check: `shadowrunr --config <toml> preflight --scripted` should show no red (PF-06 and PF-08 are
+   amber), and `shadowrunr --config <toml> voice check` should end with "ready to speak, with
+   mouth shapes".
+4. Run (from the worktree root):
+   ```
+   pnpm lab overlord --toml <toml> [--seconds 125] [--seed 1031] [--headed]
+   pnpm lab measure var/lab/runs/<runId>/run.flv --roi 240,390,200,130
+   ```
+   The command:
+   - starts the daemon (`--scripted`, port 7717, `--port`) and the stage dev server (port 5178,
+     `--stage-port`);
+   - calls `sandbox.start {minutes: 5, seed, judge: false}`;
+   - opens `http://localhost:5178/?run=live&broadcast=1&voice=1` (use `localhost`: the daemon
+     checks the origin) in Chromium with `--auto-accept-this-tab-capture`;
+   - captures for `--seconds`, then calls `sandbox.stop` and stops both processes.
+
+   The run folder holds `run.flv`, `o1.json`, `config.json`, `timeline.jsonl` (chat as `turn`
+   events, host lines as `say`, on the recording's clock) and `overlord/` (the session's
+   transcript, voice log, spec). `240,390,200,130` is Malakor's jaw on the 1920x1080 stage.
+
+**Capture.** It is O1's path with a different source. Overlord's stage is a DOM layout around a
+WebGL face, so there is no single canvas to record:
+- **Video:** a tab capture (`getDisplayMedia`, current tab). Never pass
+  `--use-fake-ui-for-media-stream`: with it, Chromium captured the desktop instead of the tab.
+- **Audio:** headless tab audio is silent (-91 dB measured). The audio is tapped instead from a
+  `MediaStreamDestination` on the page's own AudioContext, fed by whatever the page connects to
+  its speakers. This is the same tap the lab stage records, and it stays in one context, so no
+  extra hop shifts A/V.
+- **Voice:** the stage never voices an automated browser (`navigator.webdriver`), so the capture
+  script reports `webdriver` as false. Nothing else on the page is changed.
+
+## Verdict board export (`src/board/`)
+
+```
+pnpm lab board --pairs <runA>:<runB>[,<runC>:<runD>...] [--clip 20] [--seed n]
+```
+
+This writes `var/lab/board/<boardId>/`, containing `p<n>-x.mp4`, `p<n>-y.mp4` and `manifest.json`:
+
+```json
+{ "boardId": "...", "pairs": [{ "pairId": "p1", "axis": "lip", "clips": { "x": "p1-x.mp4", "y": "p1-y.mp4" },
+  "hidden": { "x": "<runId>", "y": "<runId>" }, "moment": { "by": "chat", "chatId": "c3", "startS": { "x": 31.018, "y": 31.017 }, "clipS": 20 } }] }
+```
+
+- **Clips.** Both runs are cut at the same scenario moment: a chat both answered (their `turn`
+  events), chosen with the seed from those that leave a full clip in both runs. A pair with no
+  shared chat (an external run) is cut at each run's first spoken line (`by: "first-line"`).
+  Clips are H.264 + AAC MP4 at 1280 px, no more than 20 s, metadata stripped. They are
+  re-encoded at a lower bitrate until they fit in 5 MB (about 3.8 MB at 1.6 Mb/s for 20 s).
+- **Order and labels.** The x/y order is seeded-random per pair (sha256 of seed and pair). `axis`
+  names the arm keys that differ (`lip`, `control+scene`, `external`, `same`).
+- The seed defaults to a hash of the pairs, so the same command gives the same board.
 
 ## Page query parameters
 

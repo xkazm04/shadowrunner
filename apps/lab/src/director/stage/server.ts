@@ -83,7 +83,8 @@ export async function openStage(log: (line: string) => void): Promise<StageServe
     logLevel: "warn",
     clearScreen: false,
     plugins: [uploadPlugin(waiters)],
-    server: { host: "127.0.0.1", port: 4380, strictPort: false, fs: { allow: [REPO_ROOT] } },
+    // No HMR and no file watching: a reload mid-run drops the recording ("a second page connected").
+    server: { host: "127.0.0.1", port: 4380, strictPort: false, hmr: false, watch: null, fs: { allow: [REPO_ROOT] } },
   });
   await vite.listen();
   const base = vite.resolvedUrls?.local[0];

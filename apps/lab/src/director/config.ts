@@ -33,7 +33,7 @@ function configSource(spec: string): JsonRecord {
 /** Arms from `spec` over BASELINE, plus the scenario and seed of this run. */
 export function resolveConfig(spec: string, scenario: string, seed: number): RunConfig {
   const fields: JsonRecord = spec === "baseline" ? {} : configSource(spec);
-  if (fields.external !== undefined) throw new Error("External pipeline runs (config.external) are WP4's and are not built yet.");
+  if (fields.external !== undefined) throw new Error("External pipeline runs (config.external) start with `pnpm lab overlord`, not `pnpm lab run`.");
   const character = fields.character;
   if (character !== undefined && (typeof character !== "string" || character === "")) {
     throw new Error("config.character must be a non-empty pack id.");
@@ -52,7 +52,7 @@ export function resolveConfig(spec: string, scenario: string, seed: number): Run
 /** A RunConfig read back from a run's config.json. */
 export function parseRunConfig(value: unknown): RunConfig {
   if (!isRecord(value)) throw new Error("config.json must be a JSON object.");
-  const { scenario, seed, character, replayOf } = value;
+  const { scenario, seed, character, replayOf, external } = value;
   if (typeof scenario !== "string") throw new Error("config.json: scenario must be a string.");
   if (!isFiniteNumber(seed)) throw new Error("config.json: seed must be a number.");
   return {
@@ -64,6 +64,7 @@ export function parseRunConfig(value: unknown): RunConfig {
     ...(typeof character === "string" ? { character } : {}),
     seed,
     ...(typeof replayOf === "string" ? { replayOf } : {}),
+    ...(external === "overlord" ? { external } : {}),
   };
 }
 

@@ -72,6 +72,7 @@ async function start(character: string, config: RunConfig): Promise<void> {
   const painters: Record<"back" | "mouth" | "front", ScenePainter[]> = { back: [], mouth: [], front: [] };
   // Arms are created from their registries; an unbuilt slot throws its sentence, reported as an error.
   const lip = createLipDriver(config.lip, {
+    character,
     player,
     audio: sound,
     reducedMotion,

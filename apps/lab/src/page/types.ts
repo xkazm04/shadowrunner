@@ -17,6 +17,8 @@ export interface StageAudio {
 export type ScenePainter = (g: CanvasRenderingContext2D, nowMs: number) => void;
 
 export interface LipContext {
+  /** Character pack id on stage (a lip arm with per-character art, e.g. L2, keys on it). */
+  character: string;
   player: AvatarPlayer;
   audio: StageAudio;
   reducedMotion: boolean;

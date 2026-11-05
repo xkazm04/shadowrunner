@@ -17,7 +17,13 @@ export const USAGE = `Avatar Lab (docs/lab.md)
       --debug                            draw the live event list on the page
   pnpm lab replay <runId> [--headless] [--debug]
                                          re-render a run: zero LLM and zero TTS calls
-  pnpm lab fixture <runId>               write the run's replies as its scenario's fixture`;
+  pnpm lab fixture <runId>               write the run's replies as its scenario's fixture
+  pnpm lab mouths <character> [...]      L2 mouth set (GEMINI_API_KEY, or --placeholder)
+  pnpm lab measure <file> [...]          fps + A/V offset from a recorded file -> metrics.json
+  pnpm lab synth [...]                   synthetic clip with a known A/V offset (measure check)
+  pnpm lab loop <runId> [...]            a looped replay source for long O1 runs
+  pnpm lab overlord [...]                Overlord external baseline run (docs/lab.md runbook)
+  pnpm lab board --pairs a:b,... [...]   anonymised A/B clips + manifest for the verdict board`;
 
 export interface RunCommand {
   command: "run";

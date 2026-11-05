@@ -6,6 +6,7 @@ import { createWriteStream, existsSync, mkdirSync, renameSync, rmSync } from "no
 import { join } from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
+import type { ReadableStream as NodeReadableStream } from "node:stream/web";
 import { MODELS_DIR, VOICE_DIR, VOICE_PYTHON, VOICE_VENV } from "./paths.js";
 
 /** kokoro-onnx model files (MIT code, Apache-2.0 Kokoro-82M weights); the v1.1 export has durations. */
@@ -43,7 +44,7 @@ async function download(url: string, target: string): Promise<void> {
   if (!res.ok || res.body === null) throw new Error(`Downloading ${url} answered HTTP ${res.status}.`);
   const part = `${target}.part`;
   try {
-    await pipeline(Readable.fromWeb(res.body), createWriteStream(part));
+    await pipeline(Readable.fromWeb(res.body as NodeReadableStream<Uint8Array>), createWriteStream(part));
     renameSync(part, target);
   } catch (error) {
     rmSync(part, { force: true });

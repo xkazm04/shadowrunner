@@ -17,7 +17,7 @@ describe("resolveConfig", () => {
 
   it("rejects unknown arms and external runs with a sentence", () => {
     expect(() => resolveConfig('{"lip":"L9"}', "h", 1)).toThrow("config.lip must be one of L0, L1, L2");
-    expect(() => resolveConfig('{"external":"overlord"}', "h", 1)).toThrow("not built yet");
+    expect(() => resolveConfig('{"external":"overlord"}', "h", 1)).toThrow("pnpm lab overlord");
     expect(() => resolveConfig("no-such-file.json", "h", 1)).toThrow("neither");
   });
 

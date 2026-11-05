@@ -18,6 +18,12 @@ import { setup } from "./director/setup.js";
 import { launchStage } from "./director/stage/browser.js";
 import { openStage } from "./director/stage/server.js";
 import { startKokoro } from "./director/voice/kokoro.js";
+import { boardCommand } from "./board/board.js";
+import { loopCommand } from "./director/output/o1/loop.js";
+import { measureCommand } from "./measure/measure.js";
+import { synthCommand } from "./measure/synthCommand.js";
+import { mouthsCommand } from "./mouths/command.js";
+import { overlordCommand } from "./overlord/run.js";
 
 const log = (line: string): void => {
   process.stderr.write(`${line}\n`);
@@ -65,7 +71,19 @@ async function run(cmd: RunCommand): Promise<RunResult> {
   );
 }
 
+/** Commands that own their own flags (WP3, WP4); the rest go through director/args.ts. */
+const TOOLS: Readonly<Record<string, (argv: readonly string[], log: (line: string) => void) => Promise<void>>> = {
+  mouths: (argv, l) => mouthsCommand(argv, l),
+  measure: measureCommand,
+  synth: synthCommand,
+  loop: loopCommand,
+  overlord: overlordCommand,
+  board: boardCommand,
+};
+
 async function main(argv: readonly string[]): Promise<void> {
+  const tool = argv[0] === undefined ? undefined : TOOLS[argv[0]];
+  if (tool !== undefined) return tool(argv.slice(1), log);
   const cmd = parseArgs(argv);
   switch (cmd.command) {
     case "help":
