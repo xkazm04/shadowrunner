@@ -13,16 +13,29 @@ export interface StageAudio {
   level(): number;
 }
 
+/** Draws into the recorded composite (1920x1080): `back` under the avatar, `front` over it. */
+export type ScenePainter = (g: CanvasRenderingContext2D, nowMs: number) => void;
+
 export interface LipContext {
   player: AvatarPlayer;
   audio: StageAudio;
   reducedMotion: boolean;
+  /**
+   * Paints over the avatar in the recorded composite, after `frame(nowMs)` and before the scene's
+   * front painters. A lip arm that draws a mouth must paint it here to reach the recording.
+   */
+  addPainter(painter: ScenePainter): void;
 }
 
 export type LipDriverFactory = (ctx: LipContext) => LipDriver;
 
-/** Draws into the recorded composite (1920x1080): `back` under the avatar, `front` over it. */
-export type ScenePainter = (g: CanvasRenderingContext2D, nowMs: number) => void;
+/** One spoken line, delivered when its first sample is scheduled (the audio clock). */
+export interface Utterance {
+  id: string;
+  text: string;
+  atMs: number;
+  durationMs: number;
+}
 
 export interface SceneContext {
   /** The stage element (1920x1080); scene DOM goes inside it. */
@@ -37,6 +50,8 @@ export interface SceneContext {
    * here to reach run.webm (O0). DOM-only scene elements are visible live but not recorded.
    */
   addPainter(layer: "back" | "front", painter: ScenePainter): void;
+  /** Each spoken line as its audio starts (captions, scene reactions to speech). */
+  onUtterance(hook: (utterance: Utterance) => void): void;
 }
 
 export type SceneDriverFactory = (ctx: SceneContext) => SceneDriver;

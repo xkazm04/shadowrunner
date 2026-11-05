@@ -16,7 +16,7 @@ import { createLipDriver } from "./lip/index.js";
 import { startRecorder, type StageRecorder } from "./recorder.js";
 import { createSceneDriver } from "./scene/index.js";
 import styles from "./stage.module.css";
-import type { ScenePainter } from "./types.js";
+import type { ScenePainter, Utterance } from "./types.js";
 
 declare global {
   interface Window {
@@ -61,20 +61,29 @@ interface Running {
   frame: number;
 }
 let running: Running | undefined;
+/** `say` text by utterance id, delivered to scene hooks when that line's audio starts. */
+const lines = new Map<string, string>();
+const utteranceHooks: ((utterance: Utterance) => void)[] = [];
 
 async function start(character: string, config: RunConfig): Promise<void> {
   const player = await loadCharacter(avatarCanvas, character, config.seed, forceMotion);
   const sound = createStageSound();
   const hooks: ((nowMs: number) => void)[] = [];
-  const painters: Record<"back" | "front", ScenePainter[]> = { back: [], front: [] };
+  const painters: Record<"back" | "mouth" | "front", ScenePainter[]> = { back: [], mouth: [], front: [] };
   // Arms are created from their registries; an unbuilt slot throws its sentence, reported as an error.
-  const lip = createLipDriver(config.lip, { player, audio: sound, reducedMotion });
+  const lip = createLipDriver(config.lip, {
+    player,
+    audio: sound,
+    reducedMotion,
+    addPainter: (painter) => painters.mouth.push(painter),
+  });
   const scene = createSceneDriver(config.scene, {
     stage,
     audio: sound,
     reducedMotion,
     onFrame: (hook) => hooks.push(hook),
     addPainter: (layer, painter) => painters[layer].push(painter),
+    onUtterance: (hook) => utteranceHooks.push(hook),
   });
 
   const composite = document.createElement("canvas");
@@ -93,6 +102,7 @@ async function start(character: string, config: RunConfig): Promise<void> {
       g.clearRect(0, 0, STAGE_W, STAGE_H);
       for (const p of painters.back) p(g, nowMs);
       g.drawImage(avatarCanvas, 0, 0);
+      for (const p of painters.mouth) p(g, nowMs);
       for (const p of painters.front) p(g, nowMs);
     }
     meter.tick(now);
@@ -120,10 +130,18 @@ function apply(event: TimelineEvent): void {
   const r = running;
   if (r === undefined) return;
   switch (event.kind) {
+    case "say":
+      lines.set(event.id, event.text);
+      break;
     case "audio":
       if (r.sound.play(event.id, (atMs) => {
         send({ type: "audioStarted", id: event.id, atMs: Math.round(atMs) });
         r.lip.onAudio(event, atMs);
+        const text = lines.get(event.id);
+        if (text !== undefined) {
+          const utterance = { id: event.id, text, atMs, durationMs: event.durationMs };
+          for (const hook of utteranceHooks) hook(utterance);
+        }
       }) === undefined) fail(`audio ${event.id} arrived without its PCM`);
       break;
     case "viseme":
