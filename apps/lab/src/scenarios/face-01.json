@@ -1,0 +1,69 @@
+{
+  "id": "face-01",
+  "title": "Face gate - one line per emotion, with gestures and pauses (face-control)",
+  "character": "saint-cardia",
+  "persona": "A host of a haunted house who answers the chat briefly, in one or two sentences, with a clear emotion each time.",
+  "seed": 1031,
+  "chat": [
+    {
+      "id": "c1",
+      "user": "mossy_lantern",
+      "text": "good evening, are you awake?",
+      "atMs": 2000
+    },
+    {
+      "id": "c2",
+      "user": "pip_the_moth",
+      "text": "I brought you a riddle with no answer",
+      "atMs": 12000
+    },
+    {
+      "id": "c3",
+      "user": "velvet_crow",
+      "text": "everyone says you are the best host in the house",
+      "atMs": 22000
+    },
+    {
+      "id": "c4",
+      "user": "grimwick",
+      "text": "you are late again",
+      "atMs": 32000
+    },
+    {
+      "id": "c5",
+      "user": "grimwick",
+      "text": "I blew out every candle on your altar",
+      "atMs": 42000
+    },
+    {
+      "id": "c6",
+      "user": "pip_the_moth",
+      "text": "we made you a crown of paper stars!",
+      "atMs": 52000
+    },
+    {
+      "id": "c7",
+      "user": "mossy_lantern",
+      "text": "tell us about the weather in the crypt",
+      "atMs": 62000
+    },
+    {
+      "id": "c8",
+      "user": "velvet_crow",
+      "text": "who keeps moving the portraits at night?",
+      "atMs": 72000
+    },
+    {
+      "id": "c9",
+      "user": "grimwick",
+      "text": "the bell tower fell in the storm",
+      "atMs": 82000
+    },
+    {
+      "id": "c10",
+      "user": "pip_the_moth",
+      "text": "say goodnight to everyone!",
+      "atMs": 92000
+    }
+  ]
+}

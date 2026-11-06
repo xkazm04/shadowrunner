@@ -1,0 +1,62 @@
+{
+  "scenario": "face-01",
+  "source": "hand-written by the Director for the face-control gate (one emotion per line, gestures, ~6 s pauses for gaze and breathing)",
+  "replies": {
+    "c1": {
+      "line": "Good evening. I am awake, as I always am at this hour.",
+      "emotion": "neutral",
+      "answeredId": "c1"
+    },
+    "c2": {
+      "line": "A riddle with no answer? How charming. Those are my favourite kind.",
+      "emotion": "amused",
+      "gesture": "tilt",
+      "answeredId": "c2"
+    },
+    "c3": {
+      "line": "Everyone is right, of course. I simply try not to make it obvious.",
+      "emotion": "smug",
+      "gesture": "nod",
+      "answeredId": "c3"
+    },
+    "c4": {
+      "line": "Late? I have been here for a century. You are the one who keeps arriving.",
+      "emotion": "irritated",
+      "answeredId": "c4"
+    },
+    "c5": {
+      "line": "You blew them out? Every one? Light them again. Now.",
+      "emotion": "furious",
+      "gesture": "glare",
+      "answeredId": "c5"
+    },
+    "c6": {
+      "line": "Paper stars! For me? Oh, that is the loveliest thing I have seen in ages.",
+      "emotion": "delighted",
+      "gesture": "lean_in",
+      "answeredId": "c6"
+    },
+    "c7": {
+      "line": "Damp. Then damper. Then, for variety, damp again.",
+      "emotion": "bored",
+      "answeredId": "c7"
+    },
+    "c8": {
+      "line": "Someone moves the portraits. Someone in this chat, I think. I am watching.",
+      "emotion": "suspicious",
+      "answeredId": "c8"
+    },
+    "c9": {
+      "line": "Then the bell is silent. No one will ring the hour for the dead tonight.",
+      "emotion": "grim",
+      "gesture": "recoil",
+      "answeredId": "c9"
+    },
+    "c10": {
+      "line": "Goodnight, living and lingering alike! Until the candles call you back!",
+      "emotion": "theatrical",
+      "gesture": "flare",
+      "answeredId": "c10"
+    }
+  }
+}
