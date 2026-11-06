@@ -189,6 +189,12 @@ export interface RigLips {
   right: number;
   upper: number;
   lower: number;
+  /**
+   * Where the lips meet at cx (the parting line), when the forge found it: the warp opens the mouth
+   * here. It differs from `lineY` (the jaw cut) on rigs whose jaw was cut above the upper lip.
+   * Omitted: the warp parts at `lineY`.
+   */
+  seam?: number;
 }
 
 export type Emotion =

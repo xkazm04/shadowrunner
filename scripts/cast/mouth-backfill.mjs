@@ -1,6 +1,6 @@
 // The rig owns the mouth (llm-avatar-lab): backfills `rig.mouth` into recorded cast jobs and, on
 // request, resets the mouth of their expression faces to the neutral art.
-//   node scripts/cast/mouth-backfill.mjs (--slug <id> [--slug <id> ...] | --all) [--reset-expressions] [--dry-run]
+//   node scripts/cast/mouth-backfill.mjs (--slug <id> [--slug <id> ...] | --all) [--reset-expressions | --lips] [--dry-run]
 // For each assets/replay/forge/<slug>/job.json (`--all`: every folder but `malakor`, as build-packs):
 // measures the mouth (`measureMouth`) from the rig's first jaw layer image, capped by its first head
 // layer's width, and writes it as job.json's `rig.mouth` (the file's own line ending and trailing
@@ -10,6 +10,14 @@
 // the faces were committed, q88 with lossless alpha; a lossless one with rig-webp's options, checked
 // bit-exact; PNG via `encodePng`). Not idempotent inside the feather, and a lossy face loses a
 // generation: run it once per recorded edit.
+// A re-measured mouth keeps the `lips` job.json already carries (`--lips` re-measures them).
+// --lips (art-mouth): only the painted lips. For every rig that already has `rig.mouth` (the art
+// mouths have none; the Tallyman's drawn one is measured too, harmlessly), `measureLips` on the rest
+// head + jaw (the first head and first jaw layer, bottom first) about that mouth, written as
+// `rig.mouth.lips` (with its `seam`, the parting at cx, when found; appended to the mouth's keys, or
+// replaced in place). When it is unsure, or the
+// character's CAST call `lips` says why not, a stale `lips` is removed and none is written. The
+// mouth's other keys are untouched.
 // --dry-run measures and prints, writes nothing. No network, no model, no new dependency.
 // Per character (CAST, round 3, chosen on contact sheets of all seven faces): a mouth drawn as art
 // (a visor slit, a neon gap, a maw, a skull's teeth, a carved grin) keeps its art: no `mouth`, no
@@ -45,18 +53,22 @@ const CAST = {
   "sister-vesper": { region: { rx: 1.25, below: 0.8 } },
   "the-redactor": { region: { rx: 1.3, above: 1.4, below: 1.0 }, cell: 7.1 },
   "the-tallyman": { render: "drawn" },
-  understudy: { region: { above: 1.1, below: 1.0 } },
+  // art-mouth: measureLips finds only the lower lip (the upper lip is shadowed, not red, over the black
+  // gap above lineY), so no box rather than a wrong one; without lips the warp does not run and the dummy keeps its sliding jaw.
+  understudy: { region: { above: 1.1, below: 1.0 }, lips: "measureLips sees only the lower lip under the dummy's black gap" },
 };
-const USAGE = "usage: node scripts/cast/mouth-backfill.mjs (--slug <id> ... | --all) [--reset-expressions] [--dry-run]";
+const USAGE = "usage: node scripts/cast/mouth-backfill.mjs (--slug <id> ... | --all) [--reset-expressions | --lips] [--dry-run]";
 
 const args = process.argv.slice(2);
 const slugsAsked = args.flatMap((a, i) => (args[i - 1] === "--slug" ? [a] : []));
 const all = args.includes("--all");
 const reset = args.includes("--reset-expressions");
 const dry = args.includes("--dry-run");
-const known = new Set(["--slug", "--all", "--reset-expressions", "--dry-run"]);
+const lipsOnly = args.includes("--lips");
+const known = new Set(["--slug", "--all", "--reset-expressions", "--lips", "--dry-run"]);
 for (const [i, a] of args.entries()) if (a.startsWith("--") ? !known.has(a) : args[i - 1] !== "--slug") throw new Error(`mouth-backfill: unknown argument ${a}\n${USAGE}`);
 if (all === slugsAsked.length > 0) throw new Error(`mouth-backfill: give --slug or --all\n${USAGE}`);
+if (lipsOnly && reset) throw new Error(`mouth-backfill: --lips measures only the lips; run --reset-expressions on its own\n${USAGE}`);
 
 const config = { configFile: false, root: ROOT, logLevel: "warn" };
 const [{ module: forge }, { module: rigCore }] = await Promise.all([runnerImport("/packages/forge/src/index.ts", config), runnerImport("/packages/rig/src/index.ts", config)]);
@@ -94,12 +106,8 @@ function resetWith(region, patch, patchBbox, base, baseBbox, mouth) {
   return forge.resetMouth(patch, patchBbox, base, baseBbox, mouth, region);
 }
 
-async function backfill(slug) {
-  const call = CAST[slug] ?? {};
-  if (call.art !== undefined) {
-    console.log(`mouth-backfill: ${slug}: the art keeps its mouth (${call.art}): no rig.mouth, faces untouched`);
-    return;
-  }
+/** The recorded job, refused unless in the 2-space form this script writes, with its validated rig. */
+function readJob(slug) {
   const dir = join(FORGE, slug);
   const jobPath = join(dir, "job.json");
   if (!existsSync(jobPath)) throw new Error(`mouth-backfill: no recorded job ${slug}`);
@@ -110,7 +118,43 @@ async function backfill(slug) {
   }
   const checked = rigCore.validateRig(job.value.rig);
   if (!checked.ok) throw new Error(`mouth-backfill: ${slug}: the rig does not validate: ${checked.errors[0]?.message}`);
-  const rig = checked.value;
+  return { dir, jobPath, job, rig: checked.value };
+}
+
+/** --lips: `rig.mouth.lips` from measureLips on the rest head + jaw about the recorded mouth. */
+async function backfillLips(slug) {
+  const call = CAST[slug] ?? {};
+  const { dir, jobPath, job, rig } = readJob(slug);
+  if (rig.mouth === undefined) {
+    console.log(`mouth-backfill: ${slug}: no rig.mouth${call.art === undefined ? "" : ` (${call.art})`}, no lips`);
+    return;
+  }
+  const head = rig.layers.find((l) => l.kind === "head");
+  const jaw = rig.layers.find((l) => l.kind === "jaw");
+  const rest = [head, jaw].filter((l) => l !== undefined).sort((a, b) => a.z - b.z);
+  const layers = await Promise.all(rest.map(async (l) => ({ bbox: l.bbox, image: await load(join(dir, l.file)) })));
+  const measured = forge.measureLips(layers, rig.mouth);
+  const lips = call.lips === undefined ? measured : undefined;
+  const { cx, lineY, width } = rig.mouth;
+  const why = call.lips === undefined ? "measureLips is unsure" : `${call.lips}; measured ${JSON.stringify(measured)}`;
+  const box = lips === undefined ? `none (${why})` : `left ${lips.left} right ${lips.right} upper ${lips.upper} lower ${lips.lower} seam ${lips.seam ?? `none (lineY ${lineY})`} (span ${((lips.right - lips.left) / width).toFixed(2)} x width)`;
+  console.log(`mouth-backfill: ${slug}: mouth cx ${cx} lineY ${lineY} width ${width} -> lips ${box}`);
+  const mouth = job.value.rig.mouth;
+  if (lips === undefined) delete mouth.lips;
+  else mouth.lips = lips;
+  const again = rigCore.validateRig(job.value.rig);
+  if (!again.ok) throw new Error(`mouth-backfill: ${slug}: the rig with its lips does not validate: ${again.errors[0]?.message}`);
+  if (!dry) writeJsonFile(jobPath, job.value, job);
+  console.log(`mouth-backfill: ${slug}: ${dry ? "would write" : "wrote"} job.json rig.mouth${lips === undefined ? " without lips" : ".lips"}`);
+}
+
+async function backfill(slug) {
+  const call = CAST[slug] ?? {};
+  if (call.art !== undefined) {
+    console.log(`mouth-backfill: ${slug}: the art keeps its mouth (${call.art}): no rig.mouth, faces untouched`);
+    return;
+  }
+  const { dir, jobPath, job, rig } = readJob(slug);
   const jaw = rig.layers.find((l) => l.kind === "jaw");
   const head = rig.layers.find((l) => l.kind === "head");
   if (jaw === undefined) {
@@ -144,7 +188,8 @@ async function backfill(slug) {
     }
   }
   if (!dry) {
-    job.value.rig.mouth = { ...mouth, ...(call.render === undefined ? {} : { render: call.render }), ...(call.cell === undefined ? {} : { cell: call.cell }) };
+    const lips = was?.lips;
+    job.value.rig.mouth = { ...mouth, ...(call.render === undefined ? {} : { render: call.render }), ...(call.cell === undefined ? {} : { cell: call.cell }), ...(lips === undefined ? {} : { lips }) };
     const again = rigCore.validateRig(job.value.rig);
     if (!again.ok) throw new Error(`mouth-backfill: ${slug}: the rig with its mouth does not validate: ${again.errors[0]?.message}`);
     writeJsonFile(jobPath, job.value, job);
@@ -158,4 +203,4 @@ const slugs = all
       .map((e) => e.name)
       .sort()
   : slugsAsked.filter((s) => !SKIP.has(s));
-for (const slug of slugs) await backfill(slug);
+for (const slug of slugs) await (lipsOnly ? backfillLips(slug) : backfill(slug));

@@ -91,4 +91,25 @@ describe("drawnMouth (round 3: a lipless mouth keeps its art)", () => {
       expect(rig.layers.some((l) => l.kind === "jaw")).toBe(true);
     }
   });
+
+  it("assembleRig (art-mouth): measures the painted lips on the rest head + jaw; flat art leaves lips omitted", () => {
+    expect("lips" in (assemble(face({})).mouth ?? {})).toBe(false);
+    const lipped: Rgba = { ...portrait, data: portrait.data.slice() };
+    // A red lip ellipse about the jaw's top edge (row 120, x 100): rx 16, ry 8.
+    for (let y = 0; y < SIZE; y++) {
+      for (let x = 0; x < SIZE; x++) {
+        if (((x + 0.5 - 100) / 16) ** 2 + ((y + 0.5 - 120) / 8) ** 2 > 1) continue;
+        lipped.data.set([190, 70, 80], (y * SIZE + x) * 4);
+      }
+    }
+    const parts = face({});
+    const lifted = liftedNamed(parts, SIZE, SIZE);
+    const plate = composePlate(lipped, fallbackFill(lipped, lifted), lifted);
+    const out = assembleRig(parts, cutNamed(lipped, parts, { plate }).layers, { id: "t", name: "T", portrait: lipped, plate });
+    expect(out.ok).toBe(true);
+    const lips = out.ok ? out.value.rig.mouth?.lips : undefined;
+    expect(lips).toBeDefined();
+    if (lips === undefined) return;
+    for (const [got, want] of [[lips.left, 84], [lips.right, 116], [lips.upper, 112], [lips.lower, 128]] as const) expect(Math.abs(got - want)).toBeLessThanOrEqual(2);
+  });
 });

@@ -569,7 +569,14 @@
       "cx": 515.5,
       "lineY": 547,
       "width": 89.25,
-      "cell": 7.1
+      "cell": 7.1,
+      "lips": {
+        "left": 459,
+        "right": 570,
+        "upper": 545,
+        "lower": 560,
+        "seam": 550
+      }
     }
   }
 }

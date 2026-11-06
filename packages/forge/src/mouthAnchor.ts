@@ -6,6 +6,9 @@ import type { Mask } from "./mask.js";
 import { lipLine } from "./mouth.js";
 import type { Rgba } from "./types.js";
 
+// art-mouth: the painted lips' box about the mouth (`measureLips`) lives beside it (line cap).
+export * from "./mouthLips.js";
+
 /**
  * The mouth's width as a share of the jaw's opaque span, capped at a share of the head's width (a
  * skull's jaw is as wide as the face; its mouth is not). The same numbers as the lab's

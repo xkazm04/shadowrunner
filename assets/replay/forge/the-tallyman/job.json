@@ -1288,7 +1288,13 @@
       "cx": 513,
       "lineY": 493,
       "width": 107.1,
-      "render": "drawn"
+      "render": "drawn",
+      "lips": {
+        "left": 459,
+        "right": 567,
+        "upper": 484,
+        "lower": 495
+      }
     }
   }
 }

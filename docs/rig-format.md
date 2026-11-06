@@ -41,16 +41,24 @@ Amended by llm-avatar-lab ("the rig owns the mouth"); the format stays version 1
 to corner. When present, the expression faces keep the neutral portrait mouth. With
 `render: "drawn"` the renderer also draws the talking mouth there and carries the emotion in it
 (smile, snarl, smirk, downturn): this suits flat, low-poly shading (the Tallyman). Painterly and
-dithered pixel faces showed a flat cover box and cartoon lips, so they are not marked. Without it the art keeps its neutral lips and the jaw opens as before; the position
-is recorded for an art-preserving mouth (painterly styles, follow-up). The forge does not set
-`render`: a style is marked drawn by a person after seeing it.
+dithered pixel faces showed a flat cover box and cartoon lips, so they are not marked. Without
+`render` and with `lips` (amended by art-mouth) the WebGL renderer talks with the art's own lips:
+it bends the head and jaw art inside the painted `lips` box, moving the corners with the emotion
+and parting the lips at the `seam` (or at `lineY` without one) over a dark interior; the Canvas2D
+fallback keeps the neutral lips and the sliding jaw. The warp runs only when `lips` exists (Director
+decision, art-mouth): a rig without `lips` keeps the neutral lips and the sliding jaw, so a
+character whose lips the forge could not measure (Lot Ninety, the Understudy) needs no flag.
+`render: "still"` is the explicit per-character opt-out for a rig that has `lips`: the art keeps its
+neutral lips and the jaw slides as before, in both renderers. The forge does not set `render`: a
+style is marked drawn, or a character still, by a person after seeing it.
 
 | field | type | required | meaning |
 |---|---|---|---|
 | `cx` | number | yes | Finite, in `[0, width]`. |
 | `lineY` | number | yes | Finite, in `[0, height]`. |
 | `width` | number | yes | Finite and > 0. |
-| `render` | `"drawn"` | no | The player paints its procedural mouth. Any other value is `bad_shape` at `$.mouth.render`. |
+| `render` | `"drawn"` \| `"still"` | no | `"drawn"`: the player paints its procedural mouth. `"still"` (art-mouth): no bending; neutral lips and the jaw. Omitted: the art-preserving (warp) mouth. Any other value is `bad_shape` at `$.mouth.render`. |
+| `lips` | `{ left, right, upper, lower, seam? }` | no | The painted lips at rest, canvas px: the corners' x (`left`, `right`), the upper lip's top y (`upper`) and the lower lip's bottom y (`lower`). Finite, with `0 <= left < cx < right <= width` and `0 <= upper < lineY < lower <= height`, else `bad_shape` at `$.mouth.lips`. `seam` (optional) is the y where the lips part at `cx`: it differs from `lineY` (the jaw cut) on rigs whose jaw was cut at or above the upper lip (Moth Widow: lineY 599, seam 611; Sister Vesper: 480, 501). Finite with `upper <= seam <= lower`, else `bad_shape` at `$.mouth.lips.seam`; omitted (never 0) when no dark line parts the lips, and the warp then parts at `lineY`. Omitted `lips` (never zeros) when the forge was unsure: the warp does not run. Amended by art-mouth; the format stays version 1. |
 | `cell` | number | no | Pixel art: the canvas px of one art pixel (the forge's `cut.cell`; the Redactor's is 7.1). The drawn mouth then paints on that grid: a crop at 1/`cell` resolution scaled up with smoothing off, in both renderers. Finite and > 0, else `bad_shape` at `$.mouth.cell`. Omitted: smooth paint. Amended by llm-avatar-lab; the format stays version 1. |
 
 The drawn mouth's skin cover takes its colour from the rest art as the look recolours it (a region
@@ -65,6 +73,21 @@ How the forge sets it (`packages/forge`):
 - **Measure.** `assembleRig` measures the first jaw layer (`measureMouth`, `mouthAnchor.ts`):
   `lineY` is the median top edge of the jaw over the middle 60% of its opaque columns, `cx` the
   middle of that span, `width` the span times 0.85, capped at 0.32 of the first head layer's width.
+- **Lips.** Then `measureLips` (`mouthLips.ts`) finds the painted lips on the rest head + jaw
+  composited, in a window 0.85 x width each side of `cx`, 0.45 x width above and 0.6 x width below
+  `lineY`. Each pixel scores as a robust z-score (median, MAD) against the window on two cues,
+  redder (R - G: painted lips) and darker (luminance: ink or greyscale lips); the cue on which the
+  middle of the mouth stands out more decides, and a pixel is lip halfway to that level. `upper` and
+  the bottom come from the run of lip nearest `lineY` in each middle column (the other cue may join
+  a dark parting but never ends the run); a lower lip only shading shows ends at the first row
+  darker than halfway between the parting and the lip's lit row. `left`/`right` are where the
+  columns stop holding lip. A jaw cut up to 0.1 x width above the lips puts `upper` at `lineY - 1`.
+  `seam` is the darkest row of the middle columns' luminance (`cx` +- 0.1 x width) strictly inside
+  the lips' rows, kept only when it is darker than their median row by a quarter of their range
+  (at least 8 levels): an ink or shadowed parting.
+  It returns nothing (and the rig gets no `lips`) when the lips stand out by less than 1.5 skin
+  spreads, an edge is the window's, the span is outside 0.5..1.4 x width or the box does not hold
+  (`cx`, `lineY`). The cast's are back-filled by `node scripts/cast/mouth-backfill.mjs --all --lips`.
 - **Lipless mouths keep their art.** A jaw part whose `cavity` is `"gap"` (a visor's slit, a grin
   drawn over a dark gap) or `"fill"` (a maw of teeth over a lit throat) means the mouth is drawn
   open and there are no lips to draw: `drawnMouth(parts)` is true and the rig gets no `mouth`.

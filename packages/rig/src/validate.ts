@@ -12,10 +12,14 @@
 // at `$.layers[i].variants.<family>...` / `$.layers[i].regions...`); a patch bbox leaving the canvas
 // is `bbox_out_of_bounds` at its own path and a slot hex that is not "#rrggbb" is `bad_color`.
 // Rig.mouth (llm-avatar-lab) is optional; present, it is `bad_shape` at `$.mouth` unless an object
-// and at `$.mouth.<field>` unless cx in [0, width], lineY in [0, height] and width finite > 0; `render` "drawn" and `cell` (finite > 0) optional.
+// and at `$.mouth.<field>` unless cx in [0, width], lineY in [0, height] and width finite > 0; `render`
+// ("drawn" | "still") and `cell` (finite > 0) optional. `lips` (art-mouth) is optional; present, it is
+// `bad_shape` at `$.mouth.lips` unless an object of finite `left`, `right`, `upper`, `lower` with
+// 0 <= left < cx < right <= width and 0 <= upper < lineY < lower <= height; its optional `seam` is finite
+// with upper <= seam <= lower, else `bad_shape` at `$.mouth.lips.seam`.
 import { JAW_DROP_MAX, JAW_DROP_MIN } from "./pose.js";
 import type { Result } from "./result.js";
-import { RIG_VERSION, type Layer, type LayerKind, type Palette, type Rig, type RigMouth } from "./types.js";
+import { RIG_VERSION, type Layer, type LayerKind, type Palette, type Rig, type RigLips, type RigMouth } from "./types.js";
 import { readLayerControls } from "./validateControl.js";
 import { readMotion, type MotionCanvas } from "./validateMotion.js";
 
@@ -142,7 +146,7 @@ class Reader {
     return { glow, eye, rim, mouth };
   }
 
-  /** Rig.mouth: absent is fine; present, cx and lineY on the canvas and width finite > 0. */
+  /** Rig.mouth: absent is fine; present, cx and lineY on the canvas, width finite > 0, lips (optional) about them. */
   mouth(value: unknown, path: string, canvas: MotionCanvas): RigMouth | undefined {
     if (value === undefined) return undefined;
     if (!isRecord(value)) return this.fail(path, `when present, ${got(value, "an object { cx, lineY, width }")}`);
@@ -154,11 +158,28 @@ class Reader {
     const lineY = this.required(value, "lineY", path, within(canvas.height), `a number in [0, ${canvas.height ?? "height"}]`);
     const width = this.required(value, "width", path, (v: unknown): v is number => isFinite(v) && v > 0, "a finite number > 0");
     const render = value.render;
-    if (render !== undefined && render !== "drawn") return this.fail(`${path}.render`, `when present, ${got(render, '"drawn"')}`);
+    if (render !== undefined && render !== "drawn" && render !== "still") return this.fail(`${path}.render`, `when present, ${got(render, '"drawn" or "still"')}`);
     const cell = value.cell;
     if (cell !== undefined && !(isFinite(cell) && cell > 0)) return this.fail(`${path}.cell`, `when present, ${got(cell, "a finite number > 0")}`);
     if (cx === undefined || lineY === undefined || width === undefined) return undefined;
-    return { cx, lineY, width, ...(render === "drawn" ? { render } : {}), ...(typeof cell === "number" ? { cell } : {}) };
+    const lips = value.lips === undefined ? undefined : this.lips(value.lips, `${path}.lips`, cx, lineY, canvas);
+    if (value.lips !== undefined && lips === undefined) return undefined;
+    return { cx, lineY, width, ...(render === undefined ? {} : { render }), ...(typeof cell === "number" ? { cell } : {}), ...(lips === undefined ? {} : { lips }) };
+  }
+
+  /** Rig.mouth.lips (art-mouth): finite corners either side of cx, upper above and lower below lineY, on the canvas. */
+  lips(value: unknown, path: string, cx: number, lineY: number, canvas: MotionCanvas): RigLips | undefined {
+    const expected = `an object { left, right, upper, lower } with 0 <= left < cx < right <= ${canvas.width ?? "width"} and 0 <= upper < lineY < lower <= ${canvas.height ?? "height"}`;
+    if (!isRecord(value)) return this.fail(path, `when present, ${got(value, expected)}`);
+    const { left, right, upper, lower } = value;
+    if (!isFinite(left) || !isFinite(right) || !isFinite(upper) || !isFinite(lower)) return this.fail(path, `${expected}; a field is not a finite number`);
+    const w = canvas.width ?? Infinity;
+    const h = canvas.height ?? Infinity;
+    if (!(left >= 0 && left < cx && cx < right && right <= w)) return this.fail(path, `${expected}; got left ${left}, cx ${cx}, right ${right}`);
+    if (!(upper >= 0 && upper < lineY && lineY < lower && lower <= h)) return this.fail(path, `${expected}; got upper ${upper}, lineY ${lineY}, lower ${lower}`);
+    const seam = value.seam;
+    if (seam !== undefined && !(isFinite(seam) && seam >= upper && seam <= lower)) return this.fail(`${path}.seam`, `when present, ${got(seam, `a finite number in [upper ${upper}, lower ${lower}]`)}`);
+    return { left, right, upper, lower, ...(seam === undefined ? {} : { seam }) };
   }
 
   layer(value: unknown, path: string, canvas: MotionCanvas): Layer | undefined {

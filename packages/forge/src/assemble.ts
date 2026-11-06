@@ -4,7 +4,7 @@ import { DEFAULT_DEPTH, type Layer, type LayerKind, RIG_VERSION, type Result, ty
 import { CUT_ORDER } from "./cut.js";
 import { encodePng } from "./image.js";
 import { dilateMask, rasterizeMask } from "./mask.js";
-import { drawnMouth, measureMouth } from "./mouthAnchor.js";
+import { drawnMouth, measureLips, measureMouth } from "./mouthAnchor.js";
 import { type NamedLayer, backgroundOf } from "./background.js";
 import { asNamed, cutOrderNamed, emissiveOf, followOf, headNameOf, motionOf, scaleMotion } from "./named.js";
 import { samplePalette, type PaletteWarning } from "./palette.js";
@@ -237,7 +237,11 @@ export function assembleRig(parts: readonly Part[] | readonly NamedPart[], layer
   // drawn open (a visor, a maw: `drawnMouth`) stays the art's: no `mouth`, so nothing resets or covers it.
   const jawLayer = drawnMouth(named) ? undefined : order.find((l) => kindOf(l.name) === "jaw");
   const headLayer = order.find((l) => kindOf(l.name) === "head");
-  const mouth = jawLayer === undefined ? undefined : measureMouth(jawLayer, headLayer);
+  const measured = jawLayer === undefined ? undefined : measureMouth(jawLayer, headLayer);
+  // art-mouth: the painted lips on the rest head + jaw (bottom first), omitted when measureLips is unsure.
+  const rest = order.filter((l) => l === headLayer || l === jawLayer);
+  const lips = measured === undefined ? undefined : measureLips(rest, measured);
+  const mouth = measured === undefined ? undefined : { ...measured, ...(lips === undefined ? {} : { lips }) };
   const rig: Rig = { version: RIG_VERSION, id: meta.id, name: meta.name, width, height, source: "forge", fictional: true, palette, layers: rigLayers, ...(mouth === undefined ? {} : { mouth }) };
   const checked = validateRig(rig);
   return checked.ok ? { ok: true, value: { rig: checked.value, files, warnings } } : checked;

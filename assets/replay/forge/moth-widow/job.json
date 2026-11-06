@@ -549,7 +549,14 @@
     "mouth": {
       "cx": 509.5,
       "lineY": 599,
-      "width": 90.56
+      "width": 90.56,
+      "lips": {
+        "left": 463,
+        "right": 561,
+        "upper": 598,
+        "lower": 635,
+        "seam": 611
+      }
     }
   }
 }
