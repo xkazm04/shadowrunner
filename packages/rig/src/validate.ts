@@ -175,13 +175,13 @@ class Reader {
     if (!isRecord(value)) return this.fail(path, `when present, ${got(value, expected)}`);
     const { left, right, upper, lower } = value;
     if (!isFinite(left) || !isFinite(right) || !isFinite(upper) || !isFinite(lower)) return this.fail(path, `${expected}; a field is not a finite number`);
-    const w = canvas.width ?? Infinity;
-    const h = canvas.height ?? Infinity;
+    const [w, h] = [canvas.width ?? Infinity, canvas.height ?? Infinity];
     if (!(left >= 0 && left < cx && cx < right && right <= w)) return this.fail(path, `${expected}; got left ${left}, cx ${cx}, right ${right}`);
     if (!(upper >= 0 && upper < lineY && lineY < lower && lower <= h)) return this.fail(path, `${expected}; got upper ${upper}, lineY ${lineY}, lower ${lower}`);
     const seam = value.seam;
     if (seam !== undefined && !(isFinite(seam) && seam >= upper && seam <= lower)) return this.fail(`${path}.seam`, `when present, ${got(seam, `a finite number in [upper ${upper}, lower ${lower}]`)}`);
-    return { left, right, upper, lower, ...(seam === undefined ? {} : { seam }) };
+    if (value.maw !== undefined && value.maw !== true) return this.fail(`${path}.maw`, `when present, ${got(value.maw, "true")}`);
+    return { left, right, upper, lower, ...(seam === undefined ? {} : { seam }), ...(value.maw === true ? { maw: true as const } : {}) };
   }
 
   layer(value: unknown, path: string, canvas: MotionCanvas): Layer | undefined {
@@ -213,7 +213,7 @@ class Reader {
     if (motion?.blink !== undefined && kind !== undefined && kind !== "eye") this.fail(`${path}.motion.blink`, `only an eye layer blinks, this one is ${kind}`, named);
     const controls = readLayerControls(value, path, fileProblem);
     for (const problem of controls.problems) this.fail(problem.path, problem.message.slice(problem.path.length + 2), named);
-    const { variants, regions, socket, closed } = controls;
+    const { variants, regions, socket, closed, tint } = controls;
     if (this.errors.length > before) return undefined;
     if (name === undefined || z === undefined || kind === undefined || file === undefined) return undefined;
     if (x === undefined || y === undefined || w === undefined || h === undefined) return undefined;
@@ -235,6 +235,7 @@ class Reader {
       ...(regions === undefined ? {} : { regions }),
       ...(socket === undefined ? {} : { socket }),
       ...(closed === undefined ? {} : { closed }),
+      ...(tint === undefined ? {} : { tint }),
     };
   }
 

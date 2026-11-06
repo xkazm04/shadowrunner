@@ -100,3 +100,29 @@ describe("Look.face", () => {
     expect(look?.face).toEqual({ expression: { strength: 0.7 } });
   });
 });
+
+describe("cast-face-pass fields", () => {
+  it("keeps Layer.tint false on eye/iris layers and lips.maw, and round-trips them", () => {
+    const input = rig(
+      { mouth: { cx: 400, lineY: 600, width: 200, lips: { left: 300, right: 500, upper: 580, lower: 640, seam: 610, maw: true } } },
+      { tint: false },
+    );
+    const out = validateRig(input);
+    expect(out.ok).toBe(true);
+    if (!out.ok) return;
+    expect(out.value.layers[1]?.tint).toBe(false);
+    expect(out.value.mouth?.lips?.maw).toBe(true);
+    const again = parseRigJson(serializeRig(out.value));
+    expect(again.ok && again.value).toEqual(out.value);
+  });
+
+  it("refuses tint true, tint on a head, and a non-true maw", () => {
+    expect(errors(rig({}, { tint: true }))).toEqual([expect.stringContaining("$.layers[1].tint")]);
+    const head = rig();
+    (head.layers as Record<string, unknown>[])[0] = { name: "head", z: 0, kind: "head", file: "head.png", bbox: [100, 100, 600, 700], anchor: [400, 800], tint: false };
+    expect(errors(head)).toEqual([expect.stringContaining("$.layers[0].tint")]);
+    expect(errors(rig({ mouth: { cx: 400, lineY: 600, width: 200, lips: { left: 300, right: 500, upper: 580, lower: 640, maw: 1 } } }))).toEqual([
+      expect.stringContaining("$.mouth.lips.maw"),
+    ]);
+  });
+});

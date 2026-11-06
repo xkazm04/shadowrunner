@@ -66,6 +66,11 @@ export interface Layer {
   socket?: string;
   /** Eye layers (face-control): the closed-lid art, same bbox; a blink crossfades to it. */
   closed?: string;
+  /**
+   * Eye and iris layers (cast-face-pass): `false` when the palette's eye colour must not tint this
+   * layer, so its light keeps the art's own colour (a white visor light, a candle). Omitted: tinted.
+   */
+  tint?: false;
 }
 
 /** The six expression families the ten emotions share (character-control design "Moods"). */
@@ -237,6 +242,11 @@ export interface RigLips {
    * Omitted: the warp parts at `lineY`.
    */
   seam?: number;
+  /**
+   * cast-face-pass: the painted mouth is already open (teeth around a dark gap, a carved grin), so
+   * the warp widens the gap and moves the teeth rows instead of parting closed lips. Omitted: lips.
+   */
+  maw?: true;
 }
 
 export type Emotion =

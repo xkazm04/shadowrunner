@@ -128,6 +128,8 @@ export interface ControlRead {
   /** Eye layers (face-control): the lid-opening mask and the closed-lid art. */
   socket?: string;
   closed?: string;
+  /** Eye and iris layers (cast-face-pass): false = not tinted by the palette's eye colour. */
+  tint?: false;
   problems: ControlProblem[];
 }
 
@@ -139,12 +141,15 @@ export function readLayerControls(layer: Fields, path: string, fileRule: FileRul
   const socket = layer.socket === undefined ? undefined : reader.file(layer.socket, `${path}.socket`);
   const closed = layer.closed === undefined ? undefined : reader.file(layer.closed, `${path}.closed`);
   if ((socket !== undefined || closed !== undefined) && layer.kind !== "eye") reader.fail(`${path}.${socket !== undefined ? "socket" : "closed"}`, `only an eye layer has a socket or closed art, this one is ${describe(layer.kind)}`);
+  if (layer.tint !== undefined && layer.tint !== false) reader.fail(`${path}.tint`, `expected false (omit the field otherwise), got ${describe(layer.tint)}`);
+  else if (layer.tint === false && layer.kind !== "eye" && layer.kind !== "iris") reader.fail(`${path}.tint`, `only an eye or iris layer has tint, this one is ${describe(layer.kind)}`);
   if (reader.problems.length > 0) return { problems: reader.problems };
   return {
     ...(variants === undefined ? {} : { variants }),
     ...(regions === undefined ? {} : { regions }),
     ...(socket === undefined ? {} : { socket }),
     ...(closed === undefined ? {} : { closed }),
+    ...(layer.tint === false ? { tint: false as const } : {}),
     problems: [],
   };
 }

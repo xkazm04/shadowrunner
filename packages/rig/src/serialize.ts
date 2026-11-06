@@ -63,6 +63,7 @@ function wireLayer(layer: Layer): Layer {
     ...(layer.regions === undefined ? {} : { regions: wireRegions(layer.regions) }),
     ...(layer.socket === undefined ? {} : { socket: layer.socket }),
     ...(layer.closed === undefined ? {} : { closed: layer.closed }),
+    ...(layer.tint === false ? { tint: false as const } : {}),
   };
 }
 
@@ -77,7 +78,7 @@ function wireRig(rig: Rig): Rig {
     ...(rig.fictional === undefined ? {} : { fictional: rig.fictional }),
     palette: wirePalette(rig.palette),
     layers: rig.layers.map(wireLayer),
-    ...(rig.mouth === undefined ? {} : { mouth: { cx: rig.mouth.cx, lineY: rig.mouth.lineY, width: rig.mouth.width, ...(rig.mouth.render === undefined ? {} : { render: rig.mouth.render }), ...(rig.mouth.cell === undefined ? {} : { cell: rig.mouth.cell }), ...(rig.mouth.lips === undefined ? {} : { lips: { left: rig.mouth.lips.left, right: rig.mouth.lips.right, upper: rig.mouth.lips.upper, lower: rig.mouth.lips.lower, ...(rig.mouth.lips.seam === undefined ? {} : { seam: rig.mouth.lips.seam }) } }) } }),
+    ...(rig.mouth === undefined ? {} : { mouth: { cx: rig.mouth.cx, lineY: rig.mouth.lineY, width: rig.mouth.width, ...(rig.mouth.render === undefined ? {} : { render: rig.mouth.render }), ...(rig.mouth.cell === undefined ? {} : { cell: rig.mouth.cell }), ...(rig.mouth.lips === undefined ? {} : { lips: { left: rig.mouth.lips.left, right: rig.mouth.lips.right, upper: rig.mouth.lips.upper, lower: rig.mouth.lips.lower, ...(rig.mouth.lips.seam === undefined ? {} : { seam: rig.mouth.lips.seam }), ...(rig.mouth.lips.maw === true ? { maw: true as const } : {}) } }) } }),
     ...(rig.face === undefined ? {} : { face: JSON.parse(JSON.stringify(rig.face)) as RigFace }),
   };
 }
