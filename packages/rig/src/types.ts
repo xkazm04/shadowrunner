@@ -152,6 +152,18 @@ export interface Rig {
   fictional?: true;
   palette: Palette;
   layers: Layer[];
+  /**
+   * Where the character's mouth is, canvas px, measured by the forge from the jaw's lip line.
+   * Optional: rigs made before it load unchanged and consumers fall back to the jaw's box.
+   */
+  mouth?: RigMouth;
+}
+
+/** The rest mouth: centre x, lip line y, and width (corner to corner), canvas px. */
+export interface RigMouth {
+  cx: number;
+  lineY: number;
+  width: number;
 }
 
 export type Emotion =

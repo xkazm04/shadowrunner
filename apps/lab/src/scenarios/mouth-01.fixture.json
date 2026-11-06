@@ -1,0 +1,41 @@
+{
+  "scenario": "mouth-01",
+  "source": "hand-written by the Director for the mouth go/fold gate (one emotion per line)",
+  "replies": {
+    "c1": {
+      "line": "Welcome. Name recorded: one. You are counted now, and I counted you twice to be sure.",
+      "emotion": "neutral",
+      "answeredId": "c1"
+    },
+    "c2": {
+      "line": "One hundred! Round, tidy, divisible. Oh, that is a beautiful number. I shall frame it in the ledger.",
+      "emotion": "delighted",
+      "answeredId": "c2"
+    },
+    "c3": {
+      "line": "Ladies, gentlemen and lingering shades: the grand total stands at four hundred and twelve thousand souls!",
+      "emotion": "theatrical",
+      "answeredId": "c3"
+    },
+    "c4": {
+      "line": "You tore my ledger? That page held forty souls. Put it back. Put it back this instant.",
+      "emotion": "furious",
+      "answeredId": "c4"
+    },
+    "c5": {
+      "line": "No. Nobody ever has. One hundred and thirty years of counting, and not a single thank you.",
+      "emotion": "grim",
+      "answeredId": "c5"
+    },
+    "c6": {
+      "line": "Six eyes, one ledger, zero exceptions. Your objection is recorded as entry number one of many.",
+      "emotion": "smug",
+      "answeredId": "c6"
+    },
+    "c7": {
+      "line": "Counted twice? Interesting. Very interesting. Stand still while I check your entry, velvet crow.",
+      "emotion": "suspicious",
+      "answeredId": "c7"
+    }
+  }
+}

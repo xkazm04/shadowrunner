@@ -4,9 +4,12 @@
 // their weights inside a feathered mask cut to the face (the rest crop's own alpha), drawn in the
 // head's frame over the crop square. A shape with no image, and every shape until the images have
 // loaded, is drawn by L1's procedural mouth; the jaw opens only for those (the art has its own).
+// The art carries no emotion: the procedural share gets the emotion bias, and whenever anything is
+// drawn the art's own lips are first covered in sampled skin (the same cover rule as L1).
 import type { LipDriverFactory, LipContext } from "../types.js";
 import { createMouthDriver } from "./mouth/driver.js";
-import { createPatchCache, paintMouth } from "./mouth/paint.js";
+import { applyBias } from "./mouth/emotion.js";
+import { createPatchCache, paintCover, paintMouth } from "./mouth/paint.js";
 import { findMouthSet, type MouthSetManifest } from "./mouth/set.js";
 import { blendParams, MOUTH_SHAPES, restWeights, type MouthShape, type ShapeWeights } from "./mouth/shapes.js";
 
@@ -108,8 +111,9 @@ export const createL2: LipDriverFactory = (ctx: LipContext) => {
           .catch((error: unknown) => console.warn(`Lip arm L2: the mouth set did not load (${error instanceof Error ? error.message : String(error)}); drawing L1's mouth.`));
       }
       const split = splitMix(f.weights, drawn());
+      paintCover(g, f.anchor, f.colours, f.alpha, patches);
       if (split.proceduralShare > 0) {
-        const params = blendParams(split.procedural);
+        const params = applyBias(blendParams(split.procedural), f.bias);
         paintMouth(g, { anchor: f.anchor, params, colours: f.colours, alpha: f.alpha * split.proceduralShare }, patches);
       }
       if (split.artShare <= 0 || mix === undefined || !(f.alpha > 0)) return;

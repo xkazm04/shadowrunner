@@ -1,6 +1,7 @@
 // Page-side seams the arm registries hand to lip drivers and scene drivers. A new arm is one file
 // exporting a factory of one of these shapes, registered in lip/index.ts or scene/index.ts.
 import type { AvatarPlayer } from "@sr/avatar/core";
+import type { RigMouth } from "@sr/rig";
 import type { LipDriver, SceneDriver } from "../contract.js";
 
 export interface StageAudio {
@@ -19,6 +20,8 @@ export type ScenePainter = (g: CanvasRenderingContext2D, nowMs: number) => void;
 export interface LipContext {
   /** Character pack id on stage (a lip arm with per-character art, e.g. L2, keys on it). */
   character: string;
+  /** The rig's measured mouth (Rig.mouth), absent on rigs made before it: fall back to the jaw. */
+  mouth?: RigMouth;
   player: AvatarPlayer;
   audio: StageAudio;
   reducedMotion: boolean;

@@ -25,3 +25,4 @@ export * from "./brief.js";
 export * from "./briefParts.js";
 export * from "./regions.js";
 export * from "./expressions.js";
+export * from "./mouthAnchor.js";

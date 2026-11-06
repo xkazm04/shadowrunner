@@ -11,9 +11,11 @@
 // Layer.variants and Layer.regions (character-control) are read by validateControl.ts (`bad_shape`
 // at `$.layers[i].variants.<family>...` / `$.layers[i].regions...`); a patch bbox leaving the canvas
 // is `bbox_out_of_bounds` at its own path and a slot hex that is not "#rrggbb" is `bad_color`.
+// Rig.mouth (llm-avatar-lab) is optional; present, it is `bad_shape` at `$.mouth` unless an object
+// and at `$.mouth.<field>` unless cx in [0, width], lineY in [0, height] and width finite > 0.
 import { JAW_DROP_MAX, JAW_DROP_MIN } from "./pose.js";
 import type { Result } from "./result.js";
-import { RIG_VERSION, type Layer, type LayerKind, type Palette, type Rig } from "./types.js";
+import { RIG_VERSION, type Layer, type LayerKind, type Palette, type Rig, type RigMouth } from "./types.js";
 import { readLayerControls } from "./validateControl.js";
 import { readMotion, type MotionCanvas } from "./validateMotion.js";
 
@@ -140,6 +142,20 @@ class Reader {
     return { glow, eye, rim, mouth };
   }
 
+  /** Rig.mouth: absent is fine; present, cx and lineY on the canvas and width finite > 0. */
+  mouth(value: unknown, path: string, canvas: MotionCanvas): RigMouth | undefined {
+    if (value === undefined) return undefined;
+    if (!isRecord(value)) return this.fail(path, `when present, ${got(value, "an object { cx, lineY, width }")}`);
+    const within =
+      (limit: number | undefined): Guard<number> =>
+      (v: unknown): v is number =>
+        isFinite(v) && v >= 0 && (limit === undefined || v <= limit);
+    const cx = this.required(value, "cx", path, within(canvas.width), `a number in [0, ${canvas.width ?? "width"}]`);
+    const lineY = this.required(value, "lineY", path, within(canvas.height), `a number in [0, ${canvas.height ?? "height"}]`);
+    const width = this.required(value, "width", path, (v: unknown): v is number => isFinite(v) && v > 0, "a finite number > 0");
+    return cx === undefined || lineY === undefined || width === undefined ? undefined : { cx, lineY, width };
+  }
+
   layer(value: unknown, path: string, canvas: MotionCanvas): Layer | undefined {
     if (!isRecord(value)) return this.fail(path, got(value, "a layer object"));
     const before = this.errors.length;
@@ -219,10 +235,11 @@ class Reader {
     const palette = this.palette(value.palette, "$.palette");
     const canvas = { ...(width === undefined ? {} : { width }), ...(height === undefined ? {} : { height }) };
     const layers = this.layers(value.layers, "$.layers", canvas);
+    const mouth = this.mouth(value.mouth, "$.mouth", canvas);
     if (this.errors.length > before) return undefined;
     if (version === undefined || id === undefined || name === undefined || width === undefined || height === undefined) return undefined;
     if (source === undefined || palette === undefined || layers === undefined) return undefined;
-    return { version, id, name, width, height, source, ...(fictional === undefined ? {} : { fictional }), palette, layers };
+    return { version, id, name, width, height, source, ...(fictional === undefined ? {} : { fictional }), palette, layers, ...(mouth === undefined ? {} : { mouth }) };
   }
 }
 

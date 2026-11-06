@@ -2,7 +2,7 @@
 // so it follows every head motion; the jaw's own drop, measured in that frame, is how far the
 // lower lip has moved. Read from player.layerFrames() (@sr/avatar, read-only).
 import type { Affine, LayerFrame } from "@sr/avatar/core";
-import { mouthGeometry, type MouthGeometry } from "./geometry.js";
+import { mouthGeometry, type MeasuredMouth, type MouthGeometry } from "./geometry.js";
 
 export function invertAffine(m: Affine): Affine | undefined {
   const [a, b, c, d, e, f] = m;
@@ -25,12 +25,15 @@ export interface MouthAnchor {
   opacity: number;
 }
 
-/** The mouth in this frame, or undefined when the rig has no jaw (nothing to track). */
-export function mouthAnchor(frames: readonly LayerFrame[]): MouthAnchor | undefined {
+/**
+ * The mouth in this frame, or undefined when the rig has no jaw (nothing to track). `measured` is
+ * the rig's own mouth (Rig.mouth) when it has one; otherwise the place is guessed from the jaw.
+ */
+export function mouthAnchor(frames: readonly LayerFrame[], measured?: MeasuredMouth): MouthAnchor | undefined {
   const jaw = frames.find((f) => f.layer.kind === "jaw");
   if (jaw === undefined) return undefined;
   const head = frames.find((f) => f.layer.name === jaw.layer.follow) ?? frames.find((f) => f.layer.kind === "head");
-  const geometry = mouthGeometry(jaw.layer, head?.layer);
+  const geometry = mouthGeometry(jaw.layer, head?.layer, measured);
   const frame = head ?? jaw;
   const inverse = invertAffine(frame.affine);
   let gap = 0;

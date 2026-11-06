@@ -7,8 +7,10 @@
 // layer is re-cut by its own alpha. Its new colour is the composite's (`edited` inside the feathered
 // mask, the base outside), its alpha the base's. A head layer takes the edit only where no eye, jaw
 // or brow layer in front of it is opaque: what lies under those is the plate and the painted mouth
-// cavity, which an open jaw or a shut eye must still show.
-import type { ExpressionFamily, Layer, LayerPatch, Rig } from "@sr/rig";
+// cavity, which an open jaw or a shut eye must still show. The rig owns the mouth (llm-avatar-lab):
+// when the rig has `mouth`, the head and jaw re-cuts get the mouth region back from the base
+// (`resetMouth`), so an edit changes eyes and brows and the renderer's mouth carries the emotion.
+import type { ExpressionFamily, Layer, LayerPatch, Rig, RigMouth } from "@sr/rig";
 import { dilateMask, emptyMask, featherMask, type Mask } from "./mask.js";
 import type { Rgba } from "./types.js";
 
@@ -179,6 +181,84 @@ function coverInFront(rig: Pick<Rig, "width" | "height" | "layers">, layers: Rea
 }
 
 /**
+ * Mouth region (`resetMouth`) as shares of the mouth's width: centre drop, half-width, half-heights
+ * above and below. Tuned on the Tallyman's six faces (the brief's ellipse 0.08 / 0.8 / 0.4 / 0.6 left
+ * the grin's raised corners, the open upper lip and the smirk's tail; a cut through the nostrils
+ * doubled them): a rounded box that reaches the corners and takes the nose's lower half whole.
+ */
+export const RESET_DROP = 0;
+export const RESET_RX = 0.95;
+export const RESET_RY_ABOVE = 0.75;
+export const RESET_RY_BELOW = 0.6;
+/** The region's inward feather, px: base inside, the patch outside, blended across this band. */
+export const RESET_FEATHER = 8;
+/** The region's superellipse power: 2 is an ellipse; 4 a rounded box that reaches a grin's raised corners. */
+export const RESET_POWER = 4;
+
+/** The base's weight (0..1) at canvas point (x, y): 1 deeper than RESET_FEATHER px inside the mouth region, 0 outside. */
+export function mouthWeight(mouth: RigMouth, x: number, y: number): number {
+  const dx = x - mouth.cx;
+  const dy = y - (mouth.lineY + RESET_DROP * mouth.width);
+  const rx = RESET_RX * mouth.width;
+  const ry = (dy < 0 ? RESET_RY_ABOVE : RESET_RY_BELOW) * mouth.width;
+  const r = (Math.abs(dx / rx) ** RESET_POWER + Math.abs(dy / ry) ** RESET_POWER) ** (1 / RESET_POWER);
+  if (r === 0) return 1;
+  if (r >= 1) return 0;
+  const dist = Math.hypot(dx, dy);
+  // Along the ray from the centre: the edge lies at dist / r, so the pixel is dist / r - dist inside.
+  return Math.min(1, (dist / r - dist) / RESET_FEATHER);
+}
+
+/**
+ * The rig owns the mouth (llm-avatar-lab): `patch` (placed at `patchBbox`, canvas px) with the
+ * mouth region restored from `base` (placed at `baseBbox`). The region is a superellipse (power
+ * RESET_POWER) centred at
+ * (cx, lineY + RESET_DROP * width), half-width RESET_RX * width, half-height RESET_RY_ABOVE * width
+ * above its centre and RESET_RY_BELOW * width below; every RGBA channel is blended patch -> base by
+ * `mouthWeight` (pixel centres). Patch pixels the base does not cover stay as they are. Fresh image.
+ */
+export function resetMouth(patch: Rgba, patchBbox: Layer["bbox"], base: Rgba, baseBbox: Layer["bbox"], mouth: RigMouth): Rgba {
+  const data = patch.data.slice();
+  const [px, py] = patchBbox;
+  const [bx, by] = baseBbox;
+  for (let y = 0; y < patch.height; y++) {
+    for (let x = 0; x < patch.width; x++) {
+      const w = mouthWeight(mouth, px + x + 0.5, py + y + 0.5);
+      if (w === 0) continue;
+      const sx = Math.round(px + x - bx);
+      const sy = Math.round(py + y - by);
+      if (sx < 0 || sy < 0 || sx >= base.width || sy >= base.height) continue;
+      const o = (y * patch.width + x) * 4;
+      const s = (sy * base.width + sx) * 4;
+      for (let c = 0; c < 4; c++) data[o + c] = Math.round((patch.data[o + c] ?? 0) * (1 - w) + (base.data[s + c] ?? 0) * w);
+    }
+  }
+  return { width: patch.width, height: patch.height, data };
+}
+
+/** Sum of |next - base| over RGB, and the box [x0, y0, x1, y1] of the pixels that differ (x1 = -1 when none). */
+function changeOf(base: Uint8ClampedArray, next: Uint8ClampedArray, width: number): { sum: number; box: [number, number, number, number] } {
+  let sum = 0;
+  const box: [number, number, number, number] = [Infinity, Infinity, -1, -1];
+  for (let i = 0; i < base.length; i += 4) {
+    let moved = false;
+    for (let c = 0; c < 3; c++) {
+      const d = Math.abs((next[i + c] ?? 0) - (base[i + c] ?? 0));
+      sum += d;
+      if (d !== 0) moved = true;
+    }
+    if (!moved) continue;
+    const x = (i / 4) % width;
+    const y = Math.floor(i / 4 / width);
+    box[0] = Math.min(box[0], x);
+    box[1] = Math.min(box[1], y);
+    box[2] = Math.max(box[2], x);
+    box[3] = Math.max(box[3], y);
+  }
+  return { sum, box };
+}
+
+/**
  * design.md "Cut": for every head, eye, jaw or brow layer, its re-cut from the composite (see the
  * header); a layer whose re-cut differs from its base by more than PATCH_MIN_MEAN in its bbox gets a
  * patch. Eye, jaw and brow patches are `replace` and cover the whole layer (a replace patch hides its
@@ -200,12 +280,7 @@ export function cutVariants(rig: Rig, layers: ReadonlyMap<string, Rgba>, portrai
     if (base === undefined || !(layer.kind === "head" || isFaceLayer(layer))) continue;
     const cover = layer.kind === "head" ? coverInFront(rig, layers, layer.z) : undefined;
     const [bx, by] = layer.bbox;
-    const next = base.data.slice();
-    let sum = 0;
-    let x0 = Infinity;
-    let y0 = Infinity;
-    let x1 = -1;
-    let y1 = -1;
+    let next: Uint8ClampedArray = base.data.slice();
     for (let y = 0; y < base.height; y++) {
       for (let x = 0; x < base.width; x++) {
         const cx = bx + x;
@@ -215,18 +290,15 @@ export function cutVariants(rig: Rig, layers: ReadonlyMap<string, Rgba>, portrai
         const ci = cy * rig.width + cx;
         const w = ((soft[ci] ?? 0) / 255) * (cover === undefined ? 1 : 1 - (cover[ci] ?? 0) / 255);
         if (w === 0) continue;
-        let moved = false;
-        for (let c = 0; c < 3; c++) {
-          const was = base.data[o + c] ?? 0;
-          const now = Math.round(was * (1 - w) + (edited.data[ci * 4 + c] ?? 0) * w);
-          next[o + c] = now;
-          sum += Math.abs(now - was);
-          if (now !== was) moved = true;
-        }
-        if (!moved) continue;
-        [x0, y0, x1, y1] = [Math.min(x0, x), Math.min(y0, y), Math.max(x1, x), Math.max(y1, y)];
+        for (let c = 0; c < 3; c++) next[o + c] = Math.round((base.data[o + c] ?? 0) * (1 - w) + (edited.data[ci * 4 + c] ?? 0) * w);
       }
     }
+    // The rig owns the mouth: the head and jaw keep the neutral mouth, the eyes and brows the edit.
+    if (rig.mouth !== undefined && (layer.kind === "head" || layer.kind === "jaw")) {
+      next = resetMouth({ width: base.width, height: base.height, data: next }, layer.bbox, base, layer.bbox, rig.mouth).data;
+    }
+    const { sum, box } = changeOf(base.data, next, base.width);
+    const [x0, y0, x1, y1] = box;
     if (x1 < 0 || sum / (base.width * base.height * 3) <= PATCH_MIN_MEAN) continue;
     const replace = layer.kind !== "head";
     const [px0, py0, px1, py1] = replace

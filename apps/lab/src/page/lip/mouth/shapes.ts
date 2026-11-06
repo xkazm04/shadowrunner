@@ -43,17 +43,28 @@ export interface MouthParams {
   press: number;
   /** Jaw opening handed to the player (setLevel), before the driver's floor. */
   jaw: number;
+  // Emotion (mouth/emotion.ts adds them per expression family; every viseme shape has them at 0).
+  /** -1..1 corner lift: joy up, gloom down. */
+  smile: number;
+  /** 0..1 upper lip raised, upper teeth bared (anger). */
+  snarl: number;
+  /** -1..1 one-sided smirk: the right corner (viewer's) lifts for +, the left for -. */
+  skew: number;
+  /** 0..1 thinner, pressed lips (suspicion). */
+  tight: number;
 }
 
+const CALM = { smile: 0, snarl: 0, skew: 0, tight: 0 } as const;
+
 export const SHAPE_PARAMS: Readonly<Record<MouthShape, MouthParams>> = {
-  rest: { width: 1, open: 0, round: 0, teeth: 0, tongue: 0, press: 0, jaw: 0 },
-  openWide: { width: 1, open: 1, round: 0.1, teeth: 0.35, tongue: 0.35, press: 0, jaw: 0.9 },
-  openMid: { width: 0.95, open: 0.55, round: 0.1, teeth: 0.45, tongue: 0.2, press: 0, jaw: 0.5 },
-  round: { width: 0.55, open: 0.45, round: 1, teeth: 0, tongue: 0.1, press: 0, jaw: 0.4 },
-  closed: { width: 0.92, open: 0, round: 0, teeth: 0, tongue: 0, press: 1, jaw: 0 },
-  teeth: { width: 0.9, open: 0.2, round: 0, teeth: 1, tongue: 0, press: 0, jaw: 0.12 },
-  tongue: { width: 0.9, open: 0.4, round: 0.1, teeth: 0.6, tongue: 1, press: 0, jaw: 0.35 },
-  narrow: { width: 1.08, open: 0.22, round: 0, teeth: 0.85, tongue: 0, press: 0, jaw: 0.18 },
+  rest: { width: 1, open: 0, round: 0, teeth: 0, tongue: 0, press: 0, jaw: 0, ...CALM },
+  openWide: { width: 1, open: 1, round: 0.1, teeth: 0.35, tongue: 0.35, press: 0, jaw: 0.9, ...CALM },
+  openMid: { width: 0.95, open: 0.55, round: 0.1, teeth: 0.45, tongue: 0.2, press: 0, jaw: 0.5, ...CALM },
+  round: { width: 0.55, open: 0.45, round: 1, teeth: 0, tongue: 0.1, press: 0, jaw: 0.4, ...CALM },
+  closed: { width: 0.92, open: 0, round: 0, teeth: 0, tongue: 0, press: 1, jaw: 0, ...CALM },
+  teeth: { width: 0.9, open: 0.2, round: 0, teeth: 1, tongue: 0, press: 0, jaw: 0.12, ...CALM },
+  tongue: { width: 0.9, open: 0.4, round: 0.1, teeth: 0.6, tongue: 1, press: 0, jaw: 0.35, ...CALM },
+  narrow: { width: 1.08, open: 0.22, round: 0, teeth: 0.85, tongue: 0, press: 0, jaw: 0.18, ...CALM },
 };
 
 /** One weight per shape, summing to 1. */
@@ -65,7 +76,7 @@ export function restWeights(): ShapeWeights {
 
 /** The weighted mix of the shapes' params (weights need not be normalised; zero total is rest). */
 export function blendParams(weights: Partial<ShapeWeights>): MouthParams {
-  const out: MouthParams = { width: 0, open: 0, round: 0, teeth: 0, tongue: 0, press: 0, jaw: 0 };
+  const out: MouthParams = { width: 0, open: 0, round: 0, teeth: 0, tongue: 0, press: 0, jaw: 0, ...CALM };
   let total = 0;
   for (const shape of MOUTH_SHAPES) {
     const w = weights[shape] ?? 0;

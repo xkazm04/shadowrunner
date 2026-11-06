@@ -3,11 +3,15 @@
 // drives its frames (renderFrame), so the recording composites exactly what was drawn.
 import { createAvatarPlayer, type AvatarPlayer } from "@sr/avatar/core";
 import { decodePackImages, loadPack, packErrorSentence } from "@sr/pack";
+import type { Rig } from "@sr/rig";
 
 export const STAGE_W = 1920;
 export const STAGE_H = 1080;
 
-export async function loadCharacter(canvas: HTMLCanvasElement, id: string, seed: number, forceMotion: boolean): Promise<AvatarPlayer> {
+/** The player, plus the rig it draws (read-only: lip arms read its measured `mouth`). */
+export type LoadedCharacter = AvatarPlayer & { readonly rig: Rig };
+
+export async function loadCharacter(canvas: HTMLCanvasElement, id: string, seed: number, forceMotion: boolean): Promise<LoadedCharacter> {
   const result = await loadPack(`/packs/${encodeURIComponent(id)}.srpack`);
   if (!result.ok) throw new Error(`Character "${id}": ${packErrorSentence(result.error)}`);
   const assets = await decodePackImages(result.pack.files);
@@ -21,7 +25,7 @@ export async function loadCharacter(canvas: HTMLCanvasElement, id: string, seed:
     reducedMotion: forceMotion ? false : "auto",
   });
   player.resize(STAGE_W, STAGE_H, 1);
-  return player;
+  return Object.assign(player, { rig });
 }
 
 /** Which backend renders WebGL here: "gpu", "swiftshader", or "canvas2d" when WebGL2 is absent. */

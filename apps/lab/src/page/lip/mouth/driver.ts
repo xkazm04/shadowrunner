@@ -6,12 +6,18 @@
 //
 // Reduced motion (the twin, used when the viewer asks and the run does not force motion): no
 // per-viseme articulation; while a line plays the mouth eases (REDUCED_EASE_MS) to one soft, half
-// open speaking shape and back to rest after it.
+// open speaking shape and back to rest after it; an emotion change switches at once.
+//
+// Emotion (emotion.ts): the drawn mouth carries the character's emotion, added to the viseme mix
+// every frame. It sits on the rig's measured mouth (ctx.mouth) when the rig has one. At rest with
+// a non-neutral emotion the drawn mouth shows (cover = max(talk cover, emotion strength)); at rest
+// with neutral the art is untouched.
 import { JAW_FLOOR } from "@sr/avatar/core";
 import type { LipArmId, LipDriver } from "../../../contract.js";
 import type { LipContext } from "../../types.js";
 import { sampleSkin, type MouthColours } from "./colours.js";
 import { mouthAnchor, type MouthAnchor } from "./anchor.js";
+import { applyBias, createEmotionEase, NO_BIAS, type EmotionBias, type EmotionEase } from "./emotion.js";
 import { blendParams, restWeights, type MouthParams, type ShapeWeights } from "./shapes.js";
 import { createVisemeTrack, type VisemeTrack } from "./track.js";
 
@@ -23,9 +29,12 @@ export interface MouthFrame {
   nowMs: number;
   anchor: MouthAnchor;
   weights: ShapeWeights;
+  /** The shown mix's params with the emotion added. */
   params: MouthParams;
+  /** The emotion's bias this frame (an arm blending its own params adds it with applyBias). */
+  bias: EmotionBias;
   colours: MouthColours;
-  /** 0..1: how much the drawn mouth replaces the art's own (0 at rest: the art untouched). */
+  /** 0..1: how much the drawn mouth replaces the art's own (0 at neutral rest: the art untouched). */
   alpha: number;
 }
 
@@ -49,6 +58,8 @@ export const coverOf = (weights: ShapeWeights): number => Math.min(1, Math.max(0
 export interface MouthDriverHandle extends LipDriver {
   /** The scheduler (tests). */
   readonly track: VisemeTrack;
+  /** The emotion easing (tests). */
+  readonly emotion: EmotionEase;
 }
 
 export interface MouthDriverOptions {
@@ -60,6 +71,9 @@ export function createMouthDriver(id: LipArmId, ctx: LipContext, paint: MouthPai
   const { player, audio, reducedMotion } = ctx;
   player.attachAudio(undefined);
   const track = createVisemeTrack();
+  const emotion = createEmotionEase(reducedMotion);
+  let bias: EmotionBias = NO_BIAS;
+  let strength = 0;
   let weights = restWeights();
   let soft = 0;
   let lastMs: number | undefined;
@@ -84,26 +98,29 @@ export function createMouthDriver(id: LipArmId, ctx: LipContext, paint: MouthPai
   };
 
   ctx.addPainter((g, nowMs) => {
-    const anchor = mouthAnchor(player.layerFrames?.() ?? []);
+    const anchor = mouthAnchor(player.layerFrames?.() ?? [], ctx.mouth);
     if (anchor === undefined) {
       if (!warned) console.warn(`Lip arm ${id}: this rig has no jaw layer, so there is no mouth to draw.`);
       warned = true;
       return;
     }
     // The composite holds the back layers and the avatar only at this point: clean art to sample.
-    if (resample || colours === undefined) {
+    // An expressive face may still paint its own mouth around the lips: keep the neutral sample.
+    if (colours === undefined || (resample && !emotion.expressive && strength === 0)) {
       colours = sampleSkin(g, anchor) ?? colours;
       resample = colours === undefined;
     }
     if (colours === undefined) return;
     // `frame(nowMs)` ran just before the painters, on the same clock reading.
-    const alpha = reducedMotion ? Math.min(1, soft * 2) : coverOf(weights);
-    paint(g, { nowMs, anchor, weights, params: blendParams(weights), colours, alpha });
+    const talk = reducedMotion ? Math.min(1, soft * 2) : coverOf(weights);
+    const alpha = Math.max(talk, strength);
+    paint(g, { nowMs, anchor, weights, params: applyBias(blendParams(weights), bias), bias, colours, alpha });
   });
 
   return {
     id,
     track,
+    emotion,
     onAudio(event, audioStartMs) {
       track.startUtterance(event.id, audioStartMs, event.durationMs);
       resample = true;
@@ -111,11 +128,15 @@ export function createMouthDriver(id: LipArmId, ctx: LipContext, paint: MouthPai
     onViseme(event) {
       track.addViseme(event.id, event.v, event.startMs, event.endMs);
     },
+    onEmotion(value) {
+      emotion.set(value, audio.nowMs());
+    },
     frame(nowMs) {
+      ({ bias, strength } = emotion.at(nowMs));
       weights = reducedMotion ? reducedMix(nowMs) : mixAt(nowMs);
       lastMs = nowMs;
       const jawMix = reducedMotion ? weights : mixAt(nowMs + JAW_LEAD_MS);
-      const jaw = blendParams(options.jawWeights?.(jawMix) ?? jawMix).jaw;
+      const jaw = applyBias(blendParams(options.jawWeights?.(jawMix) ?? jawMix), bias).jaw;
       player.setLevel(jawLevel(jaw));
     },
     dispose() {

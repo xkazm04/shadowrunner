@@ -1,0 +1,51 @@
+{
+  "id": "mouth-01",
+  "title": "The Tallyman - one line per emotion (mouth gate)",
+  "character": "the-tallyman",
+  "persona": "The Tallyman is a spectral census-taker with six eyes and an abacus of finger bones who has counted every soul in this house since 1887 and has never once been thanked. He is fussy, precise and delighted by tidy numbers, offended by miscounts, and quietly menacing about anyone who refuses to be counted. He speaks in short clerk's sentences and keeps a running tally of chat.",
+  "seed": 1031,
+  "chat": [
+    {
+      "id": "c1",
+      "user": "mossy_lantern",
+      "text": "hello tallyman, am I counted?",
+      "atMs": 2000
+    },
+    {
+      "id": "c2",
+      "user": "pip_the_moth",
+      "text": "I brought you a perfectly round number: one hundred!",
+      "atMs": 14000
+    },
+    {
+      "id": "c3",
+      "user": "velvet_crow",
+      "text": "announce the grand total, tallyman!",
+      "atMs": 26000
+    },
+    {
+      "id": "c4",
+      "user": "grimwick",
+      "text": "I tore a page out of your ledger",
+      "atMs": 38000
+    },
+    {
+      "id": "c5",
+      "user": "bonejar",
+      "text": "nobody will ever thank you for counting",
+      "atMs": 50000
+    },
+    {
+      "id": "c6",
+      "user": "grimwick",
+      "text": "your census is fake, nobody has six eyes",
+      "atMs": 62000
+    },
+    {
+      "id": "c7",
+      "user": "velvet_crow",
+      "text": "I may have counted myself twice...",
+      "atMs": 74000
+    }
+  ]
+}

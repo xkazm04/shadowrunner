@@ -73,6 +73,7 @@ async function start(character: string, config: RunConfig): Promise<void> {
   // Arms are created from their registries; an unbuilt slot throws its sentence, reported as an error.
   const lip = createLipDriver(config.lip, {
     character,
+    mouth: player.rig.mouth,
     player,
     audio: sound,
     reducedMotion,
@@ -150,6 +151,7 @@ function apply(event: TimelineEvent): void {
       break;
     case "emotion":
       r.player.setEmotion(event.value);
+      r.lip.onEmotion?.(event.value);
       break;
     case "gesture":
       r.player.gesture(event.value);

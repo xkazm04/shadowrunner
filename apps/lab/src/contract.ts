@@ -139,6 +139,8 @@ export interface LipDriver {
   onViseme(event: Extract<TimelineEvent, { kind: "viseme" }>): void;
   /** Called every frame with the audio clock (ms since run start). */
   frame(nowMs: number): void;
+  /** The character's emotion changed (the player already shows the new face). L0 ignores it. */
+  onEmotion?(value: Emotion): void;
   dispose(): void;
 }
 

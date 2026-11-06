@@ -4,6 +4,7 @@ import { DEFAULT_DEPTH, type Layer, type LayerKind, RIG_VERSION, type Result, ty
 import { CUT_ORDER } from "./cut.js";
 import { encodePng } from "./image.js";
 import { dilateMask, rasterizeMask } from "./mask.js";
+import { measureMouth } from "./mouthAnchor.js";
 import { type NamedLayer, backgroundOf } from "./background.js";
 import { asNamed, cutOrderNamed, emissiveOf, followOf, headNameOf, motionOf, scaleMotion } from "./named.js";
 import { samplePalette, type PaletteWarning } from "./palette.js";
@@ -123,7 +124,8 @@ function anchorOf(kind: LayerKind, layer: NamedLayer, part: Pick<Part, "poly"> |
  * MOTION_CANVAS px to the portrait. A jaw part's `drop` becomes its layer's
  * `drop` (cast-forge task 3). A named part's layer takes `emissiveOf` (task 12 follow-up: a part of
  * an emissive kind that gives no light is `emissive: false`); a v1 file's layers keep the kind's
- * default. The rig is passed through validateRig; its errors are returned
+ * default. With a jaw layer the rig carries `mouth` (`measureMouth` on the first jaw, capped by the
+ * first head). The rig is passed through validateRig; its errors are returned
  * as they are.
  */
 export function assembleRig(parts: readonly Part[] | readonly NamedPart[], layers: readonly NamedLayer[], meta: AssembleMeta): Result<AssembledRig, RigError[]> {
@@ -230,7 +232,11 @@ export function assembleRig(parts: readonly Part[] | readonly NamedPart[], layer
   });
   if (headless) warnings.push({ code: "no_head_layer", message: "no head layer; jaw, eyes, accessories and crown follow nothing" });
 
-  const rig: Rig = { version: RIG_VERSION, id: meta.id, name: meta.name, width, height, source: "forge", fictional: true, palette, layers: rigLayers };
+  // llm-avatar-lab: the rig owns the mouth; it is measured on the first jaw layer as shipped.
+  const jawLayer = order.find((l) => kindOf(l.name) === "jaw");
+  const headLayer = order.find((l) => kindOf(l.name) === "head");
+  const mouth = jawLayer === undefined ? undefined : measureMouth(jawLayer, headLayer);
+  const rig: Rig = { version: RIG_VERSION, id: meta.id, name: meta.name, width, height, source: "forge", fictional: true, palette, layers: rigLayers, ...(mouth === undefined ? {} : { mouth }) };
   const checked = validateRig(rig);
   return checked.ok ? { ok: true, value: { rig: checked.value, files, warnings } } : checked;
 }
