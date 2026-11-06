@@ -100,7 +100,8 @@ function lightOf(rig: Pick<Rig, "palette">, layer: Layer, look: Pick<Look, "pale
     const hex = look.palette[name];
     return HEX.test(hex) && !same(hex, rig.palette[name]) ? { name, target: hexToHsl(hex), mode } : undefined;
   };
-  if (layer.kind === "eye") return pick("eye", "all");
+  // face-control: on an eye with a socket the eye light recolours its iris, not the white and lids.
+  if (layer.kind === "iris" || (layer.kind === "eye" && layer.socket === undefined)) return pick("eye", "all");
   if (layer.name === "mouth_glow") return pick("mouth", "all");
   if (isEmissive(layer)) return pick("glow", "saturated");
   return undefined;

@@ -18,9 +18,19 @@
 //   which only paints a "drawn" mouth, ignores it). The jaw keeps the raw level under the level drive,
 //   so the jaw (and the canvas2D fallback) moves exactly as before; a caller's mix (visemes) opens
 //   the jaw for that mix, as on a drawn rig. Modes "still" and undefined run exactly as before.
-import { applyLook, MOOD_FADE_S, poseLayers, type Drive, type Emotion, type Gesture, type LayerPose, type Look, type Rig } from "@sr/rig";
+// - Face control (face-control): the profile is `resolveFace(rig, look)` every frame (the look may
+//   change live from the creator's Face panel). Its drift reaches the driver, and on a rig with
+//   irises its gaze part too (the eyes lead); its emotion strength scales the mouth's emotion bias;
+//   pose.ts takes the rest. With `assets`, the socket half extents are measured and dead patches
+//   dropped (render/inspect.ts) once per rig; the drive's `mood` goes out in the frame clock so the
+//   renderers fade the look's light with it.
+import { applyLook, faceOf, hasIris, MOOD_FADE_S, poseLayers, type Drive, type Emotion, type Gesture, type LayerPose, type Look, type Rig } from "@sr/rig";
+import type { SurfaceFactory } from "../canvas2d/recolour.js";
 import type { LookAtPoint } from "../driver/lookAt.js";
-import { initialState, type Gaze } from "../driver/state.js";
+import { initialState, type DriverFace, type Gaze } from "../driver/state.js";
+import type { AssetLoader } from "../render/assets.js";
+import { createRigInspector, withoutDeadPatches, type RigInspector } from "../render/inspect.js";
+import type { RigAssets } from "../render/types.js";
 import { mouthMode } from "../mouth/anchor.js";
 import { createMouthState, type MouthShapesInput } from "../mouth/state.js";
 import { easeDim } from "../render/frame.js";
@@ -73,6 +83,16 @@ export interface FrameBodyInputs {
   dim?: number;
   /** A caller's mouth mix (visemes); only a rig with `mouth` reads it. Absent = the level drive. */
   mouth?: MouthShapesInput;
+  /** The rig's images (face-control): sockets are measured and dead patches found from them. */
+  assets?: RigAssets;
+}
+
+/** How a frame body reads images (face-control, render/inspect.ts). */
+export interface FrameBodyOptions {
+  /** Loads a socket mask missing from the assets. */
+  loadAsset?: AssetLoader;
+  /** Offscreen surfaces for reading pixels (tests pass stubs). */
+  surface?: SurfaceFactory;
 }
 
 /** What one frame hands to `renderer.draw(poses, look, clock)`. */
@@ -83,19 +103,42 @@ export interface FrameOutput {
   t: number;
 }
 
+/** The rig with its dead patches dropped, recomputed only when the rig or the dead set changes. */
+function trimmer(): (rig: Rig, dead: ReadonlySet<string>) => Rig {
+  let last: { rig: Rig; dead: ReadonlySet<string>; trimmed: Rig } | undefined;
+  return (rig, dead) => {
+    if (last === undefined || last.rig !== rig || last.dead !== dead) last = { rig, dead, trimmed: withoutDeadPatches(rig, dead) };
+    return last.trimmed;
+  };
+}
+
 /** A frame body with its own driver state, seeded with `seed`. */
-export function createFrameBody(seed: number): (inputs: FrameBodyInputs) => FrameOutput {
+export function createFrameBody(seed: number, options: FrameBodyOptions = {}): (inputs: FrameBodyInputs) => FrameOutput {
   const dress = dresser();
+  const trim = trimmer();
   const fadeMood = moodFader();
   let state = initialState(seed);
   let dimShown = 0;
   const stepMouth = createMouthState();
+  let inspector: { assets: RigAssets; inspect: RigInspector } | undefined;
+  const inspect = (assets: RigAssets | undefined): RigInspector | undefined => {
+    if (assets === undefined) return undefined;
+    if (inspector?.assets !== assets) {
+      inspector?.inspect.dispose();
+      inspector = { assets, inspect: createRigInspector(assets, options.loadAsset, options.surface) };
+    }
+    return inspector.inspect;
+  };
   return (p) => {
+    const face = faceOf(p.rig, p.look);
+    const irises = hasIris(p.rig);
+    const driverFace: DriverFace = { drift: face.motion.drift, ...(irises ? { eyes: { saccadeRate: face.gaze.saccadeRate, habits: face.gaze.habits } } : {}) };
     const mode = mouthMode(p.rig.mouth);
+    const emotionStrength = face.mouth.emotion;
     const mouth =
       mode !== "drawn" && mode !== "warp"
         ? undefined
-        : stepMouth({ emotion: p.look.emotion, level: p.level, reducedMotion: p.reducedMotion, dt: p.dt, ...(p.mouth === undefined ? {} : { input: p.mouth }) });
+        : stepMouth({ emotion: p.look.emotion, level: p.level, reducedMotion: p.reducedMotion, dt: p.dt, emotionStrength, ...(p.mouth === undefined ? {} : { input: p.mouth }) });
     const jawLevel = mode === "warp" && p.mouth === undefined ? p.level : (mouth?.level ?? p.level);
     const next = advanceFrame(state, {
       dt: p.dt,
@@ -105,13 +148,23 @@ export function createFrameBody(seed: number): (inputs: FrameBodyInputs) => Fram
       ...(p.gesture === undefined ? {} : { gesture: p.gesture }),
       ...(p.lookAt === undefined ? {} : { lookAt: p.lookAt }),
       ...(p.drive === undefined ? {} : { drive: p.drive }),
+      face: driverFace,
     });
     state = next.state;
     const mood = fadeMood(p.look.emotion, state.t, p.reducedMotion);
     const drive = p.drive !== undefined || mood === undefined ? next.drive : { ...next.drive, mood };
-    const poses = poseLayers(dress(p.rig, p.look), p.look, drive);
+    const inspected = inspect(p.assets);
+    const rig = inspected === undefined ? p.rig : trim(p.rig, inspected.deadLayers(p.rig));
+    const sockets = irises ? inspected?.sockets(p.rig) : undefined;
+    const poses = poseLayers(dress(rig, p.look), p.look, drive, { face, ...(sockets === undefined ? {} : { sockets }) });
     dimShown = easeDim(dimShown, p.dim ?? 0, p.dt, p.reducedMotion);
-    const clock: FrameClock = { t: p.drive?.t ?? state.t, reducedMotion: p.reducedMotion, ...(dimShown > 0 ? { dim: dimShown } : {}), ...(mouth?.pose === undefined ? {} : { mouth: mouth.pose }) };
+    const clock: FrameClock = {
+      t: p.drive?.t ?? state.t,
+      reducedMotion: p.reducedMotion,
+      ...(dimShown > 0 ? { dim: dimShown } : {}),
+      ...(mouth?.pose === undefined ? {} : { mouth: mouth.pose }),
+      ...(drive.mood === undefined ? {} : { mood: drive.mood }),
+    };
     return { poses, clock, t: state.t };
   };
 }

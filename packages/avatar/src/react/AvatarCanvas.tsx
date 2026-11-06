@@ -114,7 +114,7 @@ export function AvatarCanvas(props: AvatarCanvasProps): ReactElement {
     observer?.observe(host);
 
     const media = typeof win.matchMedia === "function" ? win.matchMedia(REDUCED_QUERY) : undefined;
-    const body = createFrameBody(first.seed ?? 1);
+    const body = createFrameBody(first.seed ?? 1, first.loadAsset === undefined ? {} : { loadAsset: first.loadAsset });
     let lastNow: number | undefined;
     let raf = 0;
     let alive = true;
@@ -143,6 +143,7 @@ export function AvatarCanvas(props: AvatarCanvasProps): ReactElement {
         ...(lookAt === undefined ? {} : { lookAt }),
         ...(p.drive === undefined ? {} : { drive: p.drive }),
         ...(p.dim === undefined ? {} : { dim: p.dim }),
+        assets: p.assets,
       });
       renderer.draw(out.poses, p.look, out.clock);
       raf = win.requestAnimationFrame(frame);

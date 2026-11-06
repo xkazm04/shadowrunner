@@ -17,6 +17,8 @@
 // - The art mouth (spark art-mouth, a rig whose mouthMode is "warp"): no extra quad; the head and
 //   the jaw are drawn through the warp (gl/warp.ts) for this frame's mouth pose and jaw gap. A frame
 //   whose field moves nothing (neutral rest) draws exactly as before.
+// - The look's light follows the frame clock's `mood` (face-control): while an emotion crossfades,
+//   the frame's light is `lookLight` for that mix; settled, the light `setLook` computed.
 import { defaultLook, type Layer, type LayerPose, type Look, type Rig } from "@sr/rig";
 import { createCanvas2dRenderer } from "../canvas2d/renderer.js";
 import { createAssetCache, type AssetLoader } from "../render/assets.js";
@@ -53,7 +55,7 @@ export function createGlRenderer(gl: WebGL2RenderingContext, canvas: CanvasHost,
   let storeUploads = 0;
   let targets: GlowTargets = createGlowTargets(gl, canvas.width, canvas.height);
   let currentRig = rig;
-  let light: LookLight = lookLight(rig, defaultLook(rig));
+  let settled: LookLight = lookLight(rig, defaultLook(rig));
   let lastLook: Look | undefined;
   let uploads = 0;
   let drawCalls = 0;
@@ -70,12 +72,12 @@ export function createGlRenderer(gl: WebGL2RenderingContext, canvas: CanvasHost,
     currentAssets = nextAssets;
     layers = new Map(next.layers.map((layer) => [layer.name, layer]));
     const look = lastLook ?? defaultLook(next);
-    light = lookLight(next, look);
+    settled = lookLight(next, look);
     recolours = rigRecolours(next, look);
   };
   const setLook = (look: Look): void => {
     lastLook = look;
-    light = lookLight(currentRig, look);
+    settled = lookLight(currentRig, look);
     recolours = rigRecolours(currentRig, look);
   };
   setRig(rig, assets);
@@ -88,6 +90,7 @@ export function createGlRenderer(gl: WebGL2RenderingContext, canvas: CanvasHost,
       if (disposed || gl.isContextLost()) return;
       if (look !== lastLook) setLook(look);
       const view = fitView(currentRig, targets.scene.width, targets.scene.height);
+      const light = clock?.mood === undefined ? settled : lookLight(currentRig, look, clock.mood);
       beginScene(gl, targets);
       const mouthPose = clock?.mouth;
       const mouth = mouthPose === undefined ? undefined : mouthArt.place(currentRig, layers, poses, view, light.browY);

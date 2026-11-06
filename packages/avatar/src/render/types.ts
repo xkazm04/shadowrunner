@@ -1,5 +1,5 @@
 // Renderer contract shared by the WebGL2 renderer and its canvas2D fallback (design.md "Contracts").
-import type { LayerPose, Look, Rig } from "@sr/rig";
+import type { Drive, LayerPose, Look, Rig } from "@sr/rig";
 import type { MouthPose } from "../mouth/state.js";
 
 /** Layer images keyed by `Layer.file`. ImageBitmaps should be created with `premultiplyAlpha: "premultiply"`. */
@@ -31,6 +31,11 @@ export interface FrameClock {
    * renderers draw it on the rig's `mouth`, in the head's frame, over the head and the jaw.
    */
   mouth?: MouthPose;
+  /**
+   * The emotion crossfade in progress (face-control): the drive's `mood`, so the look's light
+   * (eyeGain, brow shift) fades with the pose. Absent = settled.
+   */
+  mood?: Drive["mood"];
 }
 
 export interface Renderer {

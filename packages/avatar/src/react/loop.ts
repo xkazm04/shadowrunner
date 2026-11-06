@@ -15,7 +15,7 @@
 import { GESTURE_DURATION_S, type Drive, type Gesture } from "@sr/rig";
 import { toDrive } from "../driver/drive.js";
 import type { LookAtPoint } from "../driver/lookAt.js";
-import type { DriverState, Gaze } from "../driver/state.js";
+import type { DriverFace, DriverState, Gaze } from "../driver/state.js";
 import { step } from "../driver/step.js";
 
 export interface FrameInputs {
@@ -30,6 +30,8 @@ export interface FrameInputs {
   lookAt?: LookAtPoint;
   /** Overrides the driver's Drive (tests, screenshots). */
   drive?: Drive;
+  /** The face profile's driver part (face-control, driver/eyes.ts); absent = as before. */
+  face?: DriverFace;
 }
 
 export interface Frame {
@@ -65,6 +67,7 @@ export function advanceFrame(state: DriverState, inputs: FrameInputs): Frame {
     reducedMotion: inputs.reducedMotion,
     ...(inputs.gesture === undefined ? {} : { gesture: inputs.gesture }),
     ...(inputs.lookAt === undefined ? {} : { lookAt: inputs.lookAt }),
+    ...(inputs.face === undefined ? {} : { face: inputs.face }),
   });
   const drive = inputs.drive ?? toDrive(next);
   return { state: next, drive: stillUnder(cutGesture(drive, inputs.reducedMotion), inputs.reducedMotion) };

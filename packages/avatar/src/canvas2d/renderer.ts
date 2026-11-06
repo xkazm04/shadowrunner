@@ -13,6 +13,9 @@
 // every layer's own image, exactly as before.
 // The drawn mouth (FrameClock.mouth, a rig with `mouth`) is painted straight onto the context right
 // after the later of the head and the jaw, in the head's frame, with the head's tint (mouth/draw.ts).
+// Face-control: an eye's closed-lid art is drawn over it at `LayerPose.closed`; an iris whose eye has
+// a socket is drawn clipped by the socket masks (canvas2d/iris.ts); the look's light follows the
+// frame clock's `mood` as in GL.
 import type { Layer, LayerPose, Look, Rig } from "@sr/rig";
 import { createMouthArt } from "../mouth/draw.js";
 import type { MouthSurfaceFactory } from "../mouth/colours.js";
@@ -20,6 +23,7 @@ import { createAssetCache, type AssetCache, type AssetImage, type AssetLoader } 
 import { dimGain, fitView, layerAffine, lookLight, type LookLight } from "../render/frame.js";
 import { mapRect, needsMap, rigRecolours, type LayerRecolour } from "../render/recolour.js";
 import type { CanvasHost, FrameClock, Renderer, RendererInfo, RigAssets } from "../render/types.js";
+import { createIrisClipper } from "./iris.js";
 import { createRecolourCache, type SurfaceFactory } from "./recolour.js";
 
 interface Entry {
@@ -59,6 +63,7 @@ export function createCanvas2dRenderer(canvas: CanvasHost, ctx: CanvasRenderingC
   let recolours = new Map<string, LayerRecolour>();
   let images: AssetCache = createAssetCache(assets, options.loadAsset);
   const cache = createRecolourCache(options.surface);
+  const irises = createIrisClipper(options.surface);
   let lastLook: Look | undefined;
   let drawCalls = 0;
   let disposed = false;
@@ -72,6 +77,7 @@ export function createCanvas2dRenderer(canvas: CanvasHost, ctx: CanvasRenderingC
     images.dispose();
     images = createAssetCache(nextAssets, options.loadAsset);
     cache.clear();
+    irises.clear();
     for (const layer of next.layers) {
       const image = nextAssets[layer.file];
       if (layer.visible !== false && image !== undefined && !entries.has(layer.name)) entries.set(layer.name, { layer, image });
@@ -108,8 +114,20 @@ export function createCanvas2dRenderer(canvas: CanvasHost, ctx: CanvasRenderingC
       faces.push({ image: paint(layer, patch.file, patchImage, patch.bbox), rect: patch.bbox, alpha: opacity * Math.min(1, face.weight) });
     }
     const base = opacity * Math.max(0, 1 - replaced);
-    if (faces.length > 0 && base <= 0) return faces;
-    return [{ image: paint(layer, layer.file, image, layer.bbox), rect: layer.bbox, alpha: base }, ...faces];
+    const open = faces.length > 0 && base <= 0 ? faces : [{ image: paint(layer, layer.file, image, layer.bbox), rect: layer.bbox, alpha: base }, ...faces];
+    // face-control: the closed lids over the eye at the blink's closure.
+    const shut = layer.closed === undefined || !(pose.closed !== undefined && pose.closed > 0) ? undefined : images.get(layer.closed);
+    if (layer.closed === undefined || shut === undefined) return open;
+    return [...open, { image: paint(layer, layer.closed, shut, layer.bbox), rect: layer.bbox, alpha: opacity * Math.min(1, pose.closed ?? 0) }];
+  };
+
+  /** An iris's draws: clipped by its eye's socket, plain without one, none while its mask loads. */
+  const irisDraws = (entry: Entry, pose: LayerPose, poses: LayerPose[]): Draw[] => {
+    const { layer, image } = entry;
+    const source = { key: `${layer.file}|${recolours.get(layer.name)?.key ?? "-"}`, image: paint(layer, layer.file, image, layer.bbox), size: image };
+    const clipped = irises.clip(layer, pose, source, layers, poses, (file) => images.get(file));
+    if (clipped === "plain") return drawsOf(entry, pose);
+    return clipped === undefined ? [] : [{ image: clipped, rect: layer.bbox, alpha: Math.min(1, Math.max(0, pose.opacity)) }];
   };
 
   setRig(rig, assets);
@@ -121,7 +139,8 @@ export function createCanvas2dRenderer(canvas: CanvasHost, ctx: CanvasRenderingC
       drawCalls = 0;
       if (disposed || ctx === null) return;
       if (look !== lastLook || light === undefined) setLook(look);
-      const browY = light?.browY ?? 0;
+      const frameLight = clock?.mood === undefined ? light : lookLight(currentRig, look, clock.mood);
+      const browY = frameLight?.browY ?? 0;
       const view = fitView(currentRig, canvas.width, canvas.height);
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.globalAlpha = 1;
@@ -136,10 +155,10 @@ export function createCanvas2dRenderer(canvas: CanvasHost, ctx: CanvasRenderingC
         if (pose === undefined || entry === undefined) continue;
         const { layer } = entry;
         const m = layerAffine(layer, pose, view, browY);
-        const eyeGain = recolours.get(layer.name)?.light?.name === "eye" ? (light?.eyeGain ?? 1) : 1;
+        const eyeGain = recolours.get(layer.name)?.light?.name === "eye" ? (frameLight?.eyeGain ?? 1) : 1;
         ctx.setTransform(m[0], m[1], m[2], m[3], m[4], m[5]);
         ctx.filter = tintFilter(pose.tint * eyeGain * dimGain(layer, clock?.dim));
-        for (const draw of drawsOf(entry, pose)) {
+        for (const draw of layer.kind === "iris" ? irisDraws(entry, pose, poses) : drawsOf(entry, pose)) {
           ctx.globalAlpha = draw.alpha;
           ctx.drawImage(draw.image, draw.rect[0] ?? 0, draw.rect[1] ?? 0, draw.rect[2] ?? 0, draw.rect[3] ?? 0);
           drawCalls += 1;
@@ -166,6 +185,7 @@ export function createCanvas2dRenderer(canvas: CanvasHost, ctx: CanvasRenderingC
       entries = new Map();
       images.dispose();
       cache.clear();
+      irises.clear();
     },
   };
 }

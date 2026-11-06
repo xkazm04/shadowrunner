@@ -2,10 +2,13 @@
 // visible rig layer, uploaded once in `setRig` with premultiplied alpha; one textured quad per
 // `LayerPose`, in the order `poseLayers` returns, blended premultiplied-over. Character-control
 // adds the recolour uniforms (render/recolour.ts), the region map on unit 1, and face patches.
+// Face-control adds an eye's closed-lid art (drawn over the eye at `LayerPose.closed`) and the iris,
+// drawn with the iris program clipped by its eye's socket masks (gl/iris.ts).
 import { EMISSIVE_KINDS as RIG_EMISSIVE_KINDS, isEmissive, type Layer, type LayerKind, type LayerPose, type Rig } from "@sr/rig";
 import { dimGain, layerAffine, type LookLight, type Rgb, type View } from "../render/frame.js";
 import { mapRect, needsMap, type LayerRecolour } from "../render/recolour.js";
 import type { RigAssets } from "../render/types.js";
+import { clearIrisUnits, irisClipOf, setIrisClip } from "./iris.js";
 import type { Programs } from "./programs.js";
 import { uploadImage, type GlTexture, type TextureStore } from "./textures.js";
 import { setWarp, setWarpDraw, type WarpPlan } from "./warp.js";
@@ -63,7 +66,7 @@ const LIGHT_MODE = { all: 1, saturated: 2 } as const;
 /** The light gain of a layer: the eye light's eyeGain on a recoloured eye, else the old multiply. */
 export function gainOf(layer: Layer, pose: Pick<LayerPose, "tint">, light: LookLight, plan: LayerRecolour | undefined): Rgb {
   if (plan?.light?.name === "eye") return [pose.tint * light.eyeGain, pose.tint * light.eyeGain, pose.tint * light.eyeGain];
-  const eye = layer.kind === "eye" && isEmissive(layer) ? light.eye : ([1, 1, 1] as const);
+  const eye = (layer.kind === "eye" || layer.kind === "iris") && isEmissive(layer) ? light.eye : ([1, 1, 1] as const);
   return [pose.tint * eye[0], pose.tint * eye[1], pose.tint * eye[2]];
 }
 
@@ -89,8 +92,17 @@ function setRecolour(gl: WebGL2RenderingContext, u: Programs["base"]["u"], plan:
   gl.uniform4f(u.u_mapRect, 0, 0, 1, 1);
 }
 
-/** The base quad and the ready face patches of one pose (design "Faces"). */
+/** The base quad, the ready face patches and the closed lids (face-control) of one pose (design "Faces"). */
 function quadsOf(entry: LayerTexture, pose: LayerPose, store: TextureStore, rim: Rgb): Quad[] {
+  const quads = openQuadsOf(entry, pose, store, rim);
+  const shut = entry.layer.closed === undefined || !(pose.closed !== undefined && pose.closed > 0) ? undefined : store.get(entry.layer.closed, "patch");
+  if (shut === undefined) return quads;
+  const opacity = Math.min(1, Math.max(0, pose.opacity)) * Math.min(1, pose.closed ?? 0);
+  return [...quads, { texture: shut, rect: entry.layer.bbox, mapRect: [0, 0, 1, 1], opacity, rim: [0, 0, 0] }];
+}
+
+/** The base quad and the ready face patches of one pose. */
+function openQuadsOf(entry: LayerTexture, pose: LayerPose, store: TextureStore, rim: Rgb): Quad[] {
   const { layer } = entry;
   const opacity = Math.min(1, Math.max(0, pose.opacity));
   const faces: Quad[] = [];
@@ -140,19 +152,33 @@ export function drawLayers(
   };
   shared(base.u);
   let warpReady = false;
+  let irisReady = false;
+  let byName: Map<string, Layer> | undefined;
   let draws = 0;
   for (let index = 0; index < poses.length; index += 1) {
     const pose = poses[index];
     const entry = pose === undefined ? undefined : textures.get(pose.name);
     if (pose === undefined || entry === undefined) continue;
     const { layer } = entry;
+    if (layer.kind === "iris") byName ??= new Map([...textures.values()].map((t) => [t.layer.name, t.layer]));
+    const clip = byName === undefined || layer.kind !== "iris" ? "plain" : irisClipOf(layer, pose, byName, poses, store);
+    if (clip === undefined) {
+      if (after?.index === index) draws += after.draw();
+      continue;
+    }
     const warped = warp?.layers.find((w) => w.index === index);
-    const { u } = warped === undefined ? base : programs.warp;
+    const masked = clip === "plain" ? undefined : clip;
+    const { u } = warped !== undefined ? programs.warp : masked !== undefined ? programs.iris : base;
     if (warp !== undefined && warped !== undefined) {
       gl.useProgram(programs.warp.program);
       if (!warpReady) shared(u);
       warpReady = true;
       setWarp(gl, programs.warp.u, warp, warped);
+    } else if (masked !== undefined) {
+      gl.useProgram(programs.iris.program);
+      if (!irisReady) shared(u);
+      irisReady = true;
+      setIrisClip(gl, programs.iris.u, masked);
     }
     const m = layerAffine(layer, pose, view, light.browY);
     const plan = recolours.get(layer.name);
@@ -178,9 +204,10 @@ export function drawLayers(
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       draws += 1;
     }
-    if (warped !== undefined) gl.useProgram(base.program);
+    if (warped !== undefined || masked !== undefined) gl.useProgram(base.program);
     if (after?.index === index) draws += after.draw();
   }
+  if (irisReady) clearIrisUnits(gl);
   gl.activeTexture(gl.TEXTURE1);
   gl.bindTexture(gl.TEXTURE_2D, null);
   gl.activeTexture(gl.TEXTURE0);

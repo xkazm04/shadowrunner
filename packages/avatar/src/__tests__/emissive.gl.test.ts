@@ -10,6 +10,7 @@ import lotNinetyJob from "../../../../assets/replay/forge/lot-ninety/job.json";
 import tallymanJob from "../../../../assets/replay/forge/the-tallyman/job.json";
 import { createRenderer } from "../gl/renderer.js";
 import { lookLight } from "../render/frame.js";
+import type { RigAssets } from "../render/types.js";
 import { createCanvasStub, createGlStub } from "./glStub.js";
 import { fakeAssets, malakorRig } from "./malakor.js";
 
@@ -22,10 +23,17 @@ function rigOf(job: unknown): Rig {
   return checked.value;
 }
 
+/** The assets plus stand-ins for socketed eyes' masks and closed lids (face-control), so every iris draws once. */
+function withEyeArt(rig: Rig, assets: RigAssets): RigAssets {
+  const out: RigAssets = { ...assets };
+  for (const layer of rig.layers) for (const file of [layer.socket, layer.closed]) if (file !== undefined) out[file] = { width: layer.bbox[2], height: layer.bbox[3], close: () => undefined };
+  return out;
+}
+
 /** One GL frame of `rig` at t = 2 (a gesture at its peak): per drawn layer, u_emissive and u_gain. */
 function frame(rig: Rig, look: Look, gesture: Gesture | undefined) {
   const stub = createGlStub();
-  const renderer = createRenderer(createCanvasStub({ webgl2: stub, width: 512, height: 512 }).canvas, rig, fakeAssets(rig));
+  const renderer = createRenderer(createCanvasStub({ webgl2: stub, width: 512, height: 512 }).canvas, rig, withEyeArt(rig, fakeAssets(rig)));
   const drive: Drive = { t: 2, headYaw: 0, headPitch: 0, jawOpen: 0, blink: 0, ...(gesture === undefined ? {} : { gesture: { name: gesture, startedAt: 1.8 } }) };
   const poses = poseLayers(rig, look, drive);
   stub.reset();

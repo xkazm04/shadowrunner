@@ -48,6 +48,8 @@ export interface MouthStepInputs {
   reducedMotion: boolean;
   /** Seconds since the previous frame. */
   dt: number;
+  /** The face profile's mouth.emotion (face-control), 0..1.5: the emotion bias's multiplier. Omitted = 1. */
+  emotionStrength?: number;
 }
 
 export interface MouthStep {
@@ -76,7 +78,9 @@ export function createMouthState(): (inputs: MouthStepInputs) => MouthStep {
     if (emotion === undefined) ease.set(p.emotion, ms - EMOTION_EASE_MS);
     else if (p.emotion !== emotion) ease.set(p.emotion, ms);
     emotion = p.emotion;
-    const { bias, strength } = ease.at(ms);
+    const eased = ease.at(ms);
+    const { strength } = eased;
+    const bias = scaleBias(eased.bias, p.emotionStrength ?? 1);
 
     let talk: number;
     let shown: ShapeWeights;
@@ -114,3 +118,11 @@ export function createMouthState(): (inputs: MouthStepInputs) => MouthStep {
 }
 
 const withBias = (p: MouthParams, bias: EmotionBias): MouthParams => (bias === NO_BIAS ? p : applyBiasInto(p, bias));
+
+/** The bias times `k` (face-control mouth.emotion); the same object at 1 (or a non-finite k). */
+function scaleBias(bias: EmotionBias, k: number): EmotionBias {
+  if (k === 1 || !Number.isFinite(k) || bias === NO_BIAS) return bias;
+  const out: Record<keyof EmotionBias, number> = { ...NO_BIAS };
+  for (const key of Object.keys(NO_BIAS) as (keyof EmotionBias)[]) out[key] = bias[key] * Math.max(0, k);
+  return out;
+}

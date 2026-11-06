@@ -9,8 +9,12 @@
 //   of the face a brow frames, by `BROW_STEP * rig.height` canvas px per step (rig-core ruling:
 //   0.004 * height; positive raises). It is canvas-space and not inherited, like the jaw drop.
 //   A rig with brow layers (`hasBrowLayers`, character-control "Moods") moves those in the pose
-//   instead, so its eyes get no brow shift here.
-import { hasBrowLayers, isEmissive, lookToEmotionDrive, type Layer, type LayerPose, type Look, type Rig } from "@sr/rig";
+//   instead, so its eyes get no brow shift here. An eye with a `socket` (face-control) gets none
+//   either: its lids belong to the face, and its iris (which never takes the shift) must stay in it.
+// - The look's light follows the mood crossfade (face-control fix): `lookLight` with the drive's
+//   `mood` blends eyeGain and the brow shift as the pose blends the rest of the mood, so neither
+//   snaps when the emotion changes. Settled (no mood) it is exactly the look's emotion row.
+import { hasBrowLayers, isEmissive, moodDrive, type Drive, type Layer, type LayerPose, type Look, type Rig } from "@sr/rig";
 
 /** Brow offset per table step, as a fraction of rig height (rig-core ruling). */
 export const BROW_STEP = 0.004;
@@ -38,7 +42,7 @@ export function fitView(rig: Pick<Rig, "width" | "height">, width: number, heigh
   return { scale, ox: (w - rig.width * scale) / 2, oy: (h - rig.height * scale) / 2, width: w, height: h };
 }
 
-/** Maps the layer's rest canvas px (its bbox) to device px for `pose`; `browY` shifts eye layers. */
+/** Maps the layer's rest canvas px (its bbox) to device px for `pose`; `browY` shifts eye layers without a socket. */
 export function layerAffine(layer: Layer, pose: LayerPose, view: View, browY: number): Affine {
   const [bx, by] = layer.bbox;
   const [ax, ay] = layer.anchor;
@@ -51,7 +55,7 @@ export function layerAffine(layer: Layer, pose: LayerPose, view: View, browY: nu
   const c0 = -sin * sy;
   const d0 = cos * sy;
   const px = ax + pose.x - bx;
-  const py = ay + pose.y - by + (layer.kind === "eye" ? browY : 0);
+  const py = ay + pose.y - by + (layer.kind === "eye" && layer.socket === undefined ? browY : 0);
   const k = view.scale;
   return [k * a0, k * b0, k * c0, k * d0, k * (px - a0 * ax - c0 * ay) + view.ox, k * (py - b0 * ax - d0 * ay) + view.oy];
 }
@@ -82,8 +86,9 @@ export interface LookLight {
   browY: number;
 }
 
-export function lookLight(rig: Pick<Rig, "height" | "layers">, look: Look): LookLight {
-  const { eyeGain, brow } = lookToEmotionDrive(look.emotion);
+/** The look's light; `mood` (the drive's crossfade) blends eyeGain and the brow with the pose. */
+export function lookLight(rig: Pick<Rig, "height" | "layers">, look: Look, mood?: Drive["mood"]): LookLight {
+  const { eyeGain, brow } = moodDrive(look.emotion, mood);
   const [er, eg, eb] = hexToRgb(look.palette.eye);
   const [rr, rg, rb] = hexToRgb(look.palette.rim);
   return {
@@ -108,9 +113,9 @@ export const clampDim = (dim: number | undefined): number => (dim === undefined 
  * keeps its light (1); every other layer falls toward DIM_FLOOR. At dim 0 every layer is 1, so
  * the default draw is untouched. Both renderers multiply a layer's gain by this.
  */
-export function dimGain(layer: Pick<Layer, "kind" | "emissive">, dim: number | undefined): number {
+export function dimGain(layer: Pick<Layer, "kind" | "emissive" | "socket">, dim: number | undefined): number {
   const d = clampDim(dim);
-  return d === 0 || (layer.kind === "eye" && isEmissive(layer)) ? 1 : 1 - d * (1 - DIM_FLOOR);
+  return d === 0 || ((layer.kind === "eye" || layer.kind === "iris") && isEmissive(layer)) ? 1 : 1 - d * (1 - DIM_FLOOR);
 }
 
 /**

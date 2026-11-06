@@ -1,7 +1,8 @@
 // Shader sources and compile/link (avatar-renderer task 3.2): the base layer program (writes the
 // colour and the glow source in one pass, two render targets), and three full-screen programs for
 // the glow: extract (downsample to half res), blur (one axis of a separable 9-tap Gaussian),
-// composite (scene + tinted glow onto the canvas). All share one unit-quad buffer.
+// composite (scene + tinted glow onto the canvas). All share one unit-quad buffer. Face-control
+// adds the iris twin of the base program: the same pass with the eye's socket masks (gl/iris.ts).
 import { GLOW_SATURATION, S_FLOOR, S_KEEP } from "../render/recolour.js";
 import { WARP_GLSL, WARP_UNIFORMS } from "./warp.js";
 
@@ -42,14 +43,18 @@ void main() {
 
 // Unit corner -> the layer's rest bbox in rig px -> device px (u_m, an affine) -> clip space. The
 // warp twin (the art mouth, gl/warp.ts) covers u_draw instead, and v_uv runs past 0..1 outside u_rect.
-const baseVs = (warp: boolean): string => `#version 300 es
+// The iris twin (face-control) also carries the rest point into the eye's socket uv (u_maskM).
+const baseVs = (warp: boolean, mask = false): string => `#version 300 es
 layout(location = 0) in vec2 a_corner;
 uniform vec4 u_rect;${warp ? `
 uniform vec4 u_draw;` : ""}
 uniform mat3 u_m;
-uniform vec2 u_res;
+uniform vec2 u_res;${mask ? `
+uniform mat3 u_maskM;
+out vec2 v_mask;` : ""}
 out vec2 v_uv;
-void main() {
+void main() {${mask ? `
+  v_mask = (u_maskM * vec3(u_rect.xy + a_corner * u_rect.zw, 1.0)).xy;` : ""}
 ${
   warp
     ? `  v_uv = (u_draw.xy + a_corner * u_draw.zw - u_rect.xy) / u_rect.zw;
@@ -86,9 +91,20 @@ const WARP_INTERIOR = `  if (warp.z > 0.0) {
     rim *= 1.0 - warp.z;
   }
 `;
-const baseFs = (warp: boolean): string => `#version 300 es
+// The iris twin's mask: the socket masks' alpha blended by u_maskW, 0 outside the eye's box.
+const MASK_GLSL = `in vec2 v_mask;
+uniform sampler2D u_mask0;
+uniform sampler2D u_mask1;
+uniform sampler2D u_mask2;
+uniform vec3 u_maskW;
+float socketAt(vec2 m) {
+  if (m.x < 0.0 || m.x > 1.0 || m.y < 0.0 || m.y > 1.0) return 0.0;
+  return u_maskW.x * texture(u_mask0, m).a + u_maskW.y * texture(u_mask1, m).a + u_maskW.z * texture(u_mask2, m).a;
+}`;
+const baseFs = (warp: boolean, mask = false): string => `#version 300 es
 precision highp float;
-in vec2 v_uv;
+in vec2 v_uv;${mask ? `
+${MASK_GLSL}` : ""}
 uniform sampler2D u_tex;
 uniform sampler2D u_map;
 uniform vec2 u_texel;
@@ -136,7 +152,8 @@ ${warp ? WARP_SAMPLE : `  vec2 uv = v_uv;
     if (on) rgb = recolour(hsl, target) * tex.a;
   }
   float alpha = tex.a;
-${warp ? WARP_INTERIOR : ""}  vec4 color = vec4(rgb * u_gain + u_rim * rim * alpha, alpha) * u_opacity;
+${warp ? WARP_INTERIOR : ""}  vec4 color = vec4(rgb * u_gain + u_rim * rim * alpha, alpha) * u_opacity;${mask ? `
+  color *= clamp(socketAt(v_mask), 0.0, 1.0);` : ""}
   o_color = color;
   float bright = smoothstep(BRIGHT_LO, BRIGHT_HI, max(color.r, max(color.g, color.b)));
   o_glow = u_emissive > 0.5 ? vec4(color.rgb * bright, color.a) : vec4(0.0, 0.0, 0.0, color.a);
@@ -197,11 +214,15 @@ const BASE_UNIFORMS = [
 export type BaseUniform = (typeof BASE_UNIFORMS)[number];
 const WARP_PROGRAM_UNIFORMS = [...BASE_UNIFORMS, ...WARP_UNIFORMS] as const;
 export type WarpProgramUniform = (typeof WARP_PROGRAM_UNIFORMS)[number];
+const IRIS_PROGRAM_UNIFORMS = [...BASE_UNIFORMS, "u_maskM", "u_mask0", "u_mask1", "u_mask2", "u_maskW"] as const;
+export type IrisProgramUniform = (typeof IRIS_PROGRAM_UNIFORMS)[number];
 
 export interface Programs {
   base: Program<BaseUniform>;
   /** The base program with the art mouth's warp (gl/warp.ts), for the head and jaw of a warp rig. */
   warp: Program<WarpProgramUniform>;
+  /** The base program clipped by an eye's socket masks (face-control, gl/iris.ts), for iris layers. */
+  iris: Program<IrisProgramUniform>;
   extract: Program<"u_src">;
   blur: Program<"u_src" | "u_step">;
   composite: Program<"u_scene" | "u_glow" | "u_tint">;
@@ -259,6 +280,7 @@ export function createPrograms(gl: WebGL2RenderingContext): Programs {
   return {
     base: link(gl, baseVs(false), baseFs(false), BASE_UNIFORMS),
     warp: link(gl, baseVs(true), baseFs(true), WARP_PROGRAM_UNIFORMS),
+    iris: link(gl, baseVs(false, true), baseFs(false, true), IRIS_PROGRAM_UNIFORMS),
     extract: link(gl, QUAD_VS, EXTRACT_FS, ["u_src"]),
     blur: link(gl, QUAD_VS, BLUR_FS, ["u_src", "u_step"]),
     composite: link(gl, QUAD_VS, COMPOSITE_FS, ["u_scene", "u_glow", "u_tint"]),
@@ -267,7 +289,7 @@ export function createPrograms(gl: WebGL2RenderingContext): Programs {
 }
 
 export function deletePrograms(gl: WebGL2RenderingContext, p: Programs): void {
-  for (const { program } of [p.base, p.warp, p.extract, p.blur, p.composite]) gl.deleteProgram(program);
+  for (const { program } of [p.base, p.warp, p.iris, p.extract, p.blur, p.composite]) gl.deleteProgram(program);
   gl.deleteVertexArray(p.quad.vao);
   gl.deleteBuffer(p.quad.buffer);
 }

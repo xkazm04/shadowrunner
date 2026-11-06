@@ -19,7 +19,7 @@ import type { CreateRendererOptions } from "../gl/renderer.js";
 import { fitView, layerAffine, lookLight } from "../render/frame.js";
 import type { MouthPose, MouthShapesInput } from "../mouth/state.js";
 import { mouthMode, type MouthMode } from "../mouth/anchor.js";
-import type { CanvasHost, Renderer, RigAssets } from "../render/types.js";
+import type { CanvasHost, FrameClock, Renderer, RigAssets } from "../render/types.js";
 import { isReducedMotion } from "../react/loop.js";
 import { createFrameBody } from "./frame.js";
 import { cutoutLook } from "./cutout.js";
@@ -34,7 +34,7 @@ const clampLevel = (level: number): number => (Number.isFinite(level) ? Math.min
 export function runPlayer(canvas: HTMLCanvasElement, options: AvatarPlayerOptions, makeRenderer: RendererFactory): AvatarPlayer {
   const win = canvas.ownerDocument.defaultView;
   const renderer = makeRenderer(canvas, options.rig, options.assets, options.loadAsset === undefined ? {} : { loadAsset: options.loadAsset });
-  const body = createFrameBody(options.seed ?? 1);
+  const body = createFrameBody(options.seed ?? 1, options.loadAsset === undefined ? {} : { loadAsset: options.loadAsset });
   const media = options.reducedMotion === undefined || options.reducedMotion === "auto" ? win?.matchMedia?.(REDUCED_QUERY) : undefined;
   // Callers hold the look they set; the player draws it as a cutout unless `backdrop` (player.ts).
   let look: Look = cutoutLook(options.look, options.backdrop);
@@ -47,7 +47,7 @@ export function runPlayer(canvas: HTMLCanvasElement, options: AvatarPlayerOption
   let lastNow: number | undefined;
   let disposed = false;
   // The last frame's poses and look, for `layerFrames` (read only, never fed back into a draw).
-  let drawn: { poses: LayerPose[]; look: Look } | undefined;
+  let drawn: { poses: LayerPose[]; look: Look; mood: FrameClock["mood"] } | undefined;
   const layersByName = new Map(options.rig.layers.map((layer) => [layer.name, layer]));
 
   const reducedMotion = (): boolean => {
@@ -65,12 +65,13 @@ export function runPlayer(canvas: HTMLCanvasElement, options: AvatarPlayerOption
       level: override ?? tap?.level() ?? 0,
       gaze: "host",
       reducedMotion: reducedMotion(),
+      assets: options.assets,
       ...(gesture === undefined ? {} : { gesture }),
       ...(mouthInput === undefined ? {} : { mouth: mouthInput }),
     });
     renderer.draw(out.poses, look, out.clock);
     mouthShown = out.clock.mouth;
-    drawn = { poses: out.poses, look };
+    drawn = { poses: out.poses, look, mood: out.clock.mood };
   };
 
   const frame = (now: number): void => {
@@ -144,7 +145,7 @@ export function runPlayer(canvas: HTMLCanvasElement, options: AvatarPlayerOption
       if (disposed || drawn === undefined) return [];
       // The renderers' own math: the undressed rig fitted into the drawing buffer, the look's brow.
       const view = fitView(options.rig, canvas.width, canvas.height);
-      const { browY } = lookLight(options.rig, drawn.look);
+      const { browY } = lookLight(options.rig, drawn.look, drawn.mood);
       return drawn.poses.flatMap((pose) => {
         const layer = layersByName.get(pose.name);
         return layer === undefined ? [] : [{ layer, affine: layerAffine(layer, pose, view, browY), opacity: pose.opacity }];

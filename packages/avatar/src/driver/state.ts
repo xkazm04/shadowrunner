@@ -39,6 +39,34 @@ export interface DriverInputs {
    * pitch targets by `lookAtOffset`; absent, the driver behaves exactly as without it (costume 9).
    */
   lookAt?: LookAtPoint;
+  /**
+   * The face profile's driver part (face-control, driver/eyes.ts). Absent: the driver behaves
+   * exactly as without it. `drift` multiplies the idle drift; `eyes` (a rig with iris layers) makes
+   * the eyes lead the gaze and the head follow.
+   */
+  face?: DriverFace;
+}
+
+/** What the driver takes from `resolveFace` (face-control). */
+export interface DriverFace {
+  /** motion.drift, 0..2: the idle drift's amplitude multiplier (1 = today). */
+  drift: number;
+  /** Present on a rig with irises: the gaze profile. */
+  eyes?: { saccadeRate: number; habits: { chat: number; content: number; host: number } };
+}
+
+/** The eyes' own state (face-control, driver/eyes.ts), present only while a step had `face.eyes`. */
+export interface EyeState {
+  /** Own mulberry32 state, so the head's draws stay exactly as without eyes. */
+  rng: number;
+  /** The gaze shown, -1..1 per axis of the socket (x right, y down), eased toward the target. */
+  x: number;
+  y: number;
+  /** Micro-saccade offset (socket units, scaled by `motion`) and the next jump, seconds. */
+  saccade: { x: number; y: number; nextAt: number };
+  /** The idle glance in force (where the eyes go on their own) and when it ends or the next starts. */
+  glance: Gaze;
+  glanceUntil: number;
 }
 
 export interface DriverState {
@@ -72,6 +100,8 @@ export interface DriverState {
    * its `reducedMotion` input.
    */
   motion?: number;
+  /** The eyes (face-control): present only on a rig with irises, see `DriverInputs.face`. */
+  eyes?: EyeState;
 }
 
 /** Blink start-to-start gap, seconds (req 3.2). */

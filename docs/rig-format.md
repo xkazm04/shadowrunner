@@ -33,6 +33,7 @@ they disagree, the spec wins and this page and the code are fixed to match.
 | `palette` | Palette | yes | The rig's default colours. |
 | `layers` | Layer[] | yes | The layer stack. |
 | `mouth` | RigMouth | no | Where the talking mouth is drawn (see "Mouth"). Omitted when the art owns its mouth. |
+| `face` | RigFace | no | The character's face profile (see "Face profile"): gaze, motion and expression strengths. Omitted means the defaults. Amended by face-control; the format stays version 1. |
 
 ### Mouth
 
@@ -128,9 +129,11 @@ Four colours, each `#rrggbb`:
 | `visible` | `false` | no | Present only when the layer is hidden by default. Never written as `true`. |
 | `motion` | Motion | no | The layer's own float and/or pulse (see "Motion"). Omitted when the layer has none. Amended by cast-forge; the format stays version 1. |
 | `drop` | number | no | `jaw` layers only: the drop at `jawOpen = 1` as a fraction of `height`, in `[0.005, 0.1]`. Omitted means 0.06 (a skull's gape); a human mouth wants about 0.012-0.02. On any other kind, or out of range, it is `bad_shape` at `$.layers[i].drop`. Amended by cast-forge task 3; the format stays version 1. |
-| `emissive` | boolean | no | Whether the layer gives light: its bright pixels feed the glow pass (tinted `palette.glow`), an `eye` takes `palette.eye`, and `glare` / `flare` raise its tint. Omitted means the kind's default: `eye`, `crown` and `accessory` give light, the other kinds do not. `false` on a part drawn without light of its own (a white glove, a silver crown, a painted iris); its own `motion.pulse` still applies. Not a boolean is `bad_shape` at `$.layers[i].emissive`. Amended by cast-forge (emissive fix, task 12 follow-up); the format stays version 1. |
+| `emissive` | boolean | no | Whether the layer gives light: its bright pixels feed the glow pass (tinted `palette.glow`), an `eye` takes `palette.eye`, and `glare` / `flare` raise its tint. Omitted means the kind's default: `eye`, `iris`, `crown` and `accessory` give light, the other kinds do not; an `eye` with a `socket` gives none (its iris carries the light, face-control). `false` on a part drawn without light of its own (a white glove, a silver crown, a painted iris); its own `motion.pulse` still applies. Not a boolean is `bad_shape` at `$.layers[i].emissive`. Amended by cast-forge (emissive fix, task 12 follow-up); the format stays version 1. |
 | `variants` | object | no | Expression faces (see "Variants"): per expression family, a patch drawn over or instead of the layer while that family is on. Omitted when the layer has none. Amended by character-control; the format stays version 1. |
 | `regions` | LayerRegions | no | Recolourable colour regions (see "Regions"): an index map and 1..4 slots. Omitted when the layer has none. Amended by character-control; the format stays version 1. |
+| `socket` | string | no | `eye` layers only (face-control): an alpha mask, same bbox as the layer, of the lid opening where the eye's iris may show (see "Eyes"). Omitted: the eye is one painted piece, as before. A file under the rules of "Layer files"; on another kind it is `bad_shape` at `$.layers[i].socket`. |
+| `closed` | string | no | `eye` layers only (face-control): the closed-lid art, same bbox; a blink crossfades the eye to it instead of squashing (see "Eyes"). Same rules as `socket`. |
 
 ### Layer files
 
@@ -164,6 +167,7 @@ layer names (its `FILE` and `EXTRA_FILE` patterns) and `api/` was out of this ta
 | `eye` | 0.7 |
 | `accessory` | 0.75 |
 | `crown` | 0.65 |
+| `iris` | 0.7 (unused: an iris takes its eye's whole transform, see "Eyes") |
 
 ### Motion
 
@@ -206,6 +210,8 @@ family to a LayerPatch:
 | `file` | string | yes | The patch PNG, under the same rules as a layer's `file` (see "Layer files"). |
 | `bbox` | `[x, y, w, h]` | yes | Where the patch sits on the canvas, in px; `w` and `h` > 0, inside the canvas like a layer's bbox. |
 | `mode` | `"over"` \| `"replace"` | yes | `over` draws the patch on top of the layer; `replace` fades the layer's own pixels out by the face's weight. |
+| `socket` | string | no | Eye patches (face-control): this face's lid opening, an alpha mask at the **layer's** bbox. Omitted: the face uses the eye's own `socket`. |
+| `narrowed` | `true` | no | Eye patches (face-control): the face already narrows the lids, so the mood's squint adds no squash while it shows. Never written as `false`. |
 
 A key that is not a family, a bad `file`, a bbox that is not four finite numbers or has `w`/`h` <= 0,
 or a `mode` other than the two is `bad_shape` at `$.layers[i].variants.<family>[.field]`; a patch
@@ -280,6 +286,7 @@ a valid Rig. It returns `{ rig, warnings }`, where each warning is `{ layer, mes
 | `gesture` | Gesture | no | A gesture to play. Omitted when none. |
 | `regions` | object | no | Region colours: key `"<layer>/<slotId>"` (`regionKey`), value `#rrggbb`. An absent key draws the region as painted. Amended by character-control. |
 | `shape` | object | no | Part reshapes: key a layer name, value a PartShape (see "Reshape"). An absent layer keeps its shape. Amended by character-control. |
+| `face` | RigFace | no | The viewer's face profile (face-control), over `Rig.face` field by field (see "Face profile"). Saved with the look and carried in packs. |
 
 **Emotion** is one of `"neutral"`, `"amused"`, `"smug"`, `"irritated"`, `"furious"`,
 `"delighted"`, `"bored"`, `"suspicious"`, `"grim"`, `"theatrical"`.
@@ -307,6 +314,30 @@ a valid Rig. It returns `{ rig, warnings }`, where each warning is `{ layer, mes
   with a decoded look's `regions` (keys `layer/slot`, values `#rrggbb`) and `shape` (six finite
   numbers within `SHAPE_LIMITS`); with a rig, keys must name its layers and region slots. The web
   library runs it on read.
+
+### Face profile
+
+Amended by face-control; the format stays version 1. `RigFace` (on `Rig.face`, the character's
+defaults, and on `Look.face`, the viewer's override) has four optional groups; every field is
+optional and omitted when absent:
+
+| field | default | range | meaning |
+|---|---|---|---|
+| `gaze.range` | 0.6 | `[0, 1]` | How far the iris travels, as a share of its socket's half extent. |
+| `gaze.saccadeRate` | 1.2 | `[0, 4]` | Eye micro-saccades per second (0: none). |
+| `gaze.habits.chat` / `.content` / `.host` | 1 / 1 / 1 | `[0, 1]` | Relative weights of where the eyes glance on their own (`host` = stay on the viewer). |
+| `motion.drift` | 1 | `[0, 2]` | Multiplier of the head's idle drift. |
+| `motion.tilt` | 1 | `[0, 2]` | Multiplier of the mood's held head tilt and pitch. |
+| `motion.gesture` | 1 | `[0, 2]` | Multiplier of the gesture peaks. |
+| `motion.breath` | 0.3 | `[0, 1]` | Breathing idle amplitude (see "Eyes"). |
+| `expression.strength` | 1 | `[0, 1]` | Multiplier of every expression face's weight. |
+| `mouth.emotion` | 1 | `[0, 1.5]` | Multiplier of the emotion's bias on the player's mouth (warp and drawn). |
+
+`resolveFace(rig, look)` (`packages/rig/src/face.ts`) is the only place defaults apply: each field
+is `Look.face`'s, else `Rig.face`'s, else the default, clamped to its range. `readFace` checks a
+stored profile (a field that is not a finite number in range is reported and dropped). Every
+consumer reads the profile through `resolveFace`: the avatar player every frame (a look may change
+live), and the creator's Face panel.
 
 ### PartShape
 
@@ -353,8 +384,11 @@ The same table is exported as `EMOTION_TABLE` (frozen).
 
 ## Pose
 
-`poseLayers(rig, look, drive)` (`packages/rig/src/pose.ts`) computes each frame's layer
-transforms without WebGL. It is pure: the same inputs always give the same output, and the inputs
+`poseLayers(rig, look, drive, options?)` (`packages/rig/src/pose.ts`) computes each frame's layer
+transforms without WebGL. `options` (face-control) carries the profile in force (`face`, default
+`resolveFace(rig, look)`) and `sockets`: per socketed eye, its socket's half extents `{ hx, hy }`
+in canvas px (the avatar measures them from the mask's alpha box; an eye missing there keeps its
+iris at rest). It is pure: the same inputs always give the same output, and the inputs
 are never modified.
 
 ### Drive
@@ -371,6 +405,7 @@ The per-frame input from the avatar driver.
 | `gesture` | `{ name: Gesture, startedAt: number }` | no | The running gesture; `startedAt` is in seconds on the same clock as `t`. |
 | `still` | boolean | no | Reduced motion: layer float and pulse, and an eye's own blink, are zero. The avatar sets it whenever reduced motion is on. The held mood still applies. |
 | `mood` | `{ from: Emotion, mix: number }` | no | An emotion change in progress (character-control): every mood column is `lerp(from, look.emotion, smoothstep(mix))`, and the faces fade from `from`'s family to the look's. Omitted means mix 1. The avatar advances `mix` over `MOOD_FADE_S` (0.25 s); reduced motion sets it to 1. |
+| `gaze` | `{ x: number, y: number }` | no | Where the irises look (face-control), -1..1 per axis of the socket's half extents (clamped); x positive is screen right, y down. Omitted means rest. |
 
 `GESTURE_DURATION_S` is `0.4`: every gesture curve runs for 0.4 s from `startedAt`, shaped as a
 half-sine `sin(pi * elapsed / 0.4)` that peaks halfway at the design value. Outside that window the
@@ -387,9 +422,10 @@ One per drawn layer, in `z` order. A layer is drawn unless it is named in `look.
 | `x`, `y` | number | Posed bbox top-left, canvas px: the bbox moved by the layer's translation. |
 | `scale` | `[x, y]` | Scale about the posed anchor, `anchor + (x - bbox[0], y - bbox[1])`, in the layer's own frame. Uniform except for an eye's blink and squint squash on y and a `Look.shape` stretch. |
 | `rotation` | number | Radians, clockwise on the y-down canvas, about the posed anchor. |
-| `opacity` | number | 0..1. Currently always 1. |
+| `opacity` | number | 0..1. 1, except an iris whose eye has `closed` art: `1 - closure` while it blinks. |
 | `tint` | number | Light gain multiplied into the layer colour; 1 = as drawn. |
-| `faces` | `{ family, weight }[]` | Only on a layer with `variants`: with `m = smoothstep(mix)`, the outgoing family at `1 - m` and the incoming at `m`, each listed only if the layer has a variant for it (one family on both sides is listed once at 1; zero weights are dropped). Omitted when empty: the base only. The renderer draws the base at opacity `1 - sum(weights of replace faces)`, then each patch at its weight, in the layer's transform. |
+| `faces` | `{ family, weight }[]` | Only on a layer with `variants`: with `m = smoothstep(mix)`, the outgoing family at `1 - m` and the incoming at `m`, each listed only if the layer has a variant for it (one family on both sides is listed once at 1; zero weights are dropped), each times `expression.strength` (face-control). Omitted when empty: the base only. The renderer draws the base at opacity `1 - sum(weights of replace faces)`, then each patch at its weight, in the layer's transform. |
+| `closed` | number | Only on an `eye` with `closed` art while it blinks (face-control): the closure 0..1; the renderer draws the closed art over the eye at that weight. |
 
 ### Rules
 
@@ -430,10 +466,55 @@ One per drawn layer, in `z` order. A layer is drawn unless it is named in `look.
   on screen right (side from the bbox centre against the brows' mean; an angry V when negative; a
   single brow is not turned). When a rig has brow layers (`hasBrowLayers`), the renderer does not
   also shift the eyes by the `brow` steps; without them it does, as before.
+- **Eyes** (amended by face-control, `packages/rig/src/eyes.ts`). An `iris` layer follows an `eye`
+  with a `socket`. It takes its eye's whole transform (follow chain, carried float, the eye's
+  parallax; not its own depth, reshape or float) and moves inside it by the gaze offset
+  `clamp(gaze, -1, 1) * (hx, hy) * gaze.range` in the eye's rest frame, so a turned head turns the
+  travel with it. The eye's blink and squint squash are not passed on: the renderer clips the iris
+  by the eye's posed socket mask, so the lids close over it. An iris is drawn only when its eye is.
+  - *Blink*: an eye with `closed` art is not squashed by the blink; its pose carries `closed` (the
+    closure) and its iris's opacity is `1 - closure`. An eye without `closed` squashes as before.
+  - *Squint*: the mood's squint on an eye is multiplied by `1 - (sum of the weights of the shown
+    faces whose patch is narrowed)`.
+  - *Glow*: an eye with a `socket` gives no light by default (`isEmissive`); `iris` is an emissive
+    kind, so the iris carries the eye light, `eyeGain`, glare and flare (unless its own
+    `emissive: false`, a painted iris). The eye's own `motion.pulse` moves to its iris (an iris
+    pulse of its own wins).
+  - *Profile*: `motion.tilt` multiplies the mood's `headTilt` and `headPitch`, `motion.gesture` the
+    gesture peaks, `expression.strength` the face weights.
+  - *Breathing*: on a rig with a face profile (`Rig.face` or `Look.face`) or iris layers, each
+    `head` or `body` layer with no head or body ancestor rises by
+    `breath * 0.004 * height * sin(2 pi 0.2 t)` and scales by `1 + breath * 0.006 * sin(...)` about
+    its anchor; followers inherit it; none under `still`. A rig with neither does not breathe, so
+    it poses exactly as before.
 - **Reshape** (amended by character-control). A layer named in `look.shape` is, inside its own
   follow transform, scaled by `(size * sx, size * sy)` and turned by `rot` about its anchor, then
   moved by `(dx * width, dy * width)`; a gesture turns it about its moved anchor, and its followers
   inherit all of it. A layer with no entry poses exactly as before.
+
+### Face control in the avatar
+
+How `@sr/avatar` uses the fields above (face-control; behaviour, not wire format):
+
+- **Socket clip.** An iris whose eye has a `socket` is drawn multiplied by the eye's mask, placed
+  by the eye's pose (its squash included), and crossfaded with the shown faces' patch `socket`s by
+  their weights (a face without one lends the eye's). Outside the eye's box the mask is 0, so the
+  iris never shows outside its socket. WebGL2 samples the masks in an iris twin of the base program;
+  canvas2D composites the iris on the CPU. While the eye's mask is not loaded the iris is not
+  drawn. An iris whose eye has no socket draws as a plain layer.
+- **Closed lids.** The `closed` art is drawn over the eye (after its faces) at `LayerPose.closed`.
+- **Gaze driver.** On a rig with iris layers the eyes lead: a look-at point, the caller's gaze
+  (`content` left and down, `chat` right), or idle glances chosen every 2-5 s by `gaze.habits`
+  (a glance away holds 0.6-1.6 s) set the eye target; micro-saccades come at `gaze.saccadeRate`;
+  the head follows the eyes' target slowly (8 degrees of yaw and 4 of pitch per unit, 0.9 s) with
+  the idle drift (times `motion.drift`) on top. Reduced motion stops the glances and saccades but
+  still looks where it is asked. A rig without irises keeps the head-only gaze exactly.
+- **Light.** The look's eye gain and brow shift fade with the mood crossfade (they used to snap).
+  The brow shift of a brow-less rig never moves an eye with a `socket`. The eye light recolours the
+  iris, not a socketed eye.
+- **Dead patches.** A `jaw` or `eye` layer whose two or more patches are one image (one file name,
+  or for images in hand, identical decoded pixels) has its patches dropped before the pose.
+- **Mouth.** `mouth.emotion` multiplies the emotion's bias on the player's mouth.
 
 ## Example
 

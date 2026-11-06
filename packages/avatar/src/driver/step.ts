@@ -1,7 +1,10 @@
 // step (avatar-renderer req 3, 4.2, 5.1, 5.2; task 1.5): advances the driver by `dt` seconds. Pure: it
 // never mutates its arguments and draws randomness only from `state.rng`. Timing rules are in
-// the header of state.ts.
+// the header of state.ts. Face control (face-control): `inputs.face.drift` multiplies the drift, and
+// on a rig with irises (`inputs.face.eyes`) the eyes lead the gaze and the head follows them
+// (driver/eyes.ts); without `inputs.face` every step is exactly as before.
 import { GESTURE_DURATION_S } from "@sr/rig";
+import { stepEyes } from "./eyes.js";
 import { lookAtOffset } from "./lookAt.js";
 import { uniform } from "./rng.js";
 import {
@@ -110,20 +113,25 @@ export function step(s: DriverState, dt: number, inputs: DriverInputs): DriverSt
 
   const phase = s.drift.phase + DRIFT_RATE * elapsed;
   const full = driftAt(phase);
-  const drift = { yaw: scaled(full.yaw, motion), pitch: scaled(full.pitch, motion), phase };
+  const k = inputs.face?.drift ?? 1;
+  const drift = { yaw: scaled(scaled(full.yaw, motion), k), pitch: scaled(scaled(full.pitch, motion), k), phase };
 
   // Look-at (costume 9) biases the gaze targets; without it the targets are the gaze's own.
   const look = inputs.lookAt === undefined ? undefined : lookAtOffset(inputs.lookAt);
   const gazeEase = easeShare(elapsed, GAZE_EASE_S);
   const gazeTarget = (GAZE_TARGET_DEG[inputs.gaze] ?? GAZE_TARGET_DEG.host) + (look?.yaw ?? 0);
-  const gazeYaw = s.gazeYaw + (gazeTarget - s.gazeYaw) * gazeEase;
+  const eyes = inputs.face?.eyes === undefined ? undefined : stepEyes(s, t, elapsed, inputs, motion);
+  const gazeYaw = eyes?.gazeYaw ?? s.gazeYaw + (gazeTarget - s.gazeYaw) * gazeEase;
 
   const target = jawTarget(inputs.level);
   const jawEase = target > s.jaw ? JAW_ATTACK_S : JAW_RELEASE_S;
   const jaw = s.jaw + (target - s.jaw) * easeShare(elapsed, jawEase);
 
   const next: DriverState = { t, rng, nextBlinkAt: blinks.nextBlinkAt, drift, saccade, gazeYaw, jaw, motion };
-  if (look !== undefined || s.gazePitch !== undefined) {
+  if (eyes !== undefined) {
+    next.gazePitch = eyes.gazePitch;
+    next.eyes = eyes.eyes;
+  } else if (look !== undefined || s.gazePitch !== undefined) {
     const from = s.gazePitch ?? 0;
     next.gazePitch = from + ((look?.pitch ?? 0) - from) * gazeEase;
   }
