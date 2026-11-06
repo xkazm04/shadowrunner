@@ -2,7 +2,8 @@
 // layer"), against the counting GL stub. Golden: Malakor (no emissive field) draws exactly as the
 // kind rule did (u_emissive on eye/crown/accessory, the eye colour on eyes) under every gesture.
 // A cast rig's dark layers (Lot Ninety's gloves, the Tallyman's abacus and beads, Saint Cardia's
-// crown and painted eyes) write no glow and take no eye colour; its lights still do.
+// crown and painted eyes, the socketed eyes) write no glow and take no eye colour; its lights (the
+// irises of socketed eyes) still do.
 import { defaultLook, poseLayers, validateRig, type Drive, type Gesture, type Look, type Rig } from "@sr/rig";
 import { describe, expect, it } from "vitest";
 import cardiaJob from "../../../../assets/replay/forge/saint-cardia/job.json";
@@ -65,8 +66,9 @@ describe("Layer.emissive in the GL renderer", () => {
 
   it("cast rigs: dark layers write no glow and take no eye colour or flare; lights keep both", () => {
     const cases = [
-      { rig: rigOf(lotNinetyJob), dark: ["hand_l", "hand_r"], lit: ["eye_l", "eye_r", "wisp_l", "wisp_r"] },
-      { rig: rigOf(tallymanJob), dark: ["abacus", "beads_1l", "beads_3r"], lit: ["eye_l1", "eye_r2"] },
+      // Socketed eyes (cast-face-pass): the eye is dark, its iris carries the light.
+      { rig: rigOf(lotNinetyJob), dark: ["hand_l", "hand_r", "eye_l", "eye_r"], lit: ["iris_l", "iris_r", "wisp_l", "wisp_r"] },
+      { rig: rigOf(tallymanJob), dark: ["abacus", "beads_1l", "beads_3r", "eye_l1", "eye_r2"], lit: ["iris_l1", "iris_r2"] },
       { rig: rigOf(cardiaJob), dark: ["crown", "eye_l", "eye_r", "spire_3"], lit: ["heart"] },
     ];
     for (const { rig, dark, lit } of cases) {
@@ -83,7 +85,7 @@ describe("Layer.emissive in the GL renderer", () => {
       for (const name of lit) {
         const got = flare.get(name);
         const layer = rig.layers.find((l) => l.name === name);
-        const colour = layer?.kind === "eye" ? eye : [1, 1, 1];
+        const colour = layer?.kind === "eye" || layer?.kind === "iris" ? eye : [1, 1, 1];
         expect(got?.emissive, `${rig.id} ${name}`).toBe(1);
         expect(got?.gain, `${rig.id} ${name}`).toEqual(colour.map((c) => expect.closeTo(c * (got?.pose.tint ?? NaN), 6)));
         expect(got?.pose.tint ?? NaN).toBeCloseTo(2 * (rest.get(name)?.pose.tint ?? NaN), 9);

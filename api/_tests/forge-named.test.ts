@@ -10,6 +10,7 @@ import {
   decodeImage,
   parseBrief,
   partsPromptFromBrief,
+  unsocketed,
   type CharacterBrief,
   type ForgeJob,
   type JobView,
@@ -199,9 +200,24 @@ describe("offline proof: the product path is the overnight path", () => {
     // retrofit's expression faces (character-control task 5, from Codex edits this fake does not
     // make); the cut itself is the recorded one. Sir Vacant's visor is a mouth drawn open (cavity
     // "gap"): the live assembly (`drawnMouth`) and the recording both leave `mouth` out.
-    const strip = (rig: Rig | undefined) => (rig === undefined ? undefined : { ...rig, id: "", layers: rig.layers.map((layer) => Object.fromEntries(Object.entries(layer).filter(([key]) => key !== "regions" && key !== "variants"))) });
+    // cast-face-pass: the recording's eyes carry the cast's own eye recipe (slit sockets, white orb iris
+    // layers, tint false, closed art: scripts/cast/five/) the live eye step does not make from this fake;
+    // the rig is compared with those taken back out (`unsocketed`, no `tint`), and the eye layers' pixels
+    // (now the recipe's dimmed slits) are left out. scripts/cast/live-proof.mjs proves the eyes as cut
+    // against the backup of the job before the recipe.
+    const recipeEyes = new Set(replay.rig.layers.filter((l) => l.kind === "eye" && (l.socket !== undefined || l.closed !== undefined)).map((l) => l.file));
+    const strip = (rig: Rig | undefined) =>
+      rig === undefined
+        ? undefined
+        : {
+            ...rig,
+            id: "",
+            // z renumbered in drawing order: the iris layers took places between the others.
+            layers: [...unsocketed(rig).layers].sort((a, b) => a.z - b.z).map((layer, i) => ({ ...Object.fromEntries(Object.entries(layer).filter(([key]) => key !== "regions" && key !== "variants" && key !== "tint")), z: i + 1 })),
+          };
     expect(strip(view.rig)).toEqual(strip(replay.rig));
     for (const layer of replay.rig.layers) {
+      if (layer.kind === "iris" || recipeEyes.has(layer.file)) continue;
       const url = view.assets?.[layer.file];
       if (url === undefined) throw new Error(`no live ${layer.file}`);
       const live = decodeImage(await store.readImage(url));

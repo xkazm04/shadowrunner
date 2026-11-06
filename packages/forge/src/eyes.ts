@@ -61,6 +61,9 @@ export const EYEBALL_DIST = 45;
 /** Glow: chromaticity distance to the tint at most this, luma at least GLOW_LUMA of the tint's. */
 export const GLOW_CHROMA_DIST = 0.12;
 export const GLOW_LUMA = 0.45;
+/** The opening's largest share of the eye's opaque pixels: measured, and named by a mask edit. */
+export const OPEN_MAX = 0.7;
+export const OPEN_MAX_MARKED = 0.9;
 /** The smallest iris radius (px) worth a layer. */
 export const IRIS_MIN_R = 2.5;
 /** A pixel the iris-free edit changed by more than this summed |RGB| was iris. */
@@ -172,7 +175,8 @@ function editOpening(eye: Rgba, clean: Rgba): Bits | undefined {
 /**
  * The lid opening of an eye as 0/1 bits, from the eye alone (no iris needed): the light of a glowing
  * eye; with `clean`, the edit's white; else the white's row/column spans (white) or the dark under
- * Otsu's threshold (dark). Holes and spans filled; undefined under 12 px or over 0.7 of the eye.
+ * Otsu's threshold (dark). Holes and spans filled; undefined under 12 px or over OPEN_MAX of the eye
+ * (OPEN_MAX_MARKED with a mask edit).
  */
 export function openingBits(eye: Rgba, cues: EyeCues = {}): Bits | undefined {
   const { width: w, height: h } = eye;
@@ -195,9 +199,10 @@ export function openingBits(eye: Rgba, cues: EyeCues = {}): Bits | undefined {
   if (region === undefined) return undefined;
   const bits = spanFill(fillHoles(region, w, h), w, h);
   for (let i = 0; i < w * h; i++) if (!opaqueAt(eye, i)) bits[i] = 0;
-  // An opening is part of the eye, never the whole of it (a skin-coloured eye found no white).
+  // An opening is part of the eye, never the whole of it (a skin-coloured eye found no white); a mask
+  // edit names it, so a tightly cut eye may be mostly opening (cast-face-pass: Lot Ninety's 73%).
   const opaque = [...Array(w * h).keys()].filter((i) => opaqueAt(eye, i)).length;
-  return count(bits) < 12 || count(bits) > 0.7 * opaque ? undefined : bits;
+  return count(bits) < 12 || count(bits) > (marks === undefined ? OPEN_MAX : OPEN_MAX_MARKED) * opaque ? undefined : bits;
 }
 
 /** The white's colour in `eye`: the median of the brighter half of the opening. */

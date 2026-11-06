@@ -63,7 +63,9 @@ function request() {
   copyFileSync(portraitPath, join(WORK, portraitName));
   for (const family of families) {
     const inkBrows = args.includes("--ink-brows");
-    const prompt = `${forge.expressionPrompt(name, family, style, attempt)}${inkBrows ? ` ${forge.INK_BROWS}` : ""}`;
+    // cast-face-pass: past the STRICTER sentences, a character's own `retry` sentence (CAST_EYES `retry`, `attempts`).
+    const material = [CAST_EYES[slug]?.material, attempt > forge.STRICTER.length ? CAST_EYES[slug]?.retry : undefined].filter((t) => t !== undefined).join(" ");
+    const prompt = `${forge.expressionPrompt(name, family, style, attempt, material === "" ? undefined : material)}${inkBrows ? ` ${forge.INK_BROWS}` : ""}`;
     const out = inkBrows ? `${family}.ink` : attempt === 0 ? family : `${family}.a${attempt}`;
     const text = `Use your image generation tool to EDIT the attached input image ./${portraitName} (pass it to the tool as the input/reference image). Prompt, verbatim: "${prompt}"\nThen save the result as ${out}.png in this folder and verify the copy. Report whether the tool actually received the input image (yes/no) and the output pixel size.\n`;
     writeFileSync(join(WORK, `${out}.request.txt`), text);
@@ -132,6 +134,6 @@ function importEdits() {
 }
 
 if (args.includes("--request")) request();
-else if (args.includes("--import") && CAST_EYES[slug] !== undefined) await importSocketed({ forge, slug, families, work: WORK, force: args.includes("--force"), measure: args.includes("--measure") });
+else if (args.includes("--import") && CAST_EYES[slug] !== undefined) await importSocketed({ forge, slug, families, work: WORK, force: args.includes("--force"), measure: args.includes("--measure"), fresh: args.includes("--fresh") });
 else if (args.includes("--import")) importEdits();
 else for (const family of families) console.log(`${family}: request ${existsSync(join(WORK, `${family}.request.txt`)) ? "yes" : "no"}, edit ${existsSync(join(WORK, `${family}.png`)) ? "yes" : "no"}`);

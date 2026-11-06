@@ -18,6 +18,11 @@
 // replaced in place). When it is unsure, or the
 // character's CAST call `lips` says why not, a stale `lips` is removed and none is written. The
 // mouth's other keys are untouched.
+// --maw <slug> (cast-face-pass): an already-open painted mouth (teeth around a gap, a carved grin):
+// `measureMaw` on the rest head + jaw about the recorded mouth (else `measureMouth` on the jaw), written
+// as `rig.mouth` {cx, lineY, width, lips: {..., seam, maw: true}} (render and cell kept); unsure, nothing
+// is written. `--maw-box left,right,upper,seam,lower` gives the maw instead of measuring it (a shape
+// measureMaw cannot read; the caller's overlay is the evidence). The CAST `art` call does not stop it.
 // --dry-run measures and prints, writes nothing. No network, no model, no new dependency.
 // Per character (CAST, round 3, chosen on contact sheets of all seven faces): a mouth drawn as art
 // (a visor slit, a neon gap, a maw, a skull's teeth, a carved grin) keeps its art: no `mouth`, no
@@ -57,17 +62,21 @@ const CAST = {
   // gap above lineY), so no box rather than a wrong one; without lips the warp does not run and the dummy keeps its sliding jaw.
   understudy: { region: { above: 1.1, below: 1.0 }, lips: "measureLips sees only the lower lip under the dummy's black gap" },
 };
-const USAGE = "usage: node scripts/cast/mouth-backfill.mjs (--slug <id> ... | --all) [--reset-expressions | --lips] [--dry-run]";
+const USAGE = "usage: node scripts/cast/mouth-backfill.mjs (--slug <id> ... | --all) [--reset-expressions | --lips] [--dry-run] | --maw <id> [--maw-box l,r,u,s,lo] [--dry-run]";
 
 const args = process.argv.slice(2);
-const slugsAsked = args.flatMap((a, i) => (args[i - 1] === "--slug" ? [a] : []));
+const slugsAsked = args.flatMap((a, i) => (args[i - 1] === "--slug" || args[i - 1] === "--maw" ? [a] : []));
+const mawOnly = args.includes("--maw");
+const mawBox = args.includes("--maw-box") ? args[args.indexOf("--maw-box") + 1]?.split(",").map(Number) : undefined;
 const all = args.includes("--all");
 const reset = args.includes("--reset-expressions");
 const dry = args.includes("--dry-run");
 const lipsOnly = args.includes("--lips");
-const known = new Set(["--slug", "--all", "--reset-expressions", "--lips", "--dry-run"]);
-for (const [i, a] of args.entries()) if (a.startsWith("--") ? !known.has(a) : args[i - 1] !== "--slug") throw new Error(`mouth-backfill: unknown argument ${a}\n${USAGE}`);
+const known = new Set(["--slug", "--all", "--reset-expressions", "--lips", "--dry-run", "--maw", "--maw-box"]);
+for (const [i, a] of args.entries()) if (a.startsWith("--") ? !known.has(a) : !["--slug", "--maw", "--maw-box"].includes(args[i - 1])) throw new Error(`mouth-backfill: unknown argument ${a}\n${USAGE}`);
 if (all === slugsAsked.length > 0) throw new Error(`mouth-backfill: give --slug or --all\n${USAGE}`);
+if (mawOnly && (reset || lipsOnly || all)) throw new Error(`mouth-backfill: --maw measures only the maw of the slugs given\n${USAGE}`);
+if (mawBox !== undefined && (mawBox.length !== 5 || mawBox.some((v) => !Number.isFinite(v)))) throw new Error(`mouth-backfill: --maw-box wants five numbers left,right,upper,seam,lower\n${USAGE}`);
 if (lipsOnly && reset) throw new Error(`mouth-backfill: --lips measures only the lips; run --reset-expressions on its own\n${USAGE}`);
 
 const config = { configFile: false, root: ROOT, logLevel: "warn" };
@@ -148,6 +157,28 @@ async function backfillLips(slug) {
   console.log(`mouth-backfill: ${slug}: ${dry ? "would write" : "wrote"} job.json rig.mouth${lips === undefined ? " without lips" : ".lips"}`);
 }
 
+/** --maw: `rig.mouth` with maw lips from measureMaw (or --maw-box) about the recorded or measured mouth. */
+async function backfillMaw(slug) {
+  const { dir, jobPath, job, rig } = readJob(slug);
+  const head = rig.layers.find((l) => l.kind === "head");
+  const jaw = rig.layers.find((l) => l.kind === "jaw");
+  if (jaw === undefined) return console.log(`mouth-backfill: ${slug}: no jaw layer, no maw`);
+  const rest = [head, jaw].filter((l) => l !== undefined).sort((a, b) => a.z - b.z);
+  const layers = await Promise.all(rest.map(async (l) => ({ bbox: l.bbox, image: await load(join(dir, l.file)) })));
+  const was = rig.mouth;
+  const mouth = was === undefined ? forge.measureMouth({ bbox: jaw.bbox, image: layers[rest.indexOf(jaw)].image }, head) : { cx: was.cx, lineY: was.lineY, width: was.width };
+  if (mouth === undefined) return console.log(`mouth-backfill: ${slug}: the jaw has no opaque pixel, no maw`);
+  const [left, right, upper, seam, lower] = mawBox ?? [];
+  const lips = mawBox === undefined ? forge.measureMaw(layers, mouth) : { left, right, upper, lower, seam, maw: true };
+  console.log(`mouth-backfill: ${slug}: mouth cx ${mouth.cx} lineY ${mouth.lineY} width ${mouth.width}${was === undefined ? " (measured on the jaw)" : ""} -> maw ${lips === undefined ? "none (measureMaw is unsure)" : `${mawBox === undefined ? "" : "given "}left ${lips.left} right ${lips.right} upper ${lips.upper} seam ${lips.seam} lower ${lips.lower}`}`);
+  if (lips === undefined) return;
+  job.value.rig.mouth = { ...mouth, ...(was?.render === undefined ? {} : { render: was.render }), ...(was?.cell === undefined ? {} : { cell: was.cell }), lips };
+  const again = rigCore.validateRig(job.value.rig);
+  if (!again.ok) throw new Error(`mouth-backfill: ${slug}: the rig with its maw does not validate: ${again.errors[0]?.message}`);
+  if (!dry) writeJsonFile(jobPath, job.value, job);
+  console.log(`mouth-backfill: ${slug}: ${dry ? "would write" : "wrote"} job.json rig.mouth with maw lips`);
+}
+
 async function backfill(slug) {
   const call = CAST[slug] ?? {};
   if (call.art !== undefined) {
@@ -203,4 +234,4 @@ const slugs = all
       .map((e) => e.name)
       .sort()
   : slugsAsked.filter((s) => !SKIP.has(s));
-for (const slug of slugs) await (lipsOnly ? backfillLips(slug) : backfill(slug));
+for (const slug of slugs) await (mawOnly ? backfillMaw(slug) : lipsOnly ? backfillLips(slug) : backfill(slug));

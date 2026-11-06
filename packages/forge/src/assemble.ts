@@ -4,7 +4,8 @@ import { DEFAULT_DEPTH, type Layer, type LayerKind, RIG_VERSION, type Result, ty
 import { CUT_ORDER } from "./cut.js";
 import { encodePng } from "./image.js";
 import { dilateMask, rasterizeMask } from "./mask.js";
-import { drawnMouth, measureLips, measureMouth } from "./mouthAnchor.js";
+import { artMouth, drawnMouth, measureLips, measureMouth } from "./mouthAnchor.js";
+import { measureMaw } from "./mouthMaw.js";
 import { type NamedLayer, backgroundOf } from "./background.js";
 import { asNamed, cutOrderNamed, emissiveOf, followOf, headNameOf, motionOf, scaleMotion } from "./named.js";
 import { samplePalette, type PaletteWarning } from "./palette.js";
@@ -126,7 +127,8 @@ function anchorOf(kind: LayerKind, layer: NamedLayer, part: Pick<Part, "poly"> |
  * an emissive kind that gives no light is `emissive: false`); a v1 file's layers keep the kind's
  * default. With a jaw layer the rig carries `mouth` (`measureMouth` on the first jaw, capped by the
  * first head), unless a jaw part says the mouth is drawn open (`drawnMouth`: cavity "gap" or "fill",
- * a visor or a maw), when the art keeps its mouth. The rig is passed through validateRig; its errors are returned
+ * a visor or a maw), when the art keeps its mouth; cast-face-pass: a jaw flagged `mouth: "art"` whose
+ * maw measures cleanly (`measureMaw`) carries `mouth` with maw lips. The rig is passed through validateRig; its errors are returned
  * as they are.
  */
 export function assembleRig(parts: readonly Part[] | readonly NamedPart[], layers: readonly NamedLayer[], meta: AssembleMeta): Result<AssembledRig, RigError[]> {
@@ -241,7 +243,13 @@ export function assembleRig(parts: readonly Part[] | readonly NamedPart[], layer
   // art-mouth: the painted lips on the rest head + jaw (bottom first), omitted when measureLips is unsure.
   const rest = order.filter((l) => l === headLayer || l === jawLayer);
   const lips = measured === undefined ? undefined : measureLips(rest, measured);
-  const mouth = measured === undefined ? undefined : { ...measured, ...(lips === undefined ? {} : { lips }) };
+  let mouth: Rig["mouth"] = measured === undefined ? undefined : { ...measured, ...(lips === undefined ? {} : { lips }) };
+  // cast-face-pass: a jaw whose art owns the mouth (`mouth: "art"`, a grin of teeth) gets the mouth back
+  // when its maw measures cleanly (`measureMaw`: lips with `maw`), so the warp moves its own teeth; unsure, none.
+  const artJaw = artMouth(named) ? order.find((l) => kindOf(l.name) === "jaw") : undefined;
+  const artMeasured = artJaw === undefined ? undefined : measureMouth(artJaw, headLayer);
+  const maw = artJaw === undefined || artMeasured === undefined ? undefined : measureMaw(order.filter((l) => l === headLayer || l === artJaw), artMeasured);
+  if (artMeasured !== undefined && maw !== undefined) mouth = { ...artMeasured, lips: maw };
   const rig: Rig = { version: RIG_VERSION, id: meta.id, name: meta.name, width, height, source: "forge", fictional: true, palette, layers: rigLayers, ...(mouth === undefined ? {} : { mouth }) };
   const checked = validateRig(rig);
   return checked.ok ? { ok: true, value: { rig: checked.value, files, warnings } } : checked;

@@ -6,11 +6,12 @@
 // eye: its iris found again, its own socket, `narrowed` when the lids close in, the iris painted out.
 // The cast (scripts/cast/eyes.mjs, expressions.mjs) and the live forge share both. Pure.
 import { isEmissive, type Layer, type Rig } from "@sr/rig";
-import { cleanEye, closedArt, featherClosed, irisImage } from "./eyeArt.js";
-import { fillHoles, growBits, keepComponent } from "./eyeBits.js";
-import { bitsToImage, eyeballColour, inDisc, measureIris, medianColour, scleraColour, socketBits, type EyeCues, type EyeLook, type Iris } from "./eyes.js";
+import { cleanEye, closedArt, featherClosed, irisImage, type IrisArt } from "./eyeArt.js";
+import { fillHoles, growBits, inscribedDisc, keepComponent } from "./eyeBits.js";
+import { bitsToImage, eyeballColour, inDisc, measureIris, medianColour, openingBits, scleraColour, socketBits, type EyeCues, type EyeLook, type Iris } from "./eyes.js";
+import { lightColour, orbArt, type OrbStyle } from "./eyeOrb.js";
 import { compositeRig } from "./composite.js";
-import { TRACK_GAIN, TRACK_UNSURE, cropImage, trackIris } from "./stability.js";
+import { IRIS_DRIFT_LIMIT, TRACK_GAIN, TRACK_UNSURE, cropImage, trackIris } from "./stability.js";
 import type { Rgba } from "./types.js";
 
 /** A face's lid opening under this share of the base's area is `narrowed` (mood squint adds none). */
@@ -37,8 +38,10 @@ export interface EyeSocketing {
   socket: Uint8Array;
   iris: Iris;
   cues: EyeCues;
-  /** Where the closed-lid art came from: the closed-eyes edit, the plate under the eye, or the lid drawn down. */
-  closedFrom: "edit" | "plate" | "painted lids";
+  /** Where the closed-lid art came from: the closed-eyes edit, the plate under the eye, the lid drawn down, or the recipe. */
+  closedFrom: "edit" | "plate" | "painted lids" | "recipe";
+  /** cast-face-pass: the iris-free eye came from the recipe; a face paints its iris out with the base's (`socketVariant`). */
+  ownClean?: true;
 }
 
 export interface SocketedRig {
@@ -59,6 +62,48 @@ export interface SocketOptions {
   marks?: Rgba;
   /** Per eye layer name, how it is drawn; default: glow (then white) for an eye that gives light, else white. */
   looks?: Readonly<Record<string, EyeLook>>;
+  /** cast-face-pass: per eye layer name, what the character's recipe gives instead of a measure (`EyeRecipe`). */
+  eyes?: Readonly<Record<string, EyeRecipe>>;
+}
+
+/**
+ * cast-face-pass: a character's own answer for one eye, over what `socketEyes` would measure. Every
+ * field is optional; eye-local px, images the eye layer's size unless said otherwise.
+ */
+export interface EyeRecipe {
+  /** The lid opening (a lens interior, a carved hole, a slit): replaces the measured socket. */
+  socket?: Uint8Array;
+  /** The iris disc: replaces the measured one (with `socket` too, nothing is measured). */
+  iris?: Iris;
+  /** A procedural glow orb as the iris art (`orbArt`) of radius `r` (default the iris's), in `rgb` or the eye's own light (`lightColour`). */
+  orb?: Partial<OrbStyle> & { r?: number };
+  /** Ready iris art (eye-local box), e.g. a pixel pupil cut whole. */
+  irisArt?: IrisArt;
+  /** The iris-free eye: replaces `cleanEye`. */
+  clean?: Rgba;
+  /** The closed art (eye-size): replaces the closed-eyes edit and the plate (laid in around the socket by `featherClosed`). */
+  closed?: Rgba;
+  /** No socket and no iris: the eye stays one piece and gains `closed` (laid in whole), its motion kept. Needs `closed`. */
+  closedOnly?: true;
+  /** The eye and its iris keep the art's own light colour (Layer.tint false). */
+  tint?: false;
+}
+
+/** The orb fallback's radius: this share of the opening's largest inscribed disc, at most ORB_HEIGHT_SHARE of the eye's height. */
+export const ORB_OF_SOCKET = 0.7;
+export const ORB_HEIGHT_SHARE = 0.3;
+
+/**
+ * cast-face-pass, the procedural orb fallback for an eye that gives light but shows no iris and no
+ * lit disc (a hole, a void): its socket is the dark opening (Otsu), the orb sits at the opening's
+ * largest inscribed disc, ORB_OF_SOCKET of its radius. Undefined when no opening reads.
+ */
+function orbFallback(eye: Rgba): { iris: Iris; socket: Uint8Array } | undefined {
+  const socket = openingBits(eye, { look: "dark" });
+  const disc = socket === undefined ? undefined : inscribedDisc(socket, eye.width, eye.height);
+  if (socket === undefined || disc === undefined) return undefined;
+  const r = Math.min(disc.r * ORB_OF_SOCKET, ORB_HEIGHT_SHARE * eye.height);
+  return r < 2 ? undefined : { iris: { cx: disc.cx, cy: disc.cy, r }, socket };
 }
 
 const hexRgb = (hex: string): [number, number, number] => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)) as [number, number, number];
@@ -70,12 +115,17 @@ function readEye(eye: Rgba, look: EyeLook, cues: EyeCues): { iris: Iris; socket:
   if (iris === undefined) return `no ${look} iris found`;
   const socket = socketBits(eye, iris, { ...cues, look });
   if (socket === undefined) return `no ${look} socket around the iris`;
-  const full: EyeCues = { ...cues, look };
-  const sclera = look === "white" ? (medianColour(eye, (i) => socket[i] === 1 && !inDisc(iris, eye.width, i, 1)) ?? scleraColour(eye, socket)) : undefined;
-  const eyeball = look === "dark" ? eyeballColour(eye, socket) : undefined;
+  return { iris, socket, cues: withColours(eye, iris, socket, { ...cues, look }) };
+}
+
+/** `cues` with the white's (white eyes) or the eyeball's (dark eyes) colour read inside `socket`, outside the iris. */
+function withColours(eye: Rgba, iris: Iris, socket: Uint8Array, cues: EyeCues): EyeCues {
+  const full: EyeCues = { ...cues };
+  const sclera = cues.look === "white" ? (medianColour(eye, (i) => socket[i] === 1 && !inDisc(iris, eye.width, i, 1)) ?? scleraColour(eye, socket)) : undefined;
+  const eyeball = cues.look === "dark" ? eyeballColour(eye, socket) : undefined;
   if (sclera !== undefined) full.sclera = sclera;
   if (eyeball !== undefined) full.eyeball = eyeball;
-  return { iris, socket, cues: full };
+  return full;
 }
 
 /**
@@ -98,20 +148,52 @@ export function socketEyes(rig: Rig, images: Readonly<Record<string, Rgba>>, opt
     const look = opts.looks?.[layer.name] ?? (glows ? "glow" : "white");
     const clean = opts.clean === undefined ? undefined : cropImage(opts.clean, layer.bbox);
     const marks = opts.marks === undefined ? undefined : cropImage(opts.marks, layer.bbox);
-    let read = readEye(eye, look, { ...(clean === undefined ? {} : { clean }), ...(marks === undefined ? {} : { marks }), tint });
-    if (typeof read === "string" && opts.looks?.[layer.name] === undefined && glows) read = readEye(eye, "white", { ...(clean === undefined ? {} : { clean }), tint });
+    const recipe = opts.eyes?.[layer.name] ?? {};
+    const tintOff = recipe.tint === false ? { tint: false as const } : {};
+    if (recipe.closedOnly === true) {
+      // A closed-only eye: one piece (no gaze) with its closed art; its motion (blink, pulse) kept.
+      if (recipe.closed === undefined) {
+        notes.push(`${layer.name}: one piece (closed-only without closed art)`);
+        continue;
+      }
+      files[closedFile(layer.name)] = recipe.closed;
+      changed.set(layer.name, { ...layer, ...tintOff, closed: closedFile(layer.name) });
+      notes.push(`${layer.name}: one piece with closed art (recipe)`);
+      continue;
+    }
+    let read: ReturnType<typeof readEye>;
+    let orbbed = false;
+    if (recipe.socket !== undefined && recipe.iris !== undefined) read = { iris: recipe.iris, socket: recipe.socket, cues: withColours(eye, recipe.iris, recipe.socket, { look, tint }) };
+    else {
+      read = readEye(eye, look, { ...(clean === undefined ? {} : { clean }), ...(marks === undefined ? {} : { marks }), tint });
+      if (typeof read === "string" && opts.looks?.[layer.name] === undefined && glows) read = readEye(eye, "white", { ...(clean === undefined ? {} : { clean }), tint });
+      if (typeof read === "string" && opts.looks?.[layer.name] === undefined && glows) {
+        // cast-face-pass: a lit eye with no iris and no lit disc (a hole, a void) gets a glow orb in its dark opening.
+        const hole = orbFallback(eye);
+        if (hole !== undefined) {
+          read = { ...hole, cues: withColours(eye, hole.iris, hole.socket, { look: "dark", tint }) };
+          orbbed = true;
+        }
+      }
+      if (typeof read !== "string" && (recipe.socket !== undefined || recipe.iris !== undefined)) {
+        const iris = recipe.iris ?? read.iris;
+        const socket = recipe.socket ?? read.socket;
+        read = { iris, socket, cues: withColours(eye, iris, socket, read.cues) };
+      }
+    }
     if (typeof read === "string") {
       notes.push(`${layer.name}: one piece (${read})`);
       continue;
     }
     const { iris, socket, cues } = read;
     const lookUsed = cues.look ?? look;
-    const cleaned = cleanEye(eye, iris, socket, { look: lookUsed, ...(cues.clean === undefined ? {} : { clean: cues.clean }), ...(cues.sclera === undefined ? {} : { sclera: cues.sclera }) });
+    const cleaned = recipe.clean ?? cleanEye(eye, iris, socket, { look: lookUsed, ...(cues.clean === undefined ? {} : { clean: cues.clean }), ...(cues.sclera === undefined ? {} : { sclera: cues.sclera }) });
     const below = compositeRig({ ...rig, layers: rig.layers.filter((l) => l.z < layer.z) }, images);
-    const edited = opts.closed === undefined ? undefined : closedArt(eye, cropImage(opts.closed, layer.bbox), socket);
+    const edited = recipe.closed !== undefined ? { image: recipe.closed, fromPlate: true } : opts.closed === undefined ? undefined : closedArt(eye, cropImage(opts.closed, layer.bbox), socket);
     const closed = edited?.fromPlate === true ? edited : closedArt(eye, cropImage(below, layer.bbox), socket);
-    const closedFrom = edited?.fromPlate === true ? "edit" : closed.fromPlate ? "plate" : "painted lids";
-    const art = irisImage(eye, iris, socket);
+    const closedFrom = recipe.closed !== undefined ? "recipe" : edited?.fromPlate === true ? "edit" : closed.fromPlate ? "plate" : "painted lids";
+    const orb = recipe.orb ?? (orbbed ? {} : undefined);
+    const art = recipe.irisArt ?? (orb === undefined ? irisImage(eye, iris, socket) : orbArt({ ...iris, r: orb.r ?? iris.r }, { ...orb, rgb: orb.rgb ?? lightColour(eye, socket) ?? tint }));
     const name = irisName(layer.name);
     const [bx, by] = layer.bbox;
     files[layer.file] = cleaned;
@@ -120,8 +202,9 @@ export function socketEyes(rig: Rig, images: Readonly<Record<string, Rgba>>, opt
     files[`${name}.png`] = art.image;
     const { motion, ...rest } = layer;
     const pulse = glows ? motion?.pulse : undefined;
+    // Per-eye motion: the blink (its own phase) and the float stay on the eye; a glowing eye's pulse moves to the iris.
     const keep = motion === undefined ? undefined : pulse === undefined ? motion : motion.blink === undefined && motion.float === undefined ? undefined : { ...(motion.float === undefined ? {} : { float: motion.float }), ...(motion.blink === undefined ? {} : { blink: motion.blink }) };
-    changed.set(layer.name, { ...rest, ...(keep === undefined ? {} : { motion: keep }), ...(glows ? { emissive: false } : {}), socket: socketFile(layer.name), closed: closedFile(layer.name) });
+    changed.set(layer.name, { ...rest, ...(keep === undefined ? {} : { motion: keep }), ...(glows ? { emissive: false } : {}), ...tintOff, socket: socketFile(layer.name), closed: closedFile(layer.name) });
     extra.set(layer.name, {
       name,
       z: layer.z,
@@ -134,9 +217,10 @@ export function socketEyes(rig: Rig, images: Readonly<Record<string, Rgba>>, opt
       ...(pulse === undefined ? {} : { motion: { pulse } }),
       // The player lights an iris by default: an eye that gave no light gets an unlit iris.
       ...(glows ? {} : { emissive: false }),
+      ...tintOff,
     });
-    eyes.push({ name: layer.name, look: lookUsed, original: eye, clean: cleaned, socket, iris, cues, closedFrom });
-    notes.push(`${layer.name}: socketed (${lookUsed}${cues.clean === undefined ? "" : ", edit"}; iris r ${iris.r.toFixed(1)} at ${(bx + iris.cx).toFixed(1)},${(by + iris.cy).toFixed(1)}; socket ${area(socket)} px; closed ${closedFrom}${glows ? "; glow on the iris" : ""})`);
+    eyes.push({ name: layer.name, look: lookUsed, original: eye, clean: cleaned, socket, iris, cues, closedFrom, ...(recipe.clean === undefined ? {} : { ownClean: true as const }) });
+    notes.push(`${layer.name}: socketed (${lookUsed}${cues.clean === undefined ? "" : ", edit"}${orb === undefined ? "" : ", glow orb"}${recipe.socket === undefined ? "" : ", recipe socket"}; iris r ${iris.r.toFixed(1)} at ${(bx + iris.cx).toFixed(1)},${(by + iris.cy).toFixed(1)}; socket ${area(socket)} px; closed ${closedFrom}${glows ? "; glow on the iris" : ""})`);
   }
   const ordered: Layer[] = [];
   for (const layer of [...rig.layers].sort((a, b) => a.z - b.z)) {
@@ -144,7 +228,7 @@ export function socketEyes(rig: Rig, images: Readonly<Record<string, Rgba>>, opt
     const iris = extra.get(layer.name);
     if (iris !== undefined) ordered.push(iris);
   }
-  const layers = extra.size === 0 ? rig.layers : ordered.map((layer, i) => ({ ...layer, z: i + 1 }));
+  const layers = extra.size === 0 && changed.size === 0 ? rig.layers : ordered.map((layer, i) => ({ ...layer, z: i + 1 }));
   return { rig: { ...rig, layers }, files, eyes, notes };
 }
 
@@ -160,12 +244,26 @@ export interface VariantEye {
   socketFromBase: boolean;
 }
 
-/** One expression face of a socketed eye (see the header). `face` is the eye patch's image (the layer's bbox). */
-export function socketVariant(eye: EyeSocketing, face: Rgba): VariantEye {
+/**
+ * One expression face of a socketed eye (see the header). `face` is the eye patch's image (the layer's
+ * bbox). cast-face-pass: `track` "glow" finds the iris again by its light (a lit ring on a dark eyeball:
+ * the Tallyman), whatever the eye's look.
+ */
+export function socketVariant(eye: EyeSocketing, face: Rgba, track?: EyeLook): VariantEye {
   const { iris, cues, look } = eye;
   let moved: Iris = iris;
   let drift: number | "unsure" = "unsure";
-  if (look === "glow") {
+  if (look !== "glow" && track === "glow") {
+    // The light's largest disc, sideways only (it sinks as a lid lowers), in the eye and the face alike,
+    // as faceStability follows it; a move past IRIS_DRIFT_LIMIT is a lid cutting the light: unsure.
+    const tint = cues.tint === undefined ? {} : { tint: cues.tint };
+    const a = measureIris(eye.original, { look: "glow", ...tint });
+    const b = measureIris(face, { look: "glow", ...tint });
+    if (a !== undefined && b !== undefined && Math.abs(b.cx - a.cx) <= IRIS_DRIFT_LIMIT) {
+      moved = { ...iris, cx: iris.cx + Math.round(b.cx - a.cx) };
+      drift = Math.abs(b.cx - a.cx);
+    }
+  } else if (look === "glow") {
     const again = measureIris(face, { look, ...(cues.tint === undefined ? {} : { tint: cues.tint }) });
     if (again !== undefined) {
       moved = { ...again, r: iris.r };
@@ -210,7 +308,10 @@ export function socketVariant(eye: EyeSocketing, face: Rgba): VariantEye {
   const grown = found === undefined ? kept : kept.map((v, i) => (v === 1 || (eye.socket[i] === 0 && (found[i] ?? 0) & (reach[i] ?? 0)) ? 1 : 0));
   const own = fillHoles(keepComponent(grown, w, face.height, (i) => inDisc(moved, w, i)), w, face.height);
   const socket = own ?? eye.socket;
-  const image = cleanEye(face, moved, socket, { look, base: { eye: eye.clean, socket: eye.socket }, ...(cues.sclera === undefined ? {} : { sclera: cues.sclera }) });
+  // A recipe's iris-free eye (a pixel pupil's black lens): the face's iris is painted out with the base's
+  // own iris-free pixels where the base was open (the "glow" fill only dims a light, leaving a second pupil).
+  const fill: EyeLook = eye.ownClean === true ? "white" : look;
+  const image = cleanEye(face, moved, socket, { look: fill, base: { eye: eye.clean, socket: eye.socket }, ...(cues.sclera === undefined ? {} : { sclera: cues.sclera }) });
   return { image, socket: bitsToImage(socket, face.width, face.height), narrowed: area(socket) < NARROW_SHARE * area(eye.socket), drift, socketFromBase: own === undefined };
 }
 

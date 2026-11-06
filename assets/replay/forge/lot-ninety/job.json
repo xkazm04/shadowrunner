@@ -132,7 +132,7 @@
             {
               "id": "r3",
               "name": "head 3",
-              "hex": "#797d5e"
+              "hex": "#7a7e5f"
             }
           ]
         },
@@ -140,60 +140,60 @@
           "joy": {
             "file": "head.joy.webp",
             "bbox": [
-              289,
+              353,
               198,
-              446,
-              334
+              319,
+              141
             ],
             "mode": "over"
           },
           "showman": {
             "file": "head.showman.webp",
             "bbox": [
-              289,
+              353,
               198,
-              446,
-              334
+              319,
+              141
             ],
             "mode": "over"
           },
           "anger": {
             "file": "head.anger.webp",
             "bbox": [
-              289,
+              353,
               198,
-              446,
-              334
+              319,
+              141
             ],
             "mode": "over"
           },
           "gloom": {
             "file": "head.gloom.webp",
             "bbox": [
-              289,
+              353,
               198,
-              446,
-              334
+              319,
+              141
             ],
             "mode": "over"
           },
           "smug": {
             "file": "head.smug.webp",
             "bbox": [
-              289,
+              353,
               198,
-              446,
-              334
+              319,
+              141
             ],
             "mode": "over"
           },
           "suspicion": {
             "file": "head.suspicion.webp",
             "bbox": [
-              289,
+              353,
               198,
-              446,
-              334
+              319,
+              141
             ],
             "mode": "over"
           }
@@ -205,10 +205,10 @@
         "kind": "jaw",
         "file": "jaw.png",
         "bbox": [
-          458,
-          442,
-          115,
-          45
+          432,
+          397,
+          165,
+          90
         ],
         "anchor": [
           515.5840000000001,
@@ -228,7 +228,7 @@
             {
               "id": "r2",
               "name": "jaw 2",
-              "hex": "#565742"
+              "hex": "#51513e"
             },
             {
               "id": "r3",
@@ -236,68 +236,6 @@
               "hex": "#6f6d53"
             }
           ]
-        },
-        "variants": {
-          "joy": {
-            "file": "jaw.joy.webp",
-            "bbox": [
-              458,
-              442,
-              115,
-              45
-            ],
-            "mode": "replace"
-          },
-          "showman": {
-            "file": "jaw.showman.webp",
-            "bbox": [
-              458,
-              442,
-              115,
-              45
-            ],
-            "mode": "replace"
-          },
-          "anger": {
-            "file": "jaw.anger.webp",
-            "bbox": [
-              458,
-              442,
-              115,
-              45
-            ],
-            "mode": "replace"
-          },
-          "gloom": {
-            "file": "jaw.gloom.webp",
-            "bbox": [
-              458,
-              442,
-              115,
-              45
-            ],
-            "mode": "replace"
-          },
-          "smug": {
-            "file": "jaw.smug.webp",
-            "bbox": [
-              458,
-              442,
-              115,
-              45
-            ],
-            "mode": "replace"
-          },
-          "suspicion": {
-            "file": "jaw.suspicion.webp",
-            "bbox": [
-              458,
-              442,
-              115,
-              45
-            ],
-            "mode": "replace"
-          }
         }
       },
       {
@@ -317,7 +255,19 @@
         ],
         "follow": "head",
         "depth": 0.6,
-        "emissive": false
+        "emissive": false,
+        "variants": {
+          "suspicion": {
+            "file": "hair.suspicion.webp",
+            "bbox": [
+              353,
+              198,
+              319,
+              92
+            ],
+            "mode": "over"
+          }
+        }
       },
       {
         "name": "collar_l",
@@ -434,42 +384,35 @@
         ],
         "follow": "head",
         "depth": 0.7,
-        "motion": {
-          "pulse": {
-            "amp": 0.3,
-            "freq": 0.5,
-            "phase": 0.2
-          },
-          "blink": {
-            "freq": 0.12,
-            "phase": 0.805
-          }
-        },
         "regions": {
           "map": "eye_l.regions.png",
           "slots": [
             {
               "id": "r1",
               "name": "eye_l",
-              "hex": "#2a2e20"
+              "hex": "#989d78"
             },
             {
               "id": "r2",
               "name": "eye_l 2",
-              "hex": "#8e946f"
+              "hex": "#2d2f22"
             },
             {
               "id": "r3",
               "name": "eye_l 3",
-              "hex": "#18d36a"
-            },
-            {
-              "id": "r4",
-              "name": "eye_l 4",
               "hex": "#707356"
             }
           ]
         },
+        "motion": {
+          "blink": {
+            "freq": 0.12,
+            "phase": 0.805
+          }
+        },
+        "emissive": false,
+        "socket": "eye_l.socket.png",
+        "closed": "eye_l.closed.png",
         "variants": {
           "joy": {
             "file": "eye_l.joy.webp",
@@ -479,7 +422,8 @@
               78,
               36
             ],
-            "mode": "replace"
+            "mode": "replace",
+            "socket": "eye_l.joy.socket.png"
           },
           "showman": {
             "file": "eye_l.showman.webp",
@@ -489,7 +433,9 @@
               78,
               36
             ],
-            "mode": "replace"
+            "mode": "replace",
+            "socket": "eye_l.showman.socket.png",
+            "narrowed": true
           },
           "anger": {
             "file": "eye_l.anger.webp",
@@ -499,7 +445,9 @@
               78,
               36
             ],
-            "mode": "replace"
+            "mode": "replace",
+            "socket": "eye_l.anger.socket.png",
+            "narrowed": true
           },
           "gloom": {
             "file": "eye_l.gloom.webp",
@@ -509,7 +457,9 @@
               78,
               36
             ],
-            "mode": "replace"
+            "mode": "replace",
+            "socket": "eye_l.gloom.socket.png",
+            "narrowed": true
           },
           "smug": {
             "file": "eye_l.smug.webp",
@@ -519,7 +469,9 @@
               78,
               36
             ],
-            "mode": "replace"
+            "mode": "replace",
+            "socket": "eye_l.smug.socket.png",
+            "narrowed": true
           },
           "suspicion": {
             "file": "eye_l.suspicion.webp",
@@ -529,13 +481,60 @@
               78,
               36
             ],
-            "mode": "replace"
+            "mode": "replace",
+            "socket": "eye_l.suspicion.socket.png",
+            "narrowed": true
           }
         }
       },
       {
-        "name": "eye_r",
+        "name": "iris_l",
         "z": 10,
+        "kind": "iris",
+        "file": "iris_l.png",
+        "bbox": [
+          570,
+          263,
+          32,
+          31
+        ],
+        "anchor": [
+          585.7727272727273,
+          278.5
+        ],
+        "follow": "eye_l",
+        "depth": 0.7,
+        "motion": {
+          "pulse": {
+            "amp": 0.3,
+            "freq": 0.5,
+            "phase": 0.2
+          }
+        },
+        "regions": {
+          "map": "iris_l.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "iris_l",
+              "hex": "#18d169"
+            },
+            {
+              "id": "r2",
+              "name": "iris_l 2",
+              "hex": "#08200f"
+            },
+            {
+              "id": "r3",
+              "name": "iris_l 3",
+              "hex": "#9da27c"
+            }
+          ]
+        }
+      },
+      {
+        "name": "eye_r",
+        "z": 11,
         "kind": "eye",
         "file": "eye_r.png",
         "bbox": [
@@ -550,38 +549,29 @@
         ],
         "follow": "head",
         "depth": 0.7,
-        "motion": {
-          "pulse": {
-            "amp": 0.3,
-            "freq": 0.5,
-            "phase": 0.2
-          }
-        },
         "regions": {
           "map": "eye_r.regions.png",
           "slots": [
             {
               "id": "r1",
               "name": "eye_r",
-              "hex": "#292d20"
+              "hex": "#9ca07c"
             },
             {
               "id": "r2",
               "name": "eye_r 2",
-              "hex": "#8a8f6c"
+              "hex": "#2f3124"
             },
             {
               "id": "r3",
               "name": "eye_r 3",
-              "hex": "#19d46b"
-            },
-            {
-              "id": "r4",
-              "name": "eye_r 4",
-              "hex": "#6c7053"
+              "hex": "#6c6f53"
             }
           ]
         },
+        "emissive": false,
+        "socket": "eye_r.socket.png",
+        "closed": "eye_r.closed.png",
         "variants": {
           "joy": {
             "file": "eye_r.joy.webp",
@@ -591,7 +581,8 @@
               78,
               36
             ],
-            "mode": "replace"
+            "mode": "replace",
+            "socket": "eye_r.joy.socket.png"
           },
           "showman": {
             "file": "eye_r.showman.webp",
@@ -601,7 +592,9 @@
               78,
               36
             ],
-            "mode": "replace"
+            "mode": "replace",
+            "socket": "eye_r.showman.socket.png",
+            "narrowed": true
           },
           "anger": {
             "file": "eye_r.anger.webp",
@@ -611,7 +604,9 @@
               78,
               36
             ],
-            "mode": "replace"
+            "mode": "replace",
+            "socket": "eye_r.anger.socket.png",
+            "narrowed": true
           },
           "gloom": {
             "file": "eye_r.gloom.webp",
@@ -621,7 +616,9 @@
               78,
               36
             ],
-            "mode": "replace"
+            "mode": "replace",
+            "socket": "eye_r.gloom.socket.png",
+            "narrowed": true
           },
           "smug": {
             "file": "eye_r.smug.webp",
@@ -631,7 +628,9 @@
               78,
               36
             ],
-            "mode": "replace"
+            "mode": "replace",
+            "socket": "eye_r.smug.socket.png",
+            "narrowed": true
           },
           "suspicion": {
             "file": "eye_r.suspicion.webp",
@@ -641,13 +640,59 @@
               78,
               36
             ],
-            "mode": "replace"
+            "mode": "replace",
+            "socket": "eye_r.suspicion.socket.png"
           }
         }
       },
       {
+        "name": "iris_r",
+        "z": 12,
+        "kind": "iris",
+        "file": "iris_r.png",
+        "bbox": [
+          426,
+          264,
+          32,
+          31
+        ],
+        "anchor": [
+          442.1363636363636,
+          279.5
+        ],
+        "follow": "eye_r",
+        "depth": 0.7,
+        "motion": {
+          "pulse": {
+            "amp": 0.3,
+            "freq": 0.5,
+            "phase": 0.2
+          }
+        },
+        "regions": {
+          "map": "iris_r.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "iris_r",
+              "hex": "#19d46a"
+            },
+            {
+              "id": "r2",
+              "name": "iris_r 2",
+              "hex": "#0a2011"
+            },
+            {
+              "id": "r3",
+              "name": "iris_r 3",
+              "hex": "#909878"
+            }
+          ]
+        }
+      },
+      {
         "name": "hand_l",
-        "z": 11,
+        "z": 13,
         "kind": "accessory",
         "file": "hand_l.png",
         "bbox": [
@@ -692,7 +737,7 @@
       },
       {
         "name": "hand_r",
-        "z": 12,
+        "z": 14,
         "kind": "accessory",
         "file": "hand_r.png",
         "bbox": [
@@ -737,7 +782,7 @@
       },
       {
         "name": "wisp_l",
-        "z": 13,
+        "z": 15,
         "kind": "accessory",
         "file": "wisp_l.png",
         "bbox": [
@@ -786,7 +831,7 @@
       },
       {
         "name": "wisp_r",
-        "z": 14,
+        "z": 16,
         "kind": "accessory",
         "file": "wisp_r.png",
         "bbox": [
@@ -837,7 +882,8 @@
     "mouth": {
       "cx": 515.5,
       "lineY": 449,
-      "width": 97.75
+      "width": 97.75,
+      "render": "still"
     }
   }
 }

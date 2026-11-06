@@ -88,6 +88,61 @@ Designed and generated art is stylised and labelled as such in the UI; no real p
     prompt plus `INK_BROWS`: keep the brows bold ink and move them): only their head faces (her brows)
     are cut, her eye faces stay the earlier edits'.
   No paid call; the live forge uses the same prompts on its image model.
+- **Cast face pass (spark cast-face-pass, 2026-11-06).** The other nine Kiroween characters get the
+  same eyes and faces. New Codex CLI image edits (codex-cli 0.166.0, built-in image generation, each
+  an edit with an input image), kept in `var/cast-eyes/<slug>/` and `var/cast-expr/<slug>/` (never
+  committed); only what is cut from them reaches `assets/replay/forge/<slug>/`.
+  The human-eyed four (WP1: Lot Ninety, the Understudy, the Tallyman, the Redactor), requests by
+  `scripts/cast/eyes.mjs --request` and `scripts/cast/expressions.mjs --request` (recipes in
+  `scripts/cast/faces/`):
+  - 2 iris-free edits (Lot Ninety, the Understudy): the Understudy's whites become its iris-free
+    eyes; Lot Ninety's edit gives his socket and the shading of his whites, recoloured to his own
+    dim grey-green (the edit painted them cream).
+  - 2 mask edits (the same two: openings green, irises magenta) that measure the iris; no pixel of
+    them is shipped.
+  - 1 closed-eyes edit (the Understudy's porcelain lids, `<eye>.closed.png`); Lot Ninety's and the
+    Tallyman's closed lids are their own plates; the Redactor's is procedural (the unlit lens with a
+    dim one-cell dash).
+  - 2 no-op re-render edits (the Tallyman, the Redactor: `scripts/cast/faces/floor.mjs`) that
+    measure the editor's noise floor; no pixel of them is shipped.
+  - 34 expression edits with the strict prompt plus a material sentence where the character needs
+    one (porcelain puppet eyes; six ring irises and the pince-nez; pixel art on a 7-pixel grid):
+    Lot Ninety 9 (6 first, 2 second, 1 third attempts), the Understudy 15 (6, 6, 3), the Tallyman 4,
+    the Redactor 6. 19 passed the gate (iris drift <= 4 px; outside-band change <= the editor's floor
+    + 1.5) and were cut to the brow+lid band: Lot Ninety 6, the Understudy 3 (showman, smug,
+    suspicion; joy, anger and gloom stayed without a face after three refusals), the Tallyman 4
+    (joy, showman, anger, suspicion), the Redactor 6.
+  - The Tallyman's gloom and smug faces are his 2026-11-03 faces re-cut to the band (no new edit):
+    measured as composites against his old rig at rest (limit: the committed WebP's floor + 1.5).
+    All other 2026-11-03 faces of the four were retired.
+  Procedural (no model): the iris layers are cut from each eye as painted (the Redactor's 2-cell
+  pupil whole, its eye layer grown to the lens interior); the sockets of the Tallyman and the
+  Redactor are measured from the art; Lot Ninety's maw (`RigLips.maw`) is measured by `measureMaw`.
+  The non-human five (WP1b: the Announcer of Dead Air, the Lantern Warden, Reveille, Sir Vacant
+  and the Vicar of the Lure), requests written by `scripts/cast/five/request.mjs`, prompts in
+  `scripts/cast/five/prompts.mjs`:
+  - 54 expression edits of the portraits with a material-specific strict prompt (`facePrompt`: only
+    the area around the eyes changes, in the character's own material - void-skull socket rims,
+    carved pumpkin holes and brow notches, neon rings and clock-hand brows, steel visor slits,
+    lead-framed glass panes; never eyeballs, irises, pupils, lids or skin; the mouth untouched;
+    re-runs add one or two stricter sentences): Announcer 9, Lantern Warden 18, Reveille 6, Sir
+    Vacant 6, Vicar 15. Each was laid back on the portrait (`registerEdit`) and gated (outside-band
+    change <= the character's own no-op re-render + 1.5; iris drift <= 4 px by each character's own
+    track); 24 passed and were cut to the brow+lid band (head, eye and brow faces, WebP q88 with
+    lossless alpha; no mouth layer gets a face). Families without a passing edit keep no face:
+    Reveille showman, Vicar joy, showman, smug, suspicion. Reveille's gloom face is its 2026-11-03
+    face re-cut to the band (no new edit). All 2026-11-03 faces of the five were retired.
+  - 5 no-op re-render edits ("return this exact image unchanged"), one per character, that measure
+    the editor's own noise floor; no pixel of them is shipped.
+  - 3 closed-eye edits: the Lantern Warden's unlit carved holes, Reveille's rings reduced to their
+    lower arcs, the Vicar's lead-framed blue glass lids (`<eye>.closed.png`, a blink's art). The
+    Announcer's and Sir Vacant's closed art is their own plate (the unlit hole, plus a procedural
+    ember, and the unlit slit).
+  - 8 mask edits of the Lantern Warden's face edits (input: the face edit; its recut eye holes
+    painted flat green) that give each face its socket; no pixel of them is shipped.
+  Procedural (no model): the Announcer's and the Lantern's iris layers are cut from their own light
+  and the light's place in the eye is filled from the art around it; Reveille's neon dots and Sir
+  Vacant's white lights are drawn glow orbs (`orbArt`). No paid call.
 - **Avatar packs (avatar-pack, 2026-11-04).** Malakor (pre-existing art, above) is never packed:
   `scripts/build-packs.mjs` skips him when it publishes the cast as `/packs/<slug>.srpack`, and the
   creator offers no Export for him, so he is never exported or published as a pack.

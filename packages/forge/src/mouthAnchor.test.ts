@@ -112,4 +112,27 @@ describe("drawnMouth (round 3: a lipless mouth keeps its art)", () => {
     if (lips === undefined) return;
     for (const [got, want] of [[lips.left, 84], [lips.right, 116], [lips.upper, 112], [lips.lower, 128]] as const) expect(Math.abs(got - want)).toBeLessThanOrEqual(2);
   });
+
+  it("assembleRig (cast-face-pass): a mouth \"art\" jaw whose maw measures gets mouth with maw lips; flat art none", () => {
+    expect("mouth" in assemble(face({ mouth: "art" }))).toBe(false);
+    const grin: Rgba = { ...portrait, data: portrait.data.slice() };
+    // Teeth rows 104..119 and 121..132 split by an ink seam at row 120, inside an ink outline, x 76..124
+    // (the outline's sides are solid ink walls: the corners are where the seam meets them).
+    for (let y = 101; y <= 135; y++) {
+      for (let x = 73; x <= 127; x++) {
+        const inside = y >= 104 && y <= 132 && x >= 76 && x <= 124;
+        const rgb = !inside || y === 120 ? [20, 18, 16] : x % 8 === 0 ? [120, 110, 90] : [240, 232, 210];
+        grin.data.set(rgb, (y * SIZE + x) * 4);
+      }
+    }
+    const parts = face({ mouth: "art" });
+    const lifted = liftedNamed(parts, SIZE, SIZE);
+    const plate = composePlate(grin, fallbackFill(grin, lifted), lifted);
+    const out = assembleRig(parts, cutNamed(grin, parts, { plate }).layers, { id: "t", name: "T", portrait: grin, plate });
+    if (!out.ok) throw new Error(out.errors.map((e) => e.message).join("; "));
+    const lips = out.value.rig.mouth?.lips;
+    expect(lips?.maw).toBe(true);
+    if (lips === undefined) return;
+    for (const [got, want] of [[lips.left, 75], [lips.right, 126], [lips.upper, 104], [lips.lower, 133], [lips.seam ?? 0, 120]] as const) expect(Math.abs(got - want), `${got} vs ${want}`).toBeLessThanOrEqual(2);
+  });
 });

@@ -8,10 +8,14 @@
 // alpha (as the faces of character-control task 5). A family with no passing edit keeps no face (it
 // stays procedural). Jaw faces that are byte-identical across every family are dropped. Every attempt's
 // numbers go to var/cast-expr/<slug>/stability.json. `--measure` prints them and writes nothing else.
+// cast-face-pass: before the edits, the old face as a composite (face-composite.mjs; its limit is the
+// committed WebP's floor + the margin) unless `--fresh` or a pinned attempt; a character with no
+// iris-free edit measures the editor's floor on a no-op edit (var/cast-eyes/<slug>/floor.png) when it has one.
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import sharp from "sharp";
 import { readJsonFile, writeJsonFile } from "../forge-lib.mjs";
+import { oldFaces } from "./face-composite.mjs";
 import { CAST_EYES, decode, jobDir, socketing, stabilityEyes } from "./face-lib.mjs";
 import { resize } from "./measure.mjs";
 
@@ -24,9 +28,11 @@ async function webp(image) {
   return sharp(raw, { raw: { width: image.width, height: image.height, channels: 4 } }).webp(FACE_WEBP).toBuffer();
 }
 
+/** How many of the tries were edits (not the old face as a composite). */
+const edits = (tries) => tries.filter((t) => typeof t.attempt === "number").length;
 const round = (v) => (typeof v === "number" ? Math.round(v * 100) / 100 : v);
 
-export async function importSocketed({ forge, slug, families, work, force, measure }) {
+export async function importSocketed({ forge, slug, families, work, force, measure, fresh }) {
   const dir = jobDir(slug);
   const { portrait, out } = socketing(forge, slug);
   const job = readJsonFile(join(dir, "job.json"));
@@ -34,19 +40,36 @@ export async function importSocketed({ forge, slug, families, work, force, measu
   const layers = new Map();
   for (const layer of rig.layers) if (layer.file.endsWith(".png") && existsSync(join(dir, layer.file))) layers.set(layer.name, decode(forge, join(dir, layer.file)));
   const face = forge.faceShape(rig, layers);
-  const eyes = stabilityEyes(rig, out.eyes);
+  const eyes = stabilityEyes(rig, out.eyes, CAST_EYES[slug].track);
   const byEye = new Map(out.eyes.map((e) => [e.name, e]));
   // The re-render floor: the iris-free edit (same editor, same portrait) changes nothing outside the eyes.
-  const irisFree = join("var", "cast-eyes", slug, "iris-free.png");
+  // cast-face-pass: a character with no iris-free edit may have a no-op edit for the floor (floor.png).
+  const irisFree = ["floor.png", "iris-free.png"].map((f) => join("var", "cast-eyes", slug, f)).find((f) => existsSync(f)) ?? join("var", "cast-eyes", slug, "iris-free.png");
   const reach = CAST_EYES[slug].band ?? {};
+  // cast-face-pass: the old faces as composites (face-composite.mjs), tried first unless --fresh; floor: their WebP.
+  const composite = fresh ? undefined : await oldFaces(forge, slug, rig, face, reach);
+  if (composite !== undefined) console.log(`expressions: ${slug}: old faces as composites, WebP floor ${composite.floor.toFixed(2)}, outside-band limit ${forge.outsideLimit(composite.floor).toFixed(2)}`);
   const floor = existsSync(irisFree) ? forge.faceStability(forge.registerEdit(resize(decode(forge, irisFree), portrait.width, portrait.height), portrait, rig, face, reach).image, portrait, rig, face, {}, reach).outsideBandMean : undefined;
   console.log(`expressions: ${slug}: re-render floor ${floor === undefined ? "none" : floor.toFixed(2)}, outside-band limit ${forge.outsideLimit(floor).toFixed(2)}, iris drift limit ${forge.IRIS_DRIFT_LIMIT} px`);
-  const report = { floor: round(floor), limit: round(forge.outsideLimit(floor)) };
+  const report = { floor: round(floor), limit: round(forge.outsideLimit(floor)), ...(composite === undefined ? {} : { compositeFloor: round(composite.floor), compositeLimit: round(forge.outsideLimit(composite.floor)) }) };
   for (const family of families) {
     const tries = [];
     let chosen;
+    let against = portrait;
+    // CAST_EYES `fresh`: families whose old face is not tried (it passes the numbers but lost the art's look).
+    const was = composite === undefined || CAST_EYES[slug].pin?.[family] !== undefined || CAST_EYES[slug].fresh?.includes(family) ? undefined : await composite.faceOf(family);
+    if (was !== undefined) {
+      const s = forge.faceStability(was, composite.base, rig, face, eyes, reach);
+      const ok = forge.isStable(s, composite.floor);
+      tries.push({ attempt: "composite", irisDriftPx: round(s.irisDriftPx), outsideBandMean: round(s.outsideBandMean), bandMean: round(s.bandMean), eyes: Object.fromEntries(Object.entries(s.eyes).map(([k, v]) => [k, round(v)])), stable: ok });
+      console.log(`expressions: ${slug} ${family} old face (composite): iris drift ${s.irisDriftPx.toFixed(1)} px (${Object.entries(s.eyes).map(([k, v]) => `${k} ${typeof v === "number" ? v.toFixed(1) : v}`).join(", ")}), outside band ${s.outsideBandMean.toFixed(2)}, band ${s.bandMean.toFixed(2)} -> ${ok ? "stable" : "REFUSED"}`);
+      if (ok) {
+        chosen = was;
+        against = composite.base;
+      }
+    }
     // A pinned attempt (face-lib.mjs CAST_EYES `pin`) keeps a face the owner approved when the cut changes.
-    for (let n = CAST_EYES[slug].pin?.[family] ?? 0; n < ATTEMPTS && chosen === undefined; n++) {
+    for (let n = CAST_EYES[slug].pin?.[family] ?? 0; n < (CAST_EYES[slug].attempts ?? ATTEMPTS) && chosen === undefined; n++) {
       const file = join(work, n === 0 ? `${family}.png` : `${family}.a${n}.png`);
       if (!existsSync(file)) continue;
       const fitted = forge.registerEdit(resize(decode(forge, file), portrait.width, portrait.height), portrait, rig, face, reach);
@@ -67,10 +90,10 @@ export async function importSocketed({ forge, slug, families, work, force, measu
       if (Object.keys(layer.variants).length === 0) delete layer.variants;
     }
     if (chosen === undefined) {
-      console.log(`expressions: ${slug} ${family}: no stable edit${tries.length < ATTEMPTS ? ` (re-run: expressions.mjs ${slug} --request --families ${family} --attempt ${tries.length})` : ""}; no face`);
+      console.log(`expressions: ${slug} ${family}: no stable edit${edits(tries) < (CAST_EYES[slug].attempts ?? ATTEMPTS) ? ` (re-run: expressions.mjs ${slug} --request --families ${family} --attempt ${edits(tries)})` : ""}; no face`);
       continue;
     }
-    const cut = forge.cutVariants(rig, layers, portrait, chosen, family, reach);
+    const cut = forge.cutVariants(rig, layers, against, chosen, family, reach);
     // Brows from their own edit (CAST_EYES `brows`: `<family>.<suffix>.png`, gated as any face): the head
     // and hair faces come from it, the eye faces stay the chosen edit's.
     const suffix = CAST_EYES[slug].brows?.[family];
@@ -93,7 +116,14 @@ export async function importSocketed({ forge, slug, families, work, force, measu
       let art = image;
       const next = { ...patch, file: patch.file.replace(/\.png$/, ".webp") };
       if (eye !== undefined) {
-        const v = forge.socketVariant(eye, image);
+        const v = forge.socketVariant(eye, image, CAST_EYES[slug].track);
+        // CAST_EYES `wide`: families whose lids open wider than the base (showman); the socket read from
+        // the face's whites can come up short, so the base's opening is kept inside it and it is never narrowed.
+        if (CAST_EYES[slug].wide?.includes(family)) {
+          const own = forge.imageToBits(v.socket);
+          v.socket = forge.bitsToImage(own.map((b, i) => b | eye.socket[i]), v.socket.width, v.socket.height);
+          v.narrowed = false;
+        }
         art = v.image;
         next.socket = `${name}.${family}.socket.png`;
         writeFileSync(join(dir, next.socket), forge.encodePng(v.socket));

@@ -6,6 +6,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import sharp from "sharp";
 import { readJsonFile } from "../forge-lib.mjs";
+import { CAST_FACES } from "./faces/index.mjs";
 import { resize } from "./measure.mjs";
 
 /**
@@ -22,6 +23,10 @@ export const CAST_EYES = {
   // `brows`: anger, gloom and suspicion drew her brows thin or faint; their brows come from an INK_BROWS edit.
   "auntie-asp": { look: "glow", band: { above: 1.7 }, pin: { joy: 1, showman: 1 }, brows: { anger: "ink", gloom: "ink", suspicion: "ink" }, why: "glowing orange slits with no iris drawn: the iris is the brightest disc of the light" },
   "moth-widow": { look: "dark", why: "dark compound eyes with no white: the iris is the largest disc of the eyeball" },
+  // cast-face-pass (WP1): the human-eyed four of the second round. Per character: `material` (one more
+  // sentence for its expression edits), `eyes(ctx)` (socketEyes recipes, faceEyes.ts EyeRecipe),
+  // `prepare(ctx)` (the rig and eye images before socketing), `edits` (which eye edits to request).
+  ...CAST_FACES,
 };
 
 export const jobDir = (slug) => join("assets", "replay", "forge", slug);
@@ -48,31 +53,36 @@ export function decode(forge, path) {
  */
 export function socketing(forge, slug) {
   const orig = readJsonFile(join(origDir(slug), "job.json"));
-  const rig = orig.value.rig;
+  const cfg = CAST_EYES[slug];
+  let rig = orig.value.rig;
   const portrait = decode(forge, join(jobDir(slug), orig.value.portrait));
-  const images = {};
+  let images = {};
+  // Layer files from the job folder; the eyes (and the faces) as recorded, from the backup.
   for (const layer of rig.layers) images[layer.file] = decode(forge, layer.kind === "eye" ? join(origDir(slug), layer.file) : join(jobDir(slug), layer.file));
-  const { look } = CAST_EYES[slug];
+  // cast-face-pass: a character's recipe may reshape the eyes first (the Redactor's lenses).
+  if (cfg.prepare !== undefined) ({ rig, images } = cfg.prepare({ forge, rig, images, portrait }));
+  const { look } = cfg;
   const looks = Object.fromEntries(rig.layers.filter((l) => l.kind === "eye").map((l) => [l.name, look]));
   const edit = (name) => (existsSync(join(workDir(slug), name)) ? resize(decode(forge, join(workDir(slug), name)), portrait.width, portrait.height) : undefined);
-  const clean = edit("iris-free.png");
-  const marks = edit("eye-marks.png");
-  const closed = edit("closed.png");
+  const clean = cfg.edits?.["iris-free"] === false ? undefined : edit("iris-free.png");
+  const marks = cfg.edits?.["eye-marks"] === false ? undefined : edit("eye-marks.png");
+  const closed = cfg.edits?.closed === false ? undefined : edit("closed.png");
   if (look === "white" && clean === undefined) throw new Error(`${slug}: no ${join(workDir(slug), "iris-free.png")}; run eyes.mjs --request and Codex first`);
-  const out = forge.socketEyes(rig, images, { looks, ...(clean === undefined ? {} : { clean }), ...(marks === undefined ? {} : { marks }), ...(closed === undefined ? {} : { closed }) });
+  const eyes = cfg.eyes?.({ forge, rig, images, portrait, clean, marks, closed });
+  const out = forge.socketEyes(rig, images, { looks, ...(clean === undefined ? {} : { clean }), ...(marks === undefined ? {} : { marks }), ...(closed === undefined ? {} : { closed }), ...(eyes === undefined ? {} : { eyes }) });
   return { orig, portrait, images, out };
 }
 
 const hexRgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
 
-/** The eyes `faceStability` follows: per socketed eye, its bbox, its iris in canvas px and look. */
-export function stabilityEyes(rig, eyes) {
+/** The eyes `faceStability` follows: per socketed eye, its bbox, its iris in canvas px and look (`track`: a character's own, CAST_EYES `track`). */
+export function stabilityEyes(rig, eyes, track) {
   const tint = hexRgb(rig.palette.eye);
   return Object.fromEntries(
     eyes.map((e) => {
       const layer = rig.layers.find((l) => l.name === e.name);
       const [bx, by] = layer.bbox;
-      return [e.name, { bbox: layer.bbox, iris: { cx: bx + e.iris.cx, cy: by + e.iris.cy, r: e.iris.r }, look: e.look, tint }];
+      return [e.name, { bbox: layer.bbox, iris: { cx: bx + e.iris.cx, cy: by + e.iris.cy, r: e.iris.r }, look: track ?? e.look, tint }];
     }),
   );
 }

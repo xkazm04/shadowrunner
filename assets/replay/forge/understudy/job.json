@@ -155,63 +155,43 @@
           ]
         },
         "variants": {
-          "joy": {
-            "file": "head.joy.webp",
-            "bbox": [
-              278,
-              294,
-              468,
-              447
-            ],
-            "mode": "over"
-          },
           "showman": {
             "file": "head.showman.webp",
             "bbox": [
-              278,
+              300,
               294,
-              468,
-              447
+              415,
+              178
             ],
             "mode": "over"
           },
           "anger": {
             "file": "head.anger.webp",
             "bbox": [
-              278,
+              300,
               294,
-              468,
-              447
-            ],
-            "mode": "over"
-          },
-          "gloom": {
-            "file": "head.gloom.webp",
-            "bbox": [
-              278,
-              294,
-              468,
-              447
+              415,
+              178
             ],
             "mode": "over"
           },
           "smug": {
             "file": "head.smug.webp",
             "bbox": [
-              278,
+              300,
               294,
-              468,
-              447
+              415,
+              178
             ],
             "mode": "over"
           },
           "suspicion": {
             "file": "head.suspicion.webp",
             "bbox": [
-              278,
+              300,
               294,
-              468,
-              447
+              415,
+              178
             ],
             "mode": "over"
           }
@@ -258,68 +238,6 @@
               "hex": "#ab9d87"
             }
           ]
-        },
-        "variants": {
-          "joy": {
-            "file": "jaw.joy.webp",
-            "bbox": [
-              425,
-              569,
-              177,
-              160
-            ],
-            "mode": "replace"
-          },
-          "showman": {
-            "file": "jaw.showman.webp",
-            "bbox": [
-              425,
-              569,
-              177,
-              160
-            ],
-            "mode": "replace"
-          },
-          "anger": {
-            "file": "jaw.anger.webp",
-            "bbox": [
-              425,
-              569,
-              177,
-              160
-            ],
-            "mode": "replace"
-          },
-          "gloom": {
-            "file": "jaw.gloom.webp",
-            "bbox": [
-              425,
-              569,
-              177,
-              160
-            ],
-            "mode": "replace"
-          },
-          "smug": {
-            "file": "jaw.smug.webp",
-            "bbox": [
-              425,
-              569,
-              177,
-              160
-            ],
-            "mode": "replace"
-          },
-          "suspicion": {
-            "file": "jaw.suspicion.webp",
-            "bbox": [
-              425,
-              569,
-              177,
-              160
-            ],
-            "mode": "replace"
-          }
         }
       },
       {
@@ -378,31 +296,30 @@
             {
               "id": "r1",
               "name": "eye_r",
-              "hex": "#3c2b25"
+              "hex": "#988b81"
             },
             {
               "id": "r2",
               "name": "eye_r 2",
-              "hex": "#7a4642"
+              "hex": "#3e2f29"
             },
             {
               "id": "r3",
               "name": "eye_r 3",
-              "hex": "#7f7168"
+              "hex": "#c6c2b8"
+            },
+            {
+              "id": "r4",
+              "name": "eye_r 4",
+              "hex": "#957f71"
             }
           ]
         },
+        "emissive": false,
+        "tint": false,
+        "socket": "eye_r.socket.png",
+        "closed": "eye_r.closed.png",
         "variants": {
-          "joy": {
-            "file": "eye_r.joy.webp",
-            "bbox": [
-              359,
-              357,
-              106,
-              65
-            ],
-            "mode": "replace"
-          },
           "showman": {
             "file": "eye_r.showman.webp",
             "bbox": [
@@ -411,7 +328,8 @@
               106,
               65
             ],
-            "mode": "replace"
+            "mode": "replace",
+            "socket": "eye_r.showman.socket.png"
           },
           "anger": {
             "file": "eye_r.anger.webp",
@@ -421,17 +339,8 @@
               106,
               65
             ],
-            "mode": "replace"
-          },
-          "gloom": {
-            "file": "eye_r.gloom.webp",
-            "bbox": [
-              359,
-              357,
-              106,
-              65
-            ],
-            "mode": "replace"
+            "mode": "replace",
+            "socket": "eye_r.anger.socket.png"
           },
           "smug": {
             "file": "eye_r.smug.webp",
@@ -441,7 +350,8 @@
               106,
               65
             ],
-            "mode": "replace"
+            "mode": "replace",
+            "socket": "eye_r.smug.socket.png"
           },
           "suspicion": {
             "file": "eye_r.suspicion.webp",
@@ -451,13 +361,59 @@
               106,
               65
             ],
-            "mode": "replace"
+            "mode": "replace",
+            "socket": "eye_r.suspicion.socket.png",
+            "narrowed": true
           }
         }
       },
       {
-        "name": "eye_l",
+        "name": "iris_r",
         "z": 7,
+        "kind": "iris",
+        "file": "iris_r.png",
+        "bbox": [
+          389,
+          368,
+          48,
+          48
+        ],
+        "anchor": [
+          412.9,
+          392
+        ],
+        "follow": "eye_r",
+        "depth": 0.7,
+        "tint": false,
+        "regions": {
+          "map": "iris_r.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "iris_r",
+              "hex": "#3d2923"
+            },
+            {
+              "id": "r2",
+              "name": "iris_r 2",
+              "hex": "#613b35"
+            },
+            {
+              "id": "r3",
+              "name": "iris_r 3",
+              "hex": "#716059"
+            },
+            {
+              "id": "r4",
+              "name": "iris_r 4",
+              "hex": "#973e41"
+            }
+          ]
+        }
+      },
+      {
+        "name": "eye_l",
+        "z": 8,
         "kind": "eye",
         "file": "eye_l.png",
         "bbox": [
@@ -478,36 +434,30 @@
             {
               "id": "r1",
               "name": "eye_l",
-              "hex": "#3d2b27"
+              "hex": "#968980"
             },
             {
               "id": "r2",
               "name": "eye_l 2",
-              "hex": "#756a60"
+              "hex": "#3c2e27"
             },
             {
               "id": "r3",
               "name": "eye_l 3",
-              "hex": "#653934"
+              "hex": "#c9c5bc"
             },
             {
               "id": "r4",
               "name": "eye_l 4",
-              "hex": "#cb5357"
+              "hex": "#998376"
             }
           ]
         },
+        "emissive": false,
+        "tint": false,
+        "socket": "eye_l.socket.png",
+        "closed": "eye_l.closed.png",
         "variants": {
-          "joy": {
-            "file": "eye_l.joy.webp",
-            "bbox": [
-              562,
-              356,
-              94,
-              68
-            ],
-            "mode": "replace"
-          },
           "showman": {
             "file": "eye_l.showman.webp",
             "bbox": [
@@ -516,7 +466,8 @@
               94,
               68
             ],
-            "mode": "replace"
+            "mode": "replace",
+            "socket": "eye_l.showman.socket.png"
           },
           "anger": {
             "file": "eye_l.anger.webp",
@@ -526,17 +477,8 @@
               94,
               68
             ],
-            "mode": "replace"
-          },
-          "gloom": {
-            "file": "eye_l.gloom.webp",
-            "bbox": [
-              562,
-              356,
-              94,
-              68
-            ],
-            "mode": "replace"
+            "mode": "replace",
+            "socket": "eye_l.anger.socket.png"
           },
           "smug": {
             "file": "eye_l.smug.webp",
@@ -546,7 +488,9 @@
               94,
               68
             ],
-            "mode": "replace"
+            "mode": "replace",
+            "socket": "eye_l.smug.socket.png",
+            "narrowed": true
           },
           "suspicion": {
             "file": "eye_l.suspicion.webp",
@@ -556,8 +500,53 @@
               94,
               68
             ],
-            "mode": "replace"
+            "mode": "replace",
+            "socket": "eye_l.suspicion.socket.png"
           }
+        }
+      },
+      {
+        "name": "iris_l",
+        "z": 9,
+        "kind": "iris",
+        "file": "iris_l.png",
+        "bbox": [
+          589,
+          367,
+          48,
+          48
+        ],
+        "anchor": [
+          612.85,
+          391
+        ],
+        "follow": "eye_l",
+        "depth": 0.7,
+        "tint": false,
+        "regions": {
+          "map": "iris_l.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "iris_l",
+              "hex": "#3a2623"
+            },
+            {
+              "id": "r2",
+              "name": "iris_l 2",
+              "hex": "#5b332f"
+            },
+            {
+              "id": "r3",
+              "name": "iris_l 3",
+              "hex": "#70655e"
+            },
+            {
+              "id": "r4",
+              "name": "iris_l 4",
+              "hex": "#b14144"
+            }
+          ]
         }
       }
     ],

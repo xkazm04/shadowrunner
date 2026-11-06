@@ -66,11 +66,13 @@ export const STRICTER: readonly string[] = [
  * and lids change; the irises keep their place, size and direction; the face keeps its structure;
  * the mouth and jaw stay as painted (no "closed": a visor or a maw drawn open must stay open).
  * `attempt` 1.. adds the first `attempt` STRICTER sentences (a re-run of a refused face).
+ * cast-face-pass: `material`, when given, follows them (a character's own terms: pixel art, carved
+ * pumpkin, steel, stained glass; what its eyes are and must stay).
  */
-export function expressionPrompt(name: string, family: ExpressionFamily, style?: string, attempt = 0): string {
+export function expressionPrompt(name: string, family: ExpressionFamily, style?: string, attempt = 0, material?: string): string {
   const frame = `Edit this portrait of ${name}. Change ONLY the brows and the eyelids, to ${EXPRESSION_FACES[family]}. Keep both irises and pupils exactly where they are, the same size and looking in the same direction as in the portrait: do not move, turn, recolour or redraw the eyeballs. Keep the structure of the face exactly: the same head shape, cheeks, nose, mouth, lips and jaw, neutral and at rest; do not open, smile, snarl, purse or move the mouth, and add no lines or folds around the mouth or on the cheeks. Keep the same character, pose, framing, art style, colours, lighting, background and every other pixel. Do not add or remove objects.`;
   const stricter = STRICTER.slice(0, Math.max(0, attempt)).join(" ");
-  const strict = stricter === "" ? frame : `${frame} ${stricter}`;
+  const strict = [frame, stricter, material?.trim() ?? ""].filter((t) => t !== "").join(" ");
   return style === undefined || style.trim() === "" ? strict : `${strict} The art style is ${style.trim()}.`;
 }
 
@@ -172,6 +174,11 @@ export function driftOf(shape: Mask, portrait: Rgba, edited: Rgba): number {
     for (let c = 0; c < 3; c++) sum += Math.abs((edited.data[i * 4 + c] ?? 0) - (portrait.data[i * 4 + c] ?? 0));
   });
   return n === 0 ? 0 : sum / (n * 3);
+}
+
+/** cast-face-pass: `band` cuts to the brow+lid band without iris layers too (a one-piece eye: the Vicar). */
+export interface VariantCutOptions {
+  band?: boolean;
 }
 
 export interface VariantCut {
@@ -299,18 +306,18 @@ function changeOf(base: Uint8ClampedArray, next: Uint8ClampedArray, width: numbe
  * band-cut head: in its changed box) gets a patch. face-control: on a socketed rig (iris layers) the edit
  * is taken only inside the brow+lid band (`browLidBand`), so the jaw, mouth and cheeks keep their base. Eye, jaw and brow patches are `replace` and cover the whole layer (a replace patch hides its
  * base, so a crop would erase the unchanged rest); the head's is `over`, cropped to the changed area
- * plus PATCH_MARGIN. Every pixel the mask leaves at 0 equals the base. `drift` (`driftOf`) flags the
+ * plus PATCH_MARGIN. cast-face-pass: a band cut (`opts.band`, or a socketed rig) patches no jaw layer. Every pixel the mask leaves at 0 equals the base. `drift` (`driftOf`) flags the
  * family over EXPRESSION_DRIFT_LIMIT; the patches are returned either way. Throws when `edited` is not
  * the portrait's size (callers area-resize first).
  */
-export function cutVariants(rig: Rig, layers: ReadonlyMap<string, Rgba>, portrait: Rgba, edited: Rgba, family: ExpressionFamily, reach: BandReach = {}): VariantCut {
+export function cutVariants(rig: Rig, layers: ReadonlyMap<string, Rgba>, portrait: Rgba, edited: Rgba, family: ExpressionFamily, reach: BandReach = {}, opts: VariantCutOptions = {}): VariantCut {
   if (edited.width !== portrait.width || edited.height !== portrait.height || portrait.width !== rig.width || portrait.height !== rig.height) {
     throw new RangeError(`cutVariants: edited ${edited.width}x${edited.height}, portrait ${portrait.width}x${portrait.height}, rig ${rig.width}x${rig.height}`);
   }
   const shape = faceShape(rig, layers);
   const soft = featherMask(shape, MASK_FEATHER).data;
   // face-control: an expression moves the brows and lids only; a socketed rig (iris layers) takes the edit in the brow+lid band.
-  const band = rig.layers.some((l) => l.kind === "iris") ? browLidBand(rig, reach).data : undefined;
+  const band = opts.band === true || rig.layers.some((l) => l.kind === "iris") ? browLidBand(rig, reach).data : undefined;
   if (band !== undefined) soft.forEach((v, i) => (soft[i] = Math.round((v * (band[i] ?? 0)) / 255)));
   const drift = driftOf(shape, portrait, edited);
   const patches: VariantCut["patches"] = {};
@@ -319,6 +326,8 @@ export function cutVariants(rig: Rig, layers: ReadonlyMap<string, Rgba>, portrai
     // face-control: with the band, a crown on the head (hair over the brows: Sister Vesper) is cut like the head.
     const headLike = layer.kind === "head" || (band !== undefined && layer.kind === "crown" && layer.follow === "head");
     if (base === undefined || !(headLike || isFaceLayer(layer))) continue;
+    // cast-face-pass: a band-cut face never patches the jaw; the mouth stays the art's (a sliding jaw, a maw, lips the warp moves).
+    if (band !== undefined && layer.kind === "jaw") continue;
     const cover = headLike ? coverInFront(rig, layers, layer.z) : undefined;
     const [bx, by] = layer.bbox;
     let next: Uint8ClampedArray = base.data.slice();

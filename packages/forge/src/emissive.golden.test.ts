@@ -95,13 +95,18 @@ describe.each(CAST)("cast rig $slug (golden)", ({ job, dark, lit }) => {
   const layer = (name: string): Layer => {
     const found = byName.get(name);
     if (found === undefined) throw new Error(`no layer ${name}`);
-    return found;
+    // cast-face-pass: a socketed eye's light (or its unlit iris) is its iris layer's.
+    const iris = found.kind === "eye" && found.socket !== undefined ? rig.layers.find((l) => l.kind === "iris" && l.follow === name) : undefined;
+    return iris ?? found;
   };
 
   it("marks what does not glow emissive: false and leaves what glows at its kind's default", () => {
     for (const name of dark) expect(layer(name).emissive, name).toBe(false);
     for (const name of lit) expect([layer(name).emissive, isEmissive(layer(name))], name).toEqual([undefined, true]);
-    for (const l of rig.layers) if (l.emissive !== undefined) expect(l.emissive, l.name).toBe(!EMISSIVE_KINDS.has(l.kind as LayerKind));
+    // cast-face-pass: a socketed eye whose own art keeps a light beside its iris (Reveille's rings, Sir
+    // Vacant's slits, WP1b's recipes) says so explicitly (`emissive: true`, socketEyes' default being false).
+    const keepsLight = (l: Layer) => l.kind === "eye" && l.socket !== undefined && l.emissive === true;
+    for (const l of rig.layers) if (l.emissive !== undefined && !keepsLight(l)) expect(l.emissive, l.name).toBe(!EMISSIVE_KINDS.has(l.kind as LayerKind));
   });
 
   it("a flare raises the lights, never a dark layer (its own pulse aside)", () => {
@@ -109,7 +114,7 @@ describe.each(CAST)("cast rig $slug (golden)", ({ job, dark, lit }) => {
     const drive = { t: 5, headYaw: 0, headPitch: 0, jawOpen: 0, blink: 0, still: true };
     const rest = new Map(poseLayers(rig, look, drive).map((p) => [p.name, p.tint]));
     const flare = new Map(poseLayers(rig, look, { ...drive, gesture: { name: "flare", startedAt: 5 - GESTURE_DURATION_S / 2 } }).map((p) => [p.name, p.tint]));
-    for (const name of dark) expect(flare.get(name), name).toBe(rest.get(name));
-    for (const name of lit) expect(flare.get(name), name).toBeCloseTo(2 * (rest.get(name) ?? NaN), 9);
+    for (const name of dark) expect(flare.get(layer(name).name), name).toBe(rest.get(layer(name).name));
+    for (const name of lit) expect(flare.get(layer(name).name), name).toBeCloseTo(2 * (rest.get(layer(name).name) ?? NaN), 9);
   });
 });

@@ -51,6 +51,9 @@ export function drawnMouth(parts: readonly { role?: string; cavity?: string; mou
   );
 }
 
+/** cast-face-pass: true when some jaw part is flagged `mouth: "art"` (ART_MOUTH: a grin of teeth, a carved grin), the jaws the maw warp may move. */
+export const artMouth = (parts: readonly { role?: string; mouth?: string }[]): boolean => parts.some((p) => p.role === "jaw" && p.mouth === ART_MOUTH);
+
 /** The jaw's opaque pixels as a mask: an Rgba by alpha >= MOUTH_OPAQUE, a mask by non-zero. */
 function opaqueOf(image: Rgba | Mask): Mask {
   const { width, height } = image;

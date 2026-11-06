@@ -59,12 +59,16 @@ function request() {
   mkdirSync(WORK, { recursive: true });
   const portraitName = `portrait.${job.portrait.split(".").pop()}`;
   copyFileSync(join(JOB_DIR, job.portrait), join(WORK, portraitName));
-  const { look } = CAST_EYES[slug];
-  const edits = {
-    "iris-free": forge.irisFreePrompt(job.name, style),
-    closed: forge.closedEyesPrompt(job.name),
-    ...(look === "glow" ? {} : { "eye-marks": look === "dark" ? MARKS_DARK : MARKS_WHITE }),
-  };
+  const { look, edits: own = {} } = CAST_EYES[slug];
+  // cast-face-pass: a character's `edits` skips an edit (false) or gives its own prompt (a string).
+  const edits = Object.fromEntries(
+    Object.entries({
+      "iris-free": forge.irisFreePrompt(job.name, style),
+      closed: forge.closedEyesPrompt(job.name),
+      ...(look === "glow" ? {} : { "eye-marks": look === "dark" ? MARKS_DARK : MARKS_WHITE }),
+      ...own,
+    }).filter(([, prompt]) => typeof prompt === "string"),
+  );
   for (const [out, prompt] of Object.entries(edits)) {
     const text = `Use your image generation tool to EDIT the attached input image ./${portraitName} (pass it to the tool as the input/reference image). Prompt, verbatim: "${prompt}"\nThen save the result as ${out}.png in this folder and verify the copy. Report whether the tool actually received the input image (yes/no) and the output pixel size.\n`;
     writeFileSync(join(WORK, `${out}.request.txt`), text);

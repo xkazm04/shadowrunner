@@ -37,16 +37,33 @@ export const TRACK_GAIN = 0.15;
 
 const isBrow = (name: string): boolean => /^brow(_|$)/.test(name);
 
-/** A character's own band reach (shares of the widest eye's width), over LID_BAND_ABOVE / BELOW / SIDE. */
+/**
+ * cast-face-pass: the unit the band's shares multiply never falls under this share of the rig's width,
+ * so a tiny painted eye (the Redactor's 14 px pixel pupils) still gets a band that holds its brows.
+ * Under every approved face's eye (the smallest, Auntie Asp's, is 43 px on a 1024 canvas).
+ */
+export const BAND_MIN_UNIT = 0.04;
+
+/**
+ * A character's own band reach, over LID_BAND_ABOVE / BELOW / SIDE: shares of `unit` px (default the
+ * widest eye's width, at least BAND_MIN_UNIT of the rig's width), measured per character (a lens, a
+ * column of six eyes, ink brows far above thin slits).
+ */
 export interface BandReach {
   above?: number;
   below?: number;
   side?: number;
+  /** The px the shares multiply (a lens's width, say), over the widest eye's width. */
+  unit?: number;
 }
+
+/** The px a band's shares multiply (see BandReach). */
+export const bandUnit = (rig: Pick<Rig, "width" | "layers">, reach: BandReach = {}): number =>
+  reach.unit ?? Math.max(BAND_MIN_UNIT * rig.width, ...rig.layers.filter((l) => l.kind === "eye").map((e) => e.bbox[2]));
 
 /**
  * The brow+lid band, canvas-size: the box around every eye layer grown by LID_BAND_ABOVE / LID_BAND_BELOW /
- * LID_BAND_SIDE (or `reach`) of the widest eye's width (one box over both eyes, so the crease between
+ * LID_BAND_SIDE (or `reach`) of `bandUnit` (one box over all the eyes, so the crease between
  * the brows is in it) and every brow layer's box, at full weight; the feather (LID_BAND_FEATHER px)
  * lies outside the box, so a stroke inside it (a line-art brow) is never half drawn. Empty without eye layers.
  */
@@ -59,7 +76,7 @@ export function browLidBand(rig: Pick<Rig, "width" | "height" | "layers">, reach
     }
   };
   if (eyes.length > 0) {
-    const ew = Math.max(...eyes.map((e) => e.bbox[2]));
+    const ew = bandUnit(rig, reach);
     const f = LID_BAND_FEATHER;
     const x0 = Math.min(...eyes.map((e) => e.bbox[0])) - (reach.side ?? LID_BAND_SIDE) * ew - f;
     const x1 = Math.max(...eyes.map((e) => e.bbox[0] + e.bbox[2])) + (reach.side ?? LID_BAND_SIDE) * ew + f;

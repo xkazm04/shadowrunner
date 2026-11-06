@@ -125,60 +125,60 @@
           "joy": {
             "file": "head.joy.webp",
             "bbox": [
-              320,
-              315,
-              386,
-              327
-            ],
-            "mode": "over"
-          },
-          "anger": {
-            "file": "head.anger.webp",
-            "bbox": [
-              320,
-              315,
-              386,
-              327
-            ],
-            "mode": "over"
-          },
-          "gloom": {
-            "file": "head.gloom.webp",
-            "bbox": [
-              320,
-              315,
-              386,
-              327
-            ],
-            "mode": "over"
-          },
-          "smug": {
-            "file": "head.smug.webp",
-            "bbox": [
-              320,
-              315,
-              386,
-              327
-            ],
-            "mode": "over"
-          },
-          "suspicion": {
-            "file": "head.suspicion.webp",
-            "bbox": [
-              320,
-              315,
-              386,
-              327
+              361,
+              285,
+              302,
+              173
             ],
             "mode": "over"
           },
           "showman": {
             "file": "head.showman.webp",
             "bbox": [
-              320,
-              315,
-              386,
-              327
+              361,
+              285,
+              302,
+              173
+            ],
+            "mode": "over"
+          },
+          "anger": {
+            "file": "head.anger.webp",
+            "bbox": [
+              361,
+              285,
+              302,
+              173
+            ],
+            "mode": "over"
+          },
+          "gloom": {
+            "file": "head.gloom.webp",
+            "bbox": [
+              361,
+              285,
+              302,
+              173
+            ],
+            "mode": "over"
+          },
+          "smug": {
+            "file": "head.smug.webp",
+            "bbox": [
+              361,
+              285,
+              302,
+              173
+            ],
+            "mode": "over"
+          },
+          "suspicion": {
+            "file": "head.suspicion.webp",
+            "bbox": [
+              361,
+              285,
+              302,
+              173
             ],
             "mode": "over"
           }
@@ -221,68 +221,6 @@
               "hex": "#070706"
             }
           ]
-        },
-        "variants": {
-          "joy": {
-            "file": "jaw.joy.webp",
-            "bbox": [
-              463,
-              547,
-              105,
-              83
-            ],
-            "mode": "replace"
-          },
-          "anger": {
-            "file": "jaw.anger.webp",
-            "bbox": [
-              463,
-              547,
-              105,
-              83
-            ],
-            "mode": "replace"
-          },
-          "gloom": {
-            "file": "jaw.gloom.webp",
-            "bbox": [
-              463,
-              547,
-              105,
-              83
-            ],
-            "mode": "replace"
-          },
-          "smug": {
-            "file": "jaw.smug.webp",
-            "bbox": [
-              463,
-              547,
-              105,
-              83
-            ],
-            "mode": "replace"
-          },
-          "suspicion": {
-            "file": "jaw.suspicion.webp",
-            "bbox": [
-              463,
-              547,
-              105,
-              83
-            ],
-            "mode": "replace"
-          },
-          "showman": {
-            "file": "jaw.showman.webp",
-            "bbox": [
-              463,
-              547,
-              105,
-              83
-            ],
-            "mode": "replace"
-          }
         }
       },
       {
@@ -321,10 +259,10 @@
         "kind": "eye",
         "file": "eye_l.png",
         "bbox": [
-          575,
-          378,
-          14,
-          12
+          547,
+          348,
+          70,
+          71
         ],
         "anchor": [
           582.1513157894736,
@@ -352,79 +290,130 @@
             }
           ]
         },
+        "emissive": false,
+        "socket": "eye_l.socket.png",
+        "closed": "eye_l.closed.png",
         "variants": {
           "joy": {
             "file": "eye_l.joy.webp",
             "bbox": [
-              575,
-              378,
-              14,
-              12
+              547,
+              348,
+              70,
+              71
             ],
-            "mode": "replace"
-          },
-          "anger": {
-            "file": "eye_l.anger.webp",
-            "bbox": [
-              575,
-              378,
-              14,
-              12
-            ],
-            "mode": "replace"
-          },
-          "gloom": {
-            "file": "eye_l.gloom.webp",
-            "bbox": [
-              575,
-              378,
-              14,
-              12
-            ],
-            "mode": "replace"
-          },
-          "smug": {
-            "file": "eye_l.smug.webp",
-            "bbox": [
-              575,
-              378,
-              14,
-              12
-            ],
-            "mode": "replace"
-          },
-          "suspicion": {
-            "file": "eye_l.suspicion.webp",
-            "bbox": [
-              575,
-              378,
-              14,
-              12
-            ],
-            "mode": "replace"
+            "mode": "replace",
+            "socket": "eye_l.joy.socket.png"
           },
           "showman": {
             "file": "eye_l.showman.webp",
             "bbox": [
-              575,
-              378,
-              14,
-              12
+              547,
+              348,
+              70,
+              71
             ],
-            "mode": "replace"
+            "mode": "replace",
+            "socket": "eye_l.showman.socket.png"
+          },
+          "anger": {
+            "file": "eye_l.anger.webp",
+            "bbox": [
+              547,
+              348,
+              70,
+              71
+            ],
+            "mode": "replace",
+            "socket": "eye_l.anger.socket.png",
+            "narrowed": true
+          },
+          "gloom": {
+            "file": "eye_l.gloom.webp",
+            "bbox": [
+              547,
+              348,
+              70,
+              71
+            ],
+            "mode": "replace",
+            "socket": "eye_l.gloom.socket.png",
+            "narrowed": true
+          },
+          "smug": {
+            "file": "eye_l.smug.webp",
+            "bbox": [
+              547,
+              348,
+              70,
+              71
+            ],
+            "mode": "replace",
+            "socket": "eye_l.smug.socket.png",
+            "narrowed": true
+          },
+          "suspicion": {
+            "file": "eye_l.suspicion.webp",
+            "bbox": [
+              547,
+              348,
+              70,
+              71
+            ],
+            "mode": "replace",
+            "socket": "eye_l.suspicion.socket.png",
+            "narrowed": true
           }
         }
       },
       {
-        "name": "eye_r",
+        "name": "iris_l",
         "z": 7,
-        "kind": "eye",
-        "file": "eye_r.png",
+        "kind": "iris",
+        "file": "iris_l.png",
         "bbox": [
-          435,
+          575,
           378,
           14,
           12
+        ],
+        "anchor": [
+          582,
+          384
+        ],
+        "follow": "eye_l",
+        "depth": 0.7,
+        "regions": {
+          "map": "iris_l.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "iris_l",
+              "hex": "#f1ec06"
+            },
+            {
+              "id": "r2",
+              "name": "iris_l 2",
+              "hex": "#090701"
+            },
+            {
+              "id": "r3",
+              "name": "iris_l 3",
+              "hex": "#b9b903"
+            }
+          ]
+        }
+      },
+      {
+        "name": "eye_r",
+        "z": 8,
+        "kind": "eye",
+        "file": "eye_r.png",
+        "bbox": [
+          407,
+          348,
+          74,
+          71
         ],
         "anchor": [
           442.02317880794703,
@@ -452,72 +441,123 @@
             }
           ]
         },
+        "emissive": false,
+        "socket": "eye_r.socket.png",
+        "closed": "eye_r.closed.png",
         "variants": {
           "joy": {
             "file": "eye_r.joy.webp",
             "bbox": [
-              435,
-              378,
-              14,
-              12
+              407,
+              348,
+              74,
+              71
             ],
-            "mode": "replace"
-          },
-          "anger": {
-            "file": "eye_r.anger.webp",
-            "bbox": [
-              435,
-              378,
-              14,
-              12
-            ],
-            "mode": "replace"
-          },
-          "gloom": {
-            "file": "eye_r.gloom.webp",
-            "bbox": [
-              435,
-              378,
-              14,
-              12
-            ],
-            "mode": "replace"
-          },
-          "smug": {
-            "file": "eye_r.smug.webp",
-            "bbox": [
-              435,
-              378,
-              14,
-              12
-            ],
-            "mode": "replace"
-          },
-          "suspicion": {
-            "file": "eye_r.suspicion.webp",
-            "bbox": [
-              435,
-              378,
-              14,
-              12
-            ],
-            "mode": "replace"
+            "mode": "replace",
+            "socket": "eye_r.joy.socket.png"
           },
           "showman": {
             "file": "eye_r.showman.webp",
             "bbox": [
-              435,
-              378,
-              14,
-              12
+              407,
+              348,
+              74,
+              71
             ],
-            "mode": "replace"
+            "mode": "replace",
+            "socket": "eye_r.showman.socket.png"
+          },
+          "anger": {
+            "file": "eye_r.anger.webp",
+            "bbox": [
+              407,
+              348,
+              74,
+              71
+            ],
+            "mode": "replace",
+            "socket": "eye_r.anger.socket.png",
+            "narrowed": true
+          },
+          "gloom": {
+            "file": "eye_r.gloom.webp",
+            "bbox": [
+              407,
+              348,
+              74,
+              71
+            ],
+            "mode": "replace",
+            "socket": "eye_r.gloom.socket.png",
+            "narrowed": true
+          },
+          "smug": {
+            "file": "eye_r.smug.webp",
+            "bbox": [
+              407,
+              348,
+              74,
+              71
+            ],
+            "mode": "replace",
+            "socket": "eye_r.smug.socket.png",
+            "narrowed": true
+          },
+          "suspicion": {
+            "file": "eye_r.suspicion.webp",
+            "bbox": [
+              407,
+              348,
+              74,
+              71
+            ],
+            "mode": "replace",
+            "socket": "eye_r.suspicion.socket.png",
+            "narrowed": true
           }
         }
       },
       {
+        "name": "iris_r",
+        "z": 9,
+        "kind": "iris",
+        "file": "iris_r.png",
+        "bbox": [
+          435,
+          378,
+          14,
+          12
+        ],
+        "anchor": [
+          442,
+          384
+        ],
+        "follow": "eye_r",
+        "depth": 0.7,
+        "regions": {
+          "map": "iris_r.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "iris_r",
+              "hex": "#020203"
+            },
+            {
+              "id": "r2",
+              "name": "iris_r 2",
+              "hex": "#f3f008"
+            },
+            {
+              "id": "r3",
+              "name": "iris_r 3",
+              "hex": "#eded04"
+            }
+          ]
+        }
+      },
+      {
         "name": "censor_bar",
-        "z": 8,
+        "z": 10,
         "kind": "accessory",
         "file": "censor_bar.png",
         "bbox": [
