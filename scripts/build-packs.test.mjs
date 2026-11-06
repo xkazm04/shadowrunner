@@ -38,6 +38,9 @@ describe("buildPacks", () => {
       const bytes = readFileSync(join(tmp, "a", entry.file));
       expect(bytes.equals(readFileSync(join(tmp, "b", entry.file))), entry.file).toBe(true);
       expect(bytes.length).toBe(entry.bytes);
+      // The web's packUrlOf(castSlugOf(entry)) is `/packs/<file minus extension>.srpack`: it must be this file, whatever the id.
+      expect(`${entry.file.replace(/.srpack$/, "")}.srpack`).toBe(entry.file);
+      expect(readdirSync(join(tmp, "a"))).toContain(entry.file);
       const read = await pack.readPack(new Uint8Array(bytes));
       expect(read.ok, entry.file).toBe(true);
       if (!read.ok) continue;

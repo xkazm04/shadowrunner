@@ -129,7 +129,7 @@ export function createCanvas2dRenderer(canvas: CanvasHost, ctx: CanvasRenderingC
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = "high";
       const mouth = clock?.mouth === undefined ? undefined : mouthArt.place(currentRig, layers, poses, view, browY);
-      const mouthColours = mouth === undefined ? undefined : mouthArt.colours(currentRig, currentAssets);
+      const mouthColours = mouth === undefined ? undefined : mouthArt.colours(currentRig, currentAssets, look);
       for (let i = 0; i < poses.length; i += 1) {
         const pose = poses[i];
         const entry = pose === undefined ? undefined : entries.get(pose.name);

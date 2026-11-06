@@ -62,6 +62,8 @@ describe("drawnMouth (round 3: a lipless mouth keeps its art)", () => {
     expect(drawnMouth([{ role: "jaw" }])).toBe(false); // the Tallyman: a glow but a lip
     expect(drawnMouth([{ role: "accessory", cavity: "gap" }])).toBe(false);
     expect(drawnMouth([{ name: "jaw" } as { role?: string }])).toBe(false);
+    expect(drawnMouth([{ role: "jaw", mouth: "art" }])).toBe(true); // a skull's grin: the flag, the cavity stays painted
+    expect(drawnMouth([{ role: "jaw", mouth: "lip" }, { role: "head", mouth: "art" }])).toBe(false);
   });
 
   // A 200 px face: a head with a lower-lip jaw under it, cut and assembled as the live brief path does.

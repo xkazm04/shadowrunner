@@ -23,6 +23,11 @@ export interface Part {
   box_2d: [ymin: number, xmin: number, ymax: number, xmax: number];
   /** Outline points as [y, x], 0..1000. */
   poly: [y: number, x: number][];
+  /**
+   * Jaw only (llm-avatar-lab): "art" when the drawing's mouth is a design, not lips (a skull's grin
+   * of teeth, a carved grin): `drawnMouth` then keeps the art's mouth and the rig gets no `mouth`.
+   */
+  mouth?: "art";
 }
 
 /** A polygon in canvas pixels, [x, y] points (the output of `toCanvas`). */
@@ -67,6 +72,11 @@ export interface NamedPart {
    * column (`MouthOptions.gap`): for a mouth drawn open when the edit will not paint a throat.
    */
   cavity?: "paint" | "fill" | "gap";
+  /**
+   * Jaw only (llm-avatar-lab): "art" when the drawing's mouth is a design, not lips (a skull's grin
+   * of teeth, a carved grin): `drawnMouth` then keeps the art's mouth and the rig gets no `mouth`.
+   */
+  mouth?: "art";
   /**
    * Lifted parts only (cast-forge task 3): how the plate behind it is filled. "extend" paints it
    * from the surface around it (`blurExtend`), not from the image edit: for a small part on a flat

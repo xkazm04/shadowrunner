@@ -18,7 +18,12 @@ export interface MouthGeometry {
   lineY: number;
   width: number;
   maxOpen: number;
+  /** Pixel art: canvas px of one art pixel (`RigMouth.cell`); the mouth paints on that grid. */
+  cell?: number;
 }
+
+/** The crop about the mouth, in mouth widths from (cx, lineY): the skin cover and the widest mouth fit. */
+export const MOUTH_BOX = { left: 0.75, up: 0.36, width: 1.5, height: 1.06 } as const;
 
 export const OPEN_OF_WIDTH = 0.32;
 
@@ -26,7 +31,8 @@ export const OPEN_OF_WIDTH = 0.32;
 export function mouthGeometry(mouth: RigMouth | undefined): MouthGeometry | undefined {
   if (mouth === undefined || !Number.isFinite(mouth.cx) || !Number.isFinite(mouth.lineY) || !Number.isFinite(mouth.width) || !(mouth.width > 0)) return undefined;
   const width = Math.max(1, mouth.width);
-  return { cx: mouth.cx, lineY: mouth.lineY, width, maxOpen: width * OPEN_OF_WIDTH };
+  const cell = typeof mouth.cell === "number" && Number.isFinite(mouth.cell) && mouth.cell > 0 ? mouth.cell : undefined;
+  return { cx: mouth.cx, lineY: mouth.lineY, width, maxOpen: width * OPEN_OF_WIDTH, ...(cell === undefined ? {} : { cell }) };
 }
 
 /** The geometry of a mouth the player paints: only a usable `rig.mouth` marked `render: "drawn"`. */

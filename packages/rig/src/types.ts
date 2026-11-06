@@ -170,6 +170,12 @@ export interface RigMouth {
    * until an art-preserving mouth exists); the position is still recorded for it.
    */
   render?: "drawn";
+  /**
+   * Pixel art: the canvas px of one art pixel. The player's drawn mouth then paints on that grid
+   * (a crop at 1/cell resolution, scaled up unsmoothed) so it reads as part of the art. Omitted:
+   * smooth paint.
+   */
+  cell?: number;
 }
 
 export type Emotion =

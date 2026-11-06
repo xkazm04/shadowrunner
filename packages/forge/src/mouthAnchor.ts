@@ -29,13 +29,23 @@ type Box = readonly [x: number, y: number, w: number, h: number];
 export const DRAWN_MOUTH_CAVITIES: readonly string[] = ["gap", "fill"];
 
 /**
- * True when the art owns the mouth: some jaw part's `cavity` is in DRAWN_MOUTH_CAVITIES. Then the
- * rig carries no `mouth`, so no renderer draws lips over the art and `cutVariants` resets nothing.
- * `glow` alone does not count (the Tallyman's lip over a lit cavity) nor does `cut.cell`. v1 parts
- * have no cavity: their jaw is the human jaw PARTS_PROMPT asks for.
+ * The explicit flag for a jaw whose art owns the mouth but whose cavity must stay painted the way
+ * it is (`mouth: "art"`): a skull's grin of teeth, a carved lantern grin. `cavity` "gap"/"fill"
+ * would also say "drawn", but they change what the cut paints into the head (measured on the
+ * Announcer and the Lantern Warden: 5-10k head pixels differ), so those two jaws carry this instead.
  */
-export function drawnMouth(parts: readonly { role?: string; cavity?: string }[]): boolean {
-  return parts.some((p) => p.role === "jaw" && p.cavity !== undefined && DRAWN_MOUTH_CAVITIES.includes(p.cavity));
+export const ART_MOUTH = "art";
+
+/**
+ * True when the art owns the mouth: some jaw part's `cavity` is in DRAWN_MOUTH_CAVITIES, or it is
+ * flagged `mouth: "art"` (ART_MOUTH). Then the rig carries no `mouth`, so no renderer draws lips
+ * over the art and `cutVariants` resets nothing. `glow` alone does not count (the Tallyman's lip
+ * over a lit cavity) nor does `cut.cell`. A jaw with neither is the human jaw PARTS_PROMPT asks for.
+ */
+export function drawnMouth(parts: readonly { role?: string; cavity?: string; mouth?: string }[]): boolean {
+  return parts.some(
+    (p) => p.role === "jaw" && ((p.cavity !== undefined && DRAWN_MOUTH_CAVITIES.includes(p.cavity)) || p.mouth === ART_MOUTH),
+  );
 }
 
 /** The jaw's opaque pixels as a mask: an Rgba by alpha >= MOUTH_OPAQUE, a mask by non-zero. */

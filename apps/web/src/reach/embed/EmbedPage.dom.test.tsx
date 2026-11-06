@@ -11,8 +11,8 @@ import { embedSnippet } from "./snippet";
 vi.mock("@sr/avatar/core", () => ({ createAvatarPlayer: () => ({}) }));
 
 const INDEX = [
-  { id: "moth-widow", name: "Moth Widow", file: "moth-widow.srpack", bytes: 10 },
-  { id: "the-tallyman", name: "The Tallyman", file: "the-tallyman.srpack", bytes: 10 },
+  { id: "replay-moth-widow", name: "Moth Widow", file: "moth-widow.srpack", bytes: 10 },
+  { id: "replay-the-tallyman", name: "The Tallyman", file: "the-tallyman.srpack", bytes: 10 },
 ];
 
 let view: Mounted | undefined;

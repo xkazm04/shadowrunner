@@ -9,7 +9,7 @@
 import { EMOTION_TABLE, type Emotion } from "@sr/rig";
 import { useEffect, useRef, useState, type ReactElement } from "react";
 import type { Plane } from "../../app/plane";
-import { loadCastIndex, packUrlOf, type CastEntry } from "../playable";
+import { castSlugOf, loadCastIndex, packUrlOf, type CastEntry } from "../playable";
 import { embedSnippet } from "./snippet";
 import { defineSrAvatar, type SrAvatarElement } from "./srAvatar";
 import styles from "./EmbedPage.module.css";
@@ -31,9 +31,9 @@ export default function EmbedPage({ plane }: { plane: Plane }): ReactElement {
     const abort = new AbortController();
     void loadCastIndex({ signal: abort.signal }).then((entries) => {
       if (abort.signal.aborted) return;
-      const usable = entries.filter((entry) => SLUG.test(entry.id));
+      const usable = entries.filter((entry) => SLUG.test(castSlugOf(entry)));
       setCast(usable);
-      setSlug(usable[0]?.id);
+      setSlug(usable[0] === undefined ? undefined : castSlugOf(usable[0]));
     });
     return () => abort.abort();
   }, []);
@@ -101,7 +101,7 @@ export default function EmbedPage({ plane }: { plane: Plane }): ReactElement {
                 }}
               >
                 {cast.map((entry) => (
-                  <option key={entry.id} value={entry.id}>
+                  <option key={entry.id} value={castSlugOf(entry)}>
                     {entry.name}
                   </option>
                 ))}

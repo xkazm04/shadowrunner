@@ -40,8 +40,8 @@ Amended by llm-avatar-lab ("the rig owns the mouth"); the format stays version 1
 `{ cx, lineY, width }` in canvas px: the rest mouth's centre x, its lip line y and its width corner
 to corner. When present, the expression faces keep the neutral portrait mouth. With
 `render: "drawn"` the renderer also draws the talking mouth there and carries the emotion in it
-(smile, snarl, smirk, downturn): this suits flat, low-poly, line-art and pixel styles (the Tallyman,
-the Redactor). Without it the art keeps its neutral lips and the jaw opens as before; the position
+(smile, snarl, smirk, downturn): this suits flat, low-poly shading (the Tallyman). Painterly and
+dithered pixel faces showed a flat cover box and cartoon lips, so they are not marked. Without it the art keeps its neutral lips and the jaw opens as before; the position
 is recorded for an art-preserving mouth (painterly styles, follow-up). The forge does not set
 `render`: a style is marked drawn by a person after seeing it.
 
@@ -51,6 +51,10 @@ is recorded for an art-preserving mouth (painterly styles, follow-up). The forge
 | `lineY` | number | yes | Finite, in `[0, height]`. |
 | `width` | number | yes | Finite and > 0. |
 | `render` | `"drawn"` | no | The player paints its procedural mouth. Any other value is `bad_shape` at `$.mouth.render`. |
+| `cell` | number | no | Pixel art: the canvas px of one art pixel (the forge's `cut.cell`; the Redactor's is 7.1). The drawn mouth then paints on that grid: a crop at 1/`cell` resolution scaled up with smoothing off, in both renderers. Finite and > 0, else `bad_shape` at `$.mouth.cell`. Omitted: smooth paint. Amended by llm-avatar-lab; the format stays version 1. |
+
+The drawn mouth's skin cover takes its colour from the rest art as the look recolours it (a region
+or light colour the look sets), so a recoloured face shows no unrecoloured patch.
 
 A `mouth` that is not an object is `bad_shape` at `$.mouth`; a field off its range is `bad_shape` at
 `$.mouth.<field>`. Absent, the rig renders as before: the art's own mouth and jaw, nothing drawn

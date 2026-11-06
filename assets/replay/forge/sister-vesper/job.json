@@ -307,6 +307,7 @@
         "z": 5,
         "kind": "crown",
         "file": "hair.png",
+        "emissive": false,
         "bbox": [
           24,
           70,

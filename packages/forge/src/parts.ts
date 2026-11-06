@@ -133,7 +133,7 @@ function part(value: unknown, path: string, errors: PartsError[]): Part | undefi
   const points = poly(value.poly, `${path}.poly`, errors);
   if (errors.length > before || !isPartName(value.name) || box2d === undefined || points === undefined) return undefined;
   // A fresh object with the contract fields only; extra keys from the model are dropped.
-  return { name: value.name, box_2d: box2d, poly: points };
+  return { name: value.name, box_2d: box2d, poly: points, ...(value.name === "jaw" && value.mouth === "art" ? { mouth: "art" as const } : {}) };
 }
 
 /**
@@ -238,6 +238,7 @@ function namedPart(value: unknown, path: string, errors: PartsError[]): NamedPar
     ...(typeof glow === "string" ? { glow } : {}),
     ...(fill === "edit" || fill === "extend" ? { fill } : {}),
     ...(cavity === "paint" || cavity === "fill" || cavity === "gap" ? { cavity } : {}),
+    ...(role === "jaw" && value.mouth === "art" ? { mouth: "art" as const } : {}),
     ...(matte === "plate" ? { matte } : {}),
     ...(typeof emissive === "boolean" ? { emissive } : {}),
     ...(pivotOk && Array.isArray(pivot) && isCoord(pivot[0]) && isCoord(pivot[1]) ? { pivot: [pivot[0], pivot[1]] } : {}),

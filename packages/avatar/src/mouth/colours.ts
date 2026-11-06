@@ -3,9 +3,12 @@
 // teeth and tongue derived from them. The skin is read once per rig from the rest art (every layer
 // the rig draws, in z order, at its bbox), never from a drawn frame: a WebGL frame cannot be read
 // back cheaply, and the rest art holds the neutral lips the forge keeps (Rig.mouth). A look's
-// recolour is not applied to the sample.
-import type { Rig, RigMouth } from "@sr/rig";
+// recolour is applied to the sample when the caller gives its look (`sampleArt`'s `look`): each
+// layer the look recolours is read through the same rule (render/recolour.ts) before it is
+// sampled, so the skin cover matches a recoloured face and not the raw art.
+import type { Layer, Look, Rig, RigMouth } from "@sr/rig";
 import { BACKDROP_LAYER } from "../player/cutout.js";
+import { needsMap, recolourPixels, rigRecolours, type IndexMap, type LayerRecolour } from "../render/recolour.js";
 import type { RigAssets } from "../render/types.js";
 
 export type MouthRgb = readonly [r: number, g: number, b: number];
@@ -93,10 +96,41 @@ function meanAt(data: Uint8ClampedArray, w: number, h: number, x0: number, y0: n
 }
 
 /**
+ * `layer`'s image as the look recolours it (the same rule both renderers draw), drawn onto `s` at
+ * (ox, oy); false when its pixels cannot be read (the caller then draws the raw art).
+ */
+function drawRecoloured(s: MouthSurface, surface: MouthSurfaceFactory, image: CanvasImageSource, map: CanvasImageSource | undefined, layer: Layer, plan: LayerRecolour, ox: number, oy: number): boolean {
+  const [, , bw, bh] = layer.bbox;
+  const w = Math.max(1, Math.ceil(bw));
+  const h = Math.max(1, Math.ceil(bh));
+  const tmp = surface(w, h);
+  if (tmp === null) return false;
+  try {
+    tmp.g.drawImage(image, 0, 0, w, h);
+    const pixels = tmp.g.getImageData(0, 0, w, h);
+    let index: IndexMap | undefined;
+    if (map !== undefined && needsMap(plan)) {
+      const m = surface(w, h);
+      if (m !== null) {
+        m.g.drawImage(map, 0, 0, w, h);
+        index = { data: m.g.getImageData(0, 0, w, h).data, width: w, height: h, rect: [0, 0, 1, 1] };
+      }
+    }
+    recolourPixels(pixels.data, w, h, plan, index);
+    tmp.g.putImageData(pixels, 0, 0);
+    s.g.drawImage(tmp.canvas, ox, oy, bw, bh);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Skin above the upper lip and on the chin, read from the rig's rest art. Undefined when there is
  * no 2D surface or either point is off the art (transparent): then the mouth is not drawn.
  */
-export function sampleArt(rig: Rig, assets: RigAssets, mouth: RigMouth, surface: MouthSurfaceFactory = defaultMouthSurface): MouthColours | undefined {
+export function sampleArt(rig: Rig, assets: RigAssets, mouth: RigMouth, surface: MouthSurfaceFactory = defaultMouthSurface, look?: Pick<Look, "palette" | "regions">): MouthColours | undefined {
+  const plans = look === undefined ? undefined : rigRecolours(rig, look);
   const { cx, lineY, width } = mouth;
   const r = Math.max(1, Math.round(width * 0.05));
   const x0 = Math.floor(cx - r);
@@ -113,6 +147,9 @@ export function sampleArt(rig: Rig, assets: RigAssets, mouth: RigMouth, surface:
       if (layer.visible === false || layer.name === BACKDROP_LAYER || image === undefined) continue;
       const [bx, by, bw, bh] = layer.bbox;
       if (bx > x0 + w || by > y0 + h || bx + bw < x0 || by + bh < y0) continue;
+      const plan = plans?.get(layer.name);
+      const mapFile = layer.regions?.map;
+      if (plan !== undefined && drawRecoloured(s, surface, image, mapFile === undefined ? undefined : assets[mapFile], layer, plan, bx - x0, by - y0)) continue;
       s.g.drawImage(image, bx - x0, by - y0, bw, bh);
     }
     const data = s.g.getImageData(0, 0, w, h).data;

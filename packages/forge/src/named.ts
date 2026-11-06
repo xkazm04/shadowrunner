@@ -38,7 +38,7 @@ export function cutOrderNamed<P extends NamedPart>(parts: readonly P[]): P[] {
 
 /** A v1 part as a named part: its name is its role; follow, key and motion are the defaults. */
 export function asNamed(parts: readonly (Part | NamedPart)[]): NamedPart[] {
-  return parts.map((p) => ("role" in p ? p : { name: p.name, role: p.name, box_2d: p.box_2d, poly: p.poly }));
+  return parts.map((p) => ("role" in p ? p : { name: p.name, role: p.name, box_2d: p.box_2d, poly: p.poly, ...(p.mouth === undefined ? {} : { mouth: p.mouth }) }));
 }
 
 export const isLifted = (part: NamedPart): boolean => !PLATE_ROLES.includes(part.role);

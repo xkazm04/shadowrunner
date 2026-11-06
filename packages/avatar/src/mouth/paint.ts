@@ -124,7 +124,7 @@ function outline(g: Mouth2D, f: MouthFrame2D, up: number, down: number, round: n
   g.closePath();
 }
 
-const setAffine = (g: Mouth2D, m: Affine): void => g.setTransform(m[0], m[1], m[2], m[3], m[4], m[5]);
+export const setAffine = (g: Mouth2D, m: Affine): void => g.setTransform(m[0], m[1], m[2], m[3], m[4], m[5]);
 
 const lift = (c: MouthRgb, k: number): MouthRgb => [Math.min(255, c[0] * k), Math.min(255, c[1] * k), Math.min(255, c[2] * k)];
 
@@ -157,7 +157,7 @@ export function paintCover(g: Mouth2D, anchor: MouthAnchor, colours: MouthColour
 }
 
 /** A short crease beside each corner the emotion moved (a cheek pulled up, or a sulk's fold). */
-function creases(g: Mouth2D, f: MouthFrame2D, width: number, colour: MouthRgb, alpha: number): void {
+function creases(g: Mouth2D, f: MouthFrame2D, width: number, colour: MouthRgb, alpha: number, cell?: number): void {
   const corners: readonly (readonly [x: number, y: number, side: number])[] = [
     [f.xl, f.yl, -1],
     [f.xr, f.yr, 1],
@@ -171,7 +171,7 @@ function creases(g: Mouth2D, f: MouthFrame2D, width: number, colour: MouthRgb, a
     g.beginPath();
     g.moveTo(ox, y + dir * width * 0.06);
     g.quadraticCurveTo(ox + side * width * 0.035, y, ox, y - dir * width * 0.03);
-    g.lineWidth = width * 0.016;
+    g.lineWidth = Math.max(width * 0.016, cell ?? 0);
     g.lineCap = "round";
     g.strokeStyle = css(colour, alpha * 0.55 * k);
     g.stroke();
@@ -184,7 +184,7 @@ export function paintMouth(g: Mouth2D, input: PaintInput, patches: PatchCache): 
   paintCover(g, anchor, colours, alpha, patches);
   const a = Math.min(1, Math.max(0, alpha)) * Math.min(1, Math.max(0, input.lips ?? 1)) * anchor.opacity;
   if (!(a > 0.001)) return;
-  const { cx, lineY, width, maxOpen } = anchor.geometry;
+  const { cx, lineY, width, maxOpen, cell } = anchor.geometry;
   g.save();
   setAffine(g, anchor.affine);
   g.globalAlpha = a;
@@ -228,7 +228,7 @@ export function paintMouth(g: Mouth2D, input: PaintInput, patches: PatchCache): 
       if (bared > 0.2) {
         // Seams between the bared teeth, so a snarl reads as teeth and not a pale lip.
         g.strokeStyle = css(colours.inner, 0.45 * bared);
-        g.lineWidth = width * 0.008;
+        g.lineWidth = Math.max(width * 0.008, cell ?? 0);
         g.beginPath();
         for (const t of [-0.5, -0.17, 0.17, 0.5]) {
           const x = f.cx + t * (f.xr - f.xl) * 0.6;
@@ -251,11 +251,12 @@ export function paintMouth(g: Mouth2D, input: PaintInput, patches: PatchCache): 
     g.beginPath();
     g.moveTo(f.xl, f.yl);
     g.quadraticCurveTo(f.cx, 2 * (f.y + sag) - (f.yl + f.yr) / 2, f.xr, f.yr);
-    g.lineWidth = width * (0.018 + 0.014 * Math.max(p.press, p.tight));
+    // On pixel art a line is at least one art pixel thick, so it paints a cell and not a faint smear.
+    g.lineWidth = Math.max(width * (0.018 + 0.014 * Math.max(p.press, p.tight)), cell ?? 0);
     g.lineCap = "round";
     g.strokeStyle = css(colours.inner);
     g.stroke();
   }
-  creases(g, f, width, colours.inner, a);
+  creases(g, f, width, colours.inner, a, cell);
   g.restore();
 }

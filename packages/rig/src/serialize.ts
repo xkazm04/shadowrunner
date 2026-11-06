@@ -75,7 +75,7 @@ function wireRig(rig: Rig): Rig {
     ...(rig.fictional === undefined ? {} : { fictional: rig.fictional }),
     palette: wirePalette(rig.palette),
     layers: rig.layers.map(wireLayer),
-    ...(rig.mouth === undefined ? {} : { mouth: { cx: rig.mouth.cx, lineY: rig.mouth.lineY, width: rig.mouth.width, ...(rig.mouth.render === undefined ? {} : { render: rig.mouth.render }) } }),
+    ...(rig.mouth === undefined ? {} : { mouth: { cx: rig.mouth.cx, lineY: rig.mouth.lineY, width: rig.mouth.width, ...(rig.mouth.render === undefined ? {} : { render: rig.mouth.render }), ...(rig.mouth.cell === undefined ? {} : { cell: rig.mouth.cell }) } }),
   };
 }
 

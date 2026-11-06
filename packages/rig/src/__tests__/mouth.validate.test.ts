@@ -64,6 +64,17 @@ describe("Rig.mouth", () => {
     expect(paths(rig({ mouth: { cx: 300, lineY: 400, width: 110, render: "art" } }))).toContain("bad_shape $.mouth.render");
   });
 
+  it("keeps a pixel cell (finite > 0), rejects any other, and round-trips it", () => {
+    const out = validateRig(rig({ mouth: { cx: 300, lineY: 400, width: 110, render: "drawn", cell: 7.1 } }));
+    expect(out.ok && out.value.mouth).toEqual({ cx: 300, lineY: 400, width: 110, render: "drawn", cell: 7.1 });
+    if (out.ok) expect(parseRigJson(serializeRig(out.value)).ok && JSON.parse(serializeRig(out.value)).mouth.cell).toBe(7.1);
+    for (const cell of [0, -2, Number.NaN, Number.POSITIVE_INFINITY, "7", null]) {
+      expect(paths(rig({ mouth: { cx: 300, lineY: 400, width: 110, cell } }))).toEqual(["bad_shape $.mouth.cell"]);
+    }
+    const plain = validateRig(rig({ mouth: { cx: 300, lineY: 400, width: 110 } }));
+    expect(plain.ok && Object.keys(plain.value.mouth ?? {})).not.toContain("cell");
+  });
+
   it("round-trips through serializeRig and parseRigJson, after the layers", () => {
     const out = validateRig(rig({ mouth: { cx: 300, lineY: 400, width: 110 } }));
     expect(out.ok).toBe(true);

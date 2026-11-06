@@ -6,7 +6,7 @@ import { defaultLook } from "@sr/rig";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { memoryLibrary, type CharacterRecord, type LibraryStore } from "../creator/library/libraryStore";
 import { testRig } from "../creator/testFixtures";
-import { DAMAGED_RECORD, loadCastIndex, loadPlayable, NOT_IN_LIBRARY, packUrlOf, UNDECODABLE } from "./playable";
+import { castSlugOf, DAMAGED_RECORD, loadCastIndex, loadPlayable, NOT_IN_LIBRARY, packUrlOf, UNDECODABLE } from "./playable";
 
 const lib = vi.hoisted(() => ({ store: undefined as LibraryStore | undefined }));
 
@@ -123,6 +123,14 @@ describe("loadPlayable", () => {
     const broken = record("broken");
     await lib.store.put({ ...broken, assets: {} });
     expect(await loadPlayable({ character: "broken" })).toEqual({ ok: false, error: DAMAGED_RECORD });
+  });
+});
+
+describe("castSlugOf", () => {
+  it("names the pack by its file, not its id, so the player url reaches the built file", () => {
+    const entry = { id: "replay-the-tallyman", name: "The Tallyman", file: "the-tallyman.srpack", bytes: 1 };
+    expect(castSlugOf(entry)).toBe("the-tallyman");
+    expect(packUrlOf(castSlugOf(entry))).toBe(`/packs/${entry.file}`);
   });
 });
 

@@ -12,7 +12,7 @@
 // at `$.layers[i].variants.<family>...` / `$.layers[i].regions...`); a patch bbox leaving the canvas
 // is `bbox_out_of_bounds` at its own path and a slot hex that is not "#rrggbb" is `bad_color`.
 // Rig.mouth (llm-avatar-lab) is optional; present, it is `bad_shape` at `$.mouth` unless an object
-// and at `$.mouth.<field>` unless cx in [0, width], lineY in [0, height] and width finite > 0.
+// and at `$.mouth.<field>` unless cx in [0, width], lineY in [0, height] and width finite > 0; `render` "drawn" and `cell` (finite > 0) optional.
 import { JAW_DROP_MAX, JAW_DROP_MIN } from "./pose.js";
 import type { Result } from "./result.js";
 import { RIG_VERSION, type Layer, type LayerKind, type Palette, type Rig, type RigMouth } from "./types.js";
@@ -155,8 +155,10 @@ class Reader {
     const width = this.required(value, "width", path, (v: unknown): v is number => isFinite(v) && v > 0, "a finite number > 0");
     const render = value.render;
     if (render !== undefined && render !== "drawn") return this.fail(`${path}.render`, `when present, ${got(render, '"drawn"')}`);
+    const cell = value.cell;
+    if (cell !== undefined && !(isFinite(cell) && cell > 0)) return this.fail(`${path}.cell`, `when present, ${got(cell, "a finite number > 0")}`);
     if (cx === undefined || lineY === undefined || width === undefined) return undefined;
-    return { cx, lineY, width, ...(render === "drawn" ? { render } : {}) };
+    return { cx, lineY, width, ...(render === "drawn" ? { render } : {}), ...(typeof cell === "number" ? { cell } : {}) };
   }
 
   layer(value: unknown, path: string, canvas: MotionCanvas): Layer | undefined {

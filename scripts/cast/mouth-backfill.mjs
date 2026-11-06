@@ -29,8 +29,8 @@ const FORGE = join(ROOT, "assets", "replay", "forge");
 const SKIP = new Set(["malakor"]);
 /**
  * Round 3's per-character calls: `art` (why the art keeps its mouth) or a reset `region`; `render:
- * "drawn"` where the player's procedural mouth suits the style (flat, low-poly, pixel). The painterly
- * rest keep their reset neutral lips and the jaw until an art-preserving mouth exists.
+ * "drawn"` where the player's procedural mouth suits the style (flat, low-poly: the Tallyman). The
+ * rest (painterly, dithered pixel art) keep their reset neutral lips and the jaw until an art-preserving mouth exists.
  */
 const CAST = {
   "announcer-of-dead-air": { art: "a skull's open grin of teeth: the expressions redraw the teeth above any lip region" },
@@ -43,7 +43,7 @@ const CAST = {
   "moth-widow": { region: { above: 1.0, below: 0.8 } },
   "saint-cardia": { region: { above: 1.25, below: 0.9 } },
   "sister-vesper": { region: { rx: 1.25, below: 0.8 } },
-  "the-redactor": { region: { rx: 1.3, above: 1.4, below: 1.0 }, render: "drawn" },
+  "the-redactor": { region: { rx: 1.3, above: 1.4, below: 1.0 }, cell: 7.1 },
   "the-tallyman": { render: "drawn" },
   understudy: { region: { above: 1.1, below: 1.0 } },
 };
@@ -144,7 +144,7 @@ async function backfill(slug) {
     }
   }
   if (!dry) {
-    job.value.rig.mouth = call.render === undefined ? mouth : { ...mouth, render: call.render };
+    job.value.rig.mouth = { ...mouth, ...(call.render === undefined ? {} : { render: call.render }), ...(call.cell === undefined ? {} : { cell: call.cell }) };
     const again = rigCore.validateRig(job.value.rig);
     if (!again.ok) throw new Error(`mouth-backfill: ${slug}: the rig with its mouth does not validate: ${again.errors[0]?.message}`);
     writeJsonFile(jobPath, job.value, job);

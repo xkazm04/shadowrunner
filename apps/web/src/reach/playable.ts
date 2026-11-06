@@ -50,6 +50,11 @@ export function packUrlOf(pack: string): string {
   return CAST_SLUG.test(pack) ? `/packs/${pack}.srpack` : pack;
 }
 
+/** The pack slug of an index entry: its `file` without the extension (ids may differ, e.g. `replay-the-tallyman`). */
+export function castSlugOf(entry: CastEntry): string {
+  return entry.file.replace(/.srpack$/, "");
+}
+
 const fail = (error: string): PlayableResult => ({ ok: false, error });
 
 async function fromPack(source: string | Blob, signal: AbortSignal | undefined): Promise<PlayableResult> {

@@ -87,7 +87,7 @@ export function createGlRenderer(gl: WebGL2RenderingContext, canvas: CanvasHost,
       beginScene(gl, targets);
       const mouthPose = clock?.mouth;
       const mouth = mouthPose === undefined ? undefined : mouthArt.place(currentRig, layers, poses, view, light.browY);
-      const colours = mouth === undefined ? undefined : mouthArt.colours(currentRig, currentAssets);
+      const colours = mouth === undefined ? undefined : mouthArt.colours(currentRig, currentAssets, look);
       const after =
         mouth === undefined || colours === undefined || mouthPose === undefined
           ? undefined

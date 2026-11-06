@@ -3,18 +3,19 @@
 // offscreen 2D canvas cropped around the mouth, at the head's device scale, uploaded as a texture
 // and drawn as one quad with the base program in the head's transform, right after the later of the
 // head and the jaw (gl/layers.ts `after`). It repaints and re-uploads only when something it shows
-// changed (params, alpha, jaw gap, opacity, scale, colours). It is not emissive: in the glow source
+// changed (params, alpha, jaw gap, opacity, scale, colours). Pixel art (`rig.mouth.cell`) paints the
+// crop at one texel per art pixel on the art's grid and samples it NEAREST, so the mouth is as blocky
+// as the art. It is not emissive: in the glow source
 // it occludes like the face it sits on, and never blooms.
-import type { MouthAnchor } from "../mouth/anchor.js";
+import { MOUTH_BOX, type MouthAnchor } from "../mouth/anchor.js";
 import { defaultMouthSurface, type MouthColours, type MouthSurface, type MouthSurfaceFactory } from "../mouth/colours.js";
-import type { MouthArt } from "../mouth/draw.js";
+import { cellCrop, type MouthArt } from "../mouth/draw.js";
 import { PARAM_KEYS } from "../mouth/shapes.js";
 import type { MouthPose } from "../mouth/state.js";
 import type { Affine, Rgb } from "../render/frame.js";
 import type { Programs } from "./programs.js";
 
-/** The crop about the mouth, in mouth widths from (cx, lineY): the skin cover and the widest mouth fit. */
-export const MOUTH_BOX = { left: 0.75, up: 0.36, width: 1.5, height: 1.06 } as const;
+export { MOUTH_BOX };
 /** The offscreen canvas never grows past this many px on a side. */
 export const MOUTH_TEXTURE_MAX = 1024;
 
@@ -32,6 +33,7 @@ export function createGlMouth(gl: WebGL2RenderingContext, programs: Programs, su
   let texture: WebGLTexture | undefined;
   let canvas: MouthSurface | undefined;
   let texSize: [number, number] = [0, 0];
+  let texNearest = false;
   let lastColours: MouthColours | undefined;
   let uploads = 0;
   const key = new Float64Array(KEY_SIZE).fill(NaN);
@@ -57,17 +59,33 @@ export function createGlMouth(gl: WebGL2RenderingContext, programs: Programs, su
 
   return {
     draw(art, anchor, pose, colours, gain) {
-      const { cx, lineY, width } = anchor.geometry;
-      rect[0] = cx - width * MOUTH_BOX.left;
-      rect[1] = lineY - width * MOUTH_BOX.up;
-      rect[2] = width * MOUTH_BOX.width;
-      rect[3] = width * MOUTH_BOX.height;
-      // Device px per rig px in the head's frame, capped so the crop stays small.
+      const { cx, lineY, width, cell } = anchor.geometry;
       const m = anchor.affine;
-      const scale = Math.min(Math.hypot(m[0], m[1]), MOUTH_TEXTURE_MAX / rect[2]);
-      if (!(scale > 0)) return 0;
-      const w = Math.max(1, Math.ceil(rect[2] * scale));
-      const h = Math.max(1, Math.ceil(rect[3] * scale));
+      const nearest = cell !== undefined;
+      let scale: number;
+      let w: number;
+      let h: number;
+      if (cell !== undefined) {
+        // One texel per art pixel on the canvas grid, whatever the device scale.
+        const area = cellCrop(cx, lineY, width, cell);
+        rect[0] = area.x;
+        rect[1] = area.y;
+        rect[2] = area.w;
+        rect[3] = area.h;
+        scale = 1 / cell;
+        w = area.cols;
+        h = area.rows;
+      } else {
+        rect[0] = cx - width * MOUTH_BOX.left;
+        rect[1] = lineY - width * MOUTH_BOX.up;
+        rect[2] = width * MOUTH_BOX.width;
+        rect[3] = width * MOUTH_BOX.height;
+        // Device px per rig px in the head's frame, capped so the crop stays small.
+        scale = Math.min(Math.hypot(m[0], m[1]), MOUTH_TEXTURE_MAX / rect[2]);
+        if (!(scale > 0)) return 0;
+        w = Math.max(1, Math.ceil(rect[2] * scale));
+        h = Math.max(1, Math.ceil(rect[3] * scale));
+      }
       if (changed(anchor, pose, colours, scale)) {
         if (canvas === undefined || canvas.canvas.width !== w || canvas.canvas.height !== h) canvas = surface(w, h) ?? undefined;
         if (canvas === undefined) return 0;
@@ -81,21 +99,23 @@ export function createGlMouth(gl: WebGL2RenderingContext, programs: Programs, su
         anchorAt.geometry = anchor.geometry;
         anchorAt.gap = anchor.gap;
         anchorAt.opacity = anchor.opacity;
-        art.paint(g, anchorAt, pose, colours);
+        art.paintFlat(g, anchorAt, pose, colours);
         texture ??= gl.createTexture();
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, texture);
         gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
         gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
-        if (texSize[0] === w && texSize[1] === h) {
+        if (texSize[0] === w && texSize[1] === h && texNearest === nearest) {
           gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, canvas.canvas);
         } else {
           gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas.canvas);
-          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+          const filter = nearest ? gl.NEAREST : gl.LINEAR;
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
           gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
           gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
           texSize = [w, h];
+          texNearest = nearest;
         }
         uploads += 1;
         key.set(next);
