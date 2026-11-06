@@ -169,13 +169,26 @@ export interface RigMouth {
    * styles it suits). Omitted: the art keeps its own neutral lips and the jaw (painterly styles,
    * until an art-preserving mouth exists); the position is still recorded for it.
    */
-  render?: "drawn";
+  render?: "drawn" | "still";
   /**
    * Pixel art: the canvas px of one art pixel. The player's drawn mouth then paints on that grid
    * (a crop at 1/cell resolution, scaled up unsmoothed) so it reads as part of the art. Omitted:
    * smooth paint.
    */
   cell?: number;
+  /**
+   * The painted lips' extent, measured by the forge: the art-preserving (warp) mouth bends the art
+   * inside it. Omitted: the warp falls back to `width` about (cx, lineY).
+   */
+  lips?: RigLips;
+}
+
+/** The painted lips at rest, canvas px: corner x's, the upper lip's top y, the lower lip's bottom y. */
+export interface RigLips {
+  left: number;
+  right: number;
+  upper: number;
+  lower: number;
 }
 
 export type Emotion =

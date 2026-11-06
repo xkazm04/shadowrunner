@@ -10,6 +10,7 @@ import type { Affine } from "../render/frame.js";
 import type { RigAssets } from "../render/types.js";
 import type { ShapeWeights } from "../mouth/shapes.js";
 import type { MouthPose, MouthShapesInput } from "../mouth/state.js";
+import type { MouthMode } from "../mouth/anchor.js";
 import { runPlayer } from "./run.js";
 
 export interface AvatarPlayerOptions {
@@ -62,6 +63,8 @@ export interface AvatarPlayer {
   setMouthShapes?(shapes: ShapeWeights | undefined, options?: Omit<MouthShapesInput, "shapes">): void;
   /** The mouth the last frame drew (read-only), undefined when none (no `rig.mouth`, neutral rest). */
   mouth?(): MouthPose | undefined;
+  /** How this rig's mouth moves (`mouthMode(rig.mouth)`); shapes reach "drawn" and "warp" only. */
+  mouthMode?(): MouthMode | undefined;
   resize(width: number, height: number, dpr: number): void;
   /** requestAnimationFrame loop on the browser clock. */
   start(): void;

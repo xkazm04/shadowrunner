@@ -40,6 +40,20 @@ export function drawnMouthGeometry(mouth: RigMouth | undefined): MouthGeometry |
   return mouth?.render === "drawn" ? mouthGeometry(mouth) : undefined;
 }
 
+/**
+ * How the player moves a rig's mouth: "drawn" paints the procedural mouth, "warp" bends the art's
+ * own lips (the default for a measured mouth), "still" keeps the art's lips and slides the jaw.
+ * Undefined: no usable `rig.mouth`; the jaw slides as it always did.
+ */
+export type MouthMode = "drawn" | "warp" | "still";
+
+export function mouthMode(mouth: RigMouth | undefined): MouthMode | undefined {
+  if (mouthGeometry(mouth) === undefined) return undefined;
+  if (mouth?.render === "drawn") return "drawn";
+  if (mouth?.render === "still") return "still";
+  return "warp";
+}
+
 export interface MouthAnchor {
   geometry: MouthGeometry;
   /** Rig px -> device px in the head's frame: set it on the context and draw in rig px. */

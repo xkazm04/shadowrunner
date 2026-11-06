@@ -18,6 +18,7 @@ import { attachAudio, type AttachAudioOptions, type AudioLevelTap } from "../aud
 import type { CreateRendererOptions } from "../gl/renderer.js";
 import { fitView, layerAffine, lookLight } from "../render/frame.js";
 import type { MouthPose, MouthShapesInput } from "../mouth/state.js";
+import { mouthMode, type MouthMode } from "../mouth/anchor.js";
 import type { CanvasHost, Renderer, RigAssets } from "../render/types.js";
 import { isReducedMotion } from "../react/loop.js";
 import { createFrameBody } from "./frame.js";
@@ -124,6 +125,9 @@ export function runPlayer(canvas: HTMLCanvasElement, options: AvatarPlayerOption
     },
     mouth(): MouthPose | undefined {
       return disposed ? undefined : mouthShown;
+    },
+    mouthMode(): MouthMode | undefined {
+      return mouthMode(options.rig.mouth);
     },
     resize(width: number, height: number, dpr: number): void {
       if (!disposed) renderer.resize(width, height, dpr);
