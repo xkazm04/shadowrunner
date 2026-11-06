@@ -2,7 +2,7 @@
 // (the jaw's parent), so it rides every head motion; the jaw's own drop, measured in that frame, is
 // how far the lower lip has moved. A rig without `mouth` has no anchor: its art keeps its own mouth
 // and the player never guesses a place for one.
-import type { Layer, LayerPose, RigMouth } from "@sr/rig";
+import type { Layer, LayerPose, RigLips, RigMouth } from "@sr/rig";
 import { applyAffine, layerAffine, type Affine, type View } from "../render/frame.js";
 
 export function invertAffine(m: Affine): Affine | undefined {
@@ -42,16 +42,26 @@ export function drawnMouthGeometry(mouth: RigMouth | undefined): MouthGeometry |
 
 /**
  * How the player moves a rig's mouth: "drawn" paints the procedural mouth, "warp" bends the art's
- * own lips (the default for a measured mouth), "still" keeps the art's lips and slides the jaw.
- * Undefined: no usable `rig.mouth`; the jaw slides as it always did.
+ * own lips (the default for a measured mouth whose lips the forge found, `mouthLips`), "still"
+ * keeps the art's lips and slides the jaw (also a mouth without usable lips: a box guessed from the
+ * width would bend teeth and shadows). Undefined: no usable `rig.mouth`; the jaw slides as always.
  */
 export type MouthMode = "drawn" | "warp" | "still";
 
 export function mouthMode(mouth: RigMouth | undefined): MouthMode | undefined {
   if (mouthGeometry(mouth) === undefined) return undefined;
   if (mouth?.render === "drawn") return "drawn";
-  if (mouth?.render === "still") return "still";
+  if (mouth?.render === "still" || mouthLips(mouth) === undefined) return "still";
   return "warp";
+}
+
+/** The measured lips when usable (finite, left < cx < right, upper < lower, seam inside), else undefined. */
+export function mouthLips(mouth: RigMouth | undefined): RigLips | undefined {
+  const l = mouth?.lips;
+  if (mouth === undefined || l === undefined || ![l.left, l.right, l.upper, l.lower].every(Number.isFinite)) return undefined;
+  if (!(l.left < mouth.cx && mouth.cx < l.right && l.upper < l.lower)) return undefined;
+  if (l.seam !== undefined && !(Number.isFinite(l.seam) && l.upper < l.seam && l.seam < l.lower)) return undefined;
+  return l;
 }
 
 export interface MouthAnchor {

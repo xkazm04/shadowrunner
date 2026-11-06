@@ -14,6 +14,9 @@
 //   there are asked of `loadAsset` when first needed (render/assets.ts).
 // - The drawn mouth (FrameClock.mouth) is one more quad after the later of the head and the jaw,
 //   lit like the head (its gain and dim), never emissive (gl/mouth.ts).
+// - The art mouth (spark art-mouth, a rig whose mouthMode is "warp"): no extra quad; the head and
+//   the jaw are drawn through the warp (gl/warp.ts) for this frame's mouth pose and jaw gap. A frame
+//   whose field moves nothing (neutral rest) draws exactly as before.
 import { defaultLook, type Layer, type LayerPose, type Look, type Rig } from "@sr/rig";
 import { createCanvas2dRenderer } from "../canvas2d/renderer.js";
 import { createAssetCache, type AssetLoader } from "../render/assets.js";
@@ -27,6 +30,7 @@ import { beginScene, createGlowTargets, deleteGlowTargets, glowGain, runGlow, ty
 import { deleteLayers, drawLayers, gainOf, uploadLayers, type LayerTexture } from "./layers.js";
 import { createGlMouth } from "./mouth.js";
 import { createPrograms, deletePrograms } from "./programs.js";
+import { planWarp } from "./warp.js";
 import { createTextureStore, type TextureStore } from "./textures.js";
 
 export interface CreateRendererOptions {
@@ -100,7 +104,8 @@ export function createGlRenderer(gl: WebGL2RenderingContext, canvas: CanvasHost,
                 return mouthGl.draw(mouthArt, mouth.anchor, mouthPose, colours, [gain[0] * dimmed, gain[1] * dimmed, gain[2] * dimmed]);
               },
             };
-      if (store !== undefined) drawCalls += drawLayers(gl, programs, textures, poses, view, { light, recolours, store, ...(clock?.dim === undefined ? {} : { dim: clock.dim }) }, after);
+      const warp = mouth === undefined && currentRig.mouth !== undefined ? planWarp(currentRig, layers, poses, view, light.browY, mouthPose, () => mouthArt.colours(currentRig, currentAssets, look)?.lip) : undefined;
+      if (store !== undefined) drawCalls += drawLayers(gl, programs, textures, poses, view, { light, recolours, store, ...(clock?.dim === undefined ? {} : { dim: clock.dim }) }, after, warp);
       drawCalls += runGlow(gl, programs, targets, light.glow, glowGain(clock));
     },
     resize(width: number, height: number, dpr: number): void {

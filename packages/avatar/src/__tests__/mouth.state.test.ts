@@ -17,8 +17,8 @@ const stand = <T extends object>(value: object): T => value as T;
 
 const plain = malakorRig();
 const withMouth: Rig = { ...plain, mouth: { cx: 511.5, lineY: 511, width: 120, render: "drawn" } };
-/** A measured mouth without `render: "drawn"` (painterly styles): the art keeps its lips. */
-const artMouth: Rig = { ...plain, mouth: { cx: 511.5, lineY: 511, width: 120 } };
+/** A measured mouth with lips and no `render` (painterly styles): the art mouth, "warp". */
+const artMouth: Rig = { ...plain, mouth: { cx: 511.5, lineY: 511, width: 120, lips: { left: 455, right: 568, upper: 495, lower: 530 } } };
 const lookOf = (rig: Rig, emotion: Emotion): Look => ({ ...defaultLook(rig), emotion });
 
 /** Runs `frames` frames of `dt` seconds and returns the last output. */
@@ -40,9 +40,21 @@ const jawOf = (out: FrameOutput): number => {
 };
 
 describe("a rig without mouth", () => {
-  it("a measured mouth without render: \"drawn\" draws nothing and leaves the jaw on the level", () => {
+  it("a measured mouth without render (the art mouth, \"warp\") carries the mouth pose and leaves the jaw on the level", () => {
     const out = run(artMouth, { emotion: "delighted", level: 0.4 });
-    expect(out.clock.mouth).toBeUndefined();
+    expect(out.clock.mouth?.params.smile).toBeGreaterThan(0.5);
+    const still = run({ ...artMouth, mouth: { cx: 511.5, lineY: 511, width: 120, render: "still" } }, { emotion: "delighted", level: 0.4 });
+    expect(still.clock.mouth).toBeUndefined();
+    expect(out.poses).toEqual(still.poses);
+  });
+
+  it("the art mouth follows the reduced-motion twin (one soft shape) and opens the jaw for a caller's visemes", () => {
+    const calm = run(artMouth, { level: 0.9, reducedMotion: false }).clock.mouth?.params.open ?? 0;
+    const reduced = run(artMouth, { level: 0.9, reducedMotion: true, frames: 60 }).clock.mouth?.params.open ?? 0;
+    expect(reduced).toBeGreaterThan(0);
+    expect(reduced).toBeLessThan(calm * 0.6);
+    const wide = run(artMouth, { mouth: { shapes: { ...restWeights(), rest: 0, openWide: 1 } } });
+    expect(jawOf(wide)).toBeGreaterThan(jawOf(run(artMouth)));
   });
 
   it("draws no mouth and opens the jaw from the raw level, exactly as before", () => {

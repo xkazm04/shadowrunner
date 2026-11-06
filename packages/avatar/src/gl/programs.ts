@@ -3,6 +3,7 @@
 // the glow: extract (downsample to half res), blur (one axis of a separable 9-tap Gaussian),
 // composite (scene + tinted glow onto the canvas). All share one unit-quad buffer.
 import { GLOW_SATURATION, S_FLOOR, S_KEEP } from "../render/recolour.js";
+import { WARP_GLSL, WARP_UNIFORMS } from "./warp.js";
 
 /**
  * The recolour rule in GLSL (render/recolour.ts `rgbToHsl`, `hslToRgb`, `recolourHsl`), exported so
@@ -39,16 +40,23 @@ void main() {
   gl_Position = vec4(a_corner * 2.0 - 1.0, 0.0, 1.0);
 }`;
 
-// Unit corner -> the layer's rest bbox in rig px -> device px (u_m, an affine) -> clip space.
-const BASE_VS = `#version 300 es
+// Unit corner -> the layer's rest bbox in rig px -> device px (u_m, an affine) -> clip space. The
+// warp twin (the art mouth, gl/warp.ts) covers u_draw instead, and v_uv runs past 0..1 outside u_rect.
+const baseVs = (warp: boolean): string => `#version 300 es
 layout(location = 0) in vec2 a_corner;
-uniform vec4 u_rect;
+uniform vec4 u_rect;${warp ? `
+uniform vec4 u_draw;` : ""}
 uniform mat3 u_m;
 uniform vec2 u_res;
 out vec2 v_uv;
 void main() {
-  v_uv = a_corner;
-  vec2 device = (u_m * vec3(u_rect.xy + a_corner * u_rect.zw, 1.0)).xy;
+${
+  warp
+    ? `  v_uv = (u_draw.xy + a_corner * u_draw.zw - u_rect.xy) / u_rect.zw;
+  vec2 device = (u_m * vec3(u_draw.xy + a_corner * u_draw.zw, 1.0)).xy;`
+    : `  v_uv = a_corner;
+  vec2 device = (u_m * vec3(u_rect.xy + a_corner * u_rect.zw, 1.0)).xy;`
+}
   gl_Position = vec4(device.x / u_res.x * 2.0 - 1.0, 1.0 - device.y / u_res.y * 2.0, 0.0, 1.0);
 }`;
 
@@ -62,7 +70,23 @@ void main() {
 // on every pixel (u_light.w 1) or on pixels with s > GLOW_SAT (u_light.w 2); a region slot's
 // target (u_slots, enabled by u_slotOn) wins on the pixels whose index map (nearest, R = slot + 1)
 // names it. The rule is render/recolour.ts's `recolourHsl`, expression for expression.
-const BASE_FS = `#version 300 es
+// The warp twin (the art mouth, gl/warp.ts; only the head and the jaw of a talking warp rig use it,
+// so every other quad runs the plain program at today's cost): the sample point is unwarped first
+// (texels outside the layer are transparent), and where the lips have parted both layers show the
+// dark interior (each at its own alpha at the unwarped point: whichever holds the mouth paints it).
+const WARP_SAMPLE = `  vec2 p = u_rect.xy + v_uv * u_rect.zw;
+  float ws;
+  vec4 warp = unwarp(p, 0.5 * max(fwidth(p.y), 1e-3), ws);
+  vec2 uv = (warp.xy - u_rect.xy) / u_rect.zw;
+  vec4 tex = texture(u_tex, uv) * inLayer(uv);`;
+const WARP_INTERIOR = `  if (warp.z > 0.0) {
+    float a = texture(u_tex, v_uv).a * inLayer(v_uv);
+    rgb = mix(rgb, wInterior(ws) * a, warp.z);
+    alpha = mix(alpha, a, warp.z);
+    rim *= 1.0 - warp.z;
+  }
+`;
+const baseFs = (warp: boolean): string => `#version 300 es
 precision highp float;
 in vec2 v_uv;
 uniform sampler2D u_tex;
@@ -76,7 +100,8 @@ uniform float u_recolour;
 uniform vec4 u_light;
 uniform vec4 u_mapRect;
 uniform vec4 u_slotOn;
-uniform vec3 u_slots[4];
+uniform vec3 u_slots[4];${warp ? `
+uniform vec4 u_rect;` : ""}
 const float BRIGHT_LO = 0.3;
 const float BRIGHT_HI = 0.7;
 const float S_KEEP = ${S_KEEP.toFixed(4)};
@@ -84,13 +109,16 @@ const float S_FLOOR = ${S_FLOOR.toFixed(4)};
 const float GLOW_SAT = ${GLOW_SATURATION.toFixed(4)};
 layout(location = 0) out vec4 o_color;
 layout(location = 1) out vec4 o_glow;
-${RECOLOUR_GLSL}
+${RECOLOUR_GLSL}${warp ? `
+${WARP_GLSL}
+float inLayer(vec2 uv) { return uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0 ? 1.0 : 0.0; }` : ""}
 void main() {
-  vec4 tex = texture(u_tex, v_uv);
+${warp ? WARP_SAMPLE : `  vec2 uv = v_uv;
+  vec4 tex = texture(u_tex, uv);`}
   vec2 d = u_texel * 2.0;
-  float gx = texture(u_tex, v_uv + vec2(d.x, 0.0)).a - texture(u_tex, v_uv - vec2(d.x, 0.0)).a;
-  float gy = texture(u_tex, v_uv + vec2(0.0, d.y)).a - texture(u_tex, v_uv - vec2(0.0, d.y)).a;
-  vec2 muv = u_mapRect.xy + v_uv * u_mapRect.zw;
+  float gx = texture(u_tex, uv + vec2(d.x, 0.0)).a - texture(u_tex, uv - vec2(d.x, 0.0)).a;
+  float gy = texture(u_tex, uv + vec2(0.0, d.y)).a - texture(u_tex, uv - vec2(0.0, d.y)).a;
+  vec2 muv = u_mapRect.xy + uv * u_mapRect.zw;
   float slot = texture(u_map, clamp(muv, 0.0, 1.0)).r;
   float albedo = tex.a > 0.0 ? max(tex.r, max(tex.g, tex.b)) / tex.a : 0.0;
   float rim = smoothstep(0.15, 0.7, length(vec2(gx, gy))) * smoothstep(0.08, 0.4, albedo);
@@ -107,7 +135,8 @@ void main() {
     }
     if (on) rgb = recolour(hsl, target) * tex.a;
   }
-  vec4 color = vec4(rgb * u_gain + u_rim * rim * tex.a, tex.a) * u_opacity;
+  float alpha = tex.a;
+${warp ? WARP_INTERIOR : ""}  vec4 color = vec4(rgb * u_gain + u_rim * rim * alpha, alpha) * u_opacity;
   o_color = color;
   float bright = smoothstep(BRIGHT_LO, BRIGHT_HI, max(color.r, max(color.g, color.b)));
   o_glow = u_emissive > 0.5 ? vec4(color.rgb * bright, color.a) : vec4(0.0, 0.0, 0.0, color.a);
@@ -166,9 +195,13 @@ const BASE_UNIFORMS = [
   "u_recolour", "u_light", "u_mapRect", "u_slotOn", "u_slots",
 ] as const;
 export type BaseUniform = (typeof BASE_UNIFORMS)[number];
+const WARP_PROGRAM_UNIFORMS = [...BASE_UNIFORMS, ...WARP_UNIFORMS] as const;
+export type WarpProgramUniform = (typeof WARP_PROGRAM_UNIFORMS)[number];
 
 export interface Programs {
   base: Program<BaseUniform>;
+  /** The base program with the art mouth's warp (gl/warp.ts), for the head and jaw of a warp rig. */
+  warp: Program<WarpProgramUniform>;
   extract: Program<"u_src">;
   blur: Program<"u_src" | "u_step">;
   composite: Program<"u_scene" | "u_glow" | "u_tint">;
@@ -224,7 +257,8 @@ function createQuad(gl: WebGL2RenderingContext): Programs["quad"] {
 
 export function createPrograms(gl: WebGL2RenderingContext): Programs {
   return {
-    base: link(gl, BASE_VS, BASE_FS, BASE_UNIFORMS),
+    base: link(gl, baseVs(false), baseFs(false), BASE_UNIFORMS),
+    warp: link(gl, baseVs(true), baseFs(true), WARP_PROGRAM_UNIFORMS),
     extract: link(gl, QUAD_VS, EXTRACT_FS, ["u_src"]),
     blur: link(gl, QUAD_VS, BLUR_FS, ["u_src", "u_step"]),
     composite: link(gl, QUAD_VS, COMPOSITE_FS, ["u_scene", "u_glow", "u_tint"]),
@@ -233,7 +267,7 @@ export function createPrograms(gl: WebGL2RenderingContext): Programs {
 }
 
 export function deletePrograms(gl: WebGL2RenderingContext, p: Programs): void {
-  for (const { program } of [p.base, p.extract, p.blur, p.composite]) gl.deleteProgram(program);
+  for (const { program } of [p.base, p.warp, p.extract, p.blur, p.composite]) gl.deleteProgram(program);
   gl.deleteVertexArray(p.quad.vao);
   gl.deleteBuffer(p.quad.buffer);
 }

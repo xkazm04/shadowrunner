@@ -13,10 +13,15 @@
 //   `mouth`, the mouth state (mouth/state.ts) turns the level (or a caller's `mouth` mix) and the
 //   emotion into the frame clock's `mouth`, and the jaw opens for that mouth (its level replaces
 //   the raw level). A rig without `mouth` runs exactly as before: no `mouth` key, the raw level.
+// - The art mouth (spark art-mouth, mouthMode "warp"): the same mouth state runs and its pose goes
+//   out as the frame clock's `mouth` (the GL renderer bends the art's own lips with it; canvas2D,
+//   which only paints a "drawn" mouth, ignores it). The jaw keeps the raw level under the level drive,
+//   so the jaw (and the canvas2D fallback) moves exactly as before; a caller's mix (visemes) opens
+//   the jaw for that mix, as on a drawn rig. Modes "still" and undefined run exactly as before.
 import { applyLook, MOOD_FADE_S, poseLayers, type Drive, type Emotion, type Gesture, type LayerPose, type Look, type Rig } from "@sr/rig";
 import type { LookAtPoint } from "../driver/lookAt.js";
 import { initialState, type Gaze } from "../driver/state.js";
-import { drawnMouthGeometry } from "../mouth/anchor.js";
+import { mouthMode } from "../mouth/anchor.js";
 import { createMouthState, type MouthShapesInput } from "../mouth/state.js";
 import { easeDim } from "../render/frame.js";
 import type { FrameClock } from "../render/types.js";
@@ -86,13 +91,15 @@ export function createFrameBody(seed: number): (inputs: FrameBodyInputs) => Fram
   let dimShown = 0;
   const stepMouth = createMouthState();
   return (p) => {
+    const mode = mouthMode(p.rig.mouth);
     const mouth =
-      drawnMouthGeometry(p.rig.mouth) === undefined
+      mode !== "drawn" && mode !== "warp"
         ? undefined
         : stepMouth({ emotion: p.look.emotion, level: p.level, reducedMotion: p.reducedMotion, dt: p.dt, ...(p.mouth === undefined ? {} : { input: p.mouth }) });
+    const jawLevel = mode === "warp" && p.mouth === undefined ? p.level : (mouth?.level ?? p.level);
     const next = advanceFrame(state, {
       dt: p.dt,
-      level: mouth?.level ?? p.level,
+      level: jawLevel,
       gaze: p.gaze,
       reducedMotion: p.reducedMotion,
       ...(p.gesture === undefined ? {} : { gesture: p.gesture }),

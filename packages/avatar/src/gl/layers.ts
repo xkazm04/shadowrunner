@@ -8,6 +8,7 @@ import { mapRect, needsMap, type LayerRecolour } from "../render/recolour.js";
 import type { RigAssets } from "../render/types.js";
 import type { Programs } from "./programs.js";
 import { uploadImage, type GlTexture, type TextureStore } from "./textures.js";
+import { setWarp, setWarpDraw, type WarpPlan } from "./warp.js";
 
 /**
  * Kinds whose light feeds the glow pass (req 1.4) unless the layer says otherwise: a layer's own
@@ -75,8 +76,7 @@ interface Quad {
 }
 
 /** The recolour uniforms of one layer (u_recolour 0 skips the path: the old pixels exactly). */
-function setRecolour(gl: WebGL2RenderingContext, programs: Programs, plan: LayerRecolour | undefined, map: GlTexture | undefined): void {
-  const { u } = programs.base;
+function setRecolour(gl: WebGL2RenderingContext, u: Programs["base"]["u"], plan: LayerRecolour | undefined, map: GlTexture | undefined): void {
   gl.uniform1f(u.u_recolour, plan === undefined ? 0 : 1);
   if (plan === undefined) return;
   const lit = plan.light;
@@ -113,7 +113,9 @@ function quadsOf(entry: LayerTexture, pose: LayerPose, store: TextureStore, rim:
  * base at `1 - sum(replace weights)` (a face whose patch is not loaded yet counts 0), then each
  * ready patch at its bbox in the layer's transform at its weight, with the layer's recolour; a
  * patch has no rim (its edges are inside the face). `after` draws extra quads (the drawn mouth,
- * gl/mouth.ts) right after the pose at `after.index`, with the base program still bound.
+ * gl/mouth.ts) right after the pose at `after.index`, with the base program still bound. `warp`
+ * (the art mouth, gl/warp.ts) draws the head and the jaw and their patches with the warp program;
+ * every other quad, and every quad of a frame without it, draws with the base program as before.
  */
 export function drawLayers(
   gl: WebGL2RenderingContext,
@@ -123,22 +125,35 @@ export function drawLayers(
   view: View,
   lighting: LayerLighting,
   after?: { index: number; draw: () => number },
+  warp?: WarpPlan,
 ): number {
   const { light, recolours, store, dim } = lighting;
-  const { program, u } = programs.base;
-  gl.useProgram(program);
+  const { base } = programs;
+  gl.useProgram(base.program);
   gl.bindVertexArray(programs.quad.vao);
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-  gl.uniform1i(u.u_tex, 0);
-  gl.uniform1i(u.u_map, 1);
-  gl.uniform2f(u.u_res, view.width, view.height);
+  const shared = (u: Programs["base"]["u"]): void => {
+    gl.uniform1i(u.u_tex, 0);
+    gl.uniform1i(u.u_map, 1);
+    gl.uniform2f(u.u_res, view.width, view.height);
+  };
+  shared(base.u);
+  let warpReady = false;
   let draws = 0;
   for (let index = 0; index < poses.length; index += 1) {
     const pose = poses[index];
     const entry = pose === undefined ? undefined : textures.get(pose.name);
     if (pose === undefined || entry === undefined) continue;
     const { layer } = entry;
+    const warped = warp?.layers.find((w) => w.index === index);
+    const { u } = warped === undefined ? base : programs.warp;
+    if (warp !== undefined && warped !== undefined) {
+      gl.useProgram(programs.warp.program);
+      if (!warpReady) shared(u);
+      warpReady = true;
+      setWarp(gl, programs.warp.u, warp, warped);
+    }
     const m = layerAffine(layer, pose, view, light.browY);
     const plan = recolours.get(layer.name);
     const rimOn = NO_RIM_KINDS.has(layer.kind) ? 0 : 1;
@@ -148,10 +163,11 @@ export function drawLayers(
     gl.uniform3f(u.u_gain, gain[0] * dimmed, gain[1] * dimmed, gain[2] * dimmed);
     gl.uniform1f(u.u_emissive, isEmissive(layer) ? 1 : 0);
     const map = plan !== undefined && needsMap(plan) && layer.regions !== undefined ? store.get(layer.regions.map, "map") : undefined;
-    setRecolour(gl, programs, plan, map);
+    setRecolour(gl, u, plan, map);
     const rimK = rimOn * dimmed;
     const quads = quadsOf(entry, pose, store, [light.rim[0] * rimK, light.rim[1] * rimK, light.rim[2] * rimK]);
     for (const quad of quads) {
+      if (warped !== undefined) setWarpDraw(gl, programs.warp.u, warped, quad.rect);
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, quad.texture.texture);
       gl.uniform4f(u.u_rect, quad.rect[0] ?? 0, quad.rect[1] ?? 0, quad.rect[2] ?? 0, quad.rect[3] ?? 0);
@@ -162,6 +178,7 @@ export function drawLayers(
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       draws += 1;
     }
+    if (warped !== undefined) gl.useProgram(base.program);
     if (after?.index === index) draws += after.draw();
   }
   gl.activeTexture(gl.TEXTURE1);
