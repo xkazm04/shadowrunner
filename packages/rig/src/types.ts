@@ -7,7 +7,9 @@
 
 export const RIG_VERSION = 1 as const;
 
-export type LayerKind = "static" | "body" | "head" | "jaw" | "eye" | "accessory" | "crown";
+// face-control: "iris" (the moving part of an eye, following its eye layer) and Rig.face / Look.face.
+
+export type LayerKind = "static" | "body" | "head" | "jaw" | "eye" | "iris" | "accessory" | "crown";
 
 /** Every value is "#rrggbb". */
 export interface Palette {
@@ -57,6 +59,13 @@ export interface Layer {
   variants?: Partial<Record<ExpressionFamily, LayerPatch>>;
   /** Colour regions (character-control): an index map and 1..4 recolourable slots. */
   regions?: LayerRegions;
+  /**
+   * Eye layers with an iris (face-control): an alpha mask (same bbox as the layer) of the lid
+   * opening, where the iris may show. Omitted: the eye is one painted piece, as before.
+   */
+  socket?: string;
+  /** Eye layers (face-control): the closed-lid art, same bbox; a blink crossfades to it. */
+  closed?: string;
 }
 
 /** The six expression families the ten emotions share (character-control design "Moods"). */
@@ -67,6 +76,10 @@ export interface LayerPatch {
   file: string;
   bbox: [x: number, y: number, w: number, h: number];
   mode: "over" | "replace";
+  /** Eye patches (face-control): this face's lid opening, an alpha mask at the LAYER's bbox. */
+  socket?: string;
+  /** Eye patches (face-control): the face already narrows the lids, so mood squint adds none. */
+  narrowed?: true;
 }
 
 /** One recolourable region of a layer: id [a-z0-9_]+ ("cavity" on a jaw), a name, its painted colour. */
@@ -157,6 +170,35 @@ export interface Rig {
    * Optional: rigs made before it load unchanged and consumers fall back to the jaw's box.
    */
   mouth?: RigMouth;
+  /** The character's face profile (face-control): gaze, motion, expression strength. Omitted: defaults. */
+  face?: RigFace;
+}
+
+/**
+ * A face profile (face-control). Every field is optional; `resolveFace` (face.ts) fills defaults
+ * and clamps to FACE_LIMITS. `Look.face` overrides `Rig.face` field by field.
+ */
+export interface RigFace {
+  gaze?: {
+    /** How far the iris travels, 0..1 of the socket's half extent. */
+    range?: number;
+    /** Saccades per second. */
+    saccadeRate?: number;
+    /** Relative weights of where the eyes go when the character is not looking at anything. */
+    habits?: { chat?: number; content?: number; host?: number };
+  };
+  motion?: {
+    /** Multipliers (1 = today's motion) of head drift, mood tilt and gesture peaks. */
+    drift?: number;
+    tilt?: number;
+    gesture?: number;
+    /** Breathing idle amplitude, 0 = none. */
+    breath?: number;
+  };
+  /** How strongly the painted expression faces show, 0..1. */
+  expression?: { strength?: number };
+  /** How strongly emotion bends the mouth (warp and drawn), 0..1.5. */
+  mouth?: { emotion?: number };
 }
 
 /** The rest mouth: centre x, lip line y, and width (corner to corner), canvas px. */
@@ -220,4 +262,6 @@ export interface Look {
   regions?: Record<string, string>;
   /** Part reshapes, keyed by layer name. Omitted layers keep their shape. */
   shape?: Record<string, PartShape>;
+  /** The viewer's face profile (face-control), over `Rig.face` field by field. */
+  face?: RigFace;
 }

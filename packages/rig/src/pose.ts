@@ -70,6 +70,7 @@ export const DEFAULT_DEPTH: Readonly<Record<LayerKind, number>> = {
   head: 0.6,
   jaw: 0.62,
   eye: 0.7,
+  iris: 0.7,
   accessory: 0.75,
   crown: 0.65,
 };

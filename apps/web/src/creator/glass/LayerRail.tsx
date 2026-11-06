@@ -15,6 +15,7 @@ export const KIND_WORD: Readonly<Record<LayerKind, string>> = {
   head: "bobs",
   jaw: "speaks",
   eye: "blinks · lit",
+  iris: "looks · lit",
   accessory: "pulses · lit",
   crown: "floats",
 };

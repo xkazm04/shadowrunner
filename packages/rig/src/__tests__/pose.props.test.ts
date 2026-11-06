@@ -299,6 +299,6 @@ describe("poseLayers properties", () => {
 
 /** Mirror of DEFAULT_DEPTH, kept literal so the test checks the design table, not the code. */
 function poseDefaultDepth(l: Layer): number {
-  const table: Record<Layer["kind"], number> = { static: 0, body: 0.3, head: 0.6, jaw: 0.62, eye: 0.7, accessory: 0.75, crown: 0.65 };
+  const table: Record<Layer["kind"], number> = { static: 0, body: 0.3, head: 0.6, jaw: 0.62, eye: 0.7, iris: 0.7, accessory: 0.75, crown: 0.65 };
   return table[l.kind];
 }

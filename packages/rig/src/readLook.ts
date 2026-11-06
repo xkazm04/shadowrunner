@@ -5,6 +5,7 @@
 import { EMOTION_TABLE } from "./look.js";
 import type { Emotion, Gesture, Look, Palette, PartShape, Rig } from "./types.js";
 import { validateLookControls } from "./validateControl.js";
+import { readFace } from "./face.js";
 
 /** Every `Gesture`, as a runtime list. */
 export const GESTURE_NAMES = ["nod", "tilt", "lean_in", "recoil", "glare", "flare"] as const satisfies readonly Gesture[];
@@ -55,5 +56,8 @@ export function readLook(value: unknown, rig?: Rig): Look | undefined {
   if (regions !== undefined) look.regions = regions;
   const shape = readControls<PartShape>("shape", value.shape, rig);
   if (shape !== undefined) look.shape = shape;
+  // face-control: the viewer's face profile; bad fields are dropped, never the look.
+  const face = readFace(value.face, "$.face").face;
+  if (face !== undefined) look.face = face;
   return look;
 }

@@ -73,7 +73,9 @@ export async function blobToImage(blob: Blob): Promise<ImageBitmap | HTMLImageEl
 export function extraFiles(rig: Rig): string[] {
   const files = rig.layers.flatMap((layer) => [
     ...(layer.regions === undefined ? [] : [layer.regions.map]),
-    ...Object.values(layer.variants ?? {}).map((patch) => patch.file),
+    ...Object.values(layer.variants ?? {}).flatMap((patch) => [patch.file, ...(patch.socket === undefined ? [] : [patch.socket])]),
+    ...(layer.socket === undefined ? [] : [layer.socket]),
+    ...(layer.closed === undefined ? [] : [layer.closed]),
   ]);
   return [...new Set(files)];
 }

@@ -27,6 +27,7 @@ const KIND_LABEL: Record<LayerKind, string> = {
   head: "head",
   jaw: "jaw",
   eye: "eyes",
+  iris: "irises",
   accessory: "accessory",
   crown: "crown",
 };

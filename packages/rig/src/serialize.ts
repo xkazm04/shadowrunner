@@ -3,7 +3,7 @@
 // contract dropped. It never writes `null`: a non-finite number (which JSON.stringify would turn
 // into null) throws a RangeError instead.
 import { EXPRESSION_FAMILIES } from "./control.js";
-import type { ExpressionFamily, Layer, LayerPatch, LayerRegions, Motion, Palette, Rig } from "./types.js";
+import type { ExpressionFamily, Layer, LayerPatch, LayerRegions, Motion, Palette, Rig, RigFace } from "./types.js";
 
 function wirePalette(palette: Palette): Palette {
   return { glow: palette.glow, eye: palette.eye, rim: palette.rim, mouth: palette.mouth };
@@ -34,7 +34,7 @@ function wireVariants(variants: Partial<Record<ExpressionFamily, LayerPatch>>): 
     const patch = variants[family];
     if (patch === undefined) continue;
     const [x, y, w, h] = patch.bbox;
-    out[family] = { file: patch.file, bbox: [x, y, w, h], mode: patch.mode };
+    out[family] = { file: patch.file, bbox: [x, y, w, h], mode: patch.mode, ...(patch.socket === undefined ? {} : { socket: patch.socket }), ...(patch.narrowed === true ? { narrowed: true as const } : {}) };
   }
   return out;
 }
@@ -61,6 +61,8 @@ function wireLayer(layer: Layer): Layer {
     ...(layer.emissive === undefined ? {} : { emissive: layer.emissive }),
     ...(layer.variants === undefined ? {} : { variants: wireVariants(layer.variants) }),
     ...(layer.regions === undefined ? {} : { regions: wireRegions(layer.regions) }),
+    ...(layer.socket === undefined ? {} : { socket: layer.socket }),
+    ...(layer.closed === undefined ? {} : { closed: layer.closed }),
   };
 }
 
@@ -76,6 +78,7 @@ function wireRig(rig: Rig): Rig {
     palette: wirePalette(rig.palette),
     layers: rig.layers.map(wireLayer),
     ...(rig.mouth === undefined ? {} : { mouth: { cx: rig.mouth.cx, lineY: rig.mouth.lineY, width: rig.mouth.width, ...(rig.mouth.render === undefined ? {} : { render: rig.mouth.render }), ...(rig.mouth.cell === undefined ? {} : { cell: rig.mouth.cell }), ...(rig.mouth.lips === undefined ? {} : { lips: { left: rig.mouth.lips.left, right: rig.mouth.lips.right, upper: rig.mouth.lips.upper, lower: rig.mouth.lips.lower, ...(rig.mouth.lips.seam === undefined ? {} : { seam: rig.mouth.lips.seam }) } }) } }),
+    ...(rig.face === undefined ? {} : { face: JSON.parse(JSON.stringify(rig.face)) as RigFace }),
   };
 }
 

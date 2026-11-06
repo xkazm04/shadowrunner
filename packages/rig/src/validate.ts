@@ -20,6 +20,7 @@
 import { JAW_DROP_MAX, JAW_DROP_MIN } from "./pose.js";
 import type { Result } from "./result.js";
 import { RIG_VERSION, type Layer, type LayerKind, type Palette, type Rig, type RigLips, type RigMouth } from "./types.js";
+import { readFace } from "./face.js";
 import { readLayerControls } from "./validateControl.js";
 import { readMotion, type MotionCanvas } from "./validateMotion.js";
 
@@ -48,6 +49,7 @@ const LAYER_KINDS: Record<LayerKind, true> = {
   head: true,
   jaw: true,
   eye: true,
+  iris: true,
   accessory: true,
   crown: true,
 };
@@ -211,7 +213,7 @@ class Reader {
     if (motion?.blink !== undefined && kind !== undefined && kind !== "eye") this.fail(`${path}.motion.blink`, `only an eye layer blinks, this one is ${kind}`, named);
     const controls = readLayerControls(value, path, fileProblem);
     for (const problem of controls.problems) this.fail(problem.path, problem.message.slice(problem.path.length + 2), named);
-    const { variants, regions } = controls;
+    const { variants, regions, socket, closed } = controls;
     if (this.errors.length > before) return undefined;
     if (name === undefined || z === undefined || kind === undefined || file === undefined) return undefined;
     if (x === undefined || y === undefined || w === undefined || h === undefined) return undefined;
@@ -231,6 +233,8 @@ class Reader {
       ...(emissive === undefined ? {} : { emissive }),
       ...(variants === undefined ? {} : { variants }),
       ...(regions === undefined ? {} : { regions }),
+      ...(socket === undefined ? {} : { socket }),
+      ...(closed === undefined ? {} : { closed }),
     };
   }
 
@@ -262,10 +266,12 @@ class Reader {
     const canvas = { ...(width === undefined ? {} : { width }), ...(height === undefined ? {} : { height }) };
     const layers = this.layers(value.layers, "$.layers", canvas);
     const mouth = this.mouth(value.mouth, "$.mouth", canvas);
+    const { face, problems: faceProblems } = readFace(value.face, "$.face");
+    for (const problem of faceProblems) this.fail(problem.path, problem.message.slice(problem.path.length + 2));
     if (this.errors.length > before) return undefined;
     if (version === undefined || id === undefined || name === undefined || width === undefined || height === undefined) return undefined;
     if (source === undefined || palette === undefined || layers === undefined) return undefined;
-    return { version, id, name, width, height, source, ...(fictional === undefined ? {} : { fictional }), palette, layers, ...(mouth === undefined ? {} : { mouth }) };
+    return { version, id, name, width, height, source, ...(fictional === undefined ? {} : { fictional }), palette, layers, ...(mouth === undefined ? {} : { mouth }), ...(face === undefined ? {} : { face }) };
   }
 }
 

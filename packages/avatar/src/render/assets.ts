@@ -30,6 +30,12 @@ export function rigAssetFiles(rig: Pick<Rig, "layers">): { layers: string[]; map
   for (const layer of rig.layers) once(layer.file, layers);
   for (const layer of rig.layers) once(layer.regions?.map, maps);
   for (const layer of rig.layers) for (const patch of Object.values(layer.variants ?? {})) once(patch.file, patches);
+  // face-control: sockets (masks) and closed lids load with the patches.
+  for (const layer of rig.layers) {
+    once(layer.socket, patches);
+    once(layer.closed, patches);
+    for (const patch of Object.values(layer.variants ?? {})) once(patch.socket, patches);
+  }
   return { layers, maps, patches };
 }
 

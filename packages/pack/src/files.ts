@@ -18,6 +18,12 @@ export function rigFiles(rig: Pick<Rig, "layers">): string[] {
   for (const layer of rig.layers) once(layer.file);
   for (const layer of rig.layers) once(layer.regions?.map);
   for (const layer of rig.layers) for (const patch of Object.values(layer.variants ?? {})) once(patch.file);
+  // face-control: eye sockets, closed lids, and each face's socket.
+  for (const layer of rig.layers) {
+    once(layer.socket);
+    once(layer.closed);
+    for (const patch of Object.values(layer.variants ?? {})) once(patch.socket);
+  }
   return out;
 }
 
@@ -68,9 +74,14 @@ export function inlineToFiles(rig: Rig): { rig: Rig; moved: Map<string, Uint8Arr
     if (layer.regions !== undefined) next.regions = { ...layer.regions, map: nameFor(layer.regions.map, `${layer.name}.regions`) };
     if (layer.variants !== undefined) {
       next.variants = Object.fromEntries(
-        Object.entries(layer.variants).map(([family, patch]) => [family, { ...patch, file: nameFor(patch.file, `${layer.name}.${family}`) }]),
+        Object.entries(layer.variants).map(([family, patch]) => [
+          family,
+          { ...patch, file: nameFor(patch.file, `${layer.name}.${family}`), ...(patch.socket === undefined ? {} : { socket: nameFor(patch.socket, `${layer.name}.${family}.socket`) }) },
+        ]),
       );
     }
+    if (layer.socket !== undefined) next.socket = nameFor(layer.socket, `${layer.name}.socket`);
+    if (layer.closed !== undefined) next.closed = nameFor(layer.closed, `${layer.name}.closed`);
     return next;
   });
   return { rig: { ...rig, layers }, moved };
