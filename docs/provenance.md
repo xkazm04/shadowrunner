@@ -61,7 +61,10 @@ Designed and generated art is stylised and labelled as such in the UI; no real p
   (`cutVariants`), stored as WebP beside the layers (`<layer>.<family>.webp`; Malakor's in
   `assets/characters/malakor/rig/expressions/`). All 84 kept by the owner's verdict, including the
   19 whose drift exceeded the 20/255 flag. Colour region maps (`<layer>.regions.png`) are computed
-  from the committed layers with no model call.
+  from the committed layers with no model call. These faces were made with the pre-round-3 prompt,
+  which painted the mouth; llm-avatar-lab (2026-11-06) reset their mouth area to the neutral lips
+  (`resetMouth`, `scripts/cast/mouth-backfill.mjs`, no model call), and forges since then use the
+  upper-face prompt that leaves the mouth to the rig's drawn mouth.
 - **Avatar packs (avatar-pack, 2026-11-04).** Malakor (pre-existing art, above) is never packed:
   `scripts/build-packs.mjs` skips him when it publishes the cast as `/packs/<slug>.srpack`, and the
   creator offers no Export for him, so he is never exported or published as a pack.

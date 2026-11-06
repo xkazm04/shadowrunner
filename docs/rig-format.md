@@ -32,6 +32,43 @@ they disagree, the spec wins and this page and the code are fixed to match.
 | `fictional` | `true` | no | Present only on fabricated data. Never written as `false`. |
 | `palette` | Palette | yes | The rig's default colours. |
 | `layers` | Layer[] | yes | The layer stack. |
+| `mouth` | RigMouth | no | Where the talking mouth is drawn (see "Mouth"). Omitted when the art owns its mouth. |
+
+### Mouth
+
+Amended by llm-avatar-lab ("the rig owns the mouth"); the format stays version 1. `mouth` is
+`{ cx, lineY, width }` in canvas px: the rest mouth's centre x, its lip line y and its width corner
+to corner. When present, the renderer draws the talking mouth there and carries the emotion in it
+(smile, snarl, smirk, downturn), and the expression faces keep the neutral portrait mouth.
+
+| field | type | required | meaning |
+|---|---|---|---|
+| `cx` | number | yes | Finite, in `[0, width]`. |
+| `lineY` | number | yes | Finite, in `[0, height]`. |
+| `width` | number | yes | Finite and > 0. |
+
+A `mouth` that is not an object is `bad_shape` at `$.mouth`; a field off its range is `bad_shape` at
+`$.mouth.<field>`. Absent, the rig renders as before: the art's own mouth and jaw, nothing drawn
+over them (every rig made before the amendment, every `import` rig, and a lipless forged rig).
+
+How the forge sets it (`packages/forge`):
+
+- **Measure.** `assembleRig` measures the first jaw layer (`measureMouth`, `mouthAnchor.ts`):
+  `lineY` is the median top edge of the jaw over the middle 60% of its opaque columns, `cx` the
+  middle of that span, `width` the span times 0.85, capped at 0.32 of the first head layer's width.
+- **Lipless mouths keep their art.** A jaw part whose `cavity` is `"gap"` (a visor's slit, a grin
+  drawn over a dark gap) or `"fill"` (a maw of teeth over a lit throat) means the mouth is drawn
+  open and there are no lips to draw: `drawnMouth(parts)` is true and the rig gets no `mouth`.
+  A jaw with only a `glow`, or a pixel-art `cut.cell`, still has a lip and gets one.
+- **Reset.** `cutVariants` (expression faces) restores the neutral mouth from the base layer inside
+  every head and jaw patch when the rig has `mouth` (`resetMouth`: a rounded box 0.95 x width each
+  side of `cx`, 0.75 x width above `lineY` and 0.6 x width below, feathered 8 px).
+- **Prompt.** The expression edit changes only the eyes, eyelids and brows and keeps the mouth,
+  lips and jaw as painted (`expressionPrompt`, `.kiro/specs/character-control/design.md`
+  "Expressions"), so the faces carry no painted grin or cheek fold for the reset to miss.
+- **Survives every hop.** `serializeRig` writes it, `validateRig`/`parseRigJson` read it back, so it
+  rides the live job record (KV, `parseForgeJob`), the `JobView`, the creator's library (IndexedDB,
+  `readRecord`) and a pack's `rig.json` unchanged.
 
 ## Palette
 

@@ -1,4 +1,5 @@
-// L1's procedural mouth, painted in the head's frame (rig px) so it rides every head motion:
+// The drawn mouth (spark llm-avatar-lab, lab round 2 "precise and very solid"), painted in the
+// head's frame (rig px) so it rides every head motion:
 //  1. a skin patch (the sampled skin, top to chin, feathered to nothing at its edge) hides the
 //     art's own lips wholly under the drawn mouth (the opaque core reaches past the corners), so
 //     there is never a second mouth;
@@ -8,9 +9,9 @@
 // one corner and slides the curve toward it, snarl raises the upper lip over bared upper teeth,
 // tight thins the lips to a pressed line; a lifted or dropped corner gets a short crease.
 // Everything scales with the mouth's own width, so it fits any rig with a jaw.
-import type { Affine } from "@sr/avatar/core";
-import { css, type MouthColours, type Rgb } from "./colours.js";
+import type { Affine } from "../render/frame.js";
 import type { MouthAnchor } from "./anchor.js";
+import { css, defaultMouthSurface, type MouthColours, type MouthSurface, type MouthSurfaceFactory, type MouthRgb, type Mouth2D } from "./colours.js";
 import type { MouthParams } from "./shapes.js";
 
 /**
@@ -20,31 +21,29 @@ import type { MouthParams } from "./shapes.js";
  */
 export const PATCH = { half: 0.6, top: 0.18, bottom: 0.24, feather: 0.1 } as const;
 
-type Surface = HTMLCanvasElement | OffscreenCanvas;
-
-function surface(w: number, h: number): Surface {
-  if (typeof OffscreenCanvas === "function") return new OffscreenCanvas(w, h);
-  const c = document.createElement("canvas");
-  c.width = w;
-  c.height = h;
-  return c;
-}
+type Surface = MouthSurface["canvas"];
 
 /** The skin patch for one geometry + colour pair, cached (rebuilt when either changes). */
-export function createPatchCache(): (anchor: MouthAnchor, colours: MouthColours) => { image: Surface; x: number; y: number; w: number; h: number } | undefined {
+export function createPatchCache(surface: MouthSurfaceFactory = defaultMouthSurface): (anchor: MouthAnchor, colours: MouthColours) => { image: Surface; x: number; y: number; w: number; h: number } | undefined {
   let key = "";
+  let keyColours: MouthColours | undefined;
+  let keyGeometry = [NaN, NaN, NaN];
   let built: { image: Surface; x: number; y: number; w: number; h: number } | undefined;
   return (anchor, colours) => {
     const { cx, lineY, width } = anchor.geometry;
+    // Same colours object and geometry: the cached patch, with no string built per frame.
+    if (built !== undefined && colours === keyColours && keyGeometry[0] === cx && keyGeometry[1] === lineY && keyGeometry[2] === width) return built;
     const next = `${cx}|${lineY}|${width}|${colours.skinTop.join()}|${colours.skinBottom.join()}`;
+    keyColours = colours;
+    keyGeometry = [cx, lineY, width];
     if (next === key && built !== undefined) return built;
     const f = PATCH.feather / (2 * (PATCH.half + PATCH.feather));
     const w = Math.max(2, Math.ceil(2 * (PATCH.half + PATCH.feather) * width));
     const span = PATCH.top + PATCH.bottom + 2 * PATCH.feather;
     const h = Math.max(2, Math.ceil(span * width));
-    const image = surface(w, h);
-    const g = image.getContext("2d") as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null;
-    if (g === null) return undefined;
+    const made = surface(w, h);
+    if (made === null) return undefined;
+    const { canvas: image, g } = made;
     const fill = g.createLinearGradient(0, 0, 0, h);
     fill.addColorStop(0, css(colours.skinTop));
     fill.addColorStop(1, css(colours.skinBottom));
@@ -108,7 +107,7 @@ const level = (cx: number, y: number, hw: number): MouthFrame2D => ({ cx, y, xl:
  * A lens-to-ellipse mouth outline through the frame's corners: `up` above the centre, `down`
  * below, `grow` px added outside each corner. `round` 0 is a lens with pointed corners, 1 an ellipse.
  */
-function outline(g: CanvasRenderingContext2D, f: MouthFrame2D, up: number, down: number, round: number, grow = 0): void {
+function outline(g: Mouth2D, f: MouthFrame2D, up: number, down: number, round: number, grow = 0): void {
   const a = lerp(0.25, 0, round);
   const b = lerp(0.05, 0.5523, round);
   const c = lerp(0.62, 0.5523, round);
@@ -125,9 +124,9 @@ function outline(g: CanvasRenderingContext2D, f: MouthFrame2D, up: number, down:
   g.closePath();
 }
 
-const setAffine = (g: CanvasRenderingContext2D, m: Affine): void => g.setTransform(m[0], m[1], m[2], m[3], m[4], m[5]);
+const setAffine = (g: Mouth2D, m: Affine): void => g.setTransform(m[0], m[1], m[2], m[3], m[4], m[5]);
 
-const lift = (c: Rgb, k: number): Rgb => [Math.min(255, c[0] * k), Math.min(255, c[1] * k), Math.min(255, c[2] * k)];
+const lift = (c: MouthRgb, k: number): MouthRgb => [Math.min(255, c[0] * k), Math.min(255, c[1] * k), Math.min(255, c[2] * k)];
 
 export interface PaintInput {
   anchor: MouthAnchor;
@@ -135,6 +134,8 @@ export interface PaintInput {
   colours: MouthColours;
   /** 0..1: how much of the drawn mouth replaces the art's own (0 = the art untouched). */
   alpha: number;
+  /** 0..1 share of `alpha` the lips are drawn at (default 1); the cover always takes all of it. */
+  lips?: number;
 }
 
 export type PatchCache = ReturnType<typeof createPatchCache>;
@@ -143,7 +144,7 @@ export type PatchCache = ReturnType<typeof createPatchCache>;
  * The skin patch over the art's lips. It reaches full cover at half the mouth's alpha, so while a
  * drawn mouth fades in the art's lips are already gone (never two mouths, only a faint one).
  */
-export function paintCover(g: CanvasRenderingContext2D, anchor: MouthAnchor, colours: MouthColours, alpha: number, patches: PatchCache): void {
+export function paintCover(g: Mouth2D, anchor: MouthAnchor, colours: MouthColours, alpha: number, patches: PatchCache): void {
   const a = Math.min(1, Math.max(0, alpha) * 2) * anchor.opacity;
   if (!(a > 0.001)) return;
   const patch = patches(anchor, colours);
@@ -156,7 +157,7 @@ export function paintCover(g: CanvasRenderingContext2D, anchor: MouthAnchor, col
 }
 
 /** A short crease beside each corner the emotion moved (a cheek pulled up, or a sulk's fold). */
-function creases(g: CanvasRenderingContext2D, f: MouthFrame2D, width: number, colour: Rgb, alpha: number): void {
+function creases(g: Mouth2D, f: MouthFrame2D, width: number, colour: MouthRgb, alpha: number): void {
   const corners: readonly (readonly [x: number, y: number, side: number])[] = [
     [f.xl, f.yl, -1],
     [f.xr, f.yr, 1],
@@ -177,13 +178,13 @@ function creases(g: CanvasRenderingContext2D, f: MouthFrame2D, width: number, co
   }
 }
 
-/** Paints one frame of the procedural mouth into `g` (the recorded composite). */
-export function paintMouth(g: CanvasRenderingContext2D, input: PaintInput, patches: PatchCache): void {
+/** Paints one frame of the drawn mouth into `g` (the cover first, then the lips at `lips` x alpha). */
+export function paintMouth(g: Mouth2D, input: PaintInput, patches: PatchCache): void {
   const { anchor, params: p, colours, alpha } = input;
-  const a = Math.min(1, Math.max(0, alpha)) * anchor.opacity;
+  paintCover(g, anchor, colours, alpha, patches);
+  const a = Math.min(1, Math.max(0, alpha)) * Math.min(1, Math.max(0, input.lips ?? 1)) * anchor.opacity;
   if (!(a > 0.001)) return;
   const { cx, lineY, width, maxOpen } = anchor.geometry;
-  paintCover(g, anchor, colours, alpha, patches);
   g.save();
   setAffine(g, anchor.affine);
   g.globalAlpha = a;

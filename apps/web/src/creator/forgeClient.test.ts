@@ -101,6 +101,12 @@ describe("readJobView", () => {
     expect(readJobView({ jobId: "j", status: "done", plane: "live", assets: { a: 1 } })).toBeUndefined();
   });
 
+  it("llm-avatar-lab: keeps a forged rig's mouth; refuses one off the canvas", () => {
+    const mouth = { cx: 32, lineY: 40, width: 10 };
+    expect(readJobView({ jobId: "j", status: "done", plane: "live", rig: { ...testRig(), mouth } })?.rig?.mouth).toEqual(mouth);
+    expect(readJobView({ jobId: "j", status: "done", plane: "live", rig: { ...testRig(), mouth: { ...mouth, lineY: 99 } } })).toBeUndefined();
+  });
+
   it("maps HTTP statuses without a body code", () => {
     expect(codeForStatus(429)).toBe("quota");
     expect(codeForStatus(400)).toBe("bad_input");

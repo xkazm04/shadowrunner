@@ -1,19 +1,12 @@
-// The mouth in this frame (anchor.ts): the mouth is drawn in the jaw's parent frame (the head),
-// so it follows every head motion; the jaw's own drop, measured in that frame, is how far the
-// lower lip has moved. Read from player.layerFrames() (@sr/avatar, read-only).
-import type { Affine, LayerFrame } from "@sr/avatar/core";
+// The mouth in this frame, for what the lab paints over the player's mouth (L2's forge art, cropped
+// by geometry.ts): in the jaw's parent frame (the head), so it follows every head motion; the jaw's
+// own drop, measured in that frame, is how far the lower lip has moved. Read from
+// player.layerFrames() (@sr/avatar, read-only). The player places its own drawn mouth the same way
+// (@sr/avatar mouth/anchor.ts), on Rig.mouth only.
+import { applyAffine as apply, invertAffine, type Affine, type LayerFrame } from "@sr/avatar/core";
 import { mouthGeometry, type MeasuredMouth, type MouthGeometry } from "./geometry.js";
 
-export function invertAffine(m: Affine): Affine | undefined {
-  const [a, b, c, d, e, f] = m;
-  const det = a * d - b * c;
-  if (!(Math.abs(det) > 1e-12)) return undefined;
-  return [d / det, -b / det, -c / det, a / det, (c * f - d * e) / det, (b * e - a * f) / det];
-}
-
-export function apply(m: Affine, x: number, y: number): [number, number] {
-  return [m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]];
-}
+export { apply, invertAffine };
 
 export interface MouthAnchor {
   geometry: MouthGeometry;

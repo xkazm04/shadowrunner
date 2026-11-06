@@ -23,6 +23,17 @@ describe("expressionPrompt", () => {
     }
     expect(expressionPrompt("Lot Ninety", "smug", "art nouveau poster")).toBe(`${expressionPrompt("Lot Ninety", "smug")} The art style is art nouveau poster.`);
   });
+
+  it("the rig owns the mouth: no FACE names the mouth; the frame keeps the mouth and jaw as painted and never says closed", () => {
+    for (const family of EXPRESSION_FAMILIES) {
+      expect(EXPRESSION_FACES[family], family).not.toMatch(/mouth|\blips?\b|\bsmile\b|smirk|snarl|teeth|grin|jaw/i);
+      expect(EXPRESSION_FACES[family], family).toMatch(/brow/);
+      const prompt = expressionPrompt("Sir Vacant", family);
+      expect(prompt).toContain("Change ONLY the eyes, eyelids and brows");
+      expect(prompt).toContain("Keep the mouth, lips and jaw exactly as they are in the portrait");
+      expect(prompt).not.toMatch(/closed/i);
+    }
+  });
 });
 
 // A 120 x 120 canvas: a grey head, two eyes, a jaw and one brow; a torso below that is not a face part.

@@ -21,6 +21,23 @@ export const MOUTH_OPAQUE = 128;
 
 type Box = readonly [x: number, y: number, w: number, h: number];
 
+/**
+ * The jaw cavities of a mouth drawn open (round 3: a lipless mouth keeps its art): "gap" (a visor's
+ * slit, a grin over a dark gap: Sir Vacant, Reveille) and "fill" (a maw of teeth over a lit throat:
+ * the Vicar, Reveille's teeth). A "paint" jaw (omitted) is a lower lip and gets `Rig.mouth`.
+ */
+export const DRAWN_MOUTH_CAVITIES: readonly string[] = ["gap", "fill"];
+
+/**
+ * True when the art owns the mouth: some jaw part's `cavity` is in DRAWN_MOUTH_CAVITIES. Then the
+ * rig carries no `mouth`, so no renderer draws lips over the art and `cutVariants` resets nothing.
+ * `glow` alone does not count (the Tallyman's lip over a lit cavity) nor does `cut.cell`. v1 parts
+ * have no cavity: their jaw is the human jaw PARTS_PROMPT asks for.
+ */
+export function drawnMouth(parts: readonly { role?: string; cavity?: string }[]): boolean {
+  return parts.some((p) => p.role === "jaw" && p.cavity !== undefined && DRAWN_MOUTH_CAVITIES.includes(p.cavity));
+}
+
 /** The jaw's opaque pixels as a mask: an Rgba by alpha >= MOUTH_OPAQUE, a mask by non-zero. */
 function opaqueOf(image: Rgba | Mask): Mask {
   const { width, height } = image;

@@ -38,6 +38,15 @@ describe("mouthWeight", () => {
   });
 });
 
+describe("mouthWeight region override", () => {
+  it("a wider, taller region reaches past the default edge; omitted fields keep the default", () => {
+    expect(mouthWeight(MOUTH, 200 + RX + 1, CY)).toBe(0);
+    expect(mouthWeight(MOUTH, 200 + RX + 1, CY, { rx: RESET_RX * 1.5 })).toBeGreaterThan(0);
+    expect(mouthWeight(MOUTH, 200, CY - UP - 1, { above: RESET_RY_ABOVE * 1.5 })).toBeGreaterThan(0);
+    expect(mouthWeight(MOUTH, 200, CY + DOWN + 1, { above: RESET_RY_ABOVE * 1.5 })).toBe(0);
+  });
+});
+
 describe("resetMouth", () => {
   // Patch and base at different boxes: base covers [0, 0] .. [400, 300], patch [20, 10] 360 x 280.
   const base = solid(400, 300, [10, 20, 30, 255]);

@@ -15,3 +15,11 @@ export * from "./gl/renderer.js";
 export * from "./canvas2d/renderer.js";
 export * from "./react/loop.js";
 export * from "./player/player.js";
+// The drawn mouth (spark llm-avatar-lab, "the rig owns the mouth"): shapes, emotion bias, the
+// per-frame mouth state, anchor and paint, for callers that drive or inspect it (the lab).
+export * from "./mouth/shapes.js";
+export * from "./mouth/emotion.js";
+export * from "./mouth/state.js";
+export * from "./mouth/anchor.js";
+export * from "./mouth/colours.js";
+export * from "./mouth/paint.js";

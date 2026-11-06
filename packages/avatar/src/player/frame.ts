@@ -9,9 +9,15 @@
 //   reduced motion the change is instant (no `mood`). A change mid-fade starts a new fade from the
 //   emotion it was fading to. A `drive` override passes through untouched.
 // - `dim` is eased on the frame's dt and handed to the renderer in the frame clock.
+// - The drawn mouth (spark llm-avatar-lab, "the rig owns the mouth"): for a rig with a usable
+//   `mouth`, the mouth state (mouth/state.ts) turns the level (or a caller's `mouth` mix) and the
+//   emotion into the frame clock's `mouth`, and the jaw opens for that mouth (its level replaces
+//   the raw level). A rig without `mouth` runs exactly as before: no `mouth` key, the raw level.
 import { applyLook, MOOD_FADE_S, poseLayers, type Drive, type Emotion, type Gesture, type LayerPose, type Look, type Rig } from "@sr/rig";
 import type { LookAtPoint } from "../driver/lookAt.js";
 import { initialState, type Gaze } from "../driver/state.js";
+import { mouthGeometry } from "../mouth/anchor.js";
+import { createMouthState, type MouthShapesInput } from "../mouth/state.js";
 import { easeDim } from "../render/frame.js";
 import type { FrameClock } from "../render/types.js";
 import { advanceFrame } from "../react/loop.js";
@@ -60,6 +66,8 @@ export interface FrameBodyInputs {
   drive?: Drive;
   /** Target eyes-only dim, 0..1 (default 0). */
   dim?: number;
+  /** A caller's mouth mix (visemes); only a rig with `mouth` reads it. Absent = the level drive. */
+  mouth?: MouthShapesInput;
 }
 
 /** What one frame hands to `renderer.draw(poses, look, clock)`. */
@@ -76,10 +84,15 @@ export function createFrameBody(seed: number): (inputs: FrameBodyInputs) => Fram
   const fadeMood = moodFader();
   let state = initialState(seed);
   let dimShown = 0;
+  const stepMouth = createMouthState();
   return (p) => {
+    const mouth =
+      mouthGeometry(p.rig.mouth) === undefined
+        ? undefined
+        : stepMouth({ emotion: p.look.emotion, level: p.level, reducedMotion: p.reducedMotion, dt: p.dt, ...(p.mouth === undefined ? {} : { input: p.mouth }) });
     const next = advanceFrame(state, {
       dt: p.dt,
-      level: p.level,
+      level: mouth?.level ?? p.level,
       gaze: p.gaze,
       reducedMotion: p.reducedMotion,
       ...(p.gesture === undefined ? {} : { gesture: p.gesture }),
@@ -91,7 +104,7 @@ export function createFrameBody(seed: number): (inputs: FrameBodyInputs) => Fram
     const drive = p.drive !== undefined || mood === undefined ? next.drive : { ...next.drive, mood };
     const poses = poseLayers(dress(p.rig, p.look), p.look, drive);
     dimShown = easeDim(dimShown, p.dim ?? 0, p.dt, p.reducedMotion);
-    const clock: FrameClock = { t: p.drive?.t ?? state.t, reducedMotion: p.reducedMotion, ...(dimShown > 0 ? { dim: dimShown } : {}) };
+    const clock: FrameClock = { t: p.drive?.t ?? state.t, reducedMotion: p.reducedMotion, ...(dimShown > 0 ? { dim: dimShown } : {}), ...(mouth?.pose === undefined ? {} : { mouth: mouth.pose }) };
     return { poses, clock, t: state.t };
   };
 }

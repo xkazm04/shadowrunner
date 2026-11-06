@@ -17,6 +17,7 @@ import type { Emotion, Gesture, LayerPose, Look, Rig } from "@sr/rig";
 import { attachAudio, type AttachAudioOptions, type AudioLevelTap } from "../audio/level.js";
 import type { CreateRendererOptions } from "../gl/renderer.js";
 import { fitView, layerAffine, lookLight } from "../render/frame.js";
+import type { MouthPose, MouthShapesInput } from "../mouth/state.js";
 import type { CanvasHost, Renderer, RigAssets } from "../render/types.js";
 import { isReducedMotion } from "../react/loop.js";
 import { createFrameBody } from "./frame.js";
@@ -38,6 +39,8 @@ export function runPlayer(canvas: HTMLCanvasElement, options: AvatarPlayerOption
   let look: Look = cutoutLook(options.look, options.backdrop);
   let tap: AudioLevelTap | undefined;
   let override: number | undefined;
+  let mouthInput: MouthShapesInput | undefined;
+  let mouthShown: MouthPose | undefined;
   let pendingGesture: Gesture | undefined;
   let raf: number | undefined;
   let lastNow: number | undefined;
@@ -62,8 +65,10 @@ export function runPlayer(canvas: HTMLCanvasElement, options: AvatarPlayerOption
       gaze: "host",
       reducedMotion: reducedMotion(),
       ...(gesture === undefined ? {} : { gesture }),
+      ...(mouthInput === undefined ? {} : { mouth: mouthInput }),
     });
     renderer.draw(out.poses, look, out.clock);
+    mouthShown = out.clock.mouth;
     drawn = { poses: out.poses, look };
   };
 
@@ -114,6 +119,12 @@ export function runPlayer(canvas: HTMLCanvasElement, options: AvatarPlayerOption
     setLevel(level: number | undefined): void {
       if (!disposed) override = level === undefined ? undefined : clampLevel(level);
     },
+    setMouthShapes(shapes, mouthOptions): void {
+      if (!disposed) mouthInput = shapes === undefined ? undefined : { ...mouthOptions, shapes };
+    },
+    mouth(): MouthPose | undefined {
+      return disposed ? undefined : mouthShown;
+    },
     resize(width: number, height: number, dpr: number): void {
       if (!disposed) renderer.resize(width, height, dpr);
     },
@@ -140,6 +151,7 @@ export function runPlayer(canvas: HTMLCanvasElement, options: AvatarPlayerOption
       stop();
       disposed = true;
       drawn = undefined;
+      mouthShown = undefined;
       tap?.detach();
       tap = undefined;
       observer?.disconnect();

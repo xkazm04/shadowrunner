@@ -34,21 +34,22 @@ const smoothstep = (x: number): number => {
 /** The bias a family asks for (null = neutral = none). */
 export const biasOf = (family: ExpressionFamily | null): EmotionBias => (family === null ? NO_BIAS : EMOTION_BIAS[family]);
 
-/** The viseme params with the emotion added; anything that would part the lips yields to `press`. */
-export function applyBias(p: MouthParams, b: EmotionBias): MouthParams {
+/** `p` with the emotion added, in place; anything that would part the lips yields to `press`. */
+export function applyBiasInto(p: MouthParams, b: EmotionBias): MouthParams {
   const keep = 1 - clamp(p.press, 0, 1);
-  return {
-    ...p,
-    width: Math.max(0.3, p.width + b.width),
-    open: clamp(p.open + b.open * keep, 0, 1),
-    teeth: clamp(p.teeth + b.teeth, 0, 1),
-    jaw: clamp(p.jaw + b.jaw * keep, 0, 1),
-    smile: clamp(p.smile + b.smile, -1, 1),
-    snarl: clamp(p.snarl + b.snarl * (1 - 0.7 * (1 - keep)), 0, 1),
-    skew: clamp(p.skew + b.skew, -1, 1),
-    tight: clamp(p.tight + b.tight, 0, 1),
-  };
+  p.width = Math.max(0.3, p.width + b.width);
+  p.open = clamp(p.open + b.open * keep, 0, 1);
+  p.teeth = clamp(p.teeth + b.teeth, 0, 1);
+  p.jaw = clamp(p.jaw + b.jaw * keep, 0, 1);
+  p.smile = clamp(p.smile + b.smile, -1, 1);
+  p.snarl = clamp(p.snarl + b.snarl * (1 - 0.7 * (1 - keep)), 0, 1);
+  p.skew = clamp(p.skew + b.skew, -1, 1);
+  p.tight = clamp(p.tight + b.tight, 0, 1);
+  return p;
 }
+
+/** The viseme params with the emotion added (a new object). */
+export const applyBias = (p: MouthParams, b: EmotionBias): MouthParams => applyBiasInto({ ...p }, b);
 
 export interface EmotionState {
   bias: EmotionBias;
@@ -57,19 +58,21 @@ export interface EmotionState {
 }
 
 export interface EmotionEase {
-  /** The character's emotion changed at `nowMs` (audio clock). */
+  /** The character's emotion changed at `nowMs` (any monotonic ms clock). */
   set(emotion: Emotion, nowMs: number): void;
   at(nowMs: number): EmotionState;
   /** True while the target is a non-neutral family. */
   readonly expressive: boolean;
 }
 
-export function createEmotionEase(reducedMotion: boolean, easeMs = EMOTION_EASE_MS): EmotionEase {
+/** `reducedMotion` may be read live (the player's "auto" follows the viewer's setting every frame). */
+export function createEmotionEase(reducedMotion: boolean | (() => boolean), easeMs = EMOTION_EASE_MS): EmotionEase {
+  const reduced = typeof reducedMotion === "function" ? reducedMotion : () => reducedMotion;
   let from: EmotionState = { bias: NO_BIAS, strength: 0 };
   let to: EmotionState = from;
   let startMs = 0;
   const at = (nowMs: number): EmotionState => {
-    const s = reducedMotion || !(easeMs > 0) ? 1 : smoothstep((nowMs - startMs) / easeMs);
+    const s = reduced() || !(easeMs > 0) ? 1 : smoothstep((nowMs - startMs) / easeMs);
     if (s >= 1) return to;
     const bias: Record<keyof EmotionBias, number> = { ...NO_BIAS };
     for (const k of KEYS) bias[k] = from.bias[k] + (to.bias[k] - from.bias[k]) * s;

@@ -2,16 +2,16 @@
 // image of the character's own mouth (var/lab/mouths/<character>/, made by src/mouths from the
 // pack's art and the forge's image model, or a deterministic placeholder). The shapes crossfade by
 // their weights inside a feathered mask cut to the face (the rest crop's own alpha), drawn in the
-// head's frame over the crop square. A shape with no image, and every shape until the images have
-// loaded, is drawn by L1's procedural mouth; the jaw opens only for those (the art has its own).
-// The art carries no emotion: the procedural share gets the emotion bias, and whenever anything is
-// drawn the art's own lips are first covered in sampled skin (the same cover rule as L1).
+// head's frame over the crop square, in the recorded composite over the avatar. A shape with no
+// image, and every shape until the images have loaded, is drawn by the player's own mouth (the
+// `drawn` share of the mix, setMouthShapes); the jaw opens only for those (the art has its own).
+// The art carries no emotion: the player's share gets the emotion bias, and whenever anything is
+// drawn the player first covers the art's own lips in sampled skin (the same cover rule as L1).
+// A rig without Rig.mouth draws no mouth at all (the player never guesses one), so neither does L2.
 import type { LipDriverFactory, LipContext } from "../types.js";
 import { createMouthDriver } from "./mouth/driver.js";
-import { applyBias } from "./mouth/emotion.js";
-import { createPatchCache, paintCover, paintMouth } from "./mouth/paint.js";
 import { findMouthSet, type MouthSetManifest } from "./mouth/set.js";
-import { blendParams, MOUTH_SHAPES, restWeights, type MouthShape, type ShapeWeights } from "./mouth/shapes.js";
+import { MOUTH_SHAPES, restWeights, type MouthShape, type ShapeWeights } from "./mouth/shapes.js";
 
 type Surface = HTMLCanvasElement | OffscreenCanvas;
 type Surface2D = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
@@ -95,27 +95,26 @@ export const createL2: LipDriverFactory = (ctx: LipContext) => {
   let shapes = new Map<MouthShape, Surface>();
   let loading: Promise<void> | undefined;
   const mix = surface(side);
-  const patches = createPatchCache();
 
   const drawn = (): ReadonlySet<MouthShape> => new Set(shapes.keys());
-  const driver = createMouthDriver(
-    "L2",
-    ctx,
-    (g, f) => {
+  const driver = createMouthDriver("L2", ctx, {
+    // The player draws the shapes the art lacks (all of them until the art has loaded).
+    drawn: (w) => splitMix(w, drawn()).procedural,
+    // The art carries its own opening: the jaw opens only for what the player draws.
+    jawWeights: (w) => {
+      const split = splitMix(w, drawn());
+      return { ...split.procedural, rest: 1 - split.proceduralShare };
+    },
+    paint: (g, f) => {
       if (loading === undefined) {
         const mouth = { x: f.anchor.geometry.cx - cropX, y: f.anchor.geometry.lineY - cropY };
         loading = loadShapes(manifest, urls, f.anchor.geometry.width, mouth)
           .then((loaded) => {
             shapes = loaded;
           })
-          .catch((error: unknown) => console.warn(`Lip arm L2: the mouth set did not load (${error instanceof Error ? error.message : String(error)}); drawing L1's mouth.`));
+          .catch((error: unknown) => console.warn(`Lip arm L2: the mouth set did not load (${error instanceof Error ? error.message : String(error)}); drawing the player's mouth.`));
       }
       const split = splitMix(f.weights, drawn());
-      paintCover(g, f.anchor, f.colours, f.alpha, patches);
-      if (split.proceduralShare > 0) {
-        const params = applyBias(blendParams(split.procedural), f.bias);
-        paintMouth(g, { anchor: f.anchor, params, colours: f.colours, alpha: f.alpha * split.proceduralShare }, patches);
-      }
       if (split.artShare <= 0 || mix === undefined || !(f.alpha > 0)) return;
       // The art's shapes, averaged by weight: each drawn over the last at w_k / (w_1 + ... + w_k).
       mix.g.setTransform(1, 0, 0, 1, 0, 0);
@@ -137,13 +136,6 @@ export const createL2: LipDriverFactory = (ctx: LipContext) => {
       g.drawImage(mix.canvas, cropX, cropY, side, side);
       g.restore();
     },
-    {
-      // The art carries its own opening: the jaw opens only for what L1 draws.
-      jawWeights: (w) => {
-        const split = splitMix(w, drawn());
-        return { ...split.procedural, rest: 1 - split.proceduralShare };
-      },
-    },
-  );
+  });
   return driver;
 };

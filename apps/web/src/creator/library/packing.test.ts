@@ -68,6 +68,19 @@ describe("packInputOf", () => {
     expect(back.voice).toBe("velvet");
     expect(Object.keys(back.assets).sort()).toEqual(Object.keys(r.assets).sort());
   });
+
+  it("llm-avatar-lab: a forged rig's mouth survives export, import and a copy on an id clash; a rig without one stays without", async () => {
+    const r = record();
+    const mouth = { cx: 20.5, lineY: 30, width: 12.75 };
+    const forged = { ...r, rig: { ...r.rig, mouth } };
+    const read = await readPack(await writePack(packInputOf(forged, { licence: "CC0-1.0", author: "" })));
+    if (!read.ok) throw new Error(read.error.detail);
+    expect(recordOfPack(read.pack, new Set(), NOW).rig.mouth).toEqual(mouth);
+    expect(recordOfPack(read.pack, new Set(["ghost"]), NOW).rig.mouth).toEqual(mouth);
+    const plain = await readPack(await writePack(packInputOf(r, { licence: "CC0-1.0", author: "" })));
+    if (!plain.ok) throw new Error(plain.error.detail);
+    expect("mouth" in recordOfPack(plain.pack, new Set(), NOW).rig).toBe(false);
+  });
 });
 
 describe("recordOfPack", () => {

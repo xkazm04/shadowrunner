@@ -142,15 +142,22 @@ export function cutVariants(rig: Rig, layers: ReadonlyMap<string, ImageLike>, po
 ```
 
 - **Prompt** (exact text in `expressions.ts`, pinned by a test to this table): one sentence per
-  family over a fixed frame: "Edit this portrait of {name}. Change ONLY the facial expression to
-  {FACE}. Keep the same character, pose, framing, art style, colours, lighting, background and every
-  other pixel. Do not add or remove objects." with FACE:
-  joy "a warm, open delight: eyes smiling and slightly narrowed, brows raised, mouth in a broad smile",
-  showman "a theatrical showman's flourish: eyes wide, brows high and arched, mouth open in a grand
-  exclamation", anger "fury: brows drawn down hard into a V, eyes narrowed and glaring, mouth in a
-  snarl showing teeth", gloom "gloom: heavy lowered eyelids, brows flat and low, mouth a flat or
-  downturned line", smug "smug superiority: one brow raised, eyes half-lidded, a one-sided smirk",
-  suspicion "suspicion: eyes narrowed sideways, one brow lowered, lips pressed tight".
+  family over a fixed frame: "Edit this portrait of {name}. Change ONLY the eyes, eyelids and brows,
+  to {FACE}. Keep the mouth, lips and jaw exactly as they are in the portrait, neutral and at rest:
+  do not open, smile, snarl, purse or move them, and add no lines or folds around the mouth or on
+  the cheeks. Keep the same character, pose, framing, art style, colours, lighting, background and
+  every other pixel. Do not add or remove objects." with FACE:
+  joy "a warm, open delight: eyes smiling and narrowed into happy crescents, brows raised and soft",
+  showman "a theatrical showman's flourish: eyes wide open and bright, brows high and arched",
+  anger "fury: brows drawn down hard into a V with a deep crease between them, eyes narrowed and
+  glaring", gloom "gloom: heavy lowered eyelids, brows flat and low with the inner ends lifted, a
+  dull downcast gaze", smug "smug superiority: one brow raised high, eyes half-lidded and looking
+  down the nose", suspicion "suspicion: eyes narrowed and glancing sideways, one brow lowered".
+  Amended by llm-avatar-lab round 3 (the rig owns the mouth): the faces name the upper face only
+  and the frame keeps the mouth and jaw as painted, because the renderer draws the talking mouth
+  (`Rig.mouth`) and carries the emotion in it; a painted grin, snarl or smirk would show a second
+  mouth and leave cheek folds `resetMouth` cannot remove. The frame says "as painted", not
+  "closed", so a visor or a maw drawn open stays open.
 - **Face mask**: union of the opaque pixels of `eye`, `jaw` and brow layers and of the rig's
   face band (the head layer's pixels between the top of the highest brow/eye bbox minus 6% of the
   head height and the bottom of the jaw bbox plus 3%), dilated by 2% of the rig width, feathered 8 px.

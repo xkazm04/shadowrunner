@@ -195,11 +195,10 @@ describe("offline proof: the product path is the overnight path", () => {
     const replay = JSON.parse(read(`assets/replay/forge/${SLUG}/job.json`).toString("utf8")) as { rig: Rig };
     // The live job adds colour regions after assembly, and the recorded rig carries the offline
     // retrofit's expression faces (character-control task 5, from Codex edits this fake does not
-    // make); the cut itself is the recorded one. A recording made before Rig.mouth (llm-avatar-lab)
-    // lacks the mouth the live assembly now measures: compared only when the recording has one.
-    const live = view.rig === undefined || replay.rig.mouth !== undefined ? view.rig : { ...view.rig, mouth: undefined };
+    // make); the cut itself is the recorded one. Sir Vacant's visor is a mouth drawn open (cavity
+    // "gap"): the live assembly (`drawnMouth`) and the recording both leave `mouth` out.
     const strip = (rig: Rig | undefined) => (rig === undefined ? undefined : { ...rig, id: "", layers: rig.layers.map((layer) => Object.fromEntries(Object.entries(layer).filter(([key]) => key !== "regions" && key !== "variants"))) });
-    expect(strip(live)).toEqual(strip(replay.rig));
+    expect(strip(view.rig)).toEqual(strip(replay.rig));
     for (const layer of replay.rig.layers) {
       const url = view.assets?.[layer.file];
       if (url === undefined) throw new Error(`no live ${layer.file}`);

@@ -11,7 +11,11 @@
 // through an offscreen copy per layer (canvas2d/recolour.ts); a recoloured eye's eyeGain joins its
 // tint in the filter. Face patches follow design "Faces" as in GL. A look equal to the rig draws
 // every layer's own image, exactly as before.
+// The drawn mouth (FrameClock.mouth, a rig with `mouth`) is painted straight onto the context right
+// after the later of the head and the jaw, in the head's frame, with the head's tint (mouth/draw.ts).
 import type { Layer, LayerPose, Look, Rig } from "@sr/rig";
+import { createMouthArt } from "../mouth/draw.js";
+import type { MouthSurfaceFactory } from "../mouth/colours.js";
 import { createAssetCache, type AssetCache, type AssetImage, type AssetLoader } from "../render/assets.js";
 import { dimGain, fitView, layerAffine, lookLight, type LookLight } from "../render/frame.js";
 import { mapRect, needsMap, rigRecolours, type LayerRecolour } from "../render/recolour.js";
@@ -28,6 +32,8 @@ export interface Canvas2dOptions {
   loadAsset?: AssetLoader;
   /** Offscreen surfaces for the recolour (tests pass pixel stubs). */
   surface?: SurfaceFactory;
+  /** 2D surfaces for the drawn mouth (its colour sample and skin cover; tests pass stubs). */
+  mouthSurface?: MouthSurfaceFactory;
 }
 
 /** The canvas filter for a pose tint: "none" at 1 (or a non-finite tint), else `brightness(tint)`. */
@@ -45,7 +51,10 @@ interface Draw {
 /** A 2D renderer on `ctx` (whose canvas is `canvas`); `ctx` null draws nothing (no surface at all). */
 export function createCanvas2dRenderer(canvas: CanvasHost, ctx: CanvasRenderingContext2D | null, rig: Rig, assets: RigAssets, options: Canvas2dOptions = {}): Renderer {
   let entries = new Map<string, Entry>();
+  let layers = new Map<string, Layer>();
   let currentRig = rig;
+  let currentAssets = assets;
+  const mouthArt = createMouthArt(options.mouthSurface);
   let light: LookLight | undefined;
   let recolours = new Map<string, LayerRecolour>();
   let images: AssetCache = createAssetCache(assets, options.loadAsset);
@@ -56,6 +65,8 @@ export function createCanvas2dRenderer(canvas: CanvasHost, ctx: CanvasRenderingC
 
   const setRig = (next: Rig, nextAssets: RigAssets): void => {
     currentRig = next;
+    currentAssets = nextAssets;
+    layers = new Map(next.layers.map((layer) => [layer.name, layer]));
     lastLook = undefined;
     entries = new Map();
     images.dispose();
@@ -117,9 +128,12 @@ export function createCanvas2dRenderer(canvas: CanvasHost, ctx: CanvasRenderingC
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = "high";
-      for (const pose of poses) {
-        const entry = entries.get(pose.name);
-        if (entry === undefined) continue;
+      const mouth = clock?.mouth === undefined ? undefined : mouthArt.place(currentRig, layers, poses, view, browY);
+      const mouthColours = mouth === undefined ? undefined : mouthArt.colours(currentRig, currentAssets);
+      for (let i = 0; i < poses.length; i += 1) {
+        const pose = poses[i];
+        const entry = pose === undefined ? undefined : entries.get(pose.name);
+        if (pose === undefined || entry === undefined) continue;
         const { layer } = entry;
         const m = layerAffine(layer, pose, view, browY);
         const eyeGain = recolours.get(layer.name)?.light?.name === "eye" ? (light?.eyeGain ?? 1) : 1;
@@ -128,6 +142,11 @@ export function createCanvas2dRenderer(canvas: CanvasHost, ctx: CanvasRenderingC
         for (const draw of drawsOf(entry, pose)) {
           ctx.globalAlpha = draw.alpha;
           ctx.drawImage(draw.image, draw.rect[0] ?? 0, draw.rect[1] ?? 0, draw.rect[2] ?? 0, draw.rect[3] ?? 0);
+          drawCalls += 1;
+        }
+        if (mouth !== undefined && mouthColours !== undefined && clock?.mouth !== undefined && i === mouth.host.index) {
+          ctx.filter = tintFilter(mouth.frame.pose.tint * dimGain(mouth.frame.layer, clock.dim));
+          mouthArt.paint(ctx, mouth.anchor, clock.mouth, mouthColours);
           drawCalls += 1;
         }
       }

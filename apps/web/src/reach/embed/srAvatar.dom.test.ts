@@ -23,6 +23,9 @@ vi.mock("@sr/avatar/core", () => ({
       start: vi.fn(),
       stop: vi.fn(),
       renderFrame: vi.fn(),
+      layerFrames: vi.fn(() => []),
+      setMouthShapes: vi.fn(),
+      mouth: vi.fn(),
       dispose: vi.fn(),
     };
     fake.players.push({ canvas, options, player });

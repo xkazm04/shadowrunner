@@ -31,22 +31,28 @@ const OPAQUE = 128;
 
 export const isBrowLayer = (name: string): boolean => /^brow(_|$)/.test(name);
 
-/** design.md "Prompt": FACE per family. */
+/**
+ * design.md "Prompt": FACE per family. The rig owns the mouth (llm-avatar-lab round 3): each FACE
+ * names the eyes, lids and brows only, and the frame keeps the mouth and jaw as painted, so the edit
+ * leaves no grin, cheek fold or smile line for `resetMouth` to miss; the renderer's mouth emotes.
+ */
 export const EXPRESSION_FACES: Readonly<Record<ExpressionFamily, string>> = Object.freeze({
-  joy: "a warm, open delight: eyes smiling and slightly narrowed, brows raised, mouth in a broad smile",
-  showman: "a theatrical showman's flourish: eyes wide, brows high and arched, mouth open in a grand exclamation",
-  anger: "fury: brows drawn down hard into a V, eyes narrowed and glaring, mouth in a snarl showing teeth",
-  gloom: "gloom: heavy lowered eyelids, brows flat and low, mouth a flat or downturned line",
-  smug: "smug superiority: one brow raised, eyes half-lidded, a one-sided smirk",
-  suspicion: "suspicion: eyes narrowed sideways, one brow lowered, lips pressed tight",
+  joy: "a warm, open delight: eyes smiling and narrowed into happy crescents, brows raised and soft",
+  showman: "a theatrical showman's flourish: eyes wide open and bright, brows high and arched",
+  anger: "fury: brows drawn down hard into a V with a deep crease between them, eyes narrowed and glaring",
+  gloom: "gloom: heavy lowered eyelids, brows flat and low with the inner ends lifted, a dull downcast gaze",
+  smug: "smug superiority: one brow raised high, eyes half-lidded and looking down the nose",
+  suspicion: "suspicion: eyes narrowed and glancing sideways, one brow lowered",
 });
 
 /**
  * The edit for one family, verbatim from design.md; `style` (a brief's style name), when given, is
- * appended as one more sentence so the edit keeps the house of the drawing.
+ * appended as one more sentence so the edit keeps the house of the drawing. The frame changes only
+ * the upper face and keeps the mouth and jaw as painted (no "closed": a visor or a maw drawn open
+ * must stay open).
  */
 export function expressionPrompt(name: string, family: ExpressionFamily, style?: string): string {
-  const frame = `Edit this portrait of ${name}. Change ONLY the facial expression to ${EXPRESSION_FACES[family]}. Keep the same character, pose, framing, art style, colours, lighting, background and every other pixel. Do not add or remove objects.`;
+  const frame = `Edit this portrait of ${name}. Change ONLY the eyes, eyelids and brows, to ${EXPRESSION_FACES[family]}. Keep the mouth, lips and jaw exactly as they are in the portrait, neutral and at rest: do not open, smile, snarl, purse or move them, and add no lines or folds around the mouth or on the cheeks. Keep the same character, pose, framing, art style, colours, lighting, background and every other pixel. Do not add or remove objects.`;
   return style === undefined || style.trim() === "" ? frame : `${frame} The art style is ${style.trim()}.`;
 }
 
@@ -195,12 +201,23 @@ export const RESET_FEATHER = 8;
 /** The region's superellipse power: 2 is an ellipse; 4 a rounded box that reaches a grin's raised corners. */
 export const RESET_POWER = 4;
 
+/**
+ * A reset region's size, shares of the mouth's width, overriding RESET_RX / RESET_RY_ABOVE /
+ * RESET_RY_BELOW: recorded faces whose grin, open jaw or nose crease reach past the default region
+ * (scripts/cast/mouth-backfill.mjs keeps the per-character values).
+ */
+export interface ResetRegion {
+  rx?: number;
+  above?: number;
+  below?: number;
+}
+
 /** The base's weight (0..1) at canvas point (x, y): 1 deeper than RESET_FEATHER px inside the mouth region, 0 outside. */
-export function mouthWeight(mouth: RigMouth, x: number, y: number): number {
+export function mouthWeight(mouth: RigMouth, x: number, y: number, region: ResetRegion = {}): number {
   const dx = x - mouth.cx;
   const dy = y - (mouth.lineY + RESET_DROP * mouth.width);
-  const rx = RESET_RX * mouth.width;
-  const ry = (dy < 0 ? RESET_RY_ABOVE : RESET_RY_BELOW) * mouth.width;
+  const rx = (region.rx ?? RESET_RX) * mouth.width;
+  const ry = (dy < 0 ? (region.above ?? RESET_RY_ABOVE) : (region.below ?? RESET_RY_BELOW)) * mouth.width;
   const r = (Math.abs(dx / rx) ** RESET_POWER + Math.abs(dy / ry) ** RESET_POWER) ** (1 / RESET_POWER);
   if (r === 0) return 1;
   if (r >= 1) return 0;
@@ -217,13 +234,13 @@ export function mouthWeight(mouth: RigMouth, x: number, y: number): number {
  * above its centre and RESET_RY_BELOW * width below; every RGBA channel is blended patch -> base by
  * `mouthWeight` (pixel centres). Patch pixels the base does not cover stay as they are. Fresh image.
  */
-export function resetMouth(patch: Rgba, patchBbox: Layer["bbox"], base: Rgba, baseBbox: Layer["bbox"], mouth: RigMouth): Rgba {
+export function resetMouth(patch: Rgba, patchBbox: Layer["bbox"], base: Rgba, baseBbox: Layer["bbox"], mouth: RigMouth, region: ResetRegion = {}): Rgba {
   const data = patch.data.slice();
   const [px, py] = patchBbox;
   const [bx, by] = baseBbox;
   for (let y = 0; y < patch.height; y++) {
     for (let x = 0; x < patch.width; x++) {
-      const w = mouthWeight(mouth, px + x + 0.5, py + y + 0.5);
+      const w = mouthWeight(mouth, px + x + 0.5, py + y + 0.5, region);
       if (w === 0) continue;
       const sx = Math.round(px + x - bx);
       const sy = Math.round(py + y - by);

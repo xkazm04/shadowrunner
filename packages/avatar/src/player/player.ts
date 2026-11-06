@@ -8,6 +8,8 @@ import { createRenderer } from "../gl/renderer.js";
 import type { AssetLoader } from "../render/assets.js";
 import type { Affine } from "../render/frame.js";
 import type { RigAssets } from "../render/types.js";
+import type { ShapeWeights } from "../mouth/shapes.js";
+import type { MouthPose, MouthShapesInput } from "../mouth/state.js";
 import { runPlayer } from "./run.js";
 
 export interface AvatarPlayerOptions {
@@ -51,6 +53,15 @@ export interface AvatarPlayer {
   attachAudio(source: PlayerAudio | undefined, options?: AttachAudioOptions): void;
   /** A level 0..1 that wins over the audio tap while set; `undefined` returns to the tap (or 0). */
   setLevel(level: number | undefined): void;
+  /**
+   * The drawn mouth's shape mix (a caller with visemes, e.g. the lab's lip arms): while set, it
+   * shapes the mouth and opens the jaw (with the emotion added) instead of the level. `undefined`
+   * returns to the level drive. Only a rig with `mouth` draws a mouth; others ignore it. Optional
+   * so hand-made players (test fakes) need not carry it.
+   */
+  setMouthShapes?(shapes: ShapeWeights | undefined, options?: Omit<MouthShapesInput, "shapes">): void;
+  /** The mouth the last frame drew (read-only), undefined when none (no `rig.mouth`, neutral rest). */
+  mouth?(): MouthPose | undefined;
   resize(width: number, height: number, dpr: number): void;
   /** requestAnimationFrame loop on the browser clock. */
   start(): void;

@@ -11,6 +11,11 @@
 // bit-exact; PNG via `encodePng`). Not idempotent inside the feather, and a lossy face loses a
 // generation: run it once per recorded edit.
 // --dry-run measures and prints, writes nothing. No network, no model, no new dependency.
+// Per character (CAST, round 3, chosen on contact sheets of all seven faces): a mouth drawn as art
+// (a visor slit, a neon gap, a maw, a skull's teeth, a carved grin) keeps its art: no `mouth`, no
+// reset, as the forge's `drawnMouth` rules for cavity "gap"/"fill"; a lip mouth may widen the reset
+// region (`region`, shares of the mouth's width overriding expressions.ts RESET_RX / RESET_RY_ABOVE /
+// RESET_RY_BELOW) where a face's grin, open jaw or nose reaches past the default one.
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -22,6 +27,21 @@ import { WEBP_OPTIONS, rgba } from "../rig-webp.mjs";
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const FORGE = join(ROOT, "assets", "replay", "forge");
 const SKIP = new Set(["malakor"]);
+/** Round 3's per-character calls: `art` (why the art keeps its mouth) or a reset `region`. */
+const CAST = {
+  "announcer-of-dead-air": { art: "a skull's open grin of teeth: the expressions redraw the teeth above any lip region" },
+  "lantern-warden": { art: "a carved jack-o'-lantern grin, wider than the measured mouth" },
+  reveille: { art: "a neon zigzag over a dark gap (recipe cavity gap/fill); the region reaches the eyes" },
+  "sir-vacant": { art: "a lit visor slit (recipe cavity gap)" },
+  "vicar-of-the-lure": { art: "a maw of teeth over a lit throat (recipe cavity fill); the region reaches the eyes" },
+  "auntie-asp": { region: { rx: 1.2, above: 1.35, below: 0.85 } },
+  "lot-ninety": { region: { rx: 1.15, below: 0.8 } },
+  "moth-widow": { region: { above: 1.0, below: 0.8 } },
+  "saint-cardia": { region: { above: 1.25, below: 0.9 } },
+  "sister-vesper": { region: { rx: 1.25, below: 0.8 } },
+  "the-redactor": { region: { rx: 1.3, above: 1.4, below: 1.0 } },
+  understudy: { region: { above: 1.1, below: 1.0 } },
+};
 const USAGE = "usage: node scripts/cast/mouth-backfill.mjs (--slug <id> ... | --all) [--reset-expressions] [--dry-run]";
 
 const args = process.argv.slice(2);
@@ -64,7 +84,17 @@ async function encodeAs(path, was, image) {
   return webp;
 }
 
+/** forge.resetMouth, with this character's region override when it has one. */
+function resetWith(region, patch, patchBbox, base, baseBbox, mouth) {
+  return forge.resetMouth(patch, patchBbox, base, baseBbox, mouth, region);
+}
+
 async function backfill(slug) {
+  const call = CAST[slug] ?? {};
+  if (call.art !== undefined) {
+    console.log(`mouth-backfill: ${slug}: the art keeps its mouth (${call.art}): no rig.mouth, faces untouched`);
+    return;
+  }
   const dir = join(FORGE, slug);
   const jobPath = join(dir, "job.json");
   if (!existsSync(jobPath)) throw new Error(`mouth-backfill: no recorded job ${slug}`);
@@ -88,7 +118,7 @@ async function backfill(slug) {
     return;
   }
   const was = job.value.rig.mouth;
-  console.log(`mouth-backfill: ${slug}: mouth cx ${mouth.cx} lineY ${mouth.lineY} width ${mouth.width} (jaw ${jaw.bbox.join(",")}${was === undefined ? "" : `; was ${JSON.stringify(was)}`})`);
+  console.log(`mouth-backfill: ${slug}: mouth cx ${mouth.cx} lineY ${mouth.lineY} width ${mouth.width} (jaw ${jaw.bbox.join(",")}${was === undefined ? "" : `; was ${JSON.stringify(was)}`}${call.region === undefined ? "" : `; region ${JSON.stringify(call.region)}`})`);
   const rewritten = [];
   if (reset) {
     for (const layer of rig.layers) {
@@ -101,7 +131,7 @@ async function backfill(slug) {
           continue;
         }
         const was = readFileSync(path);
-        const image = forge.resetMouth(await load(path), patch.bbox, base, layer.bbox, mouth);
+        const image = resetWith(call.region, await load(path), patch.bbox, base, layer.bbox, mouth);
         const bytes = await encodeAs(path, was, image);
         if (!dry) writeFileSync(path, bytes);
         rewritten.push(patch.file);

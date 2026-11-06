@@ -1,7 +1,11 @@
-// measureMouth (llm-avatar-lab): the lip line, centre and width of a synthetic jaw strip.
+// measureMouth (llm-avatar-lab): the lip line, centre and width of a synthetic jaw strip; and
+// round 3's rule that a mouth drawn open (a visor, a maw: `drawnMouth`) leaves the rig without `mouth`.
 import { describe, expect, it } from "vitest";
-import { MOUTH_OF_HEAD, MOUTH_OF_JAW, measureMouth } from "./mouthAnchor.js";
-import type { Rgba } from "./types.js";
+import { assembleRig } from "./assemble.js";
+import { cutNamed, liftedNamed } from "./cutNamed.js";
+import { MOUTH_OF_HEAD, MOUTH_OF_JAW, drawnMouth, measureMouth } from "./mouthAnchor.js";
+import { composePlate, fallbackFill } from "./plate.js";
+import type { NamedPart, Rgba } from "./types.js";
 
 /** A w x h jaw image whose column x is opaque from row `tops(x)` down (-1: empty column). */
 function strip(w: number, h: number, tops: (x: number) => number, alpha = 255): Rgba {
@@ -47,5 +51,42 @@ describe("measureMouth", () => {
 
   it("undefined for an empty jaw", () => {
     expect(measureMouth({ bbox: [0, 0, 4, 4], image: strip(4, 4, () => -1) })).toBeUndefined();
+  });
+});
+
+describe("drawnMouth (round 3: a lipless mouth keeps its art)", () => {
+  it("true only for a jaw part with cavity gap or fill; paint, glow alone and v1 parts are lips", () => {
+    expect(drawnMouth([{ role: "jaw", cavity: "gap" }])).toBe(true); // Sir Vacant's bevor, Reveille's grin
+    expect(drawnMouth([{ role: "head" }, { role: "jaw", cavity: "fill" }])).toBe(true); // the Vicar's maw
+    expect(drawnMouth([{ role: "jaw", cavity: "paint" }, { role: "jaw" }])).toBe(false);
+    expect(drawnMouth([{ role: "jaw" }])).toBe(false); // the Tallyman: a glow but a lip
+    expect(drawnMouth([{ role: "accessory", cavity: "gap" }])).toBe(false);
+    expect(drawnMouth([{ name: "jaw" } as { role?: string }])).toBe(false);
+  });
+
+  // A 200 px face: a head with a lower-lip jaw under it, cut and assembled as the live brief path does.
+  const SIZE = 200;
+  const portrait: Rgba = { width: SIZE, height: SIZE, data: new Uint8ClampedArray(SIZE * SIZE * 4).map((_, i) => (i % 4 === 3 ? 255 : 150)) };
+  const face = (jaw: Partial<NamedPart>): NamedPart[] => [
+    { name: "face", role: "head", box_2d: [0, 0, 1000, 1000], poly: [[100, 250], [100, 750], [600, 750], [600, 250]] },
+    { name: "jaw", role: "jaw", box_2d: [0, 0, 1000, 1000], poly: [[600, 350], [600, 650], [680, 650], [680, 350]], drop: 0.02, ...jaw },
+  ];
+  const assemble = (parts: NamedPart[]) => {
+    const lifted = liftedNamed(parts, SIZE, SIZE);
+    const plate = composePlate(portrait, fallbackFill(portrait, lifted), lifted);
+    const cut = cutNamed(portrait, parts, { plate });
+    const out = assembleRig(parts, cut.layers, { id: "t", name: "T", portrait, plate });
+    if (!out.ok) throw new Error(out.errors.map((e) => e.message).join("; "));
+    return out.value.rig;
+  };
+
+  it("assembleRig: a lip jaw (paint, or glow alone) gets mouth; a gap or fill jaw leaves it absent", () => {
+    for (const jaw of [{}, { cavity: "paint" as const }, { glow: "#6d8c19" }]) expect(assemble(face(jaw)).mouth, JSON.stringify(jaw)).toBeDefined();
+    for (const cavity of ["gap", "fill"] as const) {
+      const rig = assemble(face({ cavity }));
+      expect(rig.mouth, cavity).toBeUndefined();
+      expect("mouth" in rig, cavity).toBe(false); // omitted, never undefined
+      expect(rig.layers.some((l) => l.kind === "jaw")).toBe(true);
+    }
   });
 });

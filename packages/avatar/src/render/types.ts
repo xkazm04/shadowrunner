@@ -1,5 +1,6 @@
 // Renderer contract shared by the WebGL2 renderer and its canvas2D fallback (design.md "Contracts").
 import type { LayerPose, Look, Rig } from "@sr/rig";
+import type { MouthPose } from "../mouth/state.js";
 
 /** Layer images keyed by `Layer.file`. ImageBitmaps should be created with `premultiplyAlpha: "premultiply"`. */
 export type RigAssets = Record<string, ImageBitmap | HTMLImageElement>;
@@ -25,6 +26,11 @@ export interface FrameClock {
    * `DIM_FLOOR` of its light (`dimGain`), in both renderers. The caller eases it (`easeDim`).
    */
   dim?: number;
+  /**
+   * The drawn mouth this frame (absent = none: a rig without `mouth`, or neutral rest). Both
+   * renderers draw it on the rig's `mouth`, in the head's frame, over the head and the jaw.
+   */
+  mouth?: MouthPose;
 }
 
 export interface Renderer {

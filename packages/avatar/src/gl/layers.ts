@@ -112,7 +112,8 @@ function quadsOf(entry: LayerTexture, pose: LayerPose, store: TextureStore, rim:
  * the number of draw calls. Poses without a texture are skipped. A pose with `faces` draws its
  * base at `1 - sum(replace weights)` (a face whose patch is not loaded yet counts 0), then each
  * ready patch at its bbox in the layer's transform at its weight, with the layer's recolour; a
- * patch has no rim (its edges are inside the face).
+ * patch has no rim (its edges are inside the face). `after` draws extra quads (the drawn mouth,
+ * gl/mouth.ts) right after the pose at `after.index`, with the base program still bound.
  */
 export function drawLayers(
   gl: WebGL2RenderingContext,
@@ -121,6 +122,7 @@ export function drawLayers(
   poses: readonly LayerPose[],
   view: View,
   lighting: LayerLighting,
+  after?: { index: number; draw: () => number },
 ): number {
   const { light, recolours, store, dim } = lighting;
   const { program, u } = programs.base;
@@ -132,9 +134,10 @@ export function drawLayers(
   gl.uniform1i(u.u_map, 1);
   gl.uniform2f(u.u_res, view.width, view.height);
   let draws = 0;
-  for (const pose of poses) {
-    const entry = textures.get(pose.name);
-    if (entry === undefined) continue;
+  for (let index = 0; index < poses.length; index += 1) {
+    const pose = poses[index];
+    const entry = pose === undefined ? undefined : textures.get(pose.name);
+    if (pose === undefined || entry === undefined) continue;
     const { layer } = entry;
     const m = layerAffine(layer, pose, view, light.browY);
     const plan = recolours.get(layer.name);
@@ -159,6 +162,7 @@ export function drawLayers(
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       draws += 1;
     }
+    if (after?.index === index) draws += after.draw();
   }
   gl.activeTexture(gl.TEXTURE1);
   gl.bindTexture(gl.TEXTURE_2D, null);

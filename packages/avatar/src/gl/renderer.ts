@@ -12,15 +12,20 @@
 //   calls it when handed a different look object.
 // - Region maps and face patches are looked up in the assets like layer images; files missing
 //   there are asked of `loadAsset` when first needed (render/assets.ts).
-import { defaultLook, type LayerPose, type Look, type Rig } from "@sr/rig";
+// - The drawn mouth (FrameClock.mouth) is one more quad after the later of the head and the jaw,
+//   lit like the head (its gain and dim), never emissive (gl/mouth.ts).
+import { defaultLook, type Layer, type LayerPose, type Look, type Rig } from "@sr/rig";
 import { createCanvas2dRenderer } from "../canvas2d/renderer.js";
 import { createAssetCache, type AssetLoader } from "../render/assets.js";
-import { fitView, lookLight, type LookLight } from "../render/frame.js";
+import type { MouthSurfaceFactory } from "../mouth/colours.js";
+import { createMouthArt } from "../mouth/draw.js";
+import { dimGain, fitView, lookLight, type LookLight } from "../render/frame.js";
 import { rigRecolours, type LayerRecolour } from "../render/recolour.js";
 import type { CanvasHost, FrameClock, Renderer, RendererInfo, RigAssets } from "../render/types.js";
 import { createGlContext, watchContextLoss } from "./context.js";
 import { beginScene, createGlowTargets, deleteGlowTargets, glowGain, runGlow, type GlowTargets } from "./glow.js";
-import { deleteLayers, drawLayers, uploadLayers, type LayerTexture } from "./layers.js";
+import { deleteLayers, drawLayers, gainOf, uploadLayers, type LayerTexture } from "./layers.js";
+import { createGlMouth } from "./mouth.js";
 import { createPrograms, deletePrograms } from "./programs.js";
 import { createTextureStore, type TextureStore } from "./textures.js";
 
@@ -32,8 +37,12 @@ export interface CreateRendererOptions {
 }
 
 /** The WebGL2 renderer on an existing context. Throws if its programs or targets cannot be built. */
-export function createGlRenderer(gl: WebGL2RenderingContext, canvas: CanvasHost, rig: Rig, assets: RigAssets, loadAsset?: AssetLoader): Renderer {
+export function createGlRenderer(gl: WebGL2RenderingContext, canvas: CanvasHost, rig: Rig, assets: RigAssets, loadAsset?: AssetLoader, mouthSurface?: MouthSurfaceFactory): Renderer {
   const programs = createPrograms(gl);
+  const mouthArt = createMouthArt(mouthSurface);
+  const mouthGl = createGlMouth(gl, programs, mouthSurface);
+  let layers = new Map<string, Layer>();
+  let currentAssets = assets;
   let textures = new Map<string, LayerTexture>();
   let store: TextureStore | undefined;
   let recolours: Map<string, LayerRecolour> = new Map();
@@ -54,6 +63,8 @@ export function createGlRenderer(gl: WebGL2RenderingContext, canvas: CanvasHost,
     textures = uploadLayers(gl, next, nextAssets, store);
     uploads += textures.size;
     currentRig = next;
+    currentAssets = nextAssets;
+    layers = new Map(next.layers.map((layer) => [layer.name, layer]));
     const look = lastLook ?? defaultLook(next);
     light = lookLight(next, look);
     recolours = rigRecolours(next, look);
@@ -74,7 +85,22 @@ export function createGlRenderer(gl: WebGL2RenderingContext, canvas: CanvasHost,
       if (look !== lastLook) setLook(look);
       const view = fitView(currentRig, targets.scene.width, targets.scene.height);
       beginScene(gl, targets);
-      if (store !== undefined) drawCalls += drawLayers(gl, programs, textures, poses, view, { light, recolours, store, ...(clock?.dim === undefined ? {} : { dim: clock.dim }) });
+      const mouthPose = clock?.mouth;
+      const mouth = mouthPose === undefined ? undefined : mouthArt.place(currentRig, layers, poses, view, light.browY);
+      const colours = mouth === undefined ? undefined : mouthArt.colours(currentRig, currentAssets);
+      const after =
+        mouth === undefined || colours === undefined || mouthPose === undefined
+          ? undefined
+          : {
+              index: mouth.host.index,
+              draw: (): number => {
+                const { layer, pose } = mouth.frame;
+                const gain = gainOf(layer, pose, light, recolours.get(layer.name));
+                const dimmed = dimGain(layer, clock?.dim);
+                return mouthGl.draw(mouthArt, mouth.anchor, mouthPose, colours, [gain[0] * dimmed, gain[1] * dimmed, gain[2] * dimmed]);
+              },
+            };
+      if (store !== undefined) drawCalls += drawLayers(gl, programs, textures, poses, view, { light, recolours, store, ...(clock?.dim === undefined ? {} : { dim: clock.dim }) }, after);
       drawCalls += runGlow(gl, programs, targets, light.glow, glowGain(clock));
     },
     resize(width: number, height: number, dpr: number): void {
@@ -87,13 +113,14 @@ export function createGlRenderer(gl: WebGL2RenderingContext, canvas: CanvasHost,
       targets = createGlowTargets(gl, w, h);
     },
     info(): RendererInfo {
-      return { mode: "webgl2", drawCalls, textureUploads: uploads + storeUploads + (store?.uploads() ?? 0) };
+      return { mode: "webgl2", drawCalls, textureUploads: uploads + storeUploads + (store?.uploads() ?? 0) + mouthGl.uploads() };
     },
     dispose(): void {
       if (disposed) return;
       disposed = true;
       deleteLayers(gl, textures);
       store?.dispose();
+      mouthGl.dispose();
       deleteGlowTargets(gl, targets);
       deletePrograms(gl, programs);
     },
