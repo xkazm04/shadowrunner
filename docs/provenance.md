@@ -84,6 +84,9 @@ Designed and generated art is stylised and labelled as such in the UI; no real p
     measured (`faceStability`); 22 passed and were cut to the brow+lid band (head, hair and eye
     faces, WebP q88 with lossless alpha), 2 families stayed without a face after three refusals
     (Cardia showman, Vesper joy). The 2026-11-03 faces of these four were retired.
+  - 3 more expression edits for Auntie Asp after the owner's board (anger, gloom, suspicion, the strict
+    prompt plus `INK_BROWS`: keep the brows bold ink and move them): only their head faces (her brows)
+    are cut, her eye faces stay the earlier edits'.
   No paid call; the live forge uses the same prompts on its image model.
 - **Avatar packs (avatar-pack, 2026-11-04).** Malakor (pre-existing art, above) is never packed:
   `scripts/build-packs.mjs` skips him when it publishes the cast as `/packs/<slug>.srpack`, and the

@@ -96,6 +96,15 @@ describe("faceStability", () => {
     expect(band.data[68 * W + 65]).toBe(255);
     expect(band.data[126 * W + 80]).toBe(0);
   });
+
+  it("the box is at full weight to its edge (the feather lies outside it); a character's reach moves the edge", () => {
+    const band = browLidBand(RIG);
+    const top = 60 - Math.ceil(0.9 * 30); // eye top 60, LID_BAND_ABOVE 0.9 of the 30 px eye
+    expect(band.data[top * W + 65]).toBe(255);
+    expect(band.data[(top - 20) * W + 65]).toBe(0);
+    const tall = browLidBand(RIG, { above: 1.5 });
+    expect(tall.data[(60 - 44) * W + 65]).toBe(255);
+  });
 });
 
 describe("registerEdit", () => {

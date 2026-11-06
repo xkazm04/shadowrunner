@@ -12,7 +12,7 @@
 // (`resetMouth`), so an edit changes eyes and brows and the renderer's mouth carries the emotion.
 import type { ExpressionFamily, Layer, LayerPatch, Rig, RigMouth } from "@sr/rig";
 import { dilateMask, emptyMask, featherMask, type Mask } from "./mask.js";
-import { browLidBand } from "./stability.js";
+import { browLidBand, type BandReach } from "./stability.js";
 import type { Rgba } from "./types.js";
 
 /** Mean |edited - portrait| (0..255) in the mask's outer ring over which a family is flagged. */
@@ -47,6 +47,12 @@ export const EXPRESSION_FACES: Readonly<Record<ExpressionFamily, string>> = Obje
   smug: "smug superiority: one brow raised high, the upper lids half lowered",
   suspicion: "suspicion: the lids narrowed, one brow lowered",
 });
+
+/**
+ * face-control: for a line-art face whose edits drew the brows faint or thin (Auntie Asp, owner board
+ * 2026-11-06), one more sentence: the brows stay the portrait's bold ink and move for the emotion.
+ */
+export const INK_BROWS = "Draw both brows as bold solid black ink strokes, exactly as thick, dark and long as in the portrait, and move and bend them for the emotion; never fade, thin, smudge or hide them behind the eyes or the spectacles.";
 
 /** face-control: what a refused face's re-run adds, one sentence per attempt past the first. */
 export const STRICTER: readonly string[] = [
@@ -297,14 +303,14 @@ function changeOf(base: Uint8ClampedArray, next: Uint8ClampedArray, width: numbe
  * family over EXPRESSION_DRIFT_LIMIT; the patches are returned either way. Throws when `edited` is not
  * the portrait's size (callers area-resize first).
  */
-export function cutVariants(rig: Rig, layers: ReadonlyMap<string, Rgba>, portrait: Rgba, edited: Rgba, family: ExpressionFamily): VariantCut {
+export function cutVariants(rig: Rig, layers: ReadonlyMap<string, Rgba>, portrait: Rgba, edited: Rgba, family: ExpressionFamily, reach: BandReach = {}): VariantCut {
   if (edited.width !== portrait.width || edited.height !== portrait.height || portrait.width !== rig.width || portrait.height !== rig.height) {
     throw new RangeError(`cutVariants: edited ${edited.width}x${edited.height}, portrait ${portrait.width}x${portrait.height}, rig ${rig.width}x${rig.height}`);
   }
   const shape = faceShape(rig, layers);
   const soft = featherMask(shape, MASK_FEATHER).data;
   // face-control: an expression moves the brows and lids only; a socketed rig (iris layers) takes the edit in the brow+lid band.
-  const band = rig.layers.some((l) => l.kind === "iris") ? browLidBand(rig).data : undefined;
+  const band = rig.layers.some((l) => l.kind === "iris") ? browLidBand(rig, reach).data : undefined;
   if (band !== undefined) soft.forEach((v, i) => (soft[i] = Math.round((v * (band[i] ?? 0)) / 255)));
   const drift = driftOf(shape, portrait, edited);
   const patches: VariantCut["patches"] = {};

@@ -37,12 +37,20 @@ export const TRACK_GAIN = 0.15;
 
 const isBrow = (name: string): boolean => /^brow(_|$)/.test(name);
 
+/** A character's own band reach (shares of the widest eye's width), over LID_BAND_ABOVE / BELOW / SIDE. */
+export interface BandReach {
+  above?: number;
+  below?: number;
+  side?: number;
+}
+
 /**
  * The brow+lid band, canvas-size: the box around every eye layer grown by LID_BAND_ABOVE / LID_BAND_BELOW /
- * LID_BAND_SIDE of the widest eye's width (one box over both eyes, so the crease between the brows is in
- * it) and every brow layer's box, feathered LID_BAND_FEATHER px inward. Empty without eye layers.
+ * LID_BAND_SIDE (or `reach`) of the widest eye's width (one box over both eyes, so the crease between
+ * the brows is in it) and every brow layer's box, at full weight; the feather (LID_BAND_FEATHER px)
+ * lies outside the box, so a stroke inside it (a line-art brow) is never half drawn. Empty without eye layers.
  */
-export function browLidBand(rig: Pick<Rig, "width" | "height" | "layers">): Mask {
+export function browLidBand(rig: Pick<Rig, "width" | "height" | "layers">, reach: BandReach = {}): Mask {
   const shape = emptyMask(rig.width, rig.height);
   const eyes = rig.layers.filter((l) => l.kind === "eye");
   const fill = ([x, y, w, h]: Layer["bbox"]) => {
@@ -52,13 +60,14 @@ export function browLidBand(rig: Pick<Rig, "width" | "height" | "layers">): Mask
   };
   if (eyes.length > 0) {
     const ew = Math.max(...eyes.map((e) => e.bbox[2]));
-    const x0 = Math.min(...eyes.map((e) => e.bbox[0])) - LID_BAND_SIDE * ew;
-    const x1 = Math.max(...eyes.map((e) => e.bbox[0] + e.bbox[2])) + LID_BAND_SIDE * ew;
-    const y0 = Math.min(...eyes.map((e) => e.bbox[1])) - LID_BAND_ABOVE * ew;
-    const y1 = Math.max(...eyes.map((e) => e.bbox[1] + e.bbox[3])) + LID_BAND_BELOW * ew;
+    const f = LID_BAND_FEATHER;
+    const x0 = Math.min(...eyes.map((e) => e.bbox[0])) - (reach.side ?? LID_BAND_SIDE) * ew - f;
+    const x1 = Math.max(...eyes.map((e) => e.bbox[0] + e.bbox[2])) + (reach.side ?? LID_BAND_SIDE) * ew + f;
+    const y0 = Math.min(...eyes.map((e) => e.bbox[1])) - (reach.above ?? LID_BAND_ABOVE) * ew - f;
+    const y1 = Math.max(...eyes.map((e) => e.bbox[1] + e.bbox[3])) + (reach.below ?? LID_BAND_BELOW) * ew + f;
     fill([x0, y0, x1 - x0, y1 - y0]);
   }
-  for (const brow of rig.layers.filter((l) => isBrow(l.name))) fill(brow.bbox);
+  for (const [x, y, w, h] of rig.layers.filter((l) => isBrow(l.name)).map((l) => l.bbox)) fill([x - LID_BAND_FEATHER, y - LID_BAND_FEATHER, w + 2 * LID_BAND_FEATHER, h + 2 * LID_BAND_FEATHER]);
   return featherMask(shape, LID_BAND_FEATHER);
 }
 
@@ -139,11 +148,11 @@ export interface FaceStability {
  * hard face shape (`faceShape`), `eyes` the irises to follow (white and dark eyes by `trackIris`,
  * glowing ones by measuring the light again).
  */
-export function faceStability(variant: Rgba, base: Rgba, rig: Pick<Rig, "width" | "height" | "layers">, face: Mask, eyes: Readonly<Record<string, StabilityEye>>): FaceStability {
+export function faceStability(variant: Rgba, base: Rgba, rig: Pick<Rig, "width" | "height" | "layers">, face: Mask, eyes: Readonly<Record<string, StabilityEye>>, reach: BandReach = {}): FaceStability {
   if (variant.width !== base.width || variant.height !== base.height || base.width !== rig.width || base.height !== rig.height) {
     throw new RangeError(`faceStability: variant ${variant.width}x${variant.height}, base ${base.width}x${base.height}, rig ${rig.width}x${rig.height}`);
   }
-  const band = browLidBand(rig);
+  const band = browLidBand(rig, reach);
   let inSum = 0;
   let inN = 0;
   let outSum = 0;
@@ -226,8 +235,8 @@ export function warpEdit(image: Rgba, s: number, dx: number, dy: number, cx: num
  * outside the brow+lid band (mean |RGB|, every 2nd px, then refined per px), and the edit so warped.
  * Measured and cut after this, a face's numbers are its own change, not the re-render's offset.
  */
-export function registerEdit(edited: Rgba, portrait: Rgba, rig: Pick<Rig, "width" | "height" | "layers">, face: Mask): { image: Rgba; scale: number; dx: number; dy: number } {
-  const band = browLidBand(rig);
+export function registerEdit(edited: Rgba, portrait: Rgba, rig: Pick<Rig, "width" | "height" | "layers">, face: Mask, reach: BandReach = {}): { image: Rgba; scale: number; dx: number; dy: number } {
+  const band = browLidBand(rig, reach);
   const pts: number[] = [];
   let sx = 0;
   let sy = 0;

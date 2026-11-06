@@ -135,60 +135,60 @@
           "joy": {
             "file": "head.joy.webp",
             "bbox": [
-              399,
-              311,
-              230,
-              86
+              387,
+              290,
+              254,
+              119
             ],
             "mode": "over"
           },
           "showman": {
             "file": "head.showman.webp",
             "bbox": [
-              399,
-              311,
-              230,
-              86
+              387,
+              290,
+              254,
+              119
             ],
             "mode": "over"
           },
           "anger": {
             "file": "head.anger.webp",
             "bbox": [
-              399,
-              311,
-              230,
-              86
+              387,
+              290,
+              254,
+              119
             ],
             "mode": "over"
           },
           "gloom": {
             "file": "head.gloom.webp",
             "bbox": [
-              399,
-              311,
-              230,
-              86
+              387,
+              290,
+              254,
+              119
             ],
             "mode": "over"
           },
           "smug": {
             "file": "head.smug.webp",
             "bbox": [
-              399,
-              311,
-              230,
-              86
+              387,
+              290,
+              254,
+              119
             ],
             "mode": "over"
           },
           "suspicion": {
             "file": "head.suspicion.webp",
             "bbox": [
-              399,
-              311,
-              230,
-              86
+              387,
+              290,
+              254,
+              119
             ],
             "mode": "over"
           }

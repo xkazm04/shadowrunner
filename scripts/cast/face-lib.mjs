@@ -16,7 +16,11 @@ import { resize } from "./measure.mjs";
 export const CAST_EYES = {
   "saint-cardia": { look: "white" },
   "sister-vesper": { look: "white" },
-  "auntie-asp": { look: "glow", why: "glowing orange slits with no iris drawn: the iris is the brightest disc of the light" },
+  // Her eyes are thin slits (43 x 25 px) under bold ink brows 30-35 px above them that the faces raise
+  // to 70 px: the band reaches 1.7 eye widths up (LID_BAND_ABOVE's 0.9 cut her brows in half, owner board 2026-11-06).
+  // `pin`: her approved eyes came from the second joy and showman edits; the wider band would take the first.
+  // `brows`: anger, gloom and suspicion drew her brows thin or faint; their brows come from an INK_BROWS edit.
+  "auntie-asp": { look: "glow", band: { above: 1.7 }, pin: { joy: 1, showman: 1 }, brows: { anger: "ink", gloom: "ink", suspicion: "ink" }, why: "glowing orange slits with no iris drawn: the iris is the brightest disc of the light" },
   "moth-widow": { look: "dark", why: "dark compound eyes with no white: the iris is the largest disc of the eyeball" },
 };
 

@@ -12,7 +12,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node
 import { join } from "node:path";
 import sharp from "sharp";
 import { readJsonFile, writeJsonFile } from "../forge-lib.mjs";
-import { decode, jobDir, socketing, stabilityEyes } from "./face-lib.mjs";
+import { CAST_EYES, decode, jobDir, socketing, stabilityEyes } from "./face-lib.mjs";
 import { resize } from "./measure.mjs";
 
 /** The committed expression faces' WebP (character-control task 5): q88, alpha lossless. */
@@ -38,18 +38,20 @@ export async function importSocketed({ forge, slug, families, work, force, measu
   const byEye = new Map(out.eyes.map((e) => [e.name, e]));
   // The re-render floor: the iris-free edit (same editor, same portrait) changes nothing outside the eyes.
   const irisFree = join("var", "cast-eyes", slug, "iris-free.png");
-  const floor = existsSync(irisFree) ? forge.faceStability(forge.registerEdit(resize(decode(forge, irisFree), portrait.width, portrait.height), portrait, rig, face).image, portrait, rig, face, {}).outsideBandMean : undefined;
+  const reach = CAST_EYES[slug].band ?? {};
+  const floor = existsSync(irisFree) ? forge.faceStability(forge.registerEdit(resize(decode(forge, irisFree), portrait.width, portrait.height), portrait, rig, face, reach).image, portrait, rig, face, {}, reach).outsideBandMean : undefined;
   console.log(`expressions: ${slug}: re-render floor ${floor === undefined ? "none" : floor.toFixed(2)}, outside-band limit ${forge.outsideLimit(floor).toFixed(2)}, iris drift limit ${forge.IRIS_DRIFT_LIMIT} px`);
   const report = { floor: round(floor), limit: round(forge.outsideLimit(floor)) };
   for (const family of families) {
     const tries = [];
     let chosen;
-    for (let n = 0; n < ATTEMPTS && chosen === undefined; n++) {
+    // A pinned attempt (face-lib.mjs CAST_EYES `pin`) keeps a face the owner approved when the cut changes.
+    for (let n = CAST_EYES[slug].pin?.[family] ?? 0; n < ATTEMPTS && chosen === undefined; n++) {
       const file = join(work, n === 0 ? `${family}.png` : `${family}.a${n}.png`);
       if (!existsSync(file)) continue;
-      const fitted = forge.registerEdit(resize(decode(forge, file), portrait.width, portrait.height), portrait, rig, face);
+      const fitted = forge.registerEdit(resize(decode(forge, file), portrait.width, portrait.height), portrait, rig, face, reach);
       const edited = fitted.image;
-      const s = forge.faceStability(edited, portrait, rig, face, eyes);
+      const s = forge.faceStability(edited, portrait, rig, face, eyes, reach);
       const ok = forge.isStable(s, floor);
       tries.push({ attempt: n, registered: { scale: round(fitted.scale), dx: fitted.dx, dy: fitted.dy }, irisDriftPx: round(s.irisDriftPx), outsideBandMean: round(s.outsideBandMean), bandMean: round(s.bandMean), eyes: Object.fromEntries(Object.entries(s.eyes).map(([k, v]) => [k, round(v)])), stable: ok });
       console.log(`expressions: ${slug} ${family} attempt ${n} (fit x${fitted.scale.toFixed(3)} ${fitted.dx},${fitted.dy}): iris drift ${s.irisDriftPx.toFixed(1)} px (${Object.entries(s.eyes).map(([k, v]) => `${k} ${typeof v === "number" ? v.toFixed(1) : v}`).join(", ")}), outside band ${s.outsideBandMean.toFixed(2)}, band ${s.bandMean.toFixed(2)} -> ${ok ? "stable" : "REFUSED"}`);
@@ -68,7 +70,23 @@ export async function importSocketed({ forge, slug, families, work, force, measu
       console.log(`expressions: ${slug} ${family}: no stable edit${tries.length < ATTEMPTS ? ` (re-run: expressions.mjs ${slug} --request --families ${family} --attempt ${tries.length})` : ""}; no face`);
       continue;
     }
-    const cut = forge.cutVariants(rig, layers, portrait, chosen, family);
+    const cut = forge.cutVariants(rig, layers, portrait, chosen, family, reach);
+    // Brows from their own edit (CAST_EYES `brows`: `<family>.<suffix>.png`, gated as any face): the head
+    // and hair faces come from it, the eye faces stay the chosen edit's.
+    const suffix = CAST_EYES[slug].brows?.[family];
+    const browsFile = suffix === undefined ? undefined : join(work, `${family}.${suffix}.png`);
+    if (browsFile !== undefined && existsSync(browsFile)) {
+      const browsEdit = forge.registerEdit(resize(decode(forge, browsFile), portrait.width, portrait.height), portrait, rig, face, reach).image;
+      const s = forge.faceStability(browsEdit, portrait, rig, face, eyes, reach);
+      const ok = forge.isStable(s, floor);
+      report[family].brows = { file: `${family}.${suffix}.png`, irisDriftPx: round(s.irisDriftPx), outsideBandMean: round(s.outsideBandMean), bandMean: round(s.bandMean), stable: ok };
+      console.log(`expressions: ${slug} ${family} brows ${suffix}: iris drift ${s.irisDriftPx.toFixed(1)} px, outside band ${s.outsideBandMean.toFixed(2)}, band ${s.bandMean.toFixed(2)} -> ${ok ? "stable, brows taken" : "REFUSED, brows kept from the face"}`);
+      if (ok) {
+        const browCut = forge.cutVariants(rig, layers, portrait, browsEdit, family, reach);
+        for (const name of Object.keys(cut.patches)) if (!byEye.has(name)) delete cut.patches[name];
+        for (const [name, entry] of Object.entries(browCut.patches)) if (!byEye.has(name)) cut.patches[name] = entry;
+      }
+    }
     const notes = [];
     for (const [name, { patch, image }] of Object.entries(cut.patches)) {
       const eye = byEye.get(name);

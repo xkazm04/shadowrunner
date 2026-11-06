@@ -12,7 +12,8 @@
 // `malakor`: his replay job as above, and his imported rig (assets/characters/malakor/rig/): patches
 //            in expressions/ there and a `variants.json` sidecar ({ <layer>: { <family>: LayerPatch } },
 //            files relative to the rig folder) that the seed merges into the rig. Same portrait, one edit.
-// face-control: `--attempt N` writes a stricter re-run (`<family>.aN.request.txt` -> `<family>.aN.png`);
+// face-control: `--ink-brows` writes `<family>.ink.request.txt` (the prompt plus INK_BROWS) for a brows-only
+// re-cut (face-lib.mjs CAST_EYES `brows`); `--attempt N` writes a stricter re-run (`<family>.aN.request.txt` -> `<family>.aN.png`);
 // for the socketed four (face-lib.mjs CAST_EYES) --import is expressions-socketed.mjs (stability gate,
 // brow+lid band, sockets; `--measure` prints the numbers only). Run eyes.mjs --import first.
 // With neither flag it lists, per family, whether a request and an edit exist. No network, no model.
@@ -61,8 +62,9 @@ function request() {
   mkdirSync(WORK, { recursive: true });
   copyFileSync(portraitPath, join(WORK, portraitName));
   for (const family of families) {
-    const prompt = forge.expressionPrompt(name, family, style, attempt);
-    const out = attempt === 0 ? family : `${family}.a${attempt}`;
+    const inkBrows = args.includes("--ink-brows");
+    const prompt = `${forge.expressionPrompt(name, family, style, attempt)}${inkBrows ? ` ${forge.INK_BROWS}` : ""}`;
+    const out = inkBrows ? `${family}.ink` : attempt === 0 ? family : `${family}.a${attempt}`;
     const text = `Use your image generation tool to EDIT the attached input image ./${portraitName} (pass it to the tool as the input/reference image). Prompt, verbatim: "${prompt}"\nThen save the result as ${out}.png in this folder and verify the copy. Report whether the tool actually received the input image (yes/no) and the output pixel size.\n`;
     writeFileSync(join(WORK, `${out}.request.txt`), text);
     console.log(`cd ${WORK.replaceAll("\\", "/")} && codex exec --skip-git-repo-check --ephemeral --dangerously-bypass-approvals-and-sandbox -i ${portraitName} -C . - < ${out}.request.txt`);
