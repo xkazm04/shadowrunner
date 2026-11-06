@@ -8,7 +8,10 @@
 // Compares the live rig and every layer's pixels with the committed replay job
 // (assets/replay/forge/<slug>/) and writes var/cast-forge/task11-<slug>.png: replay over live over
 // |replay - live| x16, at rest, jaw open, head turned and motion at t = 1.7 s. Exits 1 on a difference.
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+// face-control: the comparison is of the rig as assembled (before the eye step and the expressions),
+// against face-control's backup of the committed job when its eyes were socketed; the eye step and
+// the six families then run against the fake (its fill answer is no iris-free edit: they fall back).
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { runnerImport } from "vite";
 import { text } from "./overlay.mjs";
@@ -57,16 +60,54 @@ let clock = 0;
 const ctx = { gemini, store, charge: async () => true, now: () => (clock += 100) };
 let job = { jobId: "proof0123456789abcdef", plane: "live", mode: "brief", status: "queued", createdAt: 0, brief };
 job = await steps.startJob(job, undefined, ctx);
-for (let i = 0; i < 8 && job.status !== "done" && job.status !== "failed"; i++) job = await steps.runStep(job, ctx);
-if (job.status !== "done") throw new Error(`${slug}: live job ${job.status}: ${job.error?.message}`);
+// The assembled rig is compared (the expressions and face-control's eye step come after it): the job
+// is snapshotted as it enters "expressing", then run to "done" (the fake edits are skipped or fall back).
+let assembled;
+let assets;
+for (let i = 0; i < 20 && job.status !== "done" && job.status !== "failed"; i++) {
+  job = await steps.runStep(job, ctx);
+  if (job.status === "expressing" && assembled === undefined) {
+    assembled = structuredClone(job.rig);
+    assets = { ...job.assets };
+  }
+}
+if (job.status !== "done" || assembled === undefined) throw new Error(`${slug}: live job ${job.status}: ${job.error?.message}`);
+console.log(`live-proof: ${slug}: eyes ${job.eyes}; expressions ${JSON.stringify(job.expressions)}`);
 
-const replayJob = JSON.parse(readFileSync(join(REPLAY, "job.json"), "utf8"));
-const strip = (rig) => ({ ...rig, id: "", name: "" });
-const sameRig = JSON.stringify(strip(job.rig)) === JSON.stringify(strip(replayJob.rig));
+// The committed job before the retrofits the live forge does not repeat at assembly: face-control's
+// backup when the eyes were socketed (var/cast-eyes/<slug>/orig/), and no expression faces, mouth or regions.
+const ORIG = join("var", "cast-eyes", slug, "orig");
+const fromBackup = existsSync(join(ORIG, "job.json"));
+const replayJob = JSON.parse(readFileSync(join(fromBackup ? ORIG : REPLAY, "job.json"), "utf8"));
+const without = (layer, key) => {
+  const out = { ...layer };
+  delete out[key];
+  return out;
+};
+const bare = (rig) => ({ ...rig, layers: rig.layers.map((l) => without(l, "variants")) });
+// Regions are retrofitted by scripts/cast/regions.mjs, which infers a jaw's cavity the live cut paints: not compared.
+const strip = (rig) => {
+  const out = { ...bare(rig), id: "", name: "", layers: bare(rig).layers.map((l) => without(l, "regions")) };
+  delete out.mouth;
+  return out;
+};
+const sameRig = JSON.stringify(strip(assembled)) === JSON.stringify(strip(replayJob.rig));
+if (!sameRig) {
+  const a = strip(assembled);
+  const b = strip(replayJob.rig);
+  for (const k of new Set([...Object.keys(a), ...Object.keys(b)])) if (JSON.stringify(a[k]) !== JSON.stringify(b[k]) && k !== "layers") console.log(`live-proof: rig.${k} differs`);
+  a.layers.forEach((l, i) => {
+    for (const k of new Set([...Object.keys(l), ...Object.keys(b.layers[i] ?? {})])) {
+      if (JSON.stringify(l[k]) !== JSON.stringify(b.layers[i]?.[k])) console.log(`live-proof: layer ${l.name}.${k}: live ${JSON.stringify(l[k])} | replay ${JSON.stringify(b.layers[i]?.[k])}`);
+    }
+  });
+}
+job.rig = bare(assembled);
+replayJob.rig = bare(replayJob.rig);
 const liveFiles = Object.fromEntries(
-  await Promise.all(Object.entries(job.assets).map(async ([file, url]) => [file, await store.readImage(url)])),
+  await Promise.all(Object.entries(assets).map(async ([file, url]) => [file, await store.readImage(url)])),
 );
-const replayFiles = Object.fromEntries(replayJob.rig.layers.map((l) => [l.file, bytes(join(REPLAY, l.file))]));
+const replayFiles = Object.fromEntries(replayJob.rig.layers.map((l) => [l.file, bytes(join(fromBackup && existsSync(join(ORIG, l.file)) ? ORIG : REPLAY, l.file))]));
 const live = imagesOf(forge, liveFiles);
 const replay = imagesOf(forge, replayFiles);
 let maxDiff = 0;

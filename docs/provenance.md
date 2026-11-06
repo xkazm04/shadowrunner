@@ -65,6 +65,26 @@ Designed and generated art is stylised and labelled as such in the UI; no real p
   which painted the mouth; llm-avatar-lab (2026-11-06) reset their mouth area to the neutral lips
   (`resetMouth`, `scripts/cast/mouth-backfill.mjs`, no model call), and forges since then use the
   upper-face prompt that leaves the mouth to the rig's drawn mouth.
+- **Face control (spark face-control, 2026-11-06).** New Codex CLI image edits (codex-cli 0.166.0,
+  built-in image generation, each an edit of the character's committed portrait as input image) for
+  the four painterly characters Saint Cardia, Auntie Asp, the Moth Widow and Sister Vesper, kept in
+  `var/cast-eyes/<slug>/` and `var/cast-expr/<slug>/` (never committed); only what is cut from them
+  reaches `assets/replay/forge/<slug>/`:
+  - 4 iris-free edits (`irisFreePrompt`: paint the whites where the irises are, keep lids and
+    lashes): Cardia's and Vesper's whites become the iris-free eye layers; the Moth Widow's and
+    Asp's eyes have no white, so theirs only measure the lid opening (their sockets are filled
+    procedurally) and the human whites they painted are not used.
+  - 3 mask edits (Cardia, Vesper, the Moth Widow: the eye openings painted flat green, the irises
+    magenta) that measure the socket and the iris; no pixel of them is shipped.
+  - 4 closed-eyes edits (`closedEyesPrompt`, without a style sentence): the closed-lid art
+    (`<eye>.closed.png`) a blink crossfades to.
+  - 37 expression edits with face-control's strict prompt (`expressionPrompt`: change only the brows
+    and lids, keep the irises' place and the face's structure; re-runs add the `STRICTER` sentences):
+    24 first attempts, 10 second, 3 third. Each was laid back on the portrait (`registerEdit`) and
+    measured (`faceStability`); 22 passed and were cut to the brow+lid band (head, hair and eye
+    faces, WebP q88 with lossless alpha), 2 families stayed without a face after three refusals
+    (Cardia showman, Vesper joy). The 2026-11-03 faces of these four were retired.
+  No paid call; the live forge uses the same prompts on its image model.
 - **Avatar packs (avatar-pack, 2026-11-04).** Malakor (pre-existing art, above) is never packed:
   `scripts/build-packs.mjs` skips him when it publishes the cast as `/packs/<slug>.srpack`, and the
   creator offers no Export for him, so he is never exported or published as a pack.

@@ -1,38 +1,38 @@
-// character-control design.md "Expressions" (requirement 5.1): the prompt pinned to the design text,
+// character-control design.md "Expressions" (requirement 5.1): the prompt (face-control's strict frame),
 // the face mask, and `cutVariants` on a synthetic rig: nothing outside the mask changes, the patch
 // modes and files, and the drift flag.
 import { EXPRESSION_FAMILIES, type Layer, type Rig } from "@sr/rig";
 import { describe, expect, it } from "vitest";
-import design from "../../../.kiro/specs/character-control/design.md?raw";
-import { EXPRESSION_DRIFT_LIMIT, EXPRESSION_FACES, cutVariants, expressionPrompt, faceMask } from "./expressions.js";
+import { EXPRESSION_DRIFT_LIMIT, EXPRESSION_FACES, STRICTER, cutVariants, expressionPrompt, faceMask } from "./expressions.js";
 import type { Rgba } from "./types.js";
 
-/** design.md with its line breaks and indentation folded to single spaces (CRLF too). */
-const DESIGN = design.replace(/\r\n/g, "\n").replace(/\s+/g, " ");
-
-describe("expressionPrompt", () => {
-  it("each family's FACE is design.md's, verbatim", () => {
-    for (const family of EXPRESSION_FAMILIES) expect(DESIGN, family).toContain(`${family} "${EXPRESSION_FACES[family]}"`);
+// face-control supersedes design.md's frame (character-control): the strict prompt keeps the gaze and
+// the face's structure and names only brows and lids.
+describe("expressionPrompt (face-control strict frame)", () => {
+  it("each FACE names brows and lids only: no gaze, no mouth", () => {
+    for (const family of EXPRESSION_FAMILIES) {
+      expect(EXPRESSION_FACES[family], family).toMatch(/brow/);
+      expect(EXPRESSION_FACES[family], family).toMatch(/lid/);
+      expect(EXPRESSION_FACES[family], family).not.toMatch(/glanc|gaze|looking|sideways|down the nose|mouth|\blips?\b|\bsmile\b|smirk|snarl|teeth|grin|jaw/i);
+    }
   });
 
-  it("the frame is design.md's, verbatim, with the name and FACE filled in; a style adds one sentence", () => {
-    const frame = /"(Edit this portrait of \{name\}\. .*?Do not add or remove objects\.)"/.exec(DESIGN)?.[1];
-    if (frame === undefined) throw new Error("design.md has no prompt frame");
+  it("the frame keeps the irises, the face's structure and the mouth; never says closed; a style adds one sentence", () => {
     for (const family of EXPRESSION_FAMILIES) {
-      expect(expressionPrompt("Reveille", family)).toBe(frame.replace("{name}", "Reveille").replace("{FACE}", EXPRESSION_FACES[family]));
+      const prompt = expressionPrompt("Sir Vacant", family);
+      expect(prompt).toContain("Change ONLY the brows and the eyelids");
+      expect(prompt).toContain("Keep both irises and pupils exactly where they are");
+      expect(prompt).toContain("Keep the structure of the face exactly");
+      expect(prompt).toContain(EXPRESSION_FACES[family]);
+      expect(prompt).not.toMatch(/closed/i);
     }
     expect(expressionPrompt("Lot Ninety", "smug", "art nouveau poster")).toBe(`${expressionPrompt("Lot Ninety", "smug")} The art style is art nouveau poster.`);
   });
 
-  it("the rig owns the mouth: no FACE names the mouth; the frame keeps the mouth and jaw as painted and never says closed", () => {
-    for (const family of EXPRESSION_FAMILIES) {
-      expect(EXPRESSION_FACES[family], family).not.toMatch(/mouth|\blips?\b|\bsmile\b|smirk|snarl|teeth|grin|jaw/i);
-      expect(EXPRESSION_FACES[family], family).toMatch(/brow/);
-      const prompt = expressionPrompt("Sir Vacant", family);
-      expect(prompt).toContain("Change ONLY the eyes, eyelids and brows");
-      expect(prompt).toContain("Keep the mouth, lips and jaw exactly as they are in the portrait");
-      expect(prompt).not.toMatch(/closed/i);
-    }
+  it("a re-run adds the stricter sentences in order", () => {
+    const base = expressionPrompt("Reveille", "anger");
+    expect(expressionPrompt("Reveille", "anger", undefined, 1)).toBe(`${base} ${STRICTER[0]}`);
+    expect(expressionPrompt("Reveille", "anger", undefined, 2)).toBe(`${base} ${STRICTER[0]} ${STRICTER[1]}`);
   });
 });
 

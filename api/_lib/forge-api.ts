@@ -119,6 +119,8 @@ function context(deps: ForgeDeps, store: JobStore<ForgeJob>, ip: string): StepCo
     store,
     charge: async (usd) => (await deps.quota.checkAndCharge(ip, "forge", usd, { count: false })).ok,
     now: deps.now,
+    // face-control: SR_FORGE_EYES=off keeps the pre-face-control eyes (no eye step, no iris layers).
+    eyes: deps.env.SR_FORGE_EYES !== "off",
   };
 }
 

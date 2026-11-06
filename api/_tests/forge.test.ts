@@ -17,8 +17,9 @@ const SMALL_PNG: GeminiImage = { mimeType: "image/png", data: new Uint8Array(rea
 const SECRET = "SECRET-upstream-body-AIza";
 const STATUS_ORDER = ["queued", "portrait", "segmenting", "cutting", "filling", "expressing", "done"];
 /** character-control: every live job runs six expression edits after assembly, one per GET. */
-const EXPRESSING = Array.from({ length: 6 }, () => "expressing");
-const EXPRESSIONS = Array.from({ length: 6 }, () => "expression");
+// face-control: the eye step takes one GET before the six families.
+const EXPRESSING = Array.from({ length: 7 }, () => "expressing");
+const EXPRESSIONS = ["eyes", "eyes", ...Array.from({ length: 6 }, () => "expression")];
 
 interface FakeScript {
   partsReplies?: string[];
@@ -40,7 +41,8 @@ function fakeGemini(script: FakeScript = {}) {
     },
     editImage: async (_image, prompt) => {
       if (prompt.startsWith("Edit this portrait")) {
-        calls.push("expression");
+        // face-control: the eye step's iris-free and closed-eyes edits run before the expressions.
+        calls.push(/remove the irises|Close both eyes/.test(prompt) ? "eyes" : "expression");
         return script.expression ? script.expression(prompt) : PORTRAIT;
       }
       calls.push(prompt.startsWith("Same image") ? "fill" : "restyle");
@@ -87,7 +89,7 @@ const get = (jobId: string, headers: Record<string, string> = {}) => new Request
 async function runToEnd(deps: ForgeDeps, jobId: string): Promise<{ view: JobView; statuses: string[]; bodies: string[] }> {
   const statuses: string[] = [];
   const bodies: string[] = [];
-  for (let i = 0; i < 16; i += 1) {
+  for (let i = 0; i < 18; i += 1) {
     const res = await handleForgeGet(get(jobId), deps);
     const text = await res.text();
     bodies.push(text);

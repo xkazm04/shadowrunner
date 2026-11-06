@@ -69,6 +69,8 @@ export interface StepContext {
   /** Charges one further paid call of this forge (quota kind "forge", not counted per IP). */
   charge(usd: number): Promise<boolean>;
   now(): number;
+  /** face-control: run the eye step (iris layers); false keeps the eyes one piece. Omitted: on. */
+  eyes?: boolean;
 }
 
 const fail = (code: ForgeErrorCode, message: string) => new ApiError<ForgeErrorCode>(code, message);

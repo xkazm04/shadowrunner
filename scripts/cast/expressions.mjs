@@ -12,17 +12,22 @@
 // `malakor`: his replay job as above, and his imported rig (assets/characters/malakor/rig/): patches
 //            in expressions/ there and a `variants.json` sidecar ({ <layer>: { <family>: LayerPatch } },
 //            files relative to the rig folder) that the seed merges into the rig. Same portrait, one edit.
+// face-control: `--attempt N` writes a stricter re-run (`<family>.aN.request.txt` -> `<family>.aN.png`);
+// for the socketed four (face-lib.mjs CAST_EYES) --import is expressions-socketed.mjs (stability gate,
+// brow+lid band, sockets; `--measure` prints the numbers only). Run eyes.mjs --import first.
 // With neither flag it lists, per family, whether a request and an edit exist. No network, no model.
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { runnerImport } from "vite";
 import { readJsonFile, writeJsonFile } from "../forge-lib.mjs";
+import { importSocketed } from "./expressions-socketed.mjs";
+import { CAST_EYES } from "./face-lib.mjs";
 import { resize } from "./measure.mjs";
 
 const args = process.argv.slice(2);
 const option = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : undefined);
 const root = option("--root") ?? ".";
-const slug = args.find((a, i) => !a.startsWith("--") && !["--root", "--families"].includes(args[i - 1]));
+const slug = args.find((a, i) => !a.startsWith("--") && !["--root", "--families", "--attempt"].includes(args[i - 1]));
 if (slug === undefined) throw new Error("usage: node scripts/cast/expressions.mjs <slug> [--families a,b] [--request|--import] [--force] [--root <dir>]");
 
 const { module: forge } = await runnerImport("/packages/forge/src/index.ts");
@@ -49,14 +54,18 @@ const briefPath = join(root, "assets", "characters", "cast", slug, "brief.json")
 const style = existsSync(briefPath) ? JSON.parse(readFileSync(briefPath, "utf8")).style?.name : undefined;
 const name = job?.value.name ?? "Arch-Lich Malakor";
 
+/** face-control: attempt 0 writes `<family>.png`; a re-run of a refused face (--attempt N) `<family>.aN.png`, with the stricter prompt. */
+const attempt = Number(option("--attempt") ?? 0);
+
 function request() {
   mkdirSync(WORK, { recursive: true });
   copyFileSync(portraitPath, join(WORK, portraitName));
   for (const family of families) {
-    const prompt = forge.expressionPrompt(name, family, style);
-    const text = `Use your image generation tool to EDIT the attached input image ./${portraitName} (pass it to the tool as the input/reference image). Prompt, verbatim: "${prompt}"\nThen save the result as ${family}.png in this folder and verify the copy. Report whether the tool actually received the input image (yes/no) and the output pixel size.\n`;
-    writeFileSync(join(WORK, `${family}.request.txt`), text);
-    console.log(`cd ${WORK.replaceAll("\\", "/")} && codex exec --skip-git-repo-check --ephemeral --dangerously-bypass-approvals-and-sandbox -i ${portraitName} -C . - < ${family}.request.txt`);
+    const prompt = forge.expressionPrompt(name, family, style, attempt);
+    const out = attempt === 0 ? family : `${family}.a${attempt}`;
+    const text = `Use your image generation tool to EDIT the attached input image ./${portraitName} (pass it to the tool as the input/reference image). Prompt, verbatim: "${prompt}"\nThen save the result as ${out}.png in this folder and verify the copy. Report whether the tool actually received the input image (yes/no) and the output pixel size.\n`;
+    writeFileSync(join(WORK, `${out}.request.txt`), text);
+    console.log(`cd ${WORK.replaceAll("\\", "/")} && codex exec --skip-git-repo-check --ephemeral --dangerously-bypass-approvals-and-sandbox -i ${portraitName} -C . - < ${out}.request.txt`);
   }
 }
 
@@ -121,5 +130,6 @@ function importEdits() {
 }
 
 if (args.includes("--request")) request();
+else if (args.includes("--import") && CAST_EYES[slug] !== undefined) await importSocketed({ forge, slug, families, work: WORK, force: args.includes("--force"), measure: args.includes("--measure") });
 else if (args.includes("--import")) importEdits();
 else for (const family of families) console.log(`${family}: request ${existsSync(join(WORK, `${family}.request.txt`)) ? "yes" : "no"}, edit ${existsSync(join(WORK, `${family}.png`)) ? "yes" : "no"}`);

@@ -235,6 +235,10 @@ export function parseForgeJob(text: string): ForgeJob | undefined {
     if (!isCount(j.expressionIndex) || j.expressionIndex > EXPRESSION_FAMILIES.length) return undefined;
     job.expressionIndex = j.expressionIndex;
   }
+  if (j.eyes !== undefined) {
+    if (j.eyes !== "edit" && j.eyes !== "fallback" && j.eyes !== "none") return undefined;
+    job.eyes = j.eyes;
+  }
   if (j.expressions !== undefined) {
     const expressions = expressionsOf(j.expressions);
     if (!expressions) return undefined;

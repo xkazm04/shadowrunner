@@ -12,6 +12,7 @@
 // (`resetMouth`), so an edit changes eyes and brows and the renderer's mouth carries the emotion.
 import type { ExpressionFamily, Layer, LayerPatch, Rig, RigMouth } from "@sr/rig";
 import { dilateMask, emptyMask, featherMask, type Mask } from "./mask.js";
+import { browLidBand } from "./stability.js";
 import type { Rgba } from "./types.js";
 
 /** Mean |edited - portrait| (0..255) in the mask's outer ring over which a family is flagged. */
@@ -20,6 +21,8 @@ export const EXPRESSION_DRIFT_LIMIT = 20;
 export const DRIFT_RING_SHARE = 0.25;
 /** A layer gets a patch when its re-cut differs from the base by more than this mean (0..255) in its bbox. */
 export const PATCH_MIN_MEAN = 2;
+/** face-control: the same for a band-cut head or hair (mean over its changed box). */
+export const BAND_PATCH_MIN_MEAN = 0.5;
 /** A patch is the changed area plus this margin (canvas px). */
 export const PATCH_MARGIN = 4;
 /** Face mask: band margins as shares of the head's height, dilation as a share of the rig width, feather in px. */
@@ -32,28 +35,37 @@ const OPAQUE = 128;
 export const isBrowLayer = (name: string): boolean => /^brow(_|$)/.test(name);
 
 /**
- * design.md "Prompt": FACE per family. The rig owns the mouth (llm-avatar-lab round 3): each FACE
- * names the eyes, lids and brows only, and the frame keeps the mouth and jaw as painted, so the edit
- * leaves no grin, cheek fold or smile line for `resetMouth` to miss; the renderer's mouth emotes.
+ * design.md "Prompt": FACE per family. The rig owns the mouth (llm-avatar-lab round 3) and the gaze
+ * (face-control: the iris layer moves inside the socket): each FACE names the brows and the eyelids
+ * only, never where the eyes look, so the edit keeps the irises where they were.
  */
 export const EXPRESSION_FACES: Readonly<Record<ExpressionFamily, string>> = Object.freeze({
-  joy: "a warm, open delight: eyes smiling and narrowed into happy crescents, brows raised and soft",
-  showman: "a theatrical showman's flourish: eyes wide open and bright, brows high and arched",
-  anger: "fury: brows drawn down hard into a V with a deep crease between them, eyes narrowed and glaring",
-  gloom: "gloom: heavy lowered eyelids, brows flat and low with the inner ends lifted, a dull downcast gaze",
-  smug: "smug superiority: one brow raised high, eyes half-lidded and looking down the nose",
-  suspicion: "suspicion: eyes narrowed and glancing sideways, one brow lowered",
+  joy: "warm delight: the lower lids lifted into soft happy crescents, the brows raised and soft",
+  showman: "a theatrical flourish: the lids opened wide, the brows high and arched",
+  anger: "fury: the brows drawn down hard into a V with a crease between them, the lids narrowed into a glare",
+  gloom: "gloom: heavy lowered upper lids, the brows flat and low with their inner ends lifted",
+  smug: "smug superiority: one brow raised high, the upper lids half lowered",
+  suspicion: "suspicion: the lids narrowed, one brow lowered",
 });
 
+/** face-control: what a refused face's re-run adds, one sentence per attempt past the first. */
+export const STRICTER: readonly string[] = [
+  "Only the brow hairs and the eyelid skin may change: every pixel below the lower lids and above the brows stays identical, and the irises do not move by even one pixel.",
+  "This is a tiny retouch, not a repaint: leave the eyeballs, the nose, the cheeks, the forehead and the outline of the face untouched and redraw nothing outside the brows and lids.",
+];
+
 /**
- * The edit for one family, verbatim from design.md; `style` (a brief's style name), when given, is
- * appended as one more sentence so the edit keeps the house of the drawing. The frame changes only
- * the upper face and keeps the mouth and jaw as painted (no "closed": a visor or a maw drawn open
- * must stay open).
+ * The edit for one family; `style` (a brief's style name), when given, is appended as one more
+ * sentence so the edit keeps the house of the drawing. face-control's strict frame: only the brows
+ * and lids change; the irises keep their place, size and direction; the face keeps its structure;
+ * the mouth and jaw stay as painted (no "closed": a visor or a maw drawn open must stay open).
+ * `attempt` 1.. adds the first `attempt` STRICTER sentences (a re-run of a refused face).
  */
-export function expressionPrompt(name: string, family: ExpressionFamily, style?: string): string {
-  const frame = `Edit this portrait of ${name}. Change ONLY the eyes, eyelids and brows, to ${EXPRESSION_FACES[family]}. Keep the mouth, lips and jaw exactly as they are in the portrait, neutral and at rest: do not open, smile, snarl, purse or move them, and add no lines or folds around the mouth or on the cheeks. Keep the same character, pose, framing, art style, colours, lighting, background and every other pixel. Do not add or remove objects.`;
-  return style === undefined || style.trim() === "" ? frame : `${frame} The art style is ${style.trim()}.`;
+export function expressionPrompt(name: string, family: ExpressionFamily, style?: string, attempt = 0): string {
+  const frame = `Edit this portrait of ${name}. Change ONLY the brows and the eyelids, to ${EXPRESSION_FACES[family]}. Keep both irises and pupils exactly where they are, the same size and looking in the same direction as in the portrait: do not move, turn, recolour or redraw the eyeballs. Keep the structure of the face exactly: the same head shape, cheeks, nose, mouth, lips and jaw, neutral and at rest; do not open, smile, snarl, purse or move the mouth, and add no lines or folds around the mouth or on the cheeks. Keep the same character, pose, framing, art style, colours, lighting, background and every other pixel. Do not add or remove objects.`;
+  const stricter = STRICTER.slice(0, Math.max(0, attempt)).join(" ");
+  const strict = stricter === "" ? frame : `${frame} ${stricter}`;
+  return style === undefined || style.trim() === "" ? strict : `${strict} The art style is ${style.trim()}.`;
 }
 
 const isFaceLayer = (layer: Layer): boolean => layer.kind === "eye" || layer.kind === "jaw" || isBrowLayer(layer.name);
@@ -72,7 +84,7 @@ function stamp(mask: Mask, image: Rgba, [bx, by]: Layer["bbox"], y0 = -Infinity,
 }
 
 /** The hard (unfeathered) face shape: face layers, the head's face band, dilated. */
-function faceShape(rig: Pick<Rig, "width" | "height" | "layers">, layers: ReadonlyMap<string, Rgba>): Mask {
+export function faceShape(rig: Pick<Rig, "width" | "height" | "layers">, layers: ReadonlyMap<string, Rgba>): Mask {
   const shape = emptyMask(rig.width, rig.height);
   let top = Infinity;
   let jawBottom = -Infinity;
@@ -277,8 +289,9 @@ function changeOf(base: Uint8ClampedArray, next: Uint8ClampedArray, width: numbe
 
 /**
  * design.md "Cut": for every head, eye, jaw or brow layer, its re-cut from the composite (see the
- * header); a layer whose re-cut differs from its base by more than PATCH_MIN_MEAN in its bbox gets a
- * patch. Eye, jaw and brow patches are `replace` and cover the whole layer (a replace patch hides its
+ * header); a layer whose re-cut differs from its base by more than PATCH_MIN_MEAN in its bbox (a
+ * band-cut head: in its changed box) gets a patch. face-control: on a socketed rig (iris layers) the edit
+ * is taken only inside the brow+lid band (`browLidBand`), so the jaw, mouth and cheeks keep their base. Eye, jaw and brow patches are `replace` and cover the whole layer (a replace patch hides its
  * base, so a crop would erase the unchanged rest); the head's is `over`, cropped to the changed area
  * plus PATCH_MARGIN. Every pixel the mask leaves at 0 equals the base. `drift` (`driftOf`) flags the
  * family over EXPRESSION_DRIFT_LIMIT; the patches are returned either way. Throws when `edited` is not
@@ -290,14 +303,20 @@ export function cutVariants(rig: Rig, layers: ReadonlyMap<string, Rgba>, portrai
   }
   const shape = faceShape(rig, layers);
   const soft = featherMask(shape, MASK_FEATHER).data;
+  // face-control: an expression moves the brows and lids only; a socketed rig (iris layers) takes the edit in the brow+lid band.
+  const band = rig.layers.some((l) => l.kind === "iris") ? browLidBand(rig).data : undefined;
+  if (band !== undefined) soft.forEach((v, i) => (soft[i] = Math.round((v * (band[i] ?? 0)) / 255)));
   const drift = driftOf(shape, portrait, edited);
   const patches: VariantCut["patches"] = {};
   for (const layer of rig.layers) {
     const base = layers.get(layer.name);
-    if (base === undefined || !(layer.kind === "head" || isFaceLayer(layer))) continue;
-    const cover = layer.kind === "head" ? coverInFront(rig, layers, layer.z) : undefined;
+    // face-control: with the band, a crown on the head (hair over the brows: Sister Vesper) is cut like the head.
+    const headLike = layer.kind === "head" || (band !== undefined && layer.kind === "crown" && layer.follow === "head");
+    if (base === undefined || !(headLike || isFaceLayer(layer))) continue;
+    const cover = headLike ? coverInFront(rig, layers, layer.z) : undefined;
     const [bx, by] = layer.bbox;
     let next: Uint8ClampedArray = base.data.slice();
+    const weight = new Float32Array(base.width * base.height);
     for (let y = 0; y < base.height; y++) {
       for (let x = 0; x < base.width; x++) {
         const cx = bx + x;
@@ -307,6 +326,7 @@ export function cutVariants(rig: Rig, layers: ReadonlyMap<string, Rgba>, portrai
         const ci = cy * rig.width + cx;
         const w = ((soft[ci] ?? 0) / 255) * (cover === undefined ? 1 : 1 - (cover[ci] ?? 0) / 255);
         if (w === 0) continue;
+        weight[y * base.width + x] = w;
         for (let c = 0; c < 3; c++) next[o + c] = Math.round((base.data[o + c] ?? 0) * (1 - w) + (edited.data[ci * 4 + c] ?? 0) * w);
       }
     }
@@ -316,8 +336,11 @@ export function cutVariants(rig: Rig, layers: ReadonlyMap<string, Rgba>, portrai
     }
     const { sum, box } = changeOf(base.data, next, base.width);
     const [x0, y0, x1, y1] = box;
-    if (x1 < 0 || sum / (base.width * base.height * 3) <= PATCH_MIN_MEAN) continue;
-    const replace = layer.kind !== "head";
+    // face-control: a band-cut head changes only around the eyes, so its mean is taken over the changed box, not the whole head.
+    const area = band !== undefined && headLike ? (x1 - x0 + 1) * (y1 - y0 + 1) : base.width * base.height;
+    // A band-cut head-like layer shares the brows with the others: any real change makes its patch, or a brow is drawn in halves.
+    if (x1 < 0 || sum / (area * 3) <= (band !== undefined && headLike ? BAND_PATCH_MIN_MEAN : PATCH_MIN_MEAN)) continue;
+    const replace = !headLike;
     const [px0, py0, px1, py1] = replace
       ? [0, 0, base.width - 1, base.height - 1]
       : [Math.max(0, x0 - PATCH_MARGIN), Math.max(0, y0 - PATCH_MARGIN), Math.min(base.width - 1, x1 + PATCH_MARGIN), Math.min(base.height - 1, y1 + PATCH_MARGIN)];
@@ -325,6 +348,20 @@ export function cutVariants(rig: Rig, layers: ReadonlyMap<string, Rgba>, portrai
     const ph = py1 - py0 + 1;
     const data = new Uint8ClampedArray(pw * ph * 4);
     for (let y = 0; y < ph; y++) data.set(next.subarray(((py0 + y) * base.width + px0) * 4, ((py0 + y) * base.width + px0 + pw) * 4), y * pw * 4);
+    // face-control: a band-cut head patch is the edit itself with the band's weight as its alpha, so it
+    // fades out inside the band and a lossy face file leaves no box around the eyes.
+    if (band !== undefined && !replace) {
+      for (let y = 0; y < ph; y++) {
+        for (let x = 0; x < pw; x++) {
+          const li = (py0 + y) * base.width + px0 + x;
+          const w = weight[li] ?? 0;
+          const o = (y * pw + x) * 4;
+          const ci = (by + py0 + y) * rig.width + bx + px0 + x;
+          if (w > 0) for (let c = 0; c < 3; c++) data[o + c] = edited.data[ci * 4 + c] ?? 0;
+          data[o + 3] = Math.round((base.data[li * 4 + 3] ?? 0) * w);
+        }
+      }
+    }
     patches[layer.name] = {
       patch: { file: variantFile(layer.name, family), bbox: [bx + px0, by + py0, pw, ph], mode: replace ? "replace" : "over" },
       image: { width: pw, height: ph, data },

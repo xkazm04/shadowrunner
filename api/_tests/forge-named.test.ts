@@ -49,7 +49,7 @@ function castBrief(motionWords: Record<string, string> = {}): CharacterBrief {
 }
 
 /** The six expression edits every live job runs after assembly (character-control). */
-const EXPRESSIONS = Array.from({ length: 6 }, () => "expression");
+const EXPRESSIONS = ["eyes", "eyes", ...Array.from({ length: 6 }, () => "expression")];
 
 function fake(brief: CharacterBrief, partsReplies: string[]) {
   const calls: string[] = [];
@@ -59,7 +59,9 @@ function fake(brief: CharacterBrief, partsReplies: string[]) {
     models: { image: "fake-image", imageDraft: "fake-draft", segment: "fake-segment" },
     generateImage: async () => (calls.push("portrait"), PORTRAIT),
     // character-control: the six expression edits after assembly return the portrait unchanged (each family "skipped").
-    editImage: async (_image, prompt) => (prompt.startsWith("Edit this portrait") ? (calls.push("expression"), PORTRAIT) : (calls.push("fill"), fills.push(prompt), FILL)),
+    // face-control: the eye step's two edits (iris-free, closed eyes) come first, also the portrait unchanged.
+    editImage: async (_image, prompt) =>
+      /remove the irises|Close both eyes/.test(prompt) ? (calls.push("eyes"), PORTRAIT) : prompt.startsWith("Edit this portrait") ? (calls.push("expression"), PORTRAIT) : (calls.push("fill"), fills.push(prompt), FILL),
     generateJson: async (prompt) => {
       if (prompt === partsPromptFromBrief(brief)) calls.push("parts:brief");
       else if (prompt === PARTS_PROMPT) calls.push("parts:v1");
@@ -104,7 +106,7 @@ async function forge(deps: ForgeDeps, brief: CharacterBrief): Promise<{ view: Jo
   expect(res.status).toBe(202);
   const { jobId } = (await res.json()) as { jobId: string };
   const views: JobView[] = [];
-  for (let i = 0; i < 16; i++) {
+  for (let i = 0; i < 18; i++) {
     const view = (await (await handleForgeGet(new Request(`https://sr.test/api/forge/${jobId}`), deps)).json()) as JobView;
     views.push(view);
     if (view.status === "done" || view.status === "failed") return { view, views, jobId };
@@ -155,7 +157,7 @@ describe("live brief job: named parts", () => {
     expect(view.status).toBe("done");
     expect(view.decomposition).toBe("fallback");
     expect(views.map((v) => v.decomposition)).toEqual([undefined, ...views.slice(1).map(() => "fallback")]);
-    expect(views.length).toBe(5 + EXPRESSIONS.length);
+    expect(views.length).toBe(5 + EXPRESSIONS.length - 1); // the two eye edits share one GET
     expect(gemini.calls).toEqual(["portrait", "parts:brief", "parts:brief", "parts:v1", "fill", ...EXPRESSIONS]);
     expect(validateRig(view.rig).ok).toBe(true);
     expect(JSON.stringify(views)).not.toContain("SECRET");

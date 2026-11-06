@@ -43,6 +43,11 @@ export interface ForgeJob {
   assets?: Record<string, string>;
   /** Status "expressing" (character-control): the next family to run, an index into EXPRESSION_FAMILIES. */
   expressionIndex?: number;
+  /**
+   * face-control: the eye step (the first GET of "expressing") came to socketed eyes from the
+   * iris-free edit ("edit"), from the pure fallback ("fallback"), or none ("none"); unset before it ran.
+   */
+  eyes?: "edit" | "fallback" | "none";
   /** What each expression family came to, from "expressing" on. */
   expressions?: Partial<Record<ExpressionFamily, ExpressionOutcome>>;
   error?: { code: ForgeErrorCode; message: string };

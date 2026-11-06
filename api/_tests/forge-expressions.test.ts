@@ -16,7 +16,7 @@ const PORTRAIT: GeminiImage = { mimeType: "image/png", data: new Uint8Array(read
 const M8_PARTS = readFileSync(new URL("packages/forge/test/fixtures/m8-parts.json", ROOT), "utf8");
 const EYE_BOXES = (JSON.parse(M8_PARTS) as { name: string; box_2d: number[] }[]).filter((p) => p.name.startsWith("eye_")).map((p) => p.box_2d);
 
-/** The portrait with `shift` added inside the middle of each eye box (`everywhere`: the whole frame). */
+/** The portrait with `shift` added just above each eye box, the brows (`everywhere`: the whole frame). */
 function edited(shift: number, everywhere = false): GeminiImage {
   const decoded = decodeImage(PORTRAIT.data);
   if (!decoded.ok) throw new Error("portrait");
@@ -24,7 +24,8 @@ function edited(shift: number, everywhere = false): GeminiImage {
   for (let i = 0; i < data.length / 4; i++) {
     const x = ((i % width) * 1000) / width;
     const y = (Math.floor(i / width) * 1000) / width;
-    const inEye = EYE_BOXES.some(([y0 = 0, x0 = 0, y1 = 0, x1 = 0]) => x > x0 + (x1 - x0) * 0.2 && x < x1 - (x1 - x0) * 0.2 && y > y0 + (y1 - y0) * 0.2 && y < y1 - (y1 - y0) * 0.2);
+    // face-control: a brow's change (a band just above each eye box), which keeps the eyes where they were.
+    const inEye = EYE_BOXES.some(([y0 = 0, x0 = 0, y1 = 0, x1 = 0]) => x > x0 && x < x1 && y > y0 - (y1 - y0) * 0.5 && y < y0 - (y1 - y0) * 0.1);
     if (everywhere || inEye) for (let c = 0; c < 3; c++) data[i * 4 + c] = (data[i * 4 + c] ?? 0) + shift;
   }
   return { mimeType: "image/png", data: encodePng(decoded.value) };
@@ -38,6 +39,8 @@ function setup(expression: (call: number) => Promise<GeminiImage>, editsAllowed 
     generateImage: async () => (calls.push("portrait"), PORTRAIT),
     editImage: async (_image, prompt) => {
       if (!prompt.startsWith("Edit this portrait")) return calls.push("fill"), PORTRAIT;
+      // face-control: the eye step's two edits (iris-free, closed eyes) answer with the portrait.
+      if (/remove the irises|Close both eyes/.test(prompt)) return calls.push("eyes"), PORTRAIT;
       calls.push("expression");
       return expression(++expressions);
     },
@@ -62,7 +65,7 @@ async function forge(deps: ForgeDeps): Promise<JobView[]> {
   const res = await handleForgePost(new Request("https://sr.test/api/forge", { method: "POST", body: JSON.stringify({ mode: "prompt", prompt: "lich" }), headers: { "x-real-ip": "198.51.100.9" } }), deps);
   const { jobId } = (await res.json()) as { jobId: string };
   const views: JobView[] = [];
-  for (let i = 0; i < 16; i++) {
+  for (let i = 0; i < 18; i++) {
     const view = (await (await handleForgeGet(new Request(`https://sr.test/api/forge/${jobId}`), deps)).json()) as JobView;
     views.push(view);
     if (view.status === "done" || view.status === "failed") return views;
@@ -83,23 +86,25 @@ afterEach(() => {
 
 describe("live expressions", () => {
   it("the budget runs out at family 3: joy and showman ok, anger..suspicion skipped, the job done with a valid rig", { timeout: 120_000 }, async () => {
-    const { deps, calls } = setup(async () => edited(70), 3); // the fill edit + two expressions
+    const { deps, calls } = setup(async () => edited(70), 5); // the fill edit + the two eye edits + two expressions
     const views = await forge(deps);
     const view = views.at(-1);
-    expect(views.map((v) => v.status)).toEqual(["cutting", "filling", ...EXPRESSION_FAMILIES.map(() => "expressing"), "done"]);
+    // face-control: the eyes take one more GET before the first family.
+    expect(views.map((v) => v.status)).toEqual(["cutting", "filling", "expressing", ...EXPRESSION_FAMILIES.map(() => "expressing"), "done"]);
     expect(view?.expressions).toEqual({ joy: "ok", showman: "ok", anger: "skipped", gloom: "skipped", smug: "skipped", suspicion: "skipped" });
-    expect(views[3]?.expressions).toEqual({ joy: "ok" });
+    expect(views[3]?.expressions).toBeUndefined();
+    expect(views[4]?.expressions).toEqual({ joy: "ok" });
+    expect(calls.filter((c) => c === "eyes")).toHaveLength(2);
     expect(views[2]?.rig).toBeUndefined();
     expect(calls.filter((c) => c === "expression")).toHaveLength(2);
     const rig = validateRig(view?.rig);
     expect(rig.ok).toBe(true);
     const layers = view?.rig?.layers ?? [];
-    const eyes = layers.filter((l) => l.kind === "eye");
-    expect(eyes.length).toBe(2);
-    for (const eye of eyes) {
-      expect(Object.keys(eye.variants ?? {}).sort()).toEqual(["joy", "showman"]);
-      expect(eye.variants?.joy).toMatchObject({ file: `${eye.name}.joy.png`, mode: "replace" });
-    }
+    // The brows are on the head: its faces are cut to the brow+lid band (face-control) and drawn over it.
+    const head = layers.find((l) => l.kind === "head");
+    expect(Object.keys(head?.variants ?? {}).sort()).toEqual(["joy", "showman"]);
+    expect(head?.variants?.joy).toMatchObject({ file: "head.joy.png", mode: "over" });
+    expect(layers.filter((l) => l.kind === "iris").length).toBe(2);
     const files = layers.flatMap((l) => [l.file, ...(l.regions ? [l.regions.map] : []), ...Object.values(l.variants ?? {}).map((p) => p.file)]);
     expect(layers.some((l) => l.regions !== undefined)).toBe(true);
     for (const file of files) expect(view?.assets?.[file], file).toMatch(/^data:image\/png;base64,/);

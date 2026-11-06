@@ -73,6 +73,7 @@ function setup() {
     generateImage: async () => PORTRAIT,
     editImage: async (_image, prompt) => {
       if (!prompt.startsWith("Edit this portrait")) return PORTRAIT; // the fill edit
+      if (/remove the irises|Close both eyes/.test(prompt)) return PORTRAIT; // face-control: the eye step's edits
       prompts.push(prompt);
       return editedFace(70);
     },
@@ -81,7 +82,9 @@ function setup() {
   const quota = createQuota({ store: new MemoryQuotaStore(), salt: "s", limits: { perIp: { forge: 3, engine: 60, voice: 60 }, dailyUsd: 30 } });
   const live = liveStore();
   let clock = 1_000_000;
-  const deps: ForgeDeps = { env: { SR_PLANE: "live" }, gemini: () => client, quota, store: () => live.store, replay: { post: async () => new Response(), get: async () => new Response() }, now: () => (clock += 61_000) };
+  // face-control: this test pins the mouth reset of the unsocketed cut (an edit painting a grin); the
+  // socketed path (eye step, brow+lid band, stability gate) is forge-expressions.test.ts's.
+  const deps: ForgeDeps = { env: { SR_PLANE: "live", SR_FORGE_EYES: "off" }, gemini: () => client, quota, store: () => live.store, replay: { post: async () => new Response(), get: async () => new Response() }, now: () => (clock += 61_000) };
   return { deps, prompts, live };
 }
 
@@ -89,7 +92,7 @@ async function forge(deps: ForgeDeps): Promise<JobView> {
   const res = await handleForgePost(new Request("https://sr.test/api/forge", { method: "POST", body: JSON.stringify({ mode: "prompt", prompt: "lich" }), headers: { "x-real-ip": "198.51.100.9" } }), deps);
   expect(res.status).toBe(202);
   const { jobId } = (await res.json()) as { jobId: string };
-  for (let i = 0; i < 16; i++) {
+  for (let i = 0; i < 18; i++) {
     const view = (await (await handleForgeGet(new Request(`https://sr.test/api/forge/${jobId}`), deps)).json()) as JobView;
     if (view.status === "done" || view.status === "failed") return view;
   }
@@ -127,7 +130,8 @@ describe("live forge: the rig owns the mouth", () => {
     expect(reread.ok && reread.value.mouth).toEqual(mouth);
     // The edits asked for the upper face only and kept the mouth.
     expect(prompts).toHaveLength(EXPRESSION_FAMILIES.length);
-    for (const prompt of prompts) expect(prompt).toContain("Keep the mouth, lips and jaw exactly as they are in the portrait");
+    // face-control's strict frame keeps the mouth with the face's structure.
+    for (const prompt of prompts) expect(prompt).toContain("mouth, lips and jaw, neutral and at rest; do not open, smile, snarl, purse or move the mouth");
 
     const image = (file: string): Rgba => {
       const url = view.assets?.[file];
