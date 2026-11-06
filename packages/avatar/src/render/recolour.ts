@@ -16,6 +16,8 @@
 // - A region colour wins over the layer's light on its slot's pixels. A `cavity` slot takes the
 //   mouth light unless `look.regions` names a colour for it, on ANY layer (director amendment: live
 //   forges paint the cavity into the head layer, under the jaw, so it is not always a jaw slot).
+// - cast-face-pass: an eye or iris with `tint: false` keeps the art's own colour, so it takes no
+//   light at all (`keepsArtColour`); its region slots still recolour.
 import { isEmissive, MAX_REGION_SLOTS, regionKey, type Layer, type Look, type Rig } from "@sr/rig";
 import type { Rgb } from "./frame.js";
 
@@ -94,8 +96,12 @@ export interface LayerRecolour {
 
 const same = (a: string, b: string): boolean => a.toLowerCase() === b.toLowerCase();
 
+/** An eye or iris whose light keeps the art's colour (`Layer.tint` false): no eye colour, eyeGain only. */
+export const keepsArtColour = (layer: Pick<Layer, "kind" | "tint">): boolean => layer.tint === false && (layer.kind === "eye" || layer.kind === "iris");
+
 /** The light a layer takes for `look`, when that light differs from the rig's palette. */
 function lightOf(rig: Pick<Rig, "palette">, layer: Layer, look: Pick<Look, "palette">): LayerLight | undefined {
+  if (keepsArtColour(layer)) return undefined;
   const pick = (name: LayerLight["name"], mode: LightMode): LayerLight | undefined => {
     const hex = look.palette[name];
     return HEX.test(hex) && !same(hex, rig.palette[name]) ? { name, target: hexToHsl(hex), mode } : undefined;

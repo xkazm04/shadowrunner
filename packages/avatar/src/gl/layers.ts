@@ -6,7 +6,7 @@
 // drawn with the iris program clipped by its eye's socket masks (gl/iris.ts).
 import { EMISSIVE_KINDS as RIG_EMISSIVE_KINDS, isEmissive, type Layer, type LayerKind, type LayerPose, type Rig } from "@sr/rig";
 import { dimGain, layerAffine, type LookLight, type Rgb, type View } from "../render/frame.js";
-import { mapRect, needsMap, type LayerRecolour } from "../render/recolour.js";
+import { keepsArtColour, mapRect, needsMap, type LayerRecolour } from "../render/recolour.js";
 import type { RigAssets } from "../render/types.js";
 import { clearIrisUnits, irisClipOf, setIrisClip } from "./iris.js";
 import type { Programs } from "./programs.js";
@@ -63,9 +63,12 @@ export interface LayerLighting {
 
 const LIGHT_MODE = { all: 1, saturated: 2 } as const;
 
-/** The light gain of a layer: the eye light's eyeGain on a recoloured eye, else the old multiply. */
+/**
+ * The light gain of a layer: the eye light's eyeGain on a recoloured eye, else the old multiply. An
+ * emissive eye or iris with `tint: false` (cast-face-pass) takes eyeGain alone, in the art's colour.
+ */
 export function gainOf(layer: Layer, pose: Pick<LayerPose, "tint">, light: LookLight, plan: LayerRecolour | undefined): Rgb {
-  if (plan?.light?.name === "eye") return [pose.tint * light.eyeGain, pose.tint * light.eyeGain, pose.tint * light.eyeGain];
+  if (plan?.light?.name === "eye" || (keepsArtColour(layer) && isEmissive(layer))) return [pose.tint * light.eyeGain, pose.tint * light.eyeGain, pose.tint * light.eyeGain];
   const eye = (layer.kind === "eye" || layer.kind === "iris") && isEmissive(layer) ? light.eye : ([1, 1, 1] as const);
   return [pose.tint * eye[0], pose.tint * eye[1], pose.tint * eye[2]];
 }

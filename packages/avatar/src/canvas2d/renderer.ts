@@ -15,13 +15,14 @@
 // after the later of the head and the jaw, in the head's frame, with the head's tint (mouth/draw.ts).
 // Face-control: an eye's closed-lid art is drawn over it at `LayerPose.closed`; an iris whose eye has
 // a socket is drawn clipped by the socket masks (canvas2d/iris.ts); the look's light follows the
-// frame clock's `mood` as in GL.
-import type { Layer, LayerPose, Look, Rig } from "@sr/rig";
+// frame clock's `mood` as in GL. An emissive eye or iris with `tint: false` (cast-face-pass) is never
+// recoloured and takes the eyeGain in its filter, as GL's `gainOf`.
+import { isEmissive, type Layer, type LayerPose, type Look, type Rig } from "@sr/rig";
 import { createMouthArt } from "../mouth/draw.js";
 import type { MouthSurfaceFactory } from "../mouth/colours.js";
 import { createAssetCache, type AssetCache, type AssetImage, type AssetLoader } from "../render/assets.js";
 import { dimGain, fitView, layerAffine, lookLight, type LookLight } from "../render/frame.js";
-import { mapRect, needsMap, rigRecolours, type LayerRecolour } from "../render/recolour.js";
+import { keepsArtColour, mapRect, needsMap, rigRecolours, type LayerRecolour } from "../render/recolour.js";
 import type { CanvasHost, FrameClock, Renderer, RendererInfo, RigAssets } from "../render/types.js";
 import { createIrisClipper } from "./iris.js";
 import { createRecolourCache, type SurfaceFactory } from "./recolour.js";
@@ -39,6 +40,9 @@ export interface Canvas2dOptions {
   /** 2D surfaces for the drawn mouth (its colour sample and skin cover; tests pass stubs). */
   mouthSurface?: MouthSurfaceFactory;
 }
+
+/** An emissive eye or iris that keeps its art's colour (`tint: false`): lit by eyeGain alone. */
+const ownLight = (layer: Layer): boolean => keepsArtColour(layer) && isEmissive(layer);
 
 /** The canvas filter for a pose tint: "none" at 1 (or a non-finite tint), else `brightness(tint)`. */
 export function tintFilter(tint: number): string {
@@ -155,7 +159,7 @@ export function createCanvas2dRenderer(canvas: CanvasHost, ctx: CanvasRenderingC
         if (pose === undefined || entry === undefined) continue;
         const { layer } = entry;
         const m = layerAffine(layer, pose, view, browY);
-        const eyeGain = recolours.get(layer.name)?.light?.name === "eye" ? (frameLight?.eyeGain ?? 1) : 1;
+        const eyeGain = recolours.get(layer.name)?.light?.name === "eye" || ownLight(layer) ? (frameLight?.eyeGain ?? 1) : 1;
         ctx.setTransform(m[0], m[1], m[2], m[3], m[4], m[5]);
         ctx.filter = tintFilter(pose.tint * eyeGain * dimGain(layer, clock?.dim));
         for (const draw of layer.kind === "iris" ? irisDraws(entry, pose, poses) : drawsOf(entry, pose)) {

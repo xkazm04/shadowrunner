@@ -44,7 +44,7 @@
 //   profile (`resolveFace`: motion.tilt scales the mood's head tilt and pitch, motion.gesture the
 //   gesture peaks, expression.strength the face weights) and the breathing idle. At the default
 //   profile, on a rig without irises or a face profile, every pose is exactly as before.
-import { breathAt, breathes, eyeOf, faceOf, irisOffset, layerIndex, squintOf, strengthen, type SocketBox } from "./eyes.js";
+import { breathAt, breathes, cellOf, eyeOf, faceOf, irisOffset, layerIndex, snapCell, squintOf, strengthen, type SocketBox } from "./eyes.js";
 import type { ResolvedFace } from "./face.js";
 import type { EmotionDrive } from "./look.js";
 import { browPoses, facesOf, moodOf, shapeOf, type BrowPose } from "./mood.js";
@@ -360,6 +360,7 @@ export function poseLayers(rig: Rig, look: Look, drive: Drive, options: PoseOpti
   const shown = (layer: Layer): boolean => layer.visible !== false && !hidden.has(layer.name);
   const still = drive.still === true;
   const simOf = (layer: Layer): Sim => finalOf(layer, compose(carries.get(layer.name) ?? IDENTITY, worlds.get(layer.name)?.sim ?? IDENTITY), frame);
+  const cell = cellOf(rig);
   const closureOf = (layer: Layer): number => Math.max(frame.blink, ownBlinkAt(layer.motion, drive.t, still));
   return rig.layers
     .map((layer, index) => ({ layer, index, eye: eyeOf(layer, byName) }))
@@ -367,8 +368,8 @@ export function poseLayers(rig: Rig, look: Look, drive: Drive, options: PoseOpti
     .sort((a, b) => a.layer.z - b.layer.z || a.index - b.index)
     .map(({ layer, eye }): LayerPose => {
       const motion = motionAt(layer.motion, drive.t, still);
-      // An iris rides its eye's transform, moved by the gaze in the eye's rest frame (eyes.ts).
-      const [ox, oy] = eye === undefined ? [0, 0] : irisOffset(drive.gaze, options.sockets?.get(eye.name), face.gaze.range);
+      // An iris rides its eye's transform, moved by the gaze in the eye's rest frame (eyes.ts), by whole cells on pixel art.
+      const [ox, oy] = eye === undefined ? [0, 0] : snapCell(irisOffset(drive.gaze, options.sockets?.get(eye.name), face.gaze.range), cell);
       const sim = eye === undefined ? simOf(layer) : compose(simOf(eye), { ...IDENTITY, tx: ox, ty: oy });
       const [bx, by] = layer.bbox;
       const [ax, ay] = layer.anchor;

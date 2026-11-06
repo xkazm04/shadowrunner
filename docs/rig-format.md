@@ -59,8 +59,8 @@ style is marked drawn, or a character still, by a person after seeing it.
 | `lineY` | number | yes | Finite, in `[0, height]`. |
 | `width` | number | yes | Finite and > 0. |
 | `render` | `"drawn"` \| `"still"` | no | `"drawn"`: the player paints its procedural mouth. `"still"` (art-mouth): no bending; neutral lips and the jaw. Omitted: the art-preserving (warp) mouth. Any other value is `bad_shape` at `$.mouth.render`. |
-| `lips` | `{ left, right, upper, lower, seam? }` | no | The painted lips at rest, canvas px: the corners' x (`left`, `right`), the upper lip's top y (`upper`) and the lower lip's bottom y (`lower`). Finite, with `0 <= left < cx < right <= width` and `0 <= upper < lineY < lower <= height`, else `bad_shape` at `$.mouth.lips`. `seam` (optional) is the y where the lips part at `cx`: it differs from `lineY` (the jaw cut) on rigs whose jaw was cut at or above the upper lip (Moth Widow: lineY 599, seam 611; Sister Vesper: 480, 501). Finite with `upper <= seam <= lower`, else `bad_shape` at `$.mouth.lips.seam`; omitted (never 0) when no dark line parts the lips, and the warp then parts at `lineY`. Omitted `lips` (never zeros) when the forge was unsure: the warp does not run. Amended by art-mouth; the format stays version 1. |
-| `cell` | number | no | Pixel art: the canvas px of one art pixel (the forge's `cut.cell`; the Redactor's is 7.1). The drawn mouth then paints on that grid: a crop at 1/`cell` resolution scaled up with smoothing off, in both renderers. Finite and > 0, else `bad_shape` at `$.mouth.cell`. Omitted: smooth paint. Amended by llm-avatar-lab; the format stays version 1. |
+| `lips` | `{ left, right, upper, lower, seam?, maw? }` | no | The painted lips at rest, canvas px: the corners' x (`left`, `right`), the upper lip's top y (`upper`) and the lower lip's bottom y (`lower`). Finite, with `0 <= left < cx < right <= width` and `0 <= upper < lineY < lower <= height`, else `bad_shape` at `$.mouth.lips`. `seam` (optional) is the y where the lips part at `cx`: it differs from `lineY` (the jaw cut) on rigs whose jaw was cut at or above the upper lip (Moth Widow: lineY 599, seam 611; Sister Vesper: 480, 501). Finite with `upper <= seam <= lower`, else `bad_shape` at `$.mouth.lips.seam`; omitted (never 0) when no dark line parts the lips, and the warp then parts at `lineY`. Omitted `lips` (never zeros) when the forge was unsure: the warp does not run. `maw` (cast-face-pass, optional, only `true`): the painted mouth is already open, teeth rows (or carved edges) around a dark gap; then `upper` is the upper row's top, `lower` the lower row's bottom and `seam` the gap's middle at `cx`, and the warp widens the gap instead of parting closed lips (see "Mouth in the avatar"). Omitted (never `false`): lips. Amended by art-mouth; the format stays version 1. |
+| `cell` | number | no | Pixel art: the canvas px of one art pixel (the forge's `cut.cell`; the Redactor's is 7.1). The drawn mouth then paints on that grid: a crop at 1/`cell` resolution scaled up with smoothing off, in both renderers. It also snaps the art-mouth warp and the iris gaze to whole cells (cast-face-pass, see "Mouth in the avatar" and "Eyes"); it is the rig's art pixel, read from `mouth` because that is where the forge records it. Finite and > 0, else `bad_shape` at `$.mouth.cell`. Omitted: smooth paint. Amended by llm-avatar-lab; the format stays version 1. |
 
 The drawn mouth's skin cover takes its colour from the rest art as the look recolours it (a region
 or light colour the look sets), so a recoloured face shows no unrecoloured patch.
@@ -133,7 +133,8 @@ Four colours, each `#rrggbb`:
 | `variants` | object | no | Expression faces (see "Variants"): per expression family, a patch drawn over or instead of the layer while that family is on. Omitted when the layer has none. Amended by character-control; the format stays version 1. |
 | `regions` | LayerRegions | no | Recolourable colour regions (see "Regions"): an index map and 1..4 slots. Omitted when the layer has none. Amended by character-control; the format stays version 1. |
 | `socket` | string | no | `eye` layers only (face-control): an alpha mask, same bbox as the layer, of the lid opening where the eye's iris may show (see "Eyes"). Omitted: the eye is one painted piece, as before. A file under the rules of "Layer files"; on another kind it is `bad_shape` at `$.layers[i].socket`. |
-| `closed` | string | no | `eye` layers only (face-control): the closed-lid art, same bbox; a blink crossfades the eye to it instead of squashing (see "Eyes"). Same rules as `socket`. |
+| `closed` | string | no | `eye` layers only (face-control): the closed-lid art, same bbox; a blink crossfades the eye to it instead of squashing (see "Eyes"). Same rules as `socket`. An eye may have `closed` without a `socket` or an iris (a one-piece eye that closes by its art, the Vicar's glass lids): it blinks the same way. |
+| `tint` | `false` | no | `eye` and `iris` layers only (cast-face-pass): the palette's eye colour does not tint this layer, so its light keeps the art's own colour (Sir Vacant's white slit light, the Lantern's candle). Its `eyeGain` brightness, pulse, glare and flare still apply, in that colour, and a look's eye colour does not recolour it (its region slots still do). Omitted (never `true`): tinted, as before. Any other value, or `false` on another kind, is `bad_shape` at `$.layers[i].tint`. |
 
 ### Layer files
 
@@ -474,6 +475,12 @@ One per drawn layer, in `z` order. A layer is drawn unless it is named in `look.
   by the eye's posed socket mask, so the lids close over it. An iris is drawn only when its eye is.
   - *Blink*: an eye with `closed` art is not squashed by the blink; its pose carries `closed` (the
     closure) and its iris's opacity is `1 - closure`. An eye without `closed` squashes as before.
+    The closure is the larger of `Drive.blink` and the eye's own `motion.blink`, so an eye with
+    `closed` and no socket or iris (cast-face-pass) blinks by its art too, and several eyes with
+    their own blink phases (the Tallyman's six) close one at a time.
+  - *Pixel art* (cast-face-pass): on a rig with `mouth.cell` the gaze offset is rounded to whole
+    cells (`Math.round(offset / cell) * cell` per axis, in the eye's rest frame), so the iris steps
+    by art pixels.
   - *Squint*: the mood's squint on an eye is multiplied by `1 - (sum of the weights of the shown
     faces whose patch is narrowed)`.
   - *Glow*: an eye with a `socket` gives no light by default (`isEmissive`); `iris` is an emissive
@@ -511,10 +518,43 @@ How `@sr/avatar` uses the fields above (face-control; behaviour, not wire format
   still looks where it is asked. A rig without irises keeps the head-only gaze exactly.
 - **Light.** The look's eye gain and brow shift fade with the mood crossfade (they used to snap).
   The brow shift of a brow-less rig never moves an eye with a `socket`. The eye light recolours the
-  iris, not a socketed eye.
+  iris, not a socketed eye. An emissive eye or iris with `tint: false` (cast-face-pass) is
+  multiplied by `eyeGain` alone (grey) instead of `palette.eye x eyeGain` in WebGL2, takes the
+  same `eyeGain` in its canvas2D brightness filter, and is never recoloured by the eye light. The
+  glow pass still tints all glow by `palette.glow` (one composite for the whole rig), so its halo
+  takes the palette's glow colour; only the layer itself keeps the art's colour.
 - **Dead patches.** A `jaw` or `eye` layer whose two or more patches are one image (one file name,
   or for images in hand, identical decoded pixels) has its patches dropped before the pose.
 - **Mouth.** `mouth.emotion` multiplies the emotion's bias on the player's mouth.
+
+### Mouth in the avatar
+
+How the WebGL2 art-mouth warp (`packages/avatar/src/mouth/warp.ts`, `gl/warp.ts`) reads `mouth`
+(behaviour, not wire format; canvas2D never warps):
+
+- **Lips** (art-mouth). Inside a window around `lips`, the corners move with the emotion, the lips
+  part at `seam` (else `lineY`) by the pose's opening (about a sixth of the span mid-open, the
+  lower lip at most 0.26 of the span) over a dark interior drawn from the lip colour.
+- **Maw** (`lips.maw`, cast-face-pass). The mouth is already open, so the same field moves the
+  teeth rows apart, rigidly, by the lens profile: the opening is the lips' one capped at 0.7 of
+  the rows' height (`lower - upper`), the lower row drops at most 0.5 of it. Press and tight never
+  squeeze the rows. Corners and width move 0.3 of the lips' amount (`MAW_BEND`: a full smile then
+  tilts a row's end by about 8 degrees instead of 26, past which a carved or toothed edge reads as
+  bent). The jaw layer is the lower row whole (a maw's cut lies in or at the gap): every jaw row
+  drops with it, also a curved rim that rises above the straight `seam` toward the corners; the
+  head parts at the seam as for lips. No interior is drawn: where the rows have parted, a layer
+  that is opaque at its own `seam` row in that column shows the mean of the opaque texels darker
+  than luminance 0.3 among 9 rows within half the thinner row of the seam, i.e. the art's own gap
+  stretched (a painted gap curves with the grin, so a single seam row would cross teeth toward the
+  corners); where none is that dark it shows the stretched seam row itself (skin past the corners),
+  and where the layer is clear at the seam it paints nothing there (the other layer holds it). Only the head and the jaw bend: art of the mouth cut into another layer (a
+  hood in front of the teeth) stays put. Rest with the jaw shut is the identity, as for lips.
+- **Pixel art** (`cell`, cast-face-pass). Each cell of the canvas grid (from 0, as the drawn mouth's
+  crop) takes one displacement, its centre's, rounded to whole cells, and the interior (or maw gap)
+  covers whole cells, so the art's own pixels move by whole art pixels and the opening's edge
+  steps. The point is not resampled at the cell's centre: a forged pixel portrait's grid is neither
+  on the canvas origin nor regular (the Redactor's period measures 7.0-7.3 px with its phase
+  drifting across the face), and centre samples would land on its soft cell borders.
 
 ## Example
 

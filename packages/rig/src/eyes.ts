@@ -24,6 +24,8 @@
 //   about the anchor of each head or body layer with no head or body ancestor; followers inherit
 //   it. Off under `Drive.still`. Only a rig with a face profile (`Rig.face` or `Look.face`) or iris
 //   layers breathes: a rig without either keeps today's pose exactly (its default breath is not 0).
+// - Pixel art (cast-face-pass): on a rig with `mouth.cell` (the art's pixel, canvas px) the gaze
+//   offset is rounded to whole cells (`snapCell`), so an iris steps by art pixels, never between.
 import { resolveFace, type ResolvedFace } from "./face.js";
 import type { ExpressionFamily, Layer, Look, Rig } from "./types.js";
 
@@ -90,6 +92,18 @@ export function irisOffset(gaze: { x: number; y: number } | undefined, box: Sock
   if (gaze === undefined || box === undefined) return [0, 0];
   const r = Number.isFinite(range) ? Math.min(1, Math.max(0, range)) : 0;
   return [unit(gaze.x) * box.hx * r, unit(gaze.y) * box.hy * r];
+}
+
+/** The rig's art pixel (`mouth.cell`, canvas px) when usable, else undefined (smooth). */
+export function cellOf(rig: Pick<Rig, "mouth">): number | undefined {
+  const cell = rig.mouth?.cell;
+  return typeof cell === "number" && Number.isFinite(cell) && cell > 0 ? cell : undefined;
+}
+
+/** An offset rounded to whole cells (unchanged without a cell). */
+export function snapCell(offset: [number, number], cell: number | undefined): [number, number] {
+  if (cell === undefined) return offset;
+  return [Math.round(offset[0] / cell) * cell, Math.round(offset[1] / cell) * cell];
 }
 
 /** The eye layer an iris follows, when it follows one. */

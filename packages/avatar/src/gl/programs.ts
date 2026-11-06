@@ -4,6 +4,7 @@
 // composite (scene + tinted glow onto the canvas). All share one unit-quad buffer. Face-control
 // adds the iris twin of the base program: the same pass with the eye's socket masks (gl/iris.ts).
 import { GLOW_SATURATION, S_FLOOR, S_KEEP } from "../render/recolour.js";
+import { MAW_DARK_LUMA, MAW_TAPS } from "../mouth/warp.js";
 import { WARP_GLSL, WARP_UNIFORMS } from "./warp.js";
 
 /**
@@ -79,11 +80,29 @@ ${
 // so every other quad runs the plain program at today's cost): the sample point is unwarped first
 // (texels outside the layer are transparent), and where the lips have parted both layers show the
 // dark interior (each at its own alpha at the unwarped point: whichever holds the mouth paints it).
+// A maw (warp.w, its opening share) shows instead the mean of the opaque texels darker than
+// MAW_DARK_LUMA among MAW_TAPS rows about the seam in its column (mouth/warp.ts `mawTaps`): the art's
+// own gap, stretched (a mean, so the ink and tooth gaps a column crosses do not streak); where no
+// tap is that dark the stretched seam row itself shows (skin past the mouth's curved corners). Only a layer that holds the seam row (opaque at its seam in that
+// column) paints it, so a head cut above the seam never covers the jaw's row with the gap.
 const WARP_SAMPLE = `  vec2 p = u_rect.xy + v_uv * u_rect.zw;
   float ws;
-  vec4 warp = unwarp(p, 0.5 * max(fwidth(p.y), 1e-3), ws);
+  vec4 warp = wSample(p, 0.5 * max(fwidth(p.y), 1e-3), ws);
   vec2 uv = (warp.xy - u_rect.xy) / u_rect.zw;
-  vec4 tex = texture(u_tex, uv) * inLayer(uv);`;
+  vec4 tex = texture(u_tex, uv) * inLayer(uv);
+  vec2 suv = (vec2(warp.x, u_wLips.y) - u_rect.xy) / u_rect.zw;
+  float hold = u_wLayer.w > 0.0 && warp.w > 0.0 ? warp.w * smoothstep(0.25, 0.75, texture(u_tex, suv).a * inLayer(suv)) : 0.0;
+  if (hold > 0.0) {
+    vec4 sum = vec4(0.0);
+    float n = 0.0;
+    for (int i = 0; i < ${MAW_TAPS}; i++) {
+      vec2 tq = (vec2(warp.x, u_wLips.y + u_wLayer.w * (2.0 * float(i) / ${(MAW_TAPS - 1).toFixed(1)} - 1.0)) - u_rect.xy) / u_rect.zw;
+      vec4 t = texture(u_tex, tq) * inLayer(tq);
+      float l = t.a > 0.5 ? dot(t.rgb / t.a, vec3(0.2126, 0.7152, 0.0722)) : 2.0;
+      if (l < ${MAW_DARK_LUMA.toFixed(4)}) { sum += t; n += 1.0; }
+    }
+    if (n > 0.0) tex = mix(tex, sum / n, hold);
+  }`;
 const WARP_INTERIOR = `  if (warp.z > 0.0) {
     float a = texture(u_tex, v_uv).a * inLayer(v_uv);
     rgb = mix(rgb, wInterior(ws) * a, warp.z);

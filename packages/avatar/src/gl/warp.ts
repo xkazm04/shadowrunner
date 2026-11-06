@@ -6,23 +6,26 @@
 // to the field's box (u_draw), so lips lifted above a layer's own bbox (the jaw is cut at the lip
 // line) still have pixels to land on; samples outside the layer's texture are transparent there.
 // Every other quad keeps the plain base program, so a frame without a warp costs what it did.
+// cast-face-pass: a maw (`lips.maw`, u_wLayer.w its gap reach > 0) draws no interior: the opening
+// shows the darkest texel of MAW_TAPS rows about the seam (mouth/warp.ts `mawTaps`, gl/programs.ts); pixel art (`mouth.cell`, u_wCell > 0) samples per cell (mouth/warp.ts `sampleAt`).
 import { anchorOf, mouthGeometry, mouthLayers, mouthMode } from "../mouth/anchor.js";
 import type { MouthRgb } from "../mouth/colours.js";
 import { SHAPE_PARAMS } from "../mouth/shapes.js";
 import type { MouthPose } from "../mouth/state.js";
-import { CREASE_OF_SPAN, INNER_SPAN, interiorOf, PROFILE_POW, TALL_OF_SPAN, warpBox, warpParams, WARP_STEPS, type WarpField } from "../mouth/warp.js";
+import { CREASE_OF_SPAN, INNER_SPAN, interiorOf, PROFILE_POW, SNAP_AA, TALL_OF_SPAN, warpBox, warpParams, WARP_STEPS, type WarpField } from "../mouth/warp.js";
 import type { Layer, LayerPose, Rig } from "@sr/rig";
 import type { View } from "../render/frame.js";
 
-export const WARP_UNIFORMS = ["u_draw", "u_wLips", "u_wWin", "u_wBand", "u_wCorner", "u_wLayer", "u_wBox", "u_wNear", "u_wDeep"] as const;
+export const WARP_UNIFORMS = ["u_draw", "u_wLips", "u_wWin", "u_wBand", "u_wCorner", "u_wLayer", "u_wBox", "u_wNear", "u_wDeep", "u_wCell"] as const;
 export type WarpUniform = (typeof WARP_UNIFORMS)[number];
 
 /**
  * mouth/warp.ts in GLSL, function for function. Packing: u_wLips (cx, seam, hwL, hwR), u_wWin
  * (winL, winR, fu, fd), u_wBand (upper, lower, lift, open), u_wCorner (dxL, dyL, dxR, dyR),
- * u_wLayer (gap, jaw 0/1, squeeze, -), u_wBox (x0, y0, x1, y1). `unwarp` returns the source point
- * (xy) and the interior share (z; drawn at the layer's own alpha there); `s` is the interior shade
- * (0 deep .. 1 near).
+ * u_wLayer (gap, jaw 0/1, squeeze, maw reach or 0), u_wBox (x0, y0, x1, y1), u_wCell (pixel art's
+ * cell, 0 off). `unwarp` returns the source point (xy), the interior share (z; drawn at the layer's
+ * own alpha there) and a maw's opening share (w; 0 on lips and outside the box); `s` is the
+ * interior shade (0 deep .. 1 near).
  */
 export const WARP_GLSL = `uniform vec4 u_wLips;
 uniform vec4 u_wWin;
@@ -32,6 +35,7 @@ uniform vec4 u_wLayer;
 uniform vec4 u_wBox;
 uniform vec3 u_wNear;
 uniform vec3 u_wDeep;
+uniform float u_wCell;
 float wHw(float x) { return x < u_wLips.x ? u_wLips.z : u_wLips.w; }
 float wT(float x) { return abs(x - u_wLips.x) / wHw(x); }
 float wFade(float x, float t) { return 1.0 - smoothstep(1.0, (x < u_wLips.x ? u_wWin.x : u_wWin.y) / wHw(x), t); }
@@ -48,7 +52,7 @@ float wDc(float x, float y) {
 }
 vec4 unwarp(vec2 p, float aa, out float s) {
   s = 0.0;
-  if (p.x < u_wBox.x || p.x > u_wBox.z || p.y < u_wBox.y || p.y > u_wBox.w) return vec4(p, 0.0, 1.0);
+  if (p.x < u_wBox.x || p.x > u_wBox.z || p.y < u_wBox.y || p.y > u_wBox.w) return vec4(p, 0.0, 0.0);
   float seam = u_wLips.y;
   float lift = u_wBand.z;
   float open = u_wBand.w;
@@ -68,16 +72,26 @@ vec4 unwarp(vec2 p, float aa, out float s) {
   float core = clamp((min(yl, p.y + aa) - max(yu, p.y - aa)) / (2.0 * aa), 0.0, 1.0);
   float crease = ${CREASE_OF_SPAN.toFixed(4)} * span;
   float band = crease * smoothstep(0.0, 3.0 * crease, h);
-  float inner = max(core, band > 1e-3 ? 1.0 - smoothstep(0.0, band + aa, max(yu - p.y, p.y - yl)) : 0.0);
+  bool maw = u_wLayer.w > 0.0;
+  float inner = maw ? 0.0 : max(core, band > 1e-3 ? 1.0 - smoothstep(0.0, band + aa, max(yu - p.y, p.y - yl)) : 0.0);
   float qy = p.y;
-  if (p.y < 0.5 * (yu + yl)) {
+  if (maw && jaw) {
+    for (int i = 0; i < ${WARP_STEPS}; i++) qy = p.y - wDc(qx, qy) - (open * prof - pin) * wLow(qy);
+  } else if (p.y < 0.5 * (yu + yl)) {
     for (int i = 0; i < ${WARP_STEPS}; i++) qy = min(seam, p.y - wDc(qx, qy) + lift * prof * wUp(qy) + pin);
   } else {
     for (int i = 0; i < ${WARP_STEPS}; i++) qy = max(seam, p.y - wDc(qx, qy) - (open * prof - pin) * wLow(qy));
   }
-  return vec4(qx, qy, inner, 1.0);
+  return vec4(qx, qy, inner, maw ? core : 0.0);
 }
-vec3 wInterior(float s) { return mix(u_wDeep, u_wNear, s); }`;
+vec3 wInterior(float s) { return mix(u_wDeep, u_wNear, s); }
+vec4 wSample(vec2 p, float aa, out float s) {
+  float c = u_wCell;
+  if (c <= 0.0 || p.x < u_wBox.x || p.x > u_wBox.z || p.y < u_wBox.y || p.y > u_wBox.w) return unwarp(p, aa, s);
+  vec2 pc = (floor(p / c) + 0.5) * c;
+  vec4 u = unwarp(pc, ${SNAP_AA.toFixed(4)}, s);
+  return vec4(p + floor((u.xy - pc) / c + 0.5) * c, step(0.5, u.z), step(0.5, u.w));
+}`;
 
 /** One warped pose: its index in the frame's poses, its box and whether it is the jaw. */
 export interface WarpLayer {
@@ -88,6 +102,8 @@ export interface WarpLayer {
 
 export interface WarpPlan {
   field: WarpField;
+  /** Pixel art: the rig's cell (canvas px); 0 samples smoothly. */
+  cell: number;
   near: readonly [number, number, number];
   deep: readonly [number, number, number];
   layers: WarpLayer[];
@@ -110,10 +126,13 @@ export function planWarp(rig: Rig, layers: ReadonlyMap<string, Layer>, poses: re
   const { near, deep } = interiorOf(lip());
   const out: WarpLayer[] = [{ index: found.jaw.index, box: warpBox(field, found.jaw.layer.bbox), jaw: true }];
   if (found.head !== undefined) out.push({ index: found.head.index, box: warpBox(field), jaw: false });
-  return { field, near, deep, layers: out };
+  return { field, cell: geometry.cell ?? 0, near, deep, layers: out };
 }
 
 type Locations = Record<WarpUniform, WebGLUniformLocation | null>;
+
+/** The u_wCell value each linked warp program holds (a fresh program holds 0). */
+const cellSet = new WeakMap<WebGLUniformLocation, number>();
 
 /** Sets the field's uniforms for one warped pose (u_draw is per quad, `setWarpDraw`). */
 export function setWarp(gl: WebGL2RenderingContext, u: Locations, plan: WarpPlan, layer: WarpLayer): void {
@@ -122,10 +141,16 @@ export function setWarp(gl: WebGL2RenderingContext, u: Locations, plan: WarpPlan
   gl.uniform4f(u.u_wWin, f.winL, f.winR, f.fu, f.fd);
   gl.uniform4f(u.u_wBand, f.upper, f.lower, f.lift, f.open);
   gl.uniform4f(u.u_wCorner, f.dxL, f.dyL, f.dxR, f.dyR);
-  gl.uniform4f(u.u_wLayer, layer.jaw ? f.gap : 0, layer.jaw ? 1 : 0, f.squeeze, 0);
+  gl.uniform4f(u.u_wLayer, layer.jaw ? f.gap : 0, layer.jaw ? 1 : 0, f.squeeze, f.reach);
   gl.uniform4f(u.u_wBox, layer.box[0], layer.box[1], layer.box[2], layer.box[3]);
   gl.uniform3f(u.u_wNear, plan.near[0], plan.near[1], plan.near[2]);
   gl.uniform3f(u.u_wDeep, plan.deep[0], plan.deep[1], plan.deep[2]);
+  // u_wCell is 0 on link and set only when it changes, so a rig without a cell issues today's calls.
+  const loc = u.u_wCell;
+  if (loc !== null && (cellSet.get(loc) ?? 0) !== plan.cell) {
+    gl.uniform1f(loc, plan.cell);
+    cellSet.set(loc, plan.cell);
+  }
 }
 
 /** u_draw for one quad: its rect grown to cover the warped layer's box. */
