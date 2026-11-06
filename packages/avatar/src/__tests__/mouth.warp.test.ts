@@ -59,13 +59,38 @@ describe("warpParams", () => {
     expect(f.open).toBeGreaterThan(6);
     const box = warpBox(f);
     expect(unwarp(f, box, false, 514.5, 476).inner).toBeCloseTo(1, 6);
-    expect(unwarp(f, box, false, 514.5, 476 - f.lift - 2).inner).toBe(0);
+    expect(unwarp(f, box, false, 514.5, 476 - f.lift - 4).inner).toBe(0);
     // Toward the corners the opening closes (it ends short of them).
     expect(unwarp(f, box, false, 480, 476).inner).toBe(0);
     // In the jaw's own frame (the pose adds gap) the same lines sit `gap` higher.
     const jawBox = warpBox(f, [471, 475, 88, 30]);
     expect(unwarp(f, jawBox, true, 514.5, 476 - f.gap).inner).toBeCloseTo(1, 6);
-    expect(unwarp(f, jawBox, true, 514.5, 476 + f.open - f.gap + 2).inner).toBe(0);
+    expect(unwarp(f, jawBox, true, 514.5, 476 + f.open - f.gap + 4).inner).toBe(0);
+  });
+
+  it("the opening scales with the lips' span, not the jaw's drop; a slit absorbs the crease", () => {
+    const mid = one("openMid");
+    const cardia = field(mid, 4);
+    const moth = field(mid, 4, MOTH);
+    const rel = (f: WarpField): number => (f.lift + f.open) / (f.hwL + f.hwR);
+    // A 4 px jaw drop does not cap it: mid-open parts the lips by about a sixth of the span on both.
+    expect(rel(cardia)).toBeGreaterThan(0.15);
+    expect(rel(cardia)).toBeCloseTo(rel(moth), 2);
+    // Wide open stays under a third of the span (the lips are not swallowed).
+    const wide = field(one("openWide"), 4);
+    expect(rel(wide)).toBeLessThan(0.3);
+    // A deep jaw drop moves the chin; the lower lip stops at a quarter of the span.
+    const deep = field(one("openWide"), 60, MOTH);
+    expect(deep.open).toBeLessThanOrEqual(0.26 * (deep.hwL + deep.hwR) + 1e-9);
+    expect(warpPoint(deep, 509.5, deep.lower + deep.fd + 1, true)[1]).toBeCloseTo(deep.lower + deep.fd + 1, 6);
+    // The crease band: just outside the opening's lines the interior still covers (soft edge).
+    const box = warpBox(cardia);
+    const yu = 476 - cardia.lift;
+    expect(unwarp(cardia, box, false, 514.5, yu - 0.8).inner).toBeGreaterThan(0.5);
+    // A slit stays deep-dark; a tall opening is lit toward its lips.
+    const slit = field(blendParams({ ...restWeights(), rest: 0.9, openMid: 0.1 }));
+    expect(unwarp(slit, warpBox(slit), false, 514.5, 476).s).toBeLessThan(0.1);
+    expect(unwarp(cardia, box, false, 514.5, yu + 0.5).s).toBeGreaterThan(0.4);
   });
 
   it("parts at the seam when it lies below the jaw cut (the whole mouth in the jaw)", () => {

@@ -10,7 +10,7 @@ import { anchorOf, mouthGeometry, mouthLayers, mouthMode } from "../mouth/anchor
 import type { MouthRgb } from "../mouth/colours.js";
 import { SHAPE_PARAMS } from "../mouth/shapes.js";
 import type { MouthPose } from "../mouth/state.js";
-import { INNER_SPAN, interiorOf, PROFILE_POW, warpBox, warpParams, WARP_STEPS, type WarpField } from "../mouth/warp.js";
+import { CREASE_OF_SPAN, INNER_SPAN, interiorOf, PROFILE_POW, TALL_OF_SPAN, warpBox, warpParams, WARP_STEPS, type WarpField } from "../mouth/warp.js";
 import type { Layer, LayerPose, Rig } from "@sr/rig";
 import type { View } from "../render/frame.js";
 
@@ -21,7 +21,8 @@ export type WarpUniform = (typeof WARP_UNIFORMS)[number];
  * mouth/warp.ts in GLSL, function for function. Packing: u_wLips (cx, seam, hwL, hwR), u_wWin
  * (winL, winR, fu, fd), u_wBand (upper, lower, lift, open), u_wCorner (dxL, dyL, dxR, dyR),
  * u_wLayer (gap, jaw 0/1, squeeze, -), u_wBox (x0, y0, x1, y1). `unwarp` returns the source point
- * (xy) and the interior share (z; drawn at the layer's own alpha there); `s` is the interior gradient.
+ * (xy) and the interior share (z; drawn at the layer's own alpha there); `s` is the interior shade
+ * (0 deep .. 1 near).
  */
 export const WARP_GLSL = `uniform vec4 u_wLips;
 uniform vec4 u_wWin;
@@ -59,8 +60,15 @@ vec4 unwarp(vec2 p, float aa, out float s) {
   float base = seam + (qx < u_wLips.x ? u_wCorner.y : u_wCorner.w) * wAy(qx) - pin;
   float yu = base - lift * prof;
   float yl = base + open * prof;
-  s = clamp((p.y - yu) / max(yl - yu, 1e-3), 0.0, 1.0);
-  float inner = clamp((min(yl, p.y + aa) - max(yu, p.y - aa)) / (2.0 * aa), 0.0, 1.0);
+  float span = u_wLips.z + u_wLips.w;
+  float h = yl - yu;
+  float v = clamp((p.y - yu) / max(h, 1e-3), 0.0, 1.0);
+  float edge = abs(2.0 * v - 1.0);
+  s = smoothstep(0.0, ${TALL_OF_SPAN.toFixed(4)} * span, h) * clamp(0.5 * edge * edge + 0.25 * v, 0.0, 1.0);
+  float core = clamp((min(yl, p.y + aa) - max(yu, p.y - aa)) / (2.0 * aa), 0.0, 1.0);
+  float crease = ${CREASE_OF_SPAN.toFixed(4)} * span;
+  float band = crease * smoothstep(0.0, 3.0 * crease, h);
+  float inner = max(core, band > 1e-3 ? 1.0 - smoothstep(0.0, band + aa, max(yu - p.y, p.y - yl)) : 0.0);
   float qy = p.y;
   if (p.y < 0.5 * (yu + yl)) {
     for (int i = 0; i < ${WARP_STEPS}; i++) qy = min(seam, p.y - wDc(qx, qy) + lift * prof * wUp(qy) + pin);
@@ -69,10 +77,7 @@ vec4 unwarp(vec2 p, float aa, out float s) {
   }
   return vec4(qx, qy, inner, 1.0);
 }
-vec3 wInterior(float s) {
-  float edge = abs(2.0 * s - 1.0);
-  return mix(u_wDeep, u_wNear, edge * sqrt(edge));
-}`;
+vec3 wInterior(float s) { return mix(u_wDeep, u_wNear, s); }`;
 
 /** One warped pose: its index in the frame's poses, its box and whether it is the jaw. */
 export interface WarpLayer {
