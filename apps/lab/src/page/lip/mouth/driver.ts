@@ -6,11 +6,13 @@
 // the speech level (a mid-open mouth as loud as the line), so a missing visemeSource never freezes
 // the mouth.
 //
-// main.ts renders the player BEFORE it calls `frame(nowMs)`, so the mix set here is drawn on the
-// next frame: it is read one frame ahead (the last frame's length), and the jaw JAW_LEAD_MS more.
+// main.ts calls `frame(nowMs)` BEFORE it renders the player, so the mix set here is drawn in the
+// same frame (and a painter pairs it with the player's alpha from that frame); the jaw is read
+// JAW_LEAD_MS ahead because it eases toward its target.
 //
-// A rig without `mouth` draws no mouth (the player never guesses one): only the jaw moves, through
-// `setLevel`, as before the rig owned the mouth.
+// Shapes reach the player when it moves this rig's mouth itself: mouthMode "drawn" (the procedural
+// mouth) or "warp" (the art's own lips bent by the shader, the default for a measured mouth). A rig
+// without `mouth`, or marked render "still", moves only the jaw, through `setLevel`.
 //
 // Reduced motion (the twin, used when the viewer asks and the run does not force motion): no
 // per-viseme articulation; while a line plays the mouth eases (REDUCED_EASE_MS) to one soft, half
@@ -24,8 +26,6 @@ import { createVisemeTrack, type VisemeTrack } from "./track.js";
 /** The jaw eases toward its target (the driver's attack); asking slightly early keeps it on time. */
 export const JAW_LEAD_MS = 30;
 export const REDUCED_EASE_MS = 150;
-/** The longest frame the look-ahead trusts, ms. */
-export const AHEAD_MAX_MS = 50;
 
 export interface MouthFrame {
   nowMs: number;
@@ -58,11 +58,18 @@ export function createMouthDriver(id: LipArmId, ctx: LipContext, options: MouthD
   const { player, audio, reducedMotion } = ctx;
   player.attachAudio(undefined);
   const track = createVisemeTrack();
-  const drawsMouth = ctx.mouth !== undefined && player.setMouthShapes !== undefined;
-  if (!drawsMouth) console.warn(`Lip arm ${id}: this rig has no measured mouth (Rig.mouth), so no mouth is drawn and only the jaw moves (back-fill it: scripts/cast/mouth-backfill.mjs).`);
-  // The mix the player drew this frame (set one frame ago), and the one it draws next.
+  // A hand-made player without mouthMode (older fakes) is taken at its rig's word: a mouth draws.
+  const mode = player.mouthMode?.() ?? (ctx.mouth === undefined ? undefined : "drawn");
+  const drawsMouth = (mode === "drawn" || mode === "warp") && player.setMouthShapes !== undefined;
+  if (!drawsMouth) {
+    console.warn(
+      mode === "still"
+        ? `Lip arm ${id}: this rig keeps its art's mouth (Rig.mouth.render "still"), so only the jaw moves.`
+        : `Lip arm ${id}: this rig has no measured mouth (Rig.mouth), so only the jaw moves (back-fill it: scripts/cast/mouth-backfill.mjs).`,
+    );
+  }
+  // The mix the player draws this frame.
   let shown = restWeights();
-  let pending = shown;
   let soft = 0;
   let lastMs: number | undefined;
 
@@ -102,15 +109,13 @@ export function createMouthDriver(id: LipArmId, ctx: LipContext, options: MouthD
     frame(nowMs) {
       const dt = lastMs === undefined ? 0 : Math.max(0, nowMs - lastMs);
       lastMs = nowMs;
-      const next = nowMs + Math.min(AHEAD_MAX_MS, dt);
-      const weights = reducedMotion ? reducedMix(next, dt) : mixAt(next);
-      const jawMix = reducedMotion ? weights : mixAt(next + JAW_LEAD_MS);
+      const weights = reducedMotion ? reducedMix(nowMs, dt) : mixAt(nowMs);
+      const jawMix = reducedMotion ? weights : mixAt(nowMs + JAW_LEAD_MS);
       const jaw = options.jawWeights?.(jawMix) ?? jawMix;
       if (drawsMouth) {
         const drawn = options.drawn?.(weights);
         player.setMouthShapes?.(weights, { jaw, ...(drawn === undefined ? {} : { drawn }) });
-        shown = pending;
-        pending = weights;
+        shown = weights;
       } else {
         player.setLevel(jawLevel(blendParams(jaw).jaw));
       }

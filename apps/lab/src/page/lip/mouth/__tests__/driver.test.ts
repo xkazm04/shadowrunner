@@ -1,8 +1,8 @@
 // The shared lip driver body (L1/L2): it never attaches the audio, hands the player the scheduled
-// shape mix (one frame ahead, the jaw's a little more), falls back to the speech level without
+// shape mix (at the frame's time, the jaw's a little ahead), falls back to the speech level without
 // visemes, eases to one soft shape under reduced motion, and on a rig without Rig.mouth moves only
-// the jaw. The player draws the mouth (@sr/avatar, tested there); the painter seam is L2's.
-import type { AvatarPlayer, LayerFrame, MouthPose, MouthShapesInput, ShapeWeights } from "@sr/avatar/core";
+// the jaw; a warp rig takes shapes, a "still" rig only the jaw. The player draws the mouth (@sr/avatar, tested there); the painter seam is L2's.
+import type { AvatarPlayer, LayerFrame, MouthMode, MouthPose, MouthShapesInput, ShapeWeights } from "@sr/avatar/core";
 import { blendParams, jawLevel, restWeights, SHAPE_PARAMS } from "@sr/avatar/core";
 import type { Layer, RigMouth } from "@sr/rig";
 import { describe, expect, it, vi } from "vitest";
@@ -23,7 +23,7 @@ function frames(tx: number, ty: number, k: number, drop: number): LayerFrame[] {
   ];
 }
 
-function harness(o: { reducedMotion?: boolean; mouth?: RigMouth | null; level?: number; frames?: () => LayerFrame[] } = {}) {
+function harness(o: { reducedMotion?: boolean; mouth?: RigMouth | null; level?: number; frames?: () => LayerFrame[]; mode?: MouthMode } = {}) {
   const painters: ScenePainter[] = [];
   const levels: (number | undefined)[] = [];
   const shapes: ({ shapes: ShapeWeights; options?: Omit<MouthShapesInput, "shapes"> } | undefined)[] = [];
@@ -34,6 +34,7 @@ function harness(o: { reducedMotion?: boolean; mouth?: RigMouth | null; level?: 
     setMouthShapes: (s: ShapeWeights | undefined, options?: Omit<MouthShapesInput, "shapes">) => shapes.push(s === undefined ? undefined : { shapes: s, ...(options === undefined ? {} : { options }) }),
     mouth: () => pose,
     layerFrames: o.frames ?? (() => frames(0, 0, 1, 0)),
+    ...(o.mode === undefined ? {} : { mouthMode: () => o.mode }),
   } as Partial<AvatarPlayer> as AvatarPlayer;
   const mouth = o.mouth === null ? undefined : (o.mouth ?? measured);
   const ctx: LipContext = {
@@ -95,7 +96,7 @@ describe("mouth driver", () => {
     expect(h.levels.at(-1)).toBeUndefined();
   });
 
-  it("reads the mix one frame ahead (the player draws it next frame) and the jaw JAW_LEAD_MS more", () => {
+  it("reads the mix at the frame's time (drawn in the same frame) and the jaw JAW_LEAD_MS ahead", () => {
     const h = harness();
     const d = createMouthDriver("L1", h.ctx);
     d.onViseme({ t: 0, kind: "viseme", id: "u", v: "PP", startMs: 0, endMs: 100 });
@@ -105,6 +106,8 @@ describe("mouth driver", () => {
     d.frame(40);
     const ahead = h.shapes.at(-1);
     expect(ahead?.shapes.closed).toBeGreaterThan(0.5);
+    d.frame(250);
+    expect(h.shapes.at(-1)?.shapes.openWide).toBeCloseTo(1, 6);
     // The jaw mix is read JAW_LEAD_MS further ahead, so it is at least as open as the shown one.
     expect(blendParams(ahead?.options?.jaw ?? restWeights()).jaw).toBeGreaterThanOrEqual(blendParams(ahead?.shapes ?? restWeights()).jaw);
   });
@@ -156,11 +159,28 @@ describe("mouth driver", () => {
     const g = {} as CanvasRenderingContext2D;
     for (const p of h.painters) p(g, 150);
     expect(seen).toHaveLength(1);
-    expect(seen[0]?.weights).toBe(h.shapes.at(-2)?.shapes);
+    expect(seen[0]?.weights).toBe(h.shapes.at(-1)?.shapes);
     expect(seen[0]?.weights.round).toBeCloseTo(1, 6);
     expect(seen[0]?.alpha).toBe(1);
     expect(seen[0]?.anchor.affine[4]).toBe(10);
     expect(seen[0]?.anchor.gap).toBeCloseTo(4, 9);
     expect(h.shapes.at(-1)?.options?.drawn?.round).toBe(0);
+  });
+  it("a warp rig takes the shapes; a \"still\" rig moves only the jaw", () => {
+    const w = harness({ mode: "warp" });
+    const dw = createMouthDriver("L1", w.ctx);
+    speak(dw, "aa");
+    dw.frame(1150);
+    expect(w.shapes.at(-1)?.shapes.openWide).toBeCloseTo(1, 6);
+    expect(w.levels).toHaveLength(0);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const s = harness({ mode: "still" });
+    const ds = createMouthDriver("L1", s.ctx);
+    expect(warn).toHaveBeenCalledOnce();
+    speak(ds, "aa");
+    ds.frame(1150);
+    expect(s.shapes).toHaveLength(0);
+    expect(s.levels.at(-1)).toBeCloseTo(jawLevel(SHAPE_PARAMS.openWide.jaw), 9);
+    warn.mockRestore();
   });
 });

@@ -97,20 +97,22 @@ the arm's one `notBuilt(...)` line in its registry. Every unbuilt slot throws
 
 | Axis | Registry | Entry shape | Built |
 |---|---|---|---|
-| control (WP2) | `src/director/arms/control/index.ts` | `C1: createC1` with `ControlArmFactory = (ctx: ControlContext) => ControlArm` | C0 |
-| lip (WP3) | `src/page/lip/index.ts` | `L1: createL1` with `LipDriverFactory = (ctx: LipContext) => LipDriver` | L0 |
-| scene (WP2) | `src/page/scene/index.ts` | `S1: createS1` with `SceneDriverFactory = (ctx: SceneContext) => SceneDriver` | S0 |
-| output (WP4) | `src/director/output/index.ts` | `O1: createO1` with `OutputArmFactory = (ctx: OutputContext) => OutputArm` | O0 |
+| control (WP2) | `src/director/arms/control/index.ts` | `C1: createC1` with `ControlArmFactory = (ctx: ControlContext) => ControlArm` | C0, C1, C2 |
+| lip (WP3) | `src/page/lip/index.ts` | `L1: createL1` with `LipDriverFactory = (ctx: LipContext) => LipDriver` | L0, L1, L2 |
+| scene (WP2) | `src/page/scene/index.ts` | `S1: createS1` with `SceneDriverFactory = (ctx: SceneContext) => SceneDriver` | S0, S1 |
+| output (WP4) | `src/director/output/index.ts` | `O1: createO1` with `OutputArmFactory = (ctx: OutputContext) => OutputArm` | O0, O1 |
 
 - **ControlContext** (`arms/control/types.ts`): `llm` (the chosen transport), `apiKey?` (api only),
   `fixture?`, `model?`, `voice`, `seed`, `log`. Yield `say` / `emotion` / `gesture` / `scene`
   events with `t: 0` (the director stamps `t`); report `usage()` including `controlErrors` for
   outputs that failed to parse and fell back. The director voices every `say`.
-- **LipContext** (`page/types.ts`): `player` (AvatarPlayer), `audio` (`context`, the `output`
-  GainNode every utterance plays through, `nowMs()` on the AudioContext clock, `level()`),
-  `reducedMotion`. The page calls `onAudio(event, audioStartMs)` when the utterance's first sample
-  is scheduled, `onViseme(event)` for each span (relative to that audio start), and `frame(nowMs)`
-  every frame after the player has stepped. L0 attaches `audio.output` to the player and ignores
+- **LipContext** (`page/types.ts`): `character` (pack id), `mouth` (`Rig.mouth`, when measured),
+  `player` (AvatarPlayer), `audio` (`context`, the `output` GainNode every utterance plays through,
+  `nowMs()` on the AudioContext clock, `level()`), `reducedMotion`, `addPainter(painter)` (paints
+  into the recorded composite after the avatar). The page calls `onAudio(event, audioStartMs)` when
+  the utterance's first sample is scheduled, `onViseme(event)` for each span (relative to that audio
+  start), `onEmotion(value)` after `player.setEmotion`, and `frame(nowMs)` every frame BEFORE the
+  player renders. L0 attaches `audio.output` to the player and ignores
   visemes; an arm that sets the mouth itself should not attach the audio.
 - **SceneContext**: `stage` (the 1920x1080 element), `audio`, `reducedMotion`, `onFrame(hook)`,
   `addPainter("back" | "front", painter)`. **O0 records a canvas, not the DOM**: anything a scene
@@ -187,38 +189,35 @@ once from the stage (`s1/palette.ts`); the CSS uses tokens only, laid out at hal
 ## Lip arms L1 and L2 (WP3)
 
 Both arms share one driver body (`src/page/lip/mouth/driver.ts`). Neither attaches the stage audio
-to the player: the jaw opens through `player.setLevel`, and the mouth is painted through
-`LipContext.addPainter` into the recorded composite (after the avatar, before the scene's front
-layer). Live, without `record=webm`, the page shows the avatar canvas only, so the drawn mouth is
-visible in `run.webm`, not in the headed window.
+to the player: they hand the player a shape mix (`player.setMouthShapes(weights, { jaw, drawn? })`)
+and `@sr/avatar` moves the mouth itself, on `Rig.mouth`, with the character's emotion (main.ts
+hands it over with `setEmotion`). What the player does with the mix depends on the rig
+(`player.mouthMode()`, from `mouthMode(rig.mouth)` in `@sr/avatar`):
+
+- `"warp"` (the default for a measured mouth): the GL renderer bends the character's own painted
+  lips (corners, opening over a dark interior; spark art-mouth). The Canvas2D fallback slides the jaw.
+- `"drawn"` (`Rig.mouth.render: "drawn"`, the Tallyman): the player paints its procedural mouth.
+- `"still"` (`render: "still"`), or no `Rig.mouth`: shapes are not sent; the driver opens only the
+  jaw, through `player.setLevel`, and warns once at creation.
+
+**Frame order.** The page calls `lip.frame(nowMs)` BEFORE `player.renderFrame`, so the mix set at
+`nowMs` is drawn in the same frame, and L2's painter pairs that mix with the player's alpha from the
+same frame. The jaw mix is read 30 ms ahead (`JAW_LEAD_MS`), because the jaw eases toward its target.
 
 **Scheduler** (`mouth/track.ts`, `mouth/shapes.ts`). The 15 Oculus visemes are grouped into eight
 shapes: rest (sil), closed (PP), teeth (FF), tongue (TH, DD, nn), openMid (kk, E), narrow (CH, SS, ih),
 round (RR, oh, ou), openWide (aa). A span waits until its utterance's audio start is known
 (`onAudio`), then becomes a window on the audio clock. Each span's weight rises over `BLEND_MS`
 (50 ms) centred on its start and falls over 50 ms centred on its end (smoothstep edges), so
-neighbours crossfade with no hard cut, a span is dominant 17 ms after its start, and the mouth is at
-rest 25 ms after the last span. Rest takes whatever weight is left. Each shape has a geometry (width,
-opening, pucker, teeth, tongue, press) and a jaw value. Shapes blend linearly, and the jaw is asked
-30 ms early to cover the player's jaw attack. A line that arrives with no visemes falls back to the
-speech level (a mid-open mouth as loud as the line).
+neighbours crossfade with no hard cut. Rest takes whatever weight is left. The shape parameters
+(`SHAPE_PARAMS`, width, open, round, teeth, tongue, press, jaw) live in `@sr/avatar`. A line that
+arrives with no visemes falls back to the speech level (a mid-open mouth as loud as the line).
 
-**Where the mouth is.** `@sr/avatar`'s player gained `layerFrames()` (additive and read-only): where
-each layer was drawn by the last frame, as the renderer's own affine. The mouth line is the jaw
-layer's top edge. Its width is 0.85 of the jaw's width, capped at 0.32 of the head's. It is drawn in
-the head's frame, so it follows every head motion, and the jaw's drop is measured in that frame.
+**Where the mouth is.** `Rig.mouth` (`cx`, `lineY`, `width`, optional `lips` box), measured by the
+forge and back-filled for the cast by `scripts/cast/mouth-backfill.mjs`. L2 recomputes the anchor
+from `player.layerFrames()` (the renderer's own affines) to draw in the head's frame.
 
-**L1, procedural.** The arm samples skin colour from the composite above the lip and on the chin. It
-samples once and again at every utterance start, before anything is painted. From those samples it
-derives the lips, the dark inside, the teeth and the tongue. It then paints:
-
-1. a feathered skin patch over the painted rest mouth;
-2. the lips;
-3. the inside, with teeth and tongue clipped to it;
-4. a lip line when the mouth is closed.
-
-The drawn mouth covers the art only while it differs from rest (`coverOf`): in silence the
-character's own mouth shows untouched.
+**L1** is the driver alone: the player moves the mouth (warp or drawn, per rig).
 
 **L2, forge mouths.** `pnpm lab mouths <character>
 [--placeholder] [--draft] [--model id] [--only shape,...]` writes `var/lab/mouths/<character>/`:
@@ -231,16 +230,15 @@ character's own mouth shows untouched.
 Without `--placeholder` the command calls Gemini from Node: seven image edits of the rest crop, at
 the forge's request shape and price (0.14 USD each, 0.04 with `--draft`). It stops with a sentence,
 before any read or write, when `GEMINI_API_KEY` is unset. A shape the model refuses is left out
-(`failed` in the manifest), and L2 draws L1's mouth for it. `--placeholder` draws flat stand-in
-shapes on the crop with ffmpeg (deterministic, no model call, cost 0). Image work uses the system
-`ffmpeg`. The page finds sets with `import.meta.glob` when the stage starts, so a set generated
-later needs a new run.
+(`failed` in the manifest). `--placeholder` draws flat stand-in shapes on the crop with ffmpeg
+(deterministic, no model call, cost 0). The page finds sets with `import.meta.glob` when the stage
+starts, so a set generated later needs a new run.
 
-At runtime L2 cuts each shape image by the rest crop's alpha (the face outline) and a feathered
-ellipse. It crossfades the shapes by their weights, then draws the mix in the head's frame over the
-crop square. A missing shape, and every shape until the set has loaded, is drawn by L1. The jaw
-opens only for those shapes, because the art carries its own opening. With no set for the
-character, L2 fails at creation with the command to run.
+At runtime L2 cuts each shape image by the rest crop's alpha and a feathered ellipse, crossfades the
+shapes by their weights, and paints the mix into the recorded composite (`LipContext.addPainter`)
+in the head's frame. The player draws only the shapes the set lacks (`drawn`), and the jaw opens only
+for those (`jawWeights`), because the art carries its own opening. With no set for the character, L2
+fails at creation with the command to run.
 
 **Reduced motion.** When the viewer asks for reduced motion and the run does not force motion, the
 mouth does not articulate per viseme. While a line plays it eases (150 ms) to one soft, half-open
@@ -248,10 +246,7 @@ shape, and back to rest after the line. Recording runs force motion, as for ever
 
 **Known limits.**
 
-- Expression variants (`smug` and the like) paint their own mouth on the head. The patch covers the
-  centre, but a smirk crease that reaches past it stays visible beside the drawn mouth.
-- The mouth's placement is derived from the jaw box. A rig whose jaw art is not a lower lip under the
-  mouth line needs per-rig tuning (`MOUTH_OF_JAW`, `MOUTH_OF_HEAD`).
+- L2 paints only into the recording; the live canvas shows the player's mouth.
 - L2's Gemini art is unverified here: there is no key on this machine. Only the placeholder set has
   been run.
 

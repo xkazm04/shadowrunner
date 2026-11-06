@@ -97,9 +97,10 @@ async function start(character: string, config: RunConfig): Promise<void> {
   const frame = (now: number): void => {
     const nowMs = sound.nowMs();
     for (const hook of hooks) hook(nowMs);
+    // The lip arm first: the shapes it sets are drawn in this very frame.
+    lip.frame(nowMs);
     player.renderFrame(Math.min(0.1, Math.max(0, (now - last) / 1000)));
     last = now;
-    lip.frame(nowMs);
     if (g !== null) {
       g.clearRect(0, 0, STAGE_W, STAGE_H);
       for (const p of painters.back) p(g, nowMs);
