@@ -144,9 +144,9 @@ afterEach(async () => {
   vi.useRealTimers();
 });
 
-describe("the Mood / Look tabs", () => {
+describe("the Mood / Look / Face tabs", () => {
   it("is a tablist: Mood selected first, arrows, Home and End switch and are kept from the shell", async () => {
-    expect(q('[role="tablist"]').querySelectorAll('[role="tab"]')).toHaveLength(2);
+    expect(q('[role="tablist"]').querySelectorAll('[role="tab"]')).toHaveLength(3);
     expect(tab("Mood").getAttribute("aria-selected")).toBe("true");
     expect(q("#signal-panel-look").hidden).toBe(true);
     expect(await key(tab("Mood"), "ArrowRight")).toBe(true);
@@ -157,6 +157,8 @@ describe("the Mood / Look tabs", () => {
     await key(tab("Look"), "Home");
     expect(tab("Mood").getAttribute("aria-selected")).toBe("true");
     await key(tab("Mood"), "End");
+    expect(tab("Face").getAttribute("aria-selected")).toBe("true");
+    await key(tab("Face"), "ArrowLeft");
     expect(tab("Look").getAttribute("aria-selected")).toBe("true");
     await key(tab("Look"), "ArrowLeft");
     expect(tab("Mood").getAttribute("aria-selected")).toBe("true");

@@ -5,13 +5,16 @@
 // Keyed by the character, so a switch starts clean. The page hands in the cast strip.
 // character-control: the right column is two tabs, Mood (dial, gestures, voice) and Look (Palette,
 // Shape); selecting a part (a Layer stack name, or a pick on the glass) switches to Look.
+// face-control: a third tab, Face (FaceCard), writes Look.face through the same reducer and save;
+// its Look around steers the glass's gaze (useLookAround).
 import type { VoiceId } from "@sr/engine";
-import { regionKey, resolveGesture, type Emotion, type Gesture, type Look } from "@sr/rig";
+import { regionKey, resolveFace, resolveGesture, type Emotion, type Gesture, type Look } from "@sr/rig";
 import { useCallback, useEffect, useReducer, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { lookReducer } from "../customize/lookReducer";
 import type { CharacterRecord } from "../library/libraryStore";
 import { useRigAssets, type Library } from "../library/useLibrary";
 import { useSpeaker } from "../useSpeaker";
+import { FaceCard } from "./FaceCard";
 import { Glass } from "./Glass";
 import { gestureLabel, useGesturePulse } from "./gestures";
 import { LayerRail, useBlobUrls } from "./LayerRail";
@@ -21,7 +24,8 @@ import { decodePixels, type PixelReader } from "./pixels";
 import { ShapeCard } from "./ShapeCard";
 import { ChannelActions, GestureCard, VoiceCard } from "./SignalCards";
 import { SignalTabs, type SignalTab } from "./SignalTabs";
-import { usePick } from "./usePick";
+import { reducedMotion, usePick } from "./usePick";
+import { useLookAround } from "./useLookAround";
 import styles from "./Anatomy.module.css";
 import signal from "./Signal.module.css";
 
@@ -62,6 +66,8 @@ export function Anatomy({ record, library, cast, badge, readPixels = decodePixel
   const [gesture, fireGesture] = useGesturePulse();
   const [lastGesture, setLastGesture] = useState<string | undefined>(undefined);
   const [highlight, setHighlight] = useState<string | undefined>(undefined);
+  const [around, setAround] = useState(false);
+  const gaze = useLookAround(around, resolveFace(record.rig, look).gaze.habits);
   const { assets, failed } = useRigAssets(record);
   const thumbs = useBlobUrls(record.assets);
   const speaker = useSpeaker((line) => {
@@ -113,10 +119,10 @@ export function Anatomy({ record, library, cast, badge, readPixels = decodePixel
       ? "Speaking"
       : gesture !== undefined && lastGesture !== undefined
         ? `Gesture · ${lastGesture}`
-        : `${look.emotion === "neutral" ? "Idle" : title(look.emotion)} · blinking`;
+        : `${look.emotion === "neutral" ? "Idle" : title(look.emotion)} · ${gaze === undefined ? "blinking" : `looking to ${gaze}`}`;
   const shown = record.rig.layers.filter((l) => l.visible !== false && !look.hidden.includes(l.name)).length;
   const changed =
-    JSON.stringify(look.palette) !== JSON.stringify(record.rig.palette) || look.hidden.length > 0 || look.emotion !== "neutral" || look.regions !== undefined || look.shape !== undefined;
+    JSON.stringify(look.palette) !== JSON.stringify(record.rig.palette) || look.hidden.length > 0 || look.emotion !== "neutral" || look.regions !== undefined || look.shape !== undefined || look.face !== undefined;
   const chip = liftChip(record, look.hidden);
 
   return (
@@ -138,6 +144,7 @@ export function Anatomy({ record, library, cast, badge, readPixels = decodePixel
             {...(assets === undefined ? {} : { assets })}
             {...(gesture === undefined ? {} : { gesture })}
             {...(speaker.audio === undefined ? {} : { audio: speaker.audio })}
+            {...(gaze === undefined ? {} : { gaze })}
             {...(highlight === undefined ? {} : { highlight })}
             onPalette={(key, value) => dispatch({ type: "palette", key, value })}
             onLift={toggle}
@@ -198,6 +205,17 @@ export function Anatomy({ record, library, cast, badge, readPixels = decodePixel
                   onResetAll={() => dispatch({ type: "shapeResetAll" })}
                 />
               </>
+            ),
+            face: (
+              <FaceCard
+                rig={record.rig}
+                look={look}
+                onFace={(field, value) => dispatch({ type: "face", field, value, rig: record.rig })}
+                onReset={() => dispatch({ type: "faceReset" })}
+                lookAround={around}
+                onLookAround={setAround}
+                reduced={reducedMotion()}
+              />
             ),
           }}
         />

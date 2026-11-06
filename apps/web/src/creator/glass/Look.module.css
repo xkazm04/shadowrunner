@@ -1,4 +1,4 @@
-/* The right column's Mood / Look tabs and the Look tab's Palette and Shape cards
+/* The right column's Mood / Look / Face tabs and the Look tab's Palette and Shape cards
    (character-control "Creator UI"), in the signal column's idiom (Signal.module.css): type-face
    labels, line-edged keys on surface-2, face-glow for the selected thing, accent for focus. A chip's
    own colour is look data, painted through --lamp (Ring.tsx `lamp`), not a page style. Nothing
@@ -6,7 +6,7 @@
 
 .tabs {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: var(--sr-space-1);
   padding: var(--sr-space-1);
   border: thin solid color-mix(in srgb, var(--sr-line) 70%, transparent);

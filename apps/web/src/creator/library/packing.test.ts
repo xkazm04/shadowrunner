@@ -81,6 +81,21 @@ describe("packInputOf", () => {
     if (!plain.ok) throw new Error(plain.error.detail);
     expect("mouth" in recordOfPack(plain.pack, new Set(), NOW).rig).toBe(false);
   });
+
+  it("face-control: Look.face survives export and import (and a copy on an id clash); a look without one stays without", async () => {
+    const r = record();
+    const face = { gaze: { range: 0.85, habits: { chat: 0.25 } }, motion: { breath: 0.6 }, mouth: { emotion: 1.3 } };
+    const tuned = { ...r, rig: { ...r.rig, face: { expression: { strength: 0.7 } } }, look: { ...r.look, face } };
+    const read = await readPack(await writePack(packInputOf(tuned, { licence: "CC0-1.0", author: "" })));
+    if (!read.ok) throw new Error(read.error.detail);
+    expect(read.pack.look.face).toEqual(face);
+    expect(recordOfPack(read.pack, new Set(), NOW).look.face).toEqual(face);
+    expect(recordOfPack(read.pack, new Set(["ghost"]), NOW).look.face).toEqual(face);
+    expect(recordOfPack(read.pack, new Set(), NOW).rig.face).toEqual({ expression: { strength: 0.7 } });
+    const plain = await readPack(await writePack(packInputOf(r, { licence: "CC0-1.0", author: "" })));
+    if (!plain.ok) throw new Error(plain.error.detail);
+    expect("face" in recordOfPack(plain.pack, new Set(), NOW).look).toBe(false);
+  });
 });
 
 describe("recordOfPack", () => {

@@ -1,16 +1,17 @@
-// The right column's two tabs (character-control "Creator UI"): Mood (the dial, gestures, voice)
-// and Look (Palette, Shape). A `role="tablist"` with automatic activation: arrow keys move to the
-// other tab, Home and End to the first and last; those keys are kept from the shell, which steps
-// channels on arrows. Both panels stay mounted (the hidden one `hidden`), so nothing in either
-// loses its state on a switch.
+// The right column's tabs (character-control "Creator UI"): Mood (the dial, gestures, voice), Look
+// (Palette, Shape) and, face-control, Face (the face profile). A `role="tablist"` with automatic
+// activation: arrow keys move to the next or previous tab (wrapping), Home and End to the first
+// and last; those keys are kept from the shell, which steps channels on arrows. Every panel stays
+// mounted (the hidden ones `hidden`), so nothing in any loses its state on a switch.
 import type { KeyboardEvent, ReactNode } from "react";
 import styles from "./Look.module.css";
 
-export type SignalTab = "mood" | "look";
+export type SignalTab = "mood" | "look" | "face";
 
 export const SIGNAL_TABS: readonly { id: SignalTab; label: string }[] = [
   { id: "mood", label: "Mood" },
   { id: "look", label: "Look" },
+  { id: "face", label: "Face" },
 ];
 
 export interface SignalTabsProps {

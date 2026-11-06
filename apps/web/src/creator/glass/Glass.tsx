@@ -11,7 +11,7 @@
 // - A click on the glass that lifts nothing is a pick (character-control "Glass pick"): its point
 //   goes to `onPick` in rig px, and the page draws the picked region's `outline`. A crown piece or
 //   an accessory is still lifted by a click, as before the Look tab.
-import { AvatarCanvas, type RigAssets } from "@sr/avatar";
+import { AvatarCanvas, type Gaze, type RigAssets } from "@sr/avatar";
 import type { Gesture, Look, Palette, Rig } from "@sr/rig";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { boxOf, fromGlass, layerAt, lightPins, type Pin, type Point } from "./pins";
@@ -44,6 +44,8 @@ export interface GlassProps {
   assets?: RigAssets;
   gesture?: Gesture;
   audio?: HTMLMediaElement;
+  /** Where the face looks (the Face tab's Look around); absent: the player's default. */
+  gaze?: Gaze;
   /** The layer outlined over the face (rail hover or focus). */
   highlight?: string;
   /** A lamp was chosen. Without it the labels are shown but do not open. */
@@ -66,7 +68,7 @@ const holeAround = (b: { left: number; top: number; width: number; height: numbe
   return `polygon(evenodd, 0 0, 100% 0, 100% 100%, 0 100%, 0 0, ${l} ${t}, ${r} ${t}, ${r} ${bt}, ${l} ${bt}, ${l} ${t})`;
 };
 
-export function Glass({ rig, look, assets, gesture, audio, highlight, onPalette, onLift, onPick, outline, chip, children }: GlassProps) {
+export function Glass({ rig, look, assets, gesture, audio, gaze, highlight, onPalette, onLift, onPick, outline, chip, children }: GlassProps) {
   const pins = useMemo(() => lightPins(rig), [rig]);
   const [open, setOpen] = useState<keyof Palette | undefined>(undefined);
   const [flash, setFlash] = useState<{ n: number; hex: string } | undefined>(undefined);
@@ -115,6 +117,7 @@ export function Glass({ rig, look, assets, gesture, audio, highlight, onPalette,
               className={styles.canvas}
               {...(gesture === undefined ? {} : { gesture })}
               {...(audio === undefined ? {} : { audio })}
+              {...(gaze === undefined ? {} : { gaze })}
             />
           </div>
         )}
