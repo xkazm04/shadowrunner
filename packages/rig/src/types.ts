@@ -164,6 +164,12 @@ export interface RigMouth {
   cx: number;
   lineY: number;
   width: number;
+  /**
+   * "drawn": the player paints its procedural, emotional mouth here (flat, low-poly and line-art
+   * styles it suits). Omitted: the art keeps its own neutral lips and the jaw (painterly styles,
+   * until an art-preserving mouth exists); the position is still recorded for it.
+   */
+  render?: "drawn";
 }
 
 export type Emotion =

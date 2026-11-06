@@ -29,6 +29,11 @@ export function mouthGeometry(mouth: RigMouth | undefined): MouthGeometry | unde
   return { cx: mouth.cx, lineY: mouth.lineY, width, maxOpen: width * OPEN_OF_WIDTH };
 }
 
+/** The geometry of a mouth the player paints: only a usable `rig.mouth` marked `render: "drawn"`. */
+export function drawnMouthGeometry(mouth: RigMouth | undefined): MouthGeometry | undefined {
+  return mouth?.render === "drawn" ? mouthGeometry(mouth) : undefined;
+}
+
 export interface MouthAnchor {
   geometry: MouthGeometry;
   /** Rig px -> device px in the head's frame: set it on the context and draw in rig px. */

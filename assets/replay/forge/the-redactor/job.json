@@ -568,7 +568,8 @@
     "mouth": {
       "cx": 515.5,
       "lineY": 547,
-      "width": 89.25
+      "width": 89.25,
+      "render": "drawn"
     }
   }
 }

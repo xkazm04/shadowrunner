@@ -12,7 +12,7 @@ import { createCanvasStub, createCtx2dStub, createGlStub, type GlStub } from "./
 import { fakeAssets, malakorRig } from "./malakor.js";
 
 const plain = malakorRig();
-const rig: Rig = { ...plain, mouth: { cx: 511.5, lineY: 511, width: 120 } };
+const rig: Rig = { ...plain, mouth: { cx: 511.5, lineY: 511, width: 120, render: "drawn" } };
 const look = defaultLook(rig);
 const DRIVE: Drive = { t: 0, headYaw: 0, headPitch: 0, jawOpen: 0.3, blink: 0 };
 const poses = poseLayers(rig, look, DRIVE);

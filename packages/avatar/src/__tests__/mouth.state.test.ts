@@ -16,7 +16,9 @@ import { malakorRig } from "./malakor.js";
 const stand = <T extends object>(value: object): T => value as T;
 
 const plain = malakorRig();
-const withMouth: Rig = { ...plain, mouth: { cx: 511.5, lineY: 511, width: 120 } };
+const withMouth: Rig = { ...plain, mouth: { cx: 511.5, lineY: 511, width: 120, render: "drawn" } };
+/** A measured mouth without `render: "drawn"` (painterly styles): the art keeps its lips. */
+const artMouth: Rig = { ...plain, mouth: { cx: 511.5, lineY: 511, width: 120 } };
 const lookOf = (rig: Rig, emotion: Emotion): Look => ({ ...defaultLook(rig), emotion });
 
 /** Runs `frames` frames of `dt` seconds and returns the last output. */
@@ -38,6 +40,11 @@ const jawOf = (out: FrameOutput): number => {
 };
 
 describe("a rig without mouth", () => {
+  it("a measured mouth without render: \"drawn\" draws nothing and leaves the jaw on the level", () => {
+    const out = run(artMouth, { emotion: "delighted", level: 0.4 });
+    expect(out.clock.mouth).toBeUndefined();
+  });
+
   it("draws no mouth and opens the jaw from the raw level, exactly as before", () => {
     const out = run(plain, { emotion: "delighted", level: 0.4 });
     expect(Object.keys(out.clock).sort()).toEqual(["reducedMotion", "t"]);

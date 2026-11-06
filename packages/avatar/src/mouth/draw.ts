@@ -5,7 +5,7 @@
 import type { Layer, LayerPose, Rig } from "@sr/rig";
 import type { View } from "../render/frame.js";
 import type { RigAssets } from "../render/types.js";
-import { anchorOf, mouthGeometry, mouthLayers, type MouthAnchor, type Posed } from "./anchor.js";
+import { anchorOf, drawnMouthGeometry, mouthLayers, type MouthAnchor, type Posed } from "./anchor.js";
 import { defaultMouthSurface, sampleArt, type Mouth2D, type MouthColours, type MouthSurfaceFactory } from "./colours.js";
 import { createPatchCache, paintMouth } from "./paint.js";
 import type { MouthPose } from "./state.js";
@@ -32,7 +32,7 @@ export function createMouthArt(surface: MouthSurfaceFactory = defaultMouthSurfac
   let sampled: { rig: Rig; assets: RigAssets; colours: MouthColours | undefined } | undefined;
   return {
     place(rig, layers, poses, view, browY) {
-      const geometry = mouthGeometry(rig.mouth);
+      const geometry = drawnMouthGeometry(rig.mouth);
       if (geometry === undefined) return undefined;
       const found = mouthLayers(layers, poses);
       if (found === undefined) return undefined;

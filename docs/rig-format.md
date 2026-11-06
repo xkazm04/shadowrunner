@@ -38,14 +38,19 @@ they disagree, the spec wins and this page and the code are fixed to match.
 
 Amended by llm-avatar-lab ("the rig owns the mouth"); the format stays version 1. `mouth` is
 `{ cx, lineY, width }` in canvas px: the rest mouth's centre x, its lip line y and its width corner
-to corner. When present, the renderer draws the talking mouth there and carries the emotion in it
-(smile, snarl, smirk, downturn), and the expression faces keep the neutral portrait mouth.
+to corner. When present, the expression faces keep the neutral portrait mouth. With
+`render: "drawn"` the renderer also draws the talking mouth there and carries the emotion in it
+(smile, snarl, smirk, downturn): this suits flat, low-poly, line-art and pixel styles (the Tallyman,
+the Redactor). Without it the art keeps its neutral lips and the jaw opens as before; the position
+is recorded for an art-preserving mouth (painterly styles, follow-up). The forge does not set
+`render`: a style is marked drawn by a person after seeing it.
 
 | field | type | required | meaning |
 |---|---|---|---|
 | `cx` | number | yes | Finite, in `[0, width]`. |
 | `lineY` | number | yes | Finite, in `[0, height]`. |
 | `width` | number | yes | Finite and > 0. |
+| `render` | `"drawn"` | no | The player paints its procedural mouth. Any other value is `bad_shape` at `$.mouth.render`. |
 
 A `mouth` that is not an object is `bad_shape` at `$.mouth`; a field off its range is `bad_shape` at
 `$.mouth.<field>`. Absent, the rig renders as before: the art's own mouth and jaw, nothing drawn

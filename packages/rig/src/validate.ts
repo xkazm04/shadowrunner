@@ -153,7 +153,10 @@ class Reader {
     const cx = this.required(value, "cx", path, within(canvas.width), `a number in [0, ${canvas.width ?? "width"}]`);
     const lineY = this.required(value, "lineY", path, within(canvas.height), `a number in [0, ${canvas.height ?? "height"}]`);
     const width = this.required(value, "width", path, (v: unknown): v is number => isFinite(v) && v > 0, "a finite number > 0");
-    return cx === undefined || lineY === undefined || width === undefined ? undefined : { cx, lineY, width };
+    const render = value.render;
+    if (render !== undefined && render !== "drawn") return this.fail(`${path}.render`, `when present, ${got(render, '"drawn"')}`);
+    if (cx === undefined || lineY === undefined || width === undefined) return undefined;
+    return { cx, lineY, width, ...(render === "drawn" ? { render } : {}) };
   }
 
   layer(value: unknown, path: string, canvas: MotionCanvas): Layer | undefined {

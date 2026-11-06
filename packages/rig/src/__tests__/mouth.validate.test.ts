@@ -57,6 +57,13 @@ describe("Rig.mouth", () => {
     expect(paths(rig({ mouth: { cx: "1", lineY: 2, width: -3 } }))).toEqual(["bad_shape $.mouth.cx", "bad_shape $.mouth.width"]);
   });
 
+  it("keeps render: \"drawn\", rejects any other render, and round-trips it", () => {
+    const out = validateRig(rig({ mouth: { cx: 300, lineY: 400, width: 110, render: "drawn" } }));
+    expect(out.ok && out.value.mouth).toEqual({ cx: 300, lineY: 400, width: 110, render: "drawn" });
+    if (out.ok) expect(parseRigJson(serializeRig(out.value)).ok && JSON.parse(serializeRig(out.value)).mouth.render).toBe("drawn");
+    expect(paths(rig({ mouth: { cx: 300, lineY: 400, width: 110, render: "art" } }))).toContain("bad_shape $.mouth.render");
+  });
+
   it("round-trips through serializeRig and parseRigJson, after the layers", () => {
     const out = validateRig(rig({ mouth: { cx: 300, lineY: 400, width: 110 } }));
     expect(out.ok).toBe(true);

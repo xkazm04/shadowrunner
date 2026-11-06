@@ -16,7 +16,7 @@
 import { applyLook, MOOD_FADE_S, poseLayers, type Drive, type Emotion, type Gesture, type LayerPose, type Look, type Rig } from "@sr/rig";
 import type { LookAtPoint } from "../driver/lookAt.js";
 import { initialState, type Gaze } from "../driver/state.js";
-import { mouthGeometry } from "../mouth/anchor.js";
+import { drawnMouthGeometry } from "../mouth/anchor.js";
 import { createMouthState, type MouthShapesInput } from "../mouth/state.js";
 import { easeDim } from "../render/frame.js";
 import type { FrameClock } from "../render/types.js";
@@ -87,7 +87,7 @@ export function createFrameBody(seed: number): (inputs: FrameBodyInputs) => Fram
   const stepMouth = createMouthState();
   return (p) => {
     const mouth =
-      mouthGeometry(p.rig.mouth) === undefined
+      drawnMouthGeometry(p.rig.mouth) === undefined
         ? undefined
         : stepMouth({ emotion: p.look.emotion, level: p.level, reducedMotion: p.reducedMotion, dt: p.dt, ...(p.mouth === undefined ? {} : { input: p.mouth }) });
     const next = advanceFrame(state, {
