@@ -71,6 +71,21 @@ export interface Layer {
    * layer, so its light keeps the art's own colour (a white visor light, a candle). Omitted: tinted.
    */
   tint?: false;
+  /**
+   * A signature act (tiger L1): the layer's own motion played once when a spoken line says a cue
+   * word (`act.ts`). Accessory and crown layers only; readers drop a bad one. Omitted: none.
+   */
+  act?: LayerAct;
+}
+
+/** A signature act (docs/rig-format.md "Act"): cue words and the act's size and length. */
+export interface LayerAct {
+  /** 1..3 lowercase words, each at most 24 characters. */
+  cue: string[];
+  /** In [1, 3]; omitted means 1.5. */
+  gain?: number;
+  /** Seconds, in [0.6, 1.5]; omitted means 1. */
+  s?: number;
 }
 
 /** The six expression families the ten emotions share (character-control design "Moods"). */

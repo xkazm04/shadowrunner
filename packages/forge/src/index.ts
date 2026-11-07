@@ -23,6 +23,7 @@ export * from "./cutNamed.js";
 export * from "./matte.js";
 export * from "./brief.js";
 export * from "./briefParts.js";
+export * from "./briefActs.js";
 export * from "./regions.js";
 export * from "./expressions.js";
 export * from "./mouthAnchor.js";

@@ -2,7 +2,7 @@
 // parseParts takes an already-decoded value; it never sees raw text and never JSON.parses.
 // Anything off-contract is rejected with code `upstream`. Error messages name the JSON path and
 // the rule broken, never the offending value, so no raw upstream text can leak through them.
-import { JAW_DROP_MAX, JAW_DROP_MIN, type LayerKind, type Result, readMotion } from "@sr/rig";
+import { JAW_DROP_MAX, JAW_DROP_MIN, type LayerKind, type Result, readAct, readMotion } from "@sr/rig";
 import { followOf, headNameOf } from "./named.js";
 import { PART_NAMES, type CutStyle, type NamedPart, type Part, type PartName, type PartRole, type Polygon } from "./types.js";
 import type { ForgeErrorCode } from "./wire.js";
@@ -226,6 +226,7 @@ function namedPart(value: unknown, path: string, errors: PartsError[]): NamedPar
   const eyeRole = role === "eye" || role === "eye_l" || role === "eye_r";
   if (motion.motion?.blink !== undefined && !eyeRole) errors.push({ code: "upstream", path: `${path}.motion.blink`, message: "is only for a part with an eye role" });
   if (errors.length > before || !nameOk || !isRole(role) || box2d === undefined || points === undefined) return undefined;
+  const act = lifted ? readAct(value.act) : undefined;
   return {
     name,
     role,
@@ -241,6 +242,7 @@ function namedPart(value: unknown, path: string, errors: PartsError[]): NamedPar
     ...(role === "jaw" && value.mouth === "art" ? { mouth: "art" as const } : {}),
     ...(matte === "plate" ? { matte } : {}),
     ...(typeof emissive === "boolean" ? { emissive } : {}),
+    ...(act === undefined ? {} : { act }),
     ...(pivotOk && Array.isArray(pivot) && isCoord(pivot[0]) && isCoord(pivot[1]) ? { pivot: [pivot[0], pivot[1]] } : {}),
   };
 }

@@ -306,6 +306,12 @@ export function recordedBriefFor(request: string, briefs: readonly CharacterBrie
 /** Contest `parts[].kind` -> PartRole (an `eye` kind keeps a left/right name's side). */
 const KIND_ROLE: Readonly<Record<string, PartRole>> = { aperture_lower: "jaw", aperture_glow: "pulse", body: "torso" };
 
+/** A recorded part's role from its contest `kind` (anything unknown passes through for parseBrief to refuse). */
+export function recordedRole(kind: unknown, name: string): unknown {
+  if (kind === "eye") return name === "eye_l" || name === "eye_r" ? name : "eye";
+  return typeof kind === "string" ? (KIND_ROLE[kind] ?? kind) : kind;
+}
+
 /** `serpent_l1..l3 / r1..r3` -> serpent_l1, serpent_l2, serpent_l3, serpent_r1, serpent_r2, serpent_r3. */
 export function expandPartName(name: string): string[] {
   const segments = name.split("/").map((s) => s.trim());
@@ -344,7 +350,7 @@ export function briefFromRecorded(value: unknown): BriefResult {
     if (!isRecord(p) || typeof p.name !== "string") return [p];
     const kind = p.kind ?? p.role;
     return expandPartName(p.name).map((name) => {
-      const role = kind === "eye" ? (name === "eye_l" || name === "eye_r" ? name : "eye") : typeof kind === "string" ? (KIND_ROLE[kind] ?? kind) : kind;
+      const role = recordedRole(kind, name);
       const rest = Object.fromEntries(Object.entries(p).filter(([k]) => k !== "kind"));
       return { ...rest, name, role };
     });

@@ -3,7 +3,8 @@
 // answer meets `parseParts` it is settled against the brief (`settleBriefParts`): the brief's
 // names, roles and follows win, every motion number is clamped into the rig's validated ranges,
 // fields a role may not carry are dropped, and a part whose brief words say it moves but whose
-// answer gave no readable motion gets motion from its words (`motionFromWords`). Polygons are never
+// answer gave no readable motion gets motion from its words (`motionFromWords`); the event clause
+// those words leave out becomes the part's signature act (`actFromWords`, tiger L1). Polygons are never
 // repaired: a bad outline fails the answer and the step re-asks. Pure, no I/O, never JSON.parses.
 import {
   type FloatMotion,
@@ -17,6 +18,7 @@ import {
   type PulseMotion,
   phaseFromName,
 } from "@sr/rig";
+import { actFromWords } from "./briefActs.js";
 import { PLATE_ROLES, isLifted } from "./named.js";
 import { COORD_MAX } from "./parts.js";
 import { fillPrompt } from "./prompts.js";
@@ -165,6 +167,7 @@ export function settleBriefParts(decoded: unknown, brief: CharacterBrief): Settl
   if (dropped > 0) notes.push(`dropped ${dropped} part(s) the brief does not plan`);
   let fromWords = 0;
   let clamped = 0;
+  let acts = 0;
   const parts = answered.map((raw) => {
     const name = String(raw.name);
     const planned = plan.get(name);
@@ -176,6 +179,9 @@ export function settleBriefParts(decoded: unknown, brief: CharacterBrief): Settl
       motion = motionFromWords(name, role, planned?.motion);
       if (motion !== undefined) fromWords += 1;
     }
+    // tiger L1: the event clause motionFromWords leaves out becomes the part's signature act.
+    const act = actFromWords(name, role, planned?.motion);
+    if (act !== undefined) acts += 1;
     return {
       name,
       role,
@@ -183,11 +189,13 @@ export function settleBriefParts(decoded: unknown, brief: CharacterBrief): Settl
       poly: raw.poly,
       ...(follow === undefined ? {} : { follow }),
       ...(motion === undefined ? {} : { motion }),
+      ...(act === undefined ? {} : { act }),
       ...roleFields(raw, role),
     };
   });
   if (clamped > 0) notes.push(`settled the motion of ${clamped} part(s) into range`);
   if (fromWords > 0) notes.push(`motion from the brief's words for ${fromWords} part(s)`);
+  if (acts > 0) notes.push(`a signature act from the brief's words for ${acts} part(s)`);
   const cut = isRecord(decoded) ? settleCut(decoded.cut) : undefined;
   return { value: { version: 2, parts, ...(cut === undefined ? {} : { cut }) }, notes };
 }

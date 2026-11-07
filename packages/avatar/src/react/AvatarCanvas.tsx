@@ -61,6 +61,11 @@ export interface AvatarCanvasProps {
   gaze?: Gaze;
   /** A change triggers playback. */
   gesture?: Gesture;
+  /**
+   * A signature act (tiger L1): each new `n` plays that layer's act once, from the next frame
+   * (`n` lets the same layer play again). Absent: none.
+   */
+  act?: { layer: string; n: number };
   className?: string;
   /** Driver RNG seed; default 1. */
   seed?: number;
@@ -86,6 +91,7 @@ export function AvatarCanvas(props: AvatarCanvasProps): ReactElement {
   const latest = useRef(props);
   const tapRef = useRef<AudioLevelTap | null>(null);
   const pendingGesture = useRef<Gesture | undefined>(undefined);
+  const pendingAct = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     latest.current = props;
@@ -129,6 +135,8 @@ export function AvatarCanvas(props: AvatarCanvasProps): ReactElement {
       const reducedMotion = isReducedMotion(media?.matches ?? false, host.closest("[data-motion]")?.getAttribute("data-motion"));
       const gesture = pendingGesture.current;
       pendingGesture.current = undefined;
+      const act = pendingAct.current;
+      pendingAct.current = undefined;
       const lookAt = resolveLookAt(p.lookAt);
       const dt = lastNow === undefined ? 0 : (now - lastNow) / 1000;
       lastNow = now;
@@ -140,6 +148,7 @@ export function AvatarCanvas(props: AvatarCanvasProps): ReactElement {
         gaze: p.gaze ?? "host",
         reducedMotion,
         ...(gesture === undefined ? {} : { gesture }),
+        ...(act === undefined ? {} : { act }),
         ...(lookAt === undefined ? {} : { lookAt }),
         ...(p.drive === undefined ? {} : { drive: p.drive }),
         ...(p.dim === undefined ? {} : { dim: p.dim }),
@@ -174,6 +183,13 @@ export function AvatarCanvas(props: AvatarCanvasProps): ReactElement {
   useEffect(() => {
     if (props.gesture !== undefined) pendingGesture.current = props.gesture;
   }, [props.gesture]);
+
+  // Act: edge-triggered on a new `n`; the next frame starts it at the driver's t.
+  const actLayer = props.act?.layer;
+  const actN = props.act?.n;
+  useEffect(() => {
+    if (actLayer !== undefined && actN !== undefined) pendingAct.current = actLayer;
+  }, [actLayer, actN]);
 
   return <div ref={hostRef} className={props.className} data-avatar="" />;
 }

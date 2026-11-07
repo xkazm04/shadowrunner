@@ -6,12 +6,20 @@
 // and change each planned part's role and motion or drop a part; "Draw it" starts the portrait from this brief
 // (blocked while the edits break a rule, with the rule named), "Ask again" re-briefs from the words.
 // A recorded brief carries the RECORDED tag. The accent swatch is the brief's own colour data.
+// tiger L1: a part whose motion words name an event shows its signature act, read-only, under it.
+import { actFromWords } from "@sr/forge/acts";
 import { BRIEF_MAX_EXAMPLE_LINES, BRIEF_ROLES, parseBrief, type BriefError } from "@sr/forge/brief";
 import type { BriefPart, CharacterBrief } from "@sr/forge/wire";
 import { useEffect, useId, useRef, type CSSProperties } from "react";
 import marks from "./Marks.module.css";
 import type { BriefState } from "./useBrief";
 import styles from "./BriefCard.module.css";
+
+/** The part's signature act as one read-only line ('on "sold"'), or nothing. */
+function ActNote({ part }: { part: BriefPart }) {
+  const act = actFromWords(part.name, part.role, part.motion);
+  return act === undefined ? null : <small data-act={part.name}>signature act: on {act.cue.map((w) => `"${w}"`).join(" or ")}</small>;
+}
 
 export interface BriefCardProps {
   brief: CharacterBrief;
@@ -130,6 +138,7 @@ export function BriefCard({ brief, recorded, problem, busy, onEdit, onDraw, onAg
               <span className={styles.pname}>
                 <b>{p.name}</b>
                 <small>{p.what}</small>
+                <ActNote part={p} />
               </span>
               <button type="button" className={styles.drop} aria-label={`Drop ${p.name}`} onClick={() => onEdit({ ...brief, parts: brief.parts.filter((_, j) => j !== i) })}>
                 ×

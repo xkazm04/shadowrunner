@@ -9,6 +9,7 @@
 // its Look around steers the glass's gaze (useLookAround).
 // retire-a-face: under it, FACES (FaceFamilies) retires or restores each family's painted face
 // through the same reducer and save; its Show puts the glass, never the saved look, at a family.
+// tiger L1: under GESTURE, SIGNATURE ACTS (ActsCard) rehearses each act on the glass.
 import type { VoiceId } from "@sr/engine";
 import { regionKey, resolveFace, resolveGesture, type Emotion, type Gesture, type Look } from "@sr/rig";
 import { useCallback, useEffect, useReducer, useRef, useState, type CSSProperties, type ReactNode } from "react";
@@ -16,6 +17,7 @@ import { lookReducer } from "../customize/lookReducer";
 import type { CharacterRecord } from "../library/libraryStore";
 import { useRigAssets, type Library } from "../library/useLibrary";
 import { useSpeaker } from "../useSpeaker";
+import { ActsCard, useActedRig, useRehearse } from "./ActsCard";
 import { FaceCard } from "./FaceCard";
 import { FAMILY_EMOTION, FaceFamilies, useFacePreview } from "./FaceFamilies";
 import { Glass } from "./Glass";
@@ -68,6 +70,8 @@ export function Anatomy({ record, library, cast, badge, readPixels = decodePixel
   const glassPick = usePick(record, look, readPixels);
   const [gesture, fireGesture] = useGesturePulse();
   const [lastGesture, setLastGesture] = useState<string | undefined>(undefined);
+  const actedRig = useActedRig(record.id, record.rig);
+  const [act, rehearse] = useRehearse();
   const [highlight, setHighlight] = useState<string | undefined>(undefined);
   const [around, setAround] = useState(false);
   const gaze = useLookAround(around, resolveFace(record.rig, look).gaze.habits);
@@ -147,10 +151,11 @@ export function Anatomy({ record, library, cast, badge, readPixels = decodePixel
       <section className={styles.centre} aria-label={`The glass: ${record.rig.name}`}>
         <div className={styles.glassBox}>
           <Glass
-            rig={record.rig}
+            rig={actedRig}
             look={glassLook}
             {...(assets === undefined ? {} : { assets })}
             {...(gesture === undefined ? {} : { gesture })}
+            {...(act === undefined ? {} : { act })}
             {...(speaker.audio === undefined ? {} : { audio: speaker.audio })}
             {...(gaze === undefined ? {} : { gaze })}
             {...(highlight === undefined ? {} : { highlight })}
@@ -187,6 +192,7 @@ export function Anatomy({ record, library, cast, badge, readPixels = decodePixel
               <>
                 <MoodDial value={look.emotion} onChange={onEmotion} />
                 <GestureCard onGesture={onGesture} />
+                <ActsCard rig={actedRig} onRehearse={rehearse} />
                 <VoiceCard
                   voice={record.voice}
                   onVoice={onVoice}

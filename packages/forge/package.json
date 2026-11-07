@@ -7,6 +7,7 @@
     ".": "./src/index.ts",
     "./wire": "./src/wire.ts",
     "./brief": "./src/brief.ts",
+    "./acts": "./src/briefActs.ts",
     "./replayFaces": "./src/replayFaces.ts"
   },
   "dependencies": {

@@ -11,6 +11,7 @@ import type { CharacterSheet } from "@sr/pack";
 import { castBriefNote } from "../creator/gallery/castBriefs";
 import { noteFor, presetNotes } from "../creator/gallery/notes";
 import { MALAKOR_NAME, MALAKOR_PERSONA, malakorShow } from "./malakor";
+import type { StageAct } from "./acts";
 import { sheetBible, sheetShow } from "./sheetShow";
 import recordedJson from "../../../../assets/replay/shows/recorded.json";
 
@@ -54,6 +55,8 @@ export interface Speaker {
   voice: VoiceId;
   /** The record's character sheet (C4), when it has one. */
   sheet?: CharacterSheet;
+  /** tiger L1: its rig's signature acts; a sheet bible names their cue words. */
+  acts?: readonly StageAct[];
 }
 
 /** "Auntie Asp, Keeper of the Stone Stacks" posts as "Auntie Asp". */
@@ -79,6 +82,6 @@ export function castFor(speaker: Speaker | undefined, bank: readonly ShowScript[
 
 /** A forged character on air as itself: its sheet's persona and script, its chosen voice, its chat name. */
 function sheetCast(speaker: Speaker, sheet: CharacterSheet): Cast {
-  const persona: Persona = { characterId: speaker.id, name: speaker.name, bible: sheetBible(speaker.name, sheet), voice: speaker.voice };
+  const persona: Persona = { characterId: speaker.id, name: speaker.name, bible: sheetBible(speaker.name, sheet, speaker.acts), voice: speaker.voice };
   return { show: sheetShow(speaker.id, sheet), persona, self: chatName(speaker.name), scripted: true };
 }
