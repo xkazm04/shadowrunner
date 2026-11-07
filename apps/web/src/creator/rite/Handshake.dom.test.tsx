@@ -3,6 +3,7 @@
 // shows name, style, parts with role and motion and the accent swatch, labelled RECORDED on
 // replay; edits that break a rule block "Draw it" and name the rule; "Draw it" starts the job from
 // the edited brief; "Ask again" re-briefs; a failed brief keeps the words.
+// forge-creator L2: these cover the direct path (`casting={false}`); Cast.dom.test.tsx covers casting.
 import type { AvatarCanvasProps } from "@sr/avatar";
 import type { BriefResponse, ForgeRequest } from "@sr/forge/wire";
 import { act } from "react";
@@ -37,7 +38,7 @@ async function flush(): Promise<void> {
 async function open(briefer: BriefClient = createReplayBriefClient(async () => testBriefs())): Promise<void> {
   const base = createReplayForgeClient({ jobs });
   const client: ForgeClient = { start: (req) => (sent.push(req), base.start(req)), poll: base.poll };
-  view = await mount(<RitePage client={client} briefer={briefer} jobs={jobs} library={{ open: async () => memoryLibrary(), cast: async () => [] }} />);
+  view = await mount(<RitePage casting={false} client={client} briefer={briefer} jobs={jobs} library={{ open: async () => memoryLibrary(), cast: async () => [] }} />);
   await flush();
 }
 

@@ -2,6 +2,7 @@
 // the browser from the recorded jobs (`?forge=fail:<code>` seeds a failure); live goes to
 // /api/forge. A job id minted by the replay client is always polled by it, so a job started before
 // health answered still finishes after the plane resolves to live.
+import { parseReplayBatchId } from "@sr/forge/cast";
 import type { ForgeErrorCode } from "@sr/forge/wire";
 import type { Plane } from "../../app/plane";
 import { createHttpForgeClient, type ForgeClient } from "../forgeClient";
@@ -12,7 +13,11 @@ export function planeClient(plane: Plane, search: string): ForgeClient {
   const replay = createReplayForgeClient(fail === undefined ? {} : { fail });
   if (plane === "replay") return replay;
   const http = createHttpForgeClient();
-  return { start: http.start, poll: (jobId) => (jobId.startsWith("replay_") ? replay.poll(jobId) : http.poll(jobId)) };
+  return {
+    // forge-creator L2: a candidate of a recorded casting is played by the replay client.
+    start: (req) => (req.candidate !== undefined && parseReplayBatchId(req.candidate.batchId) !== undefined ? replay.start(req) : http.start(req)),
+    poll: (jobId) => (jobId.startsWith("replay_") ? replay.poll(jobId) : http.poll(jobId)),
+  };
 }
 
 /**

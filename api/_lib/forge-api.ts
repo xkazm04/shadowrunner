@@ -2,7 +2,7 @@
 // job lease, shared by POST /api/forge and GET /api/forge/:jobId. Everything that can spend money
 // or reach the network is in `ForgeDeps`, so tests inject fakes. `x-sr-plane: replay` (or a replay
 // deploy) sends both routes to the recorded forges, which make no paid call and no fetch.
-import { parseForgeJob, parseForgeRequest, toJobView, MAX_UPLOAD_BASE64, MAX_UPLOAD_BYTES, UPLOAD_LIMIT_MESSAGE, type ForgeJob } from "@sr/forge";
+import { parseCastRecord, parseForgeJob, parseForgeRequest, toJobView, MAX_UPLOAD_BASE64, MAX_UPLOAD_BYTES, UPLOAD_LIMIT_MESSAGE, type CastRecord, type ForgeJob } from "@sr/forge";
 import { COST_USD } from "./costs.js";
 import { ApiError, errorBody, errorResponse } from "./errors.js";
 import { geminiFromEnv, type GeminiClient } from "./gemini.js";
@@ -10,6 +10,8 @@ import { MemoryJobStore, isJobId, jobStoreFor, newJobId, type JobStore } from ".
 import { planeFromRequest, type Env } from "./plane.js";
 import { checkAndCharge, clientIp, type Quota } from "./quota.js";
 import { bundledReplay } from "./forge-replay.js";
+import { castJobFrom, type CastDeps } from "./forge-cast.js";
+import { bundledCastReplay } from "./forge-cast-replay.js";
 import { runStep, startJob, uploadMime, type StepContext } from "./forge-steps.js";
 
 /** A step that started less than this long ago is still running in another invocation. */
@@ -29,6 +31,8 @@ export interface ForgeDeps {
   store(): JobStore<ForgeJob>;
   replay: ForgeReplay;
   now(): number;
+  /** forge-creator L2: the live casting store, for a brief job cast from a candidate. */
+  casts?(): JobStore<CastRecord>;
 }
 
 const NO_STORE = { "cache-control": "no-store" };
@@ -62,6 +66,12 @@ export async function handleForgePost(req: Request, deps: ForgeDeps): Promise<Re
       upload = { bytes, mime };
     }
     const store = deps.store();
+    // L2: a cast candidate continues its batch (the batch counted the forge use); nothing is charged here.
+    if (request.candidate !== undefined) {
+      if (deps.casts === undefined) throw badInput("Casting is not available.");
+      const jobId = await castJobFrom(request.candidate, deps.casts(), store, now);
+      return Response.json({ jobId }, { status: 202, headers: NO_STORE });
+    }
     const firstCall = request.mode === "image" ? COST_USD.classify : COST_USD.imageFinal;
     const ip = clientIp(req);
     const charged = await deps.quota.checkAndCharge(ip, "forge", firstCall);
@@ -126,6 +136,8 @@ function context(deps: ForgeDeps, store: JobStore<ForgeJob>, ip: string): StepCo
 
 /** Process-wide memory store for `pnpm dev` without KV/Blob (it must outlive one request). */
 const memory = new MemoryJobStore<ForgeJob>();
+/** The same for casting batches (L2). */
+const castMemory = new MemoryJobStore<CastRecord>();
 
 export function defaultForgeDeps(env: Env = process.env, replay: ForgeReplay = bundledReplay): ForgeDeps {
   return {
@@ -134,6 +146,19 @@ export function defaultForgeDeps(env: Env = process.env, replay: ForgeReplay = b
     quota: { checkAndCharge },
     store: () => jobStoreFor("live", env, { parse: parseForgeJob, memory }),
     replay,
+    now: Date.now,
+    casts: () => jobStoreFor("live", env, { parse: parseCastRecord, memory: castMemory }),
+  };
+}
+
+/** POST /api/forge/drafts and GET /api/forge/drafts/:batchId (L2): the forge's quota, Gemini and store backend. */
+export function defaultCastDeps(env: Env = process.env): CastDeps {
+  return {
+    env,
+    gemini: () => geminiFromEnv(env),
+    quota: { checkAndCharge },
+    store: () => jobStoreFor("live", env, { parse: parseCastRecord, memory: castMemory }),
+    replay: bundledCastReplay,
     now: Date.now,
   };
 }

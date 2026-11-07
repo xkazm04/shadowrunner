@@ -1,0 +1,224 @@
+/* The casting sheet (CastSheet, forge-creator L2), on the glass: three candidates side by side, one
+   at a time on a narrow screen. Each face sits on the darkest surface so it is the brightest thing
+   in its card (the face is the hero). Literal colours are roles: amber accent, pale face-glow, the
+   red cast key signal-onair. */
+
+.sheet {
+  display: grid;
+  gap: var(--sr-space-2);
+  align-content: start;
+  inline-size: 100%;
+  block-size: 100%;
+  padding: var(--sr-space-2);
+  overflow: auto;
+  box-sizing: border-box;
+  color: var(--sr-text);
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text);
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sr-space-2);
+}
+
+.title {
+  margin: 0;
+  color: var(--sr-text-strong);
+  font-family: var(--sr-font-display);
+  font-size: var(--sr-size-text-lg);
+}
+
+.tag {
+  padding: 0 var(--sr-space-1);
+  border: thin solid var(--sr-accent);
+  border-radius: var(--sr-radius-1);
+  color: var(--sr-accent);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+  letter-spacing: 0.08em;
+}
+
+.line {
+  margin: 0;
+  color: var(--sr-text);
+}
+
+.sheet[data-phase="failed"] .line {
+  color: var(--sr-text-strong);
+}
+
+.poses {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sr-space-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.legend {
+  float: inline-start;
+  margin-inline-end: var(--sr-space-1);
+  color: var(--sr-text-muted);
+  font-size: var(--sr-size-text-sm);
+}
+
+.pose {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sr-space-1);
+  font-size: var(--sr-size-text-sm);
+  cursor: pointer;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sr-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  gap: var(--sr-space-1);
+  padding: var(--sr-space-1);
+  border: thin solid color-mix(in srgb, var(--sr-line) 70%, transparent);
+  border-radius: var(--sr-radius-1);
+  background-color: var(--sr-surface-1);
+}
+
+.card[data-state="failed"] {
+  border-style: dashed;
+}
+
+.face {
+  position: relative;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: var(--sr-radius-1);
+  background-color: var(--sr-surface-0);
+}
+
+.canvas,
+.still {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+
+.face[data-empty="drafting"] {
+  background-image: linear-gradient(110deg, var(--sr-surface-0) 30%, var(--sr-surface-2) 50%, var(--sr-surface-0) 70%);
+  background-size: 300% 100%;
+  animation: drawing 1.6s linear infinite;
+}
+
+@keyframes drawing {
+  from {
+    background-position: 100% 0;
+  }
+
+  to {
+    background-position: 0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .face[data-empty="drafting"] {
+    background-position: 50% 0;
+    animation: none;
+  }
+}
+
+.cardName {
+  margin: 0;
+  color: var(--sr-text-strong);
+  font-family: var(--sr-font-display);
+  font-size: var(--sr-size-text);
+}
+
+.facts {
+  display: grid;
+  gap: var(--sr-space-1);
+  margin: 0;
+  padding: 0;
+  color: var(--sr-text);
+  font-size: var(--sr-size-text-sm);
+  list-style: none;
+}
+
+.cast,
+.key {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sr-space-2);
+  padding: var(--sr-space-1) var(--sr-space-2);
+  border: thin solid var(--sr-accent);
+  border-radius: var(--sr-radius-1);
+  background-color: transparent;
+  color: var(--sr-face-glow);
+  font-family: var(--sr-font-display);
+  font-size: var(--sr-size-text);
+  cursor: pointer;
+}
+
+.cast {
+  justify-content: center;
+  border-color: var(--sr-signal-onair);
+  background-image: linear-gradient(color-mix(in srgb, var(--sr-signal-onair) 62%, var(--sr-surface-0)), color-mix(in srgb, var(--sr-signal-onair) 44%, var(--sr-surface-0)));
+  color: var(--sr-text-strong);
+  font-weight: 700;
+}
+
+.cast:disabled,
+.key:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.key small {
+  color: var(--sr-text);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+}
+
+.cast:focus-visible,
+.key:focus-visible {
+  outline: medium solid var(--sr-accent);
+  outline-offset: thin;
+}
+
+.stepper {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sr-space-2);
+}
+
+.foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sr-space-2);
+}
+
+/* Narrow: one candidate at a time, stepped. */
+@media (max-width: 40rem) {
+  .cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .card:not([data-shown]) {
+    display: none;
+  }
+
+  .stepper {
+    display: flex;
+  }
+}

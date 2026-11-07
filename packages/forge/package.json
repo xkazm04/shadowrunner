@@ -7,7 +7,8 @@
     ".": "./src/index.ts",
     "./wire": "./src/wire.ts",
     "./brief": "./src/brief.ts",
-    "./replayFaces": "./src/replayFaces.ts"
+    "./replayFaces": "./src/replayFaces.ts",
+    "./cast": "./src/cast.ts"
   },
   "dependencies": {
     "@sr/rig": "workspace:*",
