@@ -12,13 +12,17 @@
 // still sets look.emotion. The persona, the voice and the recorded show are the character's own (cast.ts).
 // C4: a forged character with a sheet and no recorded show plays its sheet's script; on replay the
 // script runs in the browser (no engine or voice request) and the slate says SCRIPTED.
+// tiger L1: a line that says a part's cue word fires that part's signature act (useActCue.ts); a
+// recorded cast character's acts are compiled from its recorded brief at load time (castActs.ts).
 import { AvatarCanvas, type RigAssets } from "@sr/avatar";
-import { MAX_CHAT_CHARS } from "@sr/engine";
+import { castSlug, MAX_CHAT_CHARS } from "@sr/engine";
 import { defaultLook, type Look, type Rig } from "@sr/rig";
 import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import type { Plane } from "../app/plane";
 import styles from "./air.module.css";
+import { stageActs, withActs, type StageAct } from "./acts";
 import { Captions } from "./Captions";
+import { castActs } from "./castActs";
 import { CatacombFront, CatacombLights, CatacombPlate } from "./Catacomb";
 import { Chat } from "./Chat";
 import { castBank, castFor } from "./cast";
@@ -27,6 +31,7 @@ import { OnAirLamp, VoiceTally } from "./OnAirLamp";
 import { useOnAir, type OnAirState } from "./onAir";
 import { localScript } from "./sheetShow";
 import { useLoudness } from "./useLoudness";
+import { useActCue } from "./useActCue";
 import { useShow } from "./useShow";
 import { useStageLights } from "./useStageLights";
 
@@ -50,11 +55,16 @@ export const TALLY_OFF = 0.04;
 
 type Loaded = { rig: Rig; assets: RigAssets; look?: Look; name?: string } | "loading" | "failed";
 
-/** The on-air character with its look, else Malakor (loaded only when he is the one on air). */
+const NO_ACTS: readonly StageAct[] = [];
+
+/** The on-air character with its look (and its cast acts, when it is a recorded cast character), else Malakor (loaded only when he is the one on air). */
 function useFace(onAir: OnAirState): Loaded {
   const malakor = useMalakor(onAir === "none");
+  const rig = typeof onAir === "object" ? onAir.rig : undefined;
+  const id = typeof onAir === "object" ? onAir.id : undefined;
+  const acted = useMemo(() => (rig === undefined || id === undefined ? undefined : withActs(rig, castActs(castSlug(id)))), [rig, id]);
   if (onAir === "looking") return "loading";
-  return onAir === "none" ? malakor : { rig: onAir.rig, assets: onAir.assets, look: onAir.look, name: onAir.name };
+  return onAir === "none" || acted === undefined ? malakor : { rig: acted, assets: onAir.assets, look: onAir.look, name: onAir.name };
 }
 
 function useMalakor(wanted: boolean): Loaded {
@@ -147,9 +157,11 @@ export function AirPage({ plane, badge, controls, strip }: AirPageProps) {
   const loudness = useLoudness(audio);
   const speaker = typeof who === "object" ? who : undefined;
   const { id, name, voice, sheet } = speaker ?? {};
+  const faceRig = typeof loaded === "object" ? loaded.rig : undefined;
+  const acts = useMemo(() => (faceRig === undefined ? NO_ACTS : stageActs(faceRig)), [faceRig]);
   const cast = useMemo(
-    () => castFor(id === undefined || name === undefined || voice === undefined ? undefined : { id, name, voice, ...(sheet === undefined ? {} : { sheet }) }),
-    [id, name, voice, sheet],
+    () => castFor(id === undefined || name === undefined || voice === undefined ? undefined : { id, name, voice, ...(sheet === undefined ? {} : { sheet }), ...(acts.length === 0 ? {} : { acts }) }),
+    [id, name, voice, sheet, acts],
   );
   // The sheet's script on replay: answered in the browser, so no paid endpoint is ever asked.
   const scripted = cast.scripted === true && plane === "replay";
@@ -191,6 +203,7 @@ export function AirPage({ plane, badge, controls, strip }: AirPageProps) {
   }, [loaded, emotion]);
   const title = typeof loaded === "object" && loaded.name !== undefined ? loaded.name : `Arch-Lich ${MALAKOR_NAME}`;
   const gesture = speaking ? caption?.reply.gesture : undefined;
+  const actFire = useActCue(speaking ? caption : undefined, audio, acts);
 
   return (
     <div ref={root} className={styles.stage} data-page="air" data-state={status} data-plane={plane} data-sound={sound}>
@@ -215,6 +228,7 @@ export function AirPage({ plane, badge, controls, strip }: AirPageProps) {
               dim={dead ? 1 : 0}
               {...(loudness.source === undefined ? {} : { audio: loudness.source })}
               {...(gesture === undefined ? {} : { gesture })}
+              {...(actFire === undefined ? {} : { act: actFire })}
             />
           ) : (
             <p className={styles.faceNote}>{loaded === "failed" ? "The face did not load." : "Raising the dead..."}</p>

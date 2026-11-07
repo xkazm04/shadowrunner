@@ -48,6 +48,7 @@ import { breathAt, breathes, cellOf, eyeOf, faceOf, irisOffset, layerIndex, snap
 import type { ResolvedFace } from "./face.js";
 import type { EmotionDrive } from "./look.js";
 import { browPoses, facesOf, moodOf, shapeOf, type BrowPose } from "./mood.js";
+import { actMotionAt, type ActCue } from "./act.js";
 import { motionAt, ownBlinkAt } from "./motion.js";
 import { IDENTITY, about, apply, compose, turnAbout, type Sim } from "./sim.js";
 import type { Emotion, ExpressionFamily, Gesture, Layer, LayerKind, Look, Rig } from "./types.js";
@@ -115,6 +116,8 @@ export interface Drive {
    * x positive is screen right, y positive down. Omitted means rest (0, 0).
    */
   gaze?: { x: number; y: number };
+  /** A signature act in play (tiger L1, act.ts): that layer's own motion once. Omitted: none. */
+  act?: ActCue;
 }
 
 /** What poseLayers needs beyond the rig, look and drive (face-control). */
@@ -334,7 +337,7 @@ function carriesOf(rig: Rig, worlds: Map<string, World>, drive: Drive, byName: R
     visiting.add(layer.name);
     const parentLayer = layer.follow === undefined ? undefined : byName.get(layer.follow);
     const inherited = parentLayer === undefined || visiting.has(parentLayer.name) ? IDENTITY : resolve(parentLayer);
-    const motion = motionAt(layer.motion, drive.t, drive.still === true);
+    const motion = actMotionAt(layer, drive.t, drive.still === true, drive.act, rig.height);
     let carry = inherited;
     if (motion.rotation !== 0 || motion.dx !== 0 || motion.dy !== 0) {
       const posed = compose(inherited, worlds.get(layer.name)?.sim ?? IDENTITY);
@@ -367,7 +370,7 @@ export function poseLayers(rig: Rig, look: Look, drive: Drive, options: PoseOpti
     .filter(({ layer, eye }) => shown(layer) && (eye === undefined || shown(eye)))
     .sort((a, b) => a.layer.z - b.layer.z || a.index - b.index)
     .map(({ layer, eye }): LayerPose => {
-      const motion = motionAt(layer.motion, drive.t, still);
+      const motion = actMotionAt(layer, drive.t, still, drive.act, rig.height);
       // An iris rides its eye's transform, moved by the gaze in the eye's rest frame (eyes.ts), by whole cells on pixel art.
       const [ox, oy] = eye === undefined ? [0, 0] : snapCell(irisOffset(drive.gaze, options.sockets?.get(eye.name), face.gaze.range), cell);
       const sim = eye === undefined ? simOf(layer) : compose(simOf(eye), { ...IDENTITY, tx: ox, ty: oy });

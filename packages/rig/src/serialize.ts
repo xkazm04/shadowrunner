@@ -64,6 +64,7 @@ function wireLayer(layer: Layer): Layer {
     ...(layer.socket === undefined ? {} : { socket: layer.socket }),
     ...(layer.closed === undefined ? {} : { closed: layer.closed }),
     ...(layer.tint === false ? { tint: false as const } : {}),
+    ...(layer.act === undefined ? {} : { act: { cue: [...layer.act.cue], ...(layer.act.gain === undefined ? {} : { gain: layer.act.gain }), ...(layer.act.s === undefined ? {} : { s: layer.act.s }) } }),
   };
 }
 

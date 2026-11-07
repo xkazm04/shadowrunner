@@ -4,8 +4,9 @@
 // `regions` and `shape` the web library runs on read. Every problem is reported.
 // A patch bbox inside the canvas and a slot's "#rrggbb" are validateRig's semantic checks
 // (`bbox_out_of_bounds`, `bad_color`), as for the layer's own bbox and the palette.
+import { ACT_KINDS, readAct } from "./act.js";
 import { EXPRESSION_FAMILIES, MAX_REGION_SLOTS, SHAPE_LIMITS } from "./control.js";
-import type { ExpressionFamily, LayerPatch, LayerRegions, PartShape, Rig, RegionSlot } from "./types.js";
+import type { ExpressionFamily, LayerAct, LayerPatch, LayerRegions, PartShape, Rig, RegionSlot } from "./types.js";
 
 export interface ControlProblem {
   path: string;
@@ -130,6 +131,8 @@ export interface ControlRead {
   closed?: string;
   /** Eye and iris layers (cast-face-pass): false = not tinted by the palette's eye colour. */
   tint?: false;
+  /** tiger L1: read leniently (`readAct`), dropped on a kind that may not carry one; never a problem. */
+  act?: LayerAct;
   problems: ControlProblem[];
 }
 
@@ -144,7 +147,9 @@ export function readLayerControls(layer: Fields, path: string, fileRule: FileRul
   if (layer.tint !== undefined && layer.tint !== false) reader.fail(`${path}.tint`, `expected false (omit the field otherwise), got ${describe(layer.tint)}`);
   else if (layer.tint === false && layer.kind !== "eye" && layer.kind !== "iris") reader.fail(`${path}.tint`, `only an eye or iris layer has tint, this one is ${describe(layer.kind)}`);
   if (reader.problems.length > 0) return { problems: reader.problems };
+  const act = ACT_KINDS.some((kind) => kind === layer.kind) ? readAct(layer.act) : undefined;
   return {
+    ...(act === undefined ? {} : { act }),
     ...(variants === undefined ? {} : { variants }),
     ...(regions === undefined ? {} : { regions }),
     ...(socket === undefined ? {} : { socket }),

@@ -49,9 +49,11 @@ export function sheetShow(characterId: string, sheet: CharacterSheet): ShowScrip
 }
 
 /** The persona bible for the live engine: name and hook (castBible), the archetype, and the sheet's lines as the register. */
-export function sheetBible(name: string, sheet: CharacterSheet): string {
+export function sheetBible(name: string, sheet: CharacterSheet, acts: readonly { layer: string; cue: readonly string[] }[] = []): string {
   const hook = `${sheet.hook.trim()}\n\nArchetype: ${sheet.archetype.trim()}`;
-  return [castBible(name, hook, undefined), ...sheet.lines.map((line) => `- ${line.trim()}`)].join("\n");
+  // tiger L1: one sentence per signature act, so the live engine says its cue word now and then.
+  const moves = acts.map((a) => `Your signature move (${a.layer.replace(/_/g, " ")}) plays when you say "${a.cue[0] ?? ""}": say it when the moment earns it.`);
+  return [castBible(name, hook, undefined), ...sheet.lines.map((line) => `- ${line.trim()}`), ...moves].join("\n");
 }
 
 /** The static URL of a recording named relative to assets/replay/shows/, each segment encoded. */

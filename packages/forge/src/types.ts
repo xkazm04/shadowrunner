@@ -1,6 +1,6 @@
 // Server-side forge types (forge-pipeline design.md "Contracts (wire names)").
 // The wire contract the browser sees lives in wire.ts; these are the pipeline's own nouns.
-import type { Motion } from "@sr/rig";
+import type { LayerAct, Motion } from "@sr/rig";
 
 /** The closed list of part names the segmentation model may return (PARTS_PROMPT). */
 export const PART_NAMES = [
@@ -101,6 +101,11 @@ export interface NamedPart {
    * drawn without light of its own, `true` on a part that gives light without pulsing.
    */
   emissive?: boolean;
+  /**
+   * tiger L1: the part's signature act (`actFromWords` from the brief's words), the layer's `act`.
+   * Read leniently: a bad one is dropped, never an error. Omitted: none.
+   */
+  act?: LayerAct;
 }
 
 /** How a v2 file's parts are cut, per art style (cast-forge task 3). */

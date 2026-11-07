@@ -43,6 +43,8 @@ export interface GlassProps {
   look: Look;
   assets?: RigAssets;
   gesture?: Gesture;
+  /** A signature act to play (tiger L1): each new `n` plays that layer's act once. */
+  act?: { layer: string; n: number };
   audio?: HTMLMediaElement;
   /** Where the face looks (the Face tab's Look around); absent: the player's default. */
   gaze?: Gaze;
@@ -68,7 +70,7 @@ const holeAround = (b: { left: number; top: number; width: number; height: numbe
   return `polygon(evenodd, 0 0, 100% 0, 100% 100%, 0 100%, 0 0, ${l} ${t}, ${r} ${t}, ${r} ${bt}, ${l} ${bt}, ${l} ${t})`;
 };
 
-export function Glass({ rig, look, assets, gesture, audio, gaze, highlight, onPalette, onLift, onPick, outline, chip, children }: GlassProps) {
+export function Glass({ rig, look, assets, gesture, act, audio, gaze, highlight, onPalette, onLift, onPick, outline, chip, children }: GlassProps) {
   const pins = useMemo(() => lightPins(rig), [rig]);
   const [open, setOpen] = useState<keyof Palette | undefined>(undefined);
   const [flash, setFlash] = useState<{ n: number; hex: string } | undefined>(undefined);
@@ -116,6 +118,7 @@ export function Glass({ rig, look, assets, gesture, audio, gaze, highlight, onPa
               assets={assets}
               className={styles.canvas}
               {...(gesture === undefined ? {} : { gesture })}
+              {...(act === undefined ? {} : { act })}
               {...(audio === undefined ? {} : { audio })}
               {...(gaze === undefined ? {} : { gaze })}
             />

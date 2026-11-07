@@ -231,6 +231,7 @@ export function assembleRig(parts: readonly Part[] | readonly NamedPart[], layer
       ...(motion === undefined ? {} : { motion: scaleMotion(motion, width, height, MOTION_CANVAS) }),
       ...(kind === "jaw" && part?.drop !== undefined ? { drop: part.drop } : {}),
       ...(emissive === undefined ? {} : { emissive }),
+      ...(part?.act === undefined ? {} : { act: part.act }),
     });
   });
   if (headless) warnings.push({ code: "no_head_layer", message: "no head layer; jaw, eyes, accessories and crown follow nothing" });

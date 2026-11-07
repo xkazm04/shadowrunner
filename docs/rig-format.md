@@ -135,6 +135,7 @@ Four colours, each `#rrggbb`:
 | `socket` | string | no | `eye` layers only (face-control): an alpha mask, same bbox as the layer, of the lid opening where the eye's iris may show (see "Eyes"). Omitted: the eye is one painted piece, as before. A file under the rules of "Layer files"; on another kind it is `bad_shape` at `$.layers[i].socket`. |
 | `closed` | string | no | `eye` layers only (face-control): the closed-lid art, same bbox; a blink crossfades the eye to it instead of squashing (see "Eyes"). Same rules as `socket`. An eye may have `closed` without a `socket` or an iris (a one-piece eye that closes by its art, the Vicar's glass lids): it blinks the same way. |
 | `tint` | `false` | no | `eye` and `iris` layers only (cast-face-pass): the palette's eye colour does not tint this layer, so its light keeps the art's own colour (Sir Vacant's white slit light, the Lantern's candle). Its `eyeGain` brightness, pulse, glare and flare still apply, in that colour, and a look's eye colour does not recolour it (its region slots still do). Omitted (never `true`): tinted, as before. Any other value, or `false` on another kind, is `bad_shape` at `$.layers[i].tint`. |
+| `act` | Act | no | `accessory` and `crown` layers only (tiger L1): a signature act, the layer's own motion played once when a spoken line says a cue word (see "Act"). Readers drop a bad one (never an error), and drop it on another kind. Omitted: none. The format stays version 1. |
 
 ### Layer files
 
@@ -197,6 +198,24 @@ Fields outside the contract are dropped. Builders give sibling floats different 
 parts never moves in lockstep. An eye's own blink is a half-sine of closure over `OWN_BLINK_S`
 (0.15 s) from each cycle's start, 0 for the rest of the cycle (`ownBlinkAt`); sibling eyes given
 staggered phases blink one at a time (the Tallyman's six eyes counting).
+
+### Act
+
+A signature act (tiger L1, `packages/rig/src/act.ts`): an event-driven move from the brief ("the
+glove slams down on 'sold'", "the stamp thunks when something is approved"), as the part's own
+approved motion played once. The stage fires it when a spoken line contains a cue word; no model is
+asked during playback.
+
+| field | type | required | range | meaning |
+|---|---|---|---|---|
+| `cue` | string[] | yes | 1..3 words | Lowercase words (`^[a-z][a-z0-9'-]*$`, at most 24 characters each). A line fires the act when it contains one, at a word boundary, ignoring case and simple endings (`sold`, `Sold!`, `ring` / `rings` / `ringing`). |
+| `gain` | number | no | `[1, 3]` | How much bigger than the idle motion; omitted means 1.5. |
+| `s` | number | no | `[0.6, 1.5]` | Seconds; omitted means 1. |
+
+Read leniently (`readAct`): cue words that break the rule, and duplicates, are dropped, at most three
+kept; a `gain` or `s` out of range is dropped (the default applies); no cue word left means no act.
+`Drive.act = { layer, startedAt }` plays it (see "Rules": *Act*). A rig without acts poses exactly
+as before.
 
 ### Variants
 
@@ -418,6 +437,7 @@ The per-frame input from the avatar driver.
 | `still` | boolean | no | Reduced motion: layer float and pulse, and an eye's own blink, are zero. The avatar sets it whenever reduced motion is on. The held mood still applies. |
 | `mood` | `{ from: Emotion, mix: number }` | no | An emotion change in progress (character-control): every mood column is `lerp(from, look.emotion, smoothstep(mix))`, and the faces fade from `from`'s family to the look's. Omitted means mix 1. The avatar advances `mix` over `MOOD_FADE_S` (0.25 s); reduced motion sets it to 1. |
 | `gaze` | `{ x: number, y: number }` | no | Where the irises look (face-control), -1..1 per axis of the socket's half extents (clamped); x positive is screen right, y down. Omitted means rest. |
+| `act` | `{ layer: string, startedAt: number }` | no | A signature act in play (tiger L1): that layer's act from `startedAt` (seconds, same clock as `t`) for its `s`. A layer that is missing is a no-op; a layer without `act` plays with the defaults. Omitted means none. |
 
 `GESTURE_DURATION_S` is `0.4`: every gesture curve runs for 0.4 s from `startedAt`, shaped as a
 half-sine `sin(pi * elapsed / 0.4)` that peaks halfway at the design value. Outside that window the
@@ -462,6 +482,14 @@ One per drawn layer, in `z` order. A layer is drawn unless it is named in `look.
   `1 + amp*(0.5 + 0.5*sin(w))`. Both are pure functions of `t` (`motionAt` in
   `packages/rig/src/motion.ts`), and both are zero when `drive.still` is true. The WebGL2 renderer
   multiplies the tint into the layer colour; the canvas2D fallback draws it as a `brightness()` filter.
+- **Act** (tiger L1, `actMotionAt`). While `drive.act` names the layer and `u = (t - startedAt) / s`
+  is in `[0, 1)`, with the envelope `e = sin(pi*u)^2`, the layer's motion gains, on top of its idle
+  motion: for a float, one period of it in `s` seconds times `gain*e` (side swing `amp[0]*sin(2*pi*u)`,
+  sway `rot_deg*sin(2*pi*u + pi)`, and a press down and back `max(amp[1], 0.01*height)*(1 - cos(2*pi*u))`);
+  for a pulse, the tint times `1 + gain*amp*e`; for a layer with neither, a dip
+  `gain*0.02*height*e` px down. Followers are carried as by the float. Outside that window the motion
+  is exactly the idle one, so `s` seconds after an act the pose is the idle pose. Under `still` there
+  is no movement: the tint is times 1.3 for the first half of the act (one static beat), then as idle.
 - **Gestures**, at their peak: `nod` adds 6° of pitch; `tilt` rotates the head 5°; `lean_in`
   scales the head by 1.04; `recoil` scales it by 0.96 and lifts it by 1% of height; `glare` sets
   the eye tint to 1.6; `flare` sets the tint of the emissive layers (`emissive`, else the kinds

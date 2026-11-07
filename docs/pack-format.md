@@ -20,7 +20,7 @@ already compressed). Entries, in this order:
 | path | content |
 |---|---|
 | `pack.json` | the manifest (below), UTF-8 JSON, 2-space indent, trailing newline |
-| `rig.json` | the rig, Rig format v1 (`@sr/rig` `serializeRig`) |
+| `rig.json` | the rig, Rig format v1 (`@sr/rig` `serializeRig`), with every optional layer field it carries (a forged part's signature `act`, tiger L1, travels here; an older reader drops it) |
 | `README.txt` | plain text for people: name, what a pack is, licence, author, fictional note, a link to this document |
 | `files/<name>` | one entry per image, sorted by name; `<name>` is the file key the rig uses |
 

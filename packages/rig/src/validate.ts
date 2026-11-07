@@ -7,7 +7,8 @@
 // `bad_shape` at `$.layers[i].motion.<field>`, every one reported. Layer.drop (cast-forge task 3)
 // is `bad_shape` at `$.layers[i].drop` when out of [JAW_DROP_MIN, JAW_DROP_MAX] or not on a jaw;
 // Motion.blink (cast-forge task 6) is `bad_shape` at `$.layers[i].motion.blink` on a non-eye layer.
-// Layer.emissive (cast-forge task 12 follow-up) is `bad_shape` at `$.layers[i].emissive` unless boolean.
+// Layer.emissive (cast-forge task 12 follow-up) is `bad_shape` at `$.layers[i].emissive` unless boolean;
+// Layer.act (tiger L1) is read leniently by validateControl.ts: a bad one is dropped, never an error.
 // Layer.variants and Layer.regions (character-control) are read by validateControl.ts (`bad_shape`
 // at `$.layers[i].variants.<family>...` / `$.layers[i].regions...`); a patch bbox leaving the canvas
 // is `bbox_out_of_bounds` at its own path and a slot hex that is not "#rrggbb" is `bad_color`.
@@ -213,7 +214,7 @@ class Reader {
     if (motion?.blink !== undefined && kind !== undefined && kind !== "eye") this.fail(`${path}.motion.blink`, `only an eye layer blinks, this one is ${kind}`, named);
     const controls = readLayerControls(value, path, fileProblem);
     for (const problem of controls.problems) this.fail(problem.path, problem.message.slice(problem.path.length + 2), named);
-    const { variants, regions, socket, closed, tint } = controls;
+    const { variants, regions, socket, closed, tint, act } = controls;
     if (this.errors.length > before) return undefined;
     if (name === undefined || z === undefined || kind === undefined || file === undefined) return undefined;
     if (x === undefined || y === undefined || w === undefined || h === undefined) return undefined;
@@ -231,11 +232,10 @@ class Reader {
       ...(motion === undefined ? {} : { motion }),
       ...(drop === undefined ? {} : { drop }),
       ...(emissive === undefined ? {} : { emissive }),
-      ...(variants === undefined ? {} : { variants }),
-      ...(regions === undefined ? {} : { regions }),
+      ...(variants === undefined ? {} : { variants }), ...(regions === undefined ? {} : { regions }),
       ...(socket === undefined ? {} : { socket }),
       ...(closed === undefined ? {} : { closed }),
-      ...(tint === undefined ? {} : { tint }),
+      ...(tint === undefined ? {} : { tint }), ...(act === undefined ? {} : { act }),
     };
   }
 

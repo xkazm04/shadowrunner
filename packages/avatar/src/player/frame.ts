@@ -24,7 +24,10 @@
 //   pose.ts takes the rest. With `assets`, the socket half extents are measured and dead patches
 //   dropped (render/inspect.ts) once per rig; the drive's `mood` goes out in the frame clock so the
 //   renderers fade the look's light with it.
-import { applyLook, faceOf, hasIris, MOOD_FADE_S, poseLayers, type Drive, type Emotion, type Gesture, type LayerPose, type Look, type Rig } from "@sr/rig";
+// - Signature acts (tiger L1): `act` names a layer on the frame its act starts; the body holds it at
+//   the driver's t and hands it to pose.ts as `Drive.act` until it has surely ended (ACT_S_MAX).
+//   pose.ts plays it (or, under reduced motion, its static twin). A `drive` override passes through.
+import { ACT_S_MAX, applyLook, faceOf, hasIris, MOOD_FADE_S, poseLayers, type ActCue, type Drive, type Emotion, type Gesture, type LayerPose, type Look, type Rig } from "@sr/rig";
 import type { SurfaceFactory } from "../canvas2d/recolour.js";
 import type { LookAtPoint } from "../driver/lookAt.js";
 import { initialState, type DriverFace, type Gaze } from "../driver/state.js";
@@ -76,6 +79,8 @@ export interface FrameBodyInputs {
   reducedMotion: boolean;
   /** Present only on the frame a gesture starts. */
   gesture?: Gesture;
+  /** A layer name, present only on the frame its signature act starts (tiger L1). */
+  act?: string;
   lookAt?: LookAtPoint;
   /** Overrides the driver (tests, screenshots). */
   drive?: Drive;
@@ -119,6 +124,7 @@ export function createFrameBody(seed: number, options: FrameBodyOptions = {}): (
   const fadeMood = moodFader();
   let state = initialState(seed);
   let dimShown = 0;
+  let act: ActCue | undefined;
   const stepMouth = createMouthState();
   let inspector: { assets: RigAssets; inspect: RigInspector } | undefined;
   const inspect = (assets: RigAssets | undefined): RigInspector | undefined => {
@@ -152,7 +158,10 @@ export function createFrameBody(seed: number, options: FrameBodyOptions = {}): (
     });
     state = next.state;
     const mood = fadeMood(p.look.emotion, state.t, p.reducedMotion);
-    const drive = p.drive !== undefined || mood === undefined ? next.drive : { ...next.drive, mood };
+    if (p.act !== undefined) act = { layer: p.act, startedAt: state.t };
+    if (act !== undefined && !(state.t - act.startedAt < ACT_S_MAX)) act = undefined;
+    const moved = p.drive !== undefined || mood === undefined ? next.drive : { ...next.drive, mood };
+    const drive = p.drive !== undefined || act === undefined ? moved : { ...moved, act };
     const inspected = inspect(p.assets);
     const rig = inspected === undefined ? p.rig : trim(p.rig, inspected.deadLayers(p.rig));
     const sockets = irises ? inspected?.sockets(p.rig) : undefined;

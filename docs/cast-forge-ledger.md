@@ -386,6 +386,11 @@ One section per decomposed character (cast-forge requirement 3.4): what broke, w
 - Event-driven motion: the Redactor's slam, Lot Ninety's "sold" and pointing, the Tallyman's blink
   per viewer and bead counting, Reveille's ring, the Vicar's lure snapping dark. The rig carries only
   periodic motion; an engine event that fires a part's motion once would carry them all.
+  *Built (tiger L1):* `Layer.act` (rig-format.md "Act") plays a part's own motion once when a spoken
+  line says its cue word, compiled from the brief's event clause (`actFromWords`). On the eight briefs
+  it carries Lot Ninety's "sold", Reveille's ring, Sir Vacant's vow and goal, the Redactor's stamp and
+  the Tallyman's count; the blink per viewer, bead counting and the Vicar's lure are chat events, not
+  spoken words, and stay open.
 - The 2 Hz float cap cannot carry a rattle (Reveille's bells): raise the cap or add a "ring" gesture.
 - The renderer smooths pixel art (linear sampling): the Redactor's cells blur when scaled. A nearest
   filter per rig (or per `cut.feather: 0`) would keep them hard.
