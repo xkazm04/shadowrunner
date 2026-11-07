@@ -49,6 +49,13 @@ export interface CharacterBrief {
   portrait_prompt: string;
   /** Up to 3 short in-character lines (the character sheet's lines on air); omitted when none. */
   example_lines?: string[];
+  /**
+   * forge-creator C3: what the face is made of, for a face that is not ordinary human (a pumpkin, a
+   * skull, a helm, glass). `eyes` is the streamer's one editable line "Its eyes are ..." (at most 200
+   * characters, the words after "Its eyes are"); the live eye and expression edits are phrased in it.
+   * Omitted for human eyes. An object so a later line (the mouth) can join it compatibly.
+   */
+  face?: { eyes: string };
 }
 
 /** Body of `POST /api/forge/brief`. */

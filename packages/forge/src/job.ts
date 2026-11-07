@@ -48,6 +48,13 @@ export interface ForgeJob {
    * iris-free edit ("edit"), from the pure fallback ("fallback"), or none ("none"); unset before it ran.
    */
   eyes?: "edit" | "fallback" | "none";
+  /**
+   * forge-creator C3: the attempt the family at `expressionIndex` runs at next (1..MAX_FACE_ATTEMPT,
+   * a re-run of a face the gate refused, with expressionPrompt's STRICTER sentences); unset at 0.
+   */
+  expressionAttempt?: number;
+  /** forge-creator C3: re-run edits this forge has spent (at most MAX_EXTRA_EDITS); unset at 0. */
+  extraEdits?: number;
   /** What each expression family came to, from "expressing" on. */
   expressions?: Partial<Record<ExpressionFamily, ExpressionOutcome>>;
   error?: { code: ForgeErrorCode; message: string };

@@ -239,3 +239,22 @@
 :global([data-motion="reduced"]) .card {
   animation: none;
 }
+
+/* C3: the eyes line reads as one sentence, "Its eyes are" + the streamer's words. */
+.eyes {
+  display: flex;
+  align-items: baseline;
+  min-inline-size: 0;
+  gap: var(--sr-space-2);
+}
+
+.eyes > span {
+  flex: none;
+  color: var(--sr-text-muted);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+}
+
+.eyes > textarea {
+  flex: 1;
+}

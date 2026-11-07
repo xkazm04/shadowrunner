@@ -176,6 +176,12 @@ export function cutVariants(rig: Rig, layers: ReadonlyMap<string, ImageLike>, po
   `expressions[family]`. A throw, a spent daily budget (`ctx.charge` refused) or a flagged drift
   records `"failed"`/`"skipped"` and moves on; after the sixth, status `done`. The quota counts the
   forge once (at POST, as today). `DEFAULT_LIMITS.dailyUsd` 5 -> 30.
+  forge-creator C3: a family the stability gate (or, unsocketed, the drift flag) refuses is re-run
+  on the next GET with `attempt + 1` (STRICTER), up to attempt 2 per family and 4 re-runs per forge
+  (`faceRetry`, `MAX_FACE_ATTEMPT`, `MAX_EXTRA_EDITS`), each charged first; the job record tracks
+  `expressionAttempt` and `extraEdits` (optional, omitted at 0) and writes `expressions[family]` only
+  when it settles ("ok" if a re-run passes, else "skipped"). A brief's `face.eyes` line becomes
+  `eyesMaterial(...)`, the `material` of every expression edit and of both eye edits.
 - **Offline**: `scripts/cast/expressions.mjs <slug> [--families a,b] [--request|--import]`:
   `--request` writes `var/cast-expr/<slug>/<family>.request.txt` (the Codex request: the prompt plus
   "save the result as <family>.png in this folder") and prints the `codex exec` commands;
