@@ -1,0 +1,211 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`recorded job announcer-of-dead-air poses as before retire-a-face > at every emotion and drive, with no face profile in the look 1`] = `
+{
+  "amused": "87c1adb4",
+  "bored": "c074d064",
+  "delighted": "6ce13cde",
+  "furious": "0091e80a",
+  "grim": "ad63e91d",
+  "irritated": "e34fea46",
+  "neutral": "22bff04f",
+  "smug": "dba3e9d8",
+  "suspicious": "f3281661",
+  "theatrical": "0583dfc6",
+}
+`;
+
+exports[`recorded job auntie-asp poses as before retire-a-face > at every emotion and drive, with no face profile in the look 1`] = `
+{
+  "amused": "56b09a7a",
+  "bored": "d797195c",
+  "delighted": "bb649158",
+  "furious": "fecd5433",
+  "grim": "44587954",
+  "irritated": "f616a75f",
+  "neutral": "a2733a4c",
+  "smug": "9734a8f9",
+  "suspicious": "48291600",
+  "theatrical": "b70c7b34",
+}
+`;
+
+exports[`recorded job lantern-warden poses as before retire-a-face > at every emotion and drive, with no face profile in the look 1`] = `
+{
+  "amused": "b5a0f679",
+  "bored": "f8dca090",
+  "delighted": "766c50b2",
+  "furious": "0314e109",
+  "grim": "d830f201",
+  "irritated": "2b8c855e",
+  "neutral": "8ee34c43",
+  "smug": "930d21b0",
+  "suspicious": "6a635d9b",
+  "theatrical": "96fbc42c",
+}
+`;
+
+exports[`recorded job lot-ninety poses as before retire-a-face > at every emotion and drive, with no face profile in the look 1`] = `
+{
+  "amused": "f678bfdb",
+  "bored": "4baee950",
+  "delighted": "09e155c6",
+  "furious": "1eb38576",
+  "grim": "3c8ed1c3",
+  "irritated": "e5ef0f95",
+  "neutral": "8d6ec21e",
+  "smug": "48355f7d",
+  "suspicious": "aec69efa",
+  "theatrical": "a886f959",
+}
+`;
+
+exports[`recorded job malakor poses as before retire-a-face > at every emotion and drive, with no face profile in the look 1`] = `
+{
+  "amused": "b906e5e6",
+  "bored": "534763e9",
+  "delighted": "3e502cdc",
+  "furious": "dc1ba87f",
+  "grim": "0c05fcef",
+  "irritated": "ce9f65e7",
+  "neutral": "3bccf2df",
+  "smug": "939f464d",
+  "suspicious": "1b974323",
+  "theatrical": "fffaf181",
+}
+`;
+
+exports[`recorded job moth-widow poses as before retire-a-face > at every emotion and drive, with no face profile in the look 1`] = `
+{
+  "amused": "2a22b65f",
+  "bored": "9192c90f",
+  "delighted": "6c56c43b",
+  "furious": "05df172c",
+  "grim": "646f2ad6",
+  "irritated": "f68c5859",
+  "neutral": "84034499",
+  "smug": "2a6c1e9f",
+  "suspicious": "1bf183c6",
+  "theatrical": "5eaeb27a",
+}
+`;
+
+exports[`recorded job reveille poses as before retire-a-face > at every emotion and drive, with no face profile in the look 1`] = `
+{
+  "amused": "fda7ec66",
+  "bored": "4095ebc7",
+  "delighted": "8e7b8c14",
+  "furious": "06397fe9",
+  "grim": "a21c37fc",
+  "irritated": "3f5d16ee",
+  "neutral": "a8aa9819",
+  "smug": "36230d6a",
+  "suspicious": "730dd46e",
+  "theatrical": "2774be6d",
+}
+`;
+
+exports[`recorded job saint-cardia poses as before retire-a-face > at every emotion and drive, with no face profile in the look 1`] = `
+{
+  "amused": "6f9a02d7",
+  "bored": "5880470f",
+  "delighted": "cc025aa4",
+  "furious": "c973f233",
+  "grim": "db0c9a08",
+  "irritated": "67ce8257",
+  "neutral": "253cac63",
+  "smug": "3ba942bc",
+  "suspicious": "ca1da7e8",
+  "theatrical": "dc091201",
+}
+`;
+
+exports[`recorded job sir-vacant poses as before retire-a-face > at every emotion and drive, with no face profile in the look 1`] = `
+{
+  "amused": "871886f4",
+  "bored": "ae9540eb",
+  "delighted": "58991ba7",
+  "furious": "288069a9",
+  "grim": "ccae2d5e",
+  "irritated": "1cd4246b",
+  "neutral": "3eab1715",
+  "smug": "2a438c8f",
+  "suspicious": "8e36e951",
+  "theatrical": "35eeeb0b",
+}
+`;
+
+exports[`recorded job sister-vesper poses as before retire-a-face > at every emotion and drive, with no face profile in the look 1`] = `
+{
+  "amused": "bbe06a61",
+  "bored": "56aa33d5",
+  "delighted": "e4587e8f",
+  "furious": "84392e8c",
+  "grim": "df958398",
+  "irritated": "ac040b0e",
+  "neutral": "0bf2a6d4",
+  "smug": "9614dcab",
+  "suspicious": "8343fe66",
+  "theatrical": "83abd349",
+}
+`;
+
+exports[`recorded job the-redactor poses as before retire-a-face > at every emotion and drive, with no face profile in the look 1`] = `
+{
+  "amused": "22a632eb",
+  "bored": "2e003e8c",
+  "delighted": "94c7295c",
+  "furious": "541080f9",
+  "grim": "43474567",
+  "irritated": "8f0d3e54",
+  "neutral": "f10739ef",
+  "smug": "a800ad2a",
+  "suspicious": "4c668fbc",
+  "theatrical": "caae08ef",
+}
+`;
+
+exports[`recorded job the-tallyman poses as before retire-a-face > at every emotion and drive, with no face profile in the look 1`] = `
+{
+  "amused": "900da454",
+  "bored": "8442ee1b",
+  "delighted": "a4e43871",
+  "furious": "e240357c",
+  "grim": "489ab684",
+  "irritated": "4ab4ebc8",
+  "neutral": "3d96161c",
+  "smug": "faf89820",
+  "suspicious": "81e1a03c",
+  "theatrical": "e5e2c846",
+}
+`;
+
+exports[`recorded job understudy poses as before retire-a-face > at every emotion and drive, with no face profile in the look 1`] = `
+{
+  "amused": "a148d88a",
+  "bored": "52db26e6",
+  "delighted": "cf62c4ce",
+  "furious": "90f306c0",
+  "grim": "d986318b",
+  "irritated": "6588f64c",
+  "neutral": "34143b8b",
+  "smug": "4430aad6",
+  "suspicious": "63ebe046",
+  "theatrical": "1c8f1574",
+}
+`;
+
+exports[`recorded job vicar-of-the-lure poses as before retire-a-face > at every emotion and drive, with no face profile in the look 1`] = `
+{
+  "amused": "fa0f15c0",
+  "bored": "70b471a1",
+  "delighted": "798099e3",
+  "furious": "f6a526dc",
+  "grim": "2b3520b3",
+  "irritated": "e8a2aa4b",
+  "neutral": "43d4c36a",
+  "smug": "b575bcc3",
+  "suspicious": "a31633f4",
+  "theatrical": "5864f25f",
+}
+`;
