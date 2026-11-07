@@ -3,7 +3,8 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import m8Raw from "../test/fixtures/m8-parts.raw.txt?raw";
 import m8 from "../test/fixtures/m8-parts.json";
-import { toJobView, type ForgeJob } from "./job.js";
+import type { Rig } from "@sr/rig";
+import { isAwake, toJobView, type ForgeJob } from "./job.js";
 import { MAX_REQUEST_PROMPT, MAX_UPLOAD_BASE64, MAX_UPLOAD_BYTES, UPLOAD_LIMIT_MESSAGE, parseForgeJob, parseForgeRequest, parseLikenessJson, parsePartsJson } from "./validate.js";
 
 describe("parsePartsJson", () => {
@@ -114,6 +115,7 @@ const job: fc.Arbitrary<ForgeJob> = fc
       error: fc.record({ code: fc.constantFrom("quota" as const, "upstream" as const), message: fc.string() }),
       timings: fc.record({ portrait: fc.nat(), parts: fc.nat() }, { requiredKeys: [] }),
       expressionIndex: fc.nat({ max: 6 }),
+      eyes: fc.constantFrom("edit" as const, "fallback" as const, "none" as const),
       expressions: fc.record({ joy: fc.constantFrom("ok" as const, "skipped" as const, "failed" as const), smug: fc.constantFrom("ok" as const, "skipped" as const) }, { requiredKeys: [] }),
     },
     { requiredKeys: ["jobId", "plane", "mode", "status", "createdAt"] },
@@ -145,12 +147,41 @@ describe("toJobView", () => {
       fc.property(job, (j) => {
         const view = toJobView(j);
         expect(Object.values(view)).not.toContain(null);
-        expect("rig" in view || "assets" in view || "fill" in view).toBe(j.status === "done" && (j.assets !== undefined || j.fill !== undefined));
+        const awake = j.status === "done" || (j.status === "expressing" && j.eyes !== undefined);
+        expect("assets" in view).toBe(awake && j.assets !== undefined);
+        expect("fill" in view).toBe(j.status === "done" && j.fill !== undefined);
         expect("error" in view).toBe(j.status === "failed" && j.error !== undefined);
         expect("portraitUrl" in view).toBe(j.portraitUrl !== undefined && !["queued", "portrait"].includes(j.status));
         expect(Object.keys(view)).not.toContain("prompt");
         expect(view.expressions).toEqual(j.expressions);
       }),
     );
+  });
+});
+
+describe("toJobView wakes after the eye step (forge-creator C1)", () => {
+  const rig: Rig = {
+    version: 1,
+    id: "t",
+    name: "T",
+    width: 8,
+    height: 8,
+    source: "forge",
+    palette: { glow: "#ffffff", eye: "#28dcc8", rim: "#ffffff", mouth: "#000000" },
+    layers: [{ name: "head", kind: "head", bbox: [0, 0, 8, 8], z: 1, file: "head.png", anchor: [4, 4] }],
+  };
+  const base: ForgeJob = { jobId: "a".repeat(32), plane: "live", mode: "brief", status: "expressing", createdAt: 0, rig, assets: { "head.png": "https://x/head.png" }, expressionIndex: 0 };
+
+  it("holds the rig back while the eye step runs, sends it once the eyes have settled, and at done", () => {
+    expect(isAwake(base)).toBe(false);
+    expect("rig" in toJobView(base)).toBe(false);
+    for (const eyes of ["edit", "fallback", "none"] as const) {
+      const view = toJobView({ ...base, eyes });
+      expect(view.rig).toEqual(rig);
+      expect(view.assets).toEqual(base.assets);
+      expect("fill" in view).toBe(false);
+    }
+    expect(toJobView({ ...base, status: "done", fill: "edit" })).toMatchObject({ rig, fill: "edit" });
+    expect("rig" in toJobView({ ...base, status: "filling", eyes: "edit" })).toBe(false);
   });
 });

@@ -56,16 +56,27 @@ export interface ForgeJob {
 
 export type ExpressionOutcome = "ok" | "skipped" | "failed";
 
+/**
+ * forge-creator C1, wake after eyes: the job's rig is final in structure once the eye step has
+ * settled (`eyes` set: socketed, fallback or none). From then on each expression family only adds
+ * `Layer.variants` patches and their files, so the character can wake while its faces paint in.
+ * True at `done`, and at `expressing` once `eyes` is set.
+ */
+export function isAwake(job: Pick<ForgeJob, "status" | "eyes">): boolean {
+  return job.status === "done" || (job.status === "expressing" && job.eyes !== undefined);
+}
+
 /** The client's view of a job (design.md `JobView`): optional fields omitted, never null. */
 export function toJobView(job: ForgeJob): JobView {
   const showPortrait = job.status !== "queued" && job.status !== "portrait";
+  const awake = isAwake(job);
   return {
     jobId: job.jobId,
     status: job.status,
     plane: job.plane,
     ...(showPortrait && job.portraitUrl !== undefined ? { portraitUrl: job.portraitUrl } : {}),
-    ...(job.status === "done" && job.rig !== undefined ? { rig: job.rig } : {}),
-    ...(job.status === "done" && job.assets !== undefined ? { assets: job.assets } : {}),
+    ...(awake && job.rig !== undefined ? { rig: job.rig } : {}),
+    ...(awake && job.assets !== undefined ? { assets: job.assets } : {}),
     ...(job.fill !== undefined && job.status === "done" ? { fill: job.fill } : {}),
     ...(job.decomposition === undefined ? {} : { decomposition: job.decomposition }),
     ...(job.expressions === undefined ? {} : { expressions: { ...job.expressions } }),

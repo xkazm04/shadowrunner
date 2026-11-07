@@ -16,8 +16,15 @@
 //   through `done`, so the creator can say when the brief's parts were not found ("fallback").
 // - A live job's `expressions` (character-control) are kept from each view that reports them
 //   through `done`, so the rite can count them and name the procedural families.
+// - forge-creator C1, wake after eyes: an `expressing` view that carries a valid rig with a URL for
+//   every layer file makes the running job `awake` (rig + assets, and `awakeAt`, the event's `at`).
+//   Later rigs fold in only through `mergeFaces` (faces.ts: additive patches, else the awake rig
+//   stays). Once awake nothing fails the job: `done` keeps the awake rig when its own rig is not an
+//   additive extension, and a failure (a failed view, a client fail, `settle` at the tail's cap)
+//   finishes it as `done` with the faces that arrived; the rest stay procedural.
 import type { Decomposition, ForgeErrorCode, ForgeRequest, ForgeStatus, JobView } from "@sr/forge/wire";
 import { validateRig, type Rig } from "@sr/rig";
+import { mergeFaces, type Woken } from "./faces";
 
 export type RunningStatus = Exclude<ForgeStatus, "done" | "failed">;
 export type Expressions = NonNullable<JobView["expressions"]>;
@@ -33,13 +40,19 @@ export type ForgeState =
       portraitUrl?: string;
       decomposition?: Decomposition;
       expressions?: Expressions;
+      /** C1: the woken character (structure final), from the first valid expressing rig on. */
+      awake?: Woken;
+      /** C1: when the client first saw the job awake (or, on a resumed job, remembered it), ms. */
+      awakeAt?: number;
     }
   | { phase: "done"; rig: Rig; assets: Record<string, string>; jobId: string; plane: JobView["plane"]; portraitUrl?: string; decomposition?: Decomposition; expressions?: Expressions }
   | { phase: "failed"; code: ForgeErrorCode; message: string; retry: ForgeRequest };
 
 export type ForgeEvent =
-  | { type: "start"; jobId: string; request: ForgeRequest; at: number }
-  | { type: "view"; view: JobView }
+  | { type: "start"; jobId: string; request: ForgeRequest; at: number; awakeAt?: number }
+  | { type: "view"; view: JobView; at?: number }
+  /** C1: the faces' tail ran out of time: an awake job is done as it stands, any other fails. */
+  | { type: "settle"; message: string }
   /** A client-side failure: the start was refused, the network failed, the client timed out. */
   | { type: "fail"; code: ForgeErrorCode; message: string; request: ForgeRequest }
   | { type: "reset" };
@@ -51,15 +64,36 @@ export const IDLE: ForgeState = { phase: "idle" };
 
 const rank = (s: RunningStatus): number => RUNNING_ORDER.indexOf(s);
 
-function finish(state: Extract<ForgeState, { phase: "running" }>, view: JobView): ForgeState {
-  const failed = (message: string): ForgeState => ({ phase: "failed", code: "upstream", message, retry: state.request });
-  if (view.rig === undefined || view.assets === undefined) return failed("The forge finished without a character.");
+type Running = Extract<ForgeState, { phase: "running" }>;
+
+/** The character a view carries (a valid rig, a URL for every layer file), or why not. */
+function woken(view: JobView): Woken | string {
+  if (view.rig === undefined || view.assets === undefined) return "The forge finished without a character.";
   const rig = validateRig(view.rig);
-  if (!rig.ok) return failed("The forge returned a character the creator cannot read.");
+  if (!rig.ok) return "The forge returned a character the creator cannot read.";
   const assets = view.assets;
-  if (rig.value.layers.some((layer) => assets[layer.file] === undefined)) return failed("The forge returned a character with missing parts.");
+  if (rig.value.layers.some((layer) => assets[layer.file] === undefined)) return "The forge returned a character with missing parts.";
+  return { rig: rig.value, assets: { ...assets } };
+}
+
+const planeOf = (jobId: string): JobView["plane"] => (jobId.startsWith("replay_") ? "replay" : "live");
+
+/** An awake job as done, with what it has (C1: never a failure once awake). */
+function settled(state: Running, awake: Woken, plane: JobView["plane"] = planeOf(state.jobId)): ForgeState {
+  return finish(state, { jobId: state.jobId, status: "done", plane, rig: awake.rig, assets: { ...awake.assets } });
+}
+
+function finish(state: Running, view: JobView): ForgeState {
+  const got = woken(view);
+  let character: Woken;
+  if (typeof got === "string") {
+    if (state.awake === undefined) return { phase: "failed", code: "upstream", message: got, retry: state.request };
+    character = state.awake;
+  } else {
+    character = state.awake === undefined ? got : mergeFaces(state.awake, got);
+  }
   const portraitUrl = view.portraitUrl ?? state.portraitUrl;
-  const done: ForgeState = { phase: "done", rig: rig.value, assets: { ...assets }, jobId: state.jobId, plane: view.plane };
+  const done: ForgeState = { phase: "done", rig: character.rig, assets: { ...character.assets }, jobId: state.jobId, plane: view.plane };
   if (portraitUrl !== undefined) done.portraitUrl = portraitUrl;
   const decomposition = view.decomposition ?? state.decomposition;
   if (decomposition !== undefined) done.decomposition = decomposition;
@@ -72,11 +106,23 @@ export function forgeReducer(state: ForgeState, event: ForgeEvent): ForgeState {
   switch (event.type) {
     case "start":
       if (state.phase === "running") return state;
-      return { phase: "running", jobId: event.jobId, status: "queued", startedAt: event.at, request: event.request };
+      return {
+        phase: "running",
+        jobId: event.jobId,
+        status: "queued",
+        startedAt: event.at,
+        request: event.request,
+        ...(event.awakeAt === undefined ? {} : { awakeAt: event.awakeAt }),
+      };
     case "reset":
       return state.phase === "running" ? state : IDLE;
+    case "settle":
+      if (state.phase !== "running") return state;
+      if (state.awake !== undefined) return settled(state, state.awake);
+      return { phase: "failed", code: "upstream", message: event.message, retry: state.request };
     case "fail":
       if (state.phase === "done" || state.phase === "failed") return state;
+      if (state.phase === "running" && state.awake !== undefined) return settled(state, state.awake);
       return {
         phase: "failed",
         code: event.code,
@@ -87,6 +133,7 @@ export function forgeReducer(state: ForgeState, event: ForgeEvent): ForgeState {
       if (state.phase !== "running" || event.view.jobId !== state.jobId) return state;
       const { view } = event;
       if (view.status === "failed") {
+        if (state.awake !== undefined) return settled(state, state.awake, view.plane);
         return {
           phase: "failed",
           code: view.error?.code ?? "upstream",
@@ -100,11 +147,19 @@ export function forgeReducer(state: ForgeState, event: ForgeEvent): ForgeState {
       const expressions = view.expressions ?? state.expressions;
       const sameExpressions = JSON.stringify(expressions) === JSON.stringify(state.expressions);
       if (rank(view.status) < rank(state.status)) return state;
-      if (rank(view.status) === rank(state.status) && portraitUrl === state.portraitUrl && decomposition === state.decomposition && sameExpressions) return state;
-      const next: ForgeState = { ...state, status: view.status };
+      // C1: only an expressing view wakes the job; a later rig folds in only when it adds faces.
+      const got = view.status === "expressing" && view.rig !== undefined ? woken(view) : undefined;
+      const character = got === undefined || typeof got === "string" ? state.awake : state.awake === undefined ? got : mergeFaces(state.awake, got);
+      const sameStatus = rank(view.status) === rank(state.status);
+      if (sameStatus && portraitUrl === state.portraitUrl && decomposition === state.decomposition && sameExpressions && character === state.awake) return state;
+      const next: Running = { ...state, status: view.status };
       if (portraitUrl !== undefined) next.portraitUrl = portraitUrl;
       if (decomposition !== undefined) next.decomposition = decomposition;
       if (expressions !== undefined) next.expressions = { ...expressions };
+      if (character !== undefined) {
+        next.awake = character;
+        next.awakeAt = state.awakeAt ?? event.at ?? state.startedAt;
+      }
       return next;
     }
   }

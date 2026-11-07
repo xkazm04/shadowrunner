@@ -1,10 +1,12 @@
+import { REPLAY_FACE_HOLD_MS, withFacesStep } from "@sr/forge/replayFaces";
 import type { ForgeErrorCode } from "@sr/forge/wire";
+import type { Rig } from "@sr/rig";
 import fc from "fast-check";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ForgeError } from "./forgeClient";
+import { ForgeError, readJobView } from "./forgeClient";
 import { createReplayForgeClient, failOf, parseReplayJobId, pickIndex, replayJobId } from "./forgeClient.replay";
-import { loadReplayJobs, replayJobOf, statusAt } from "./replayJobs";
-import { testJob } from "./testFixtures";
+import { loadReplayJobs, replayJobOf, statusAt, type ReplayJob } from "./replayJobs";
+import { PIXEL_PNG, testJob } from "./testFixtures";
 
 const PROMPT = { mode: "prompt" as const, prompt: "a drowned lighthouse keeper with a lantern heart" };
 
@@ -140,5 +142,67 @@ describe("recorded jobs", () => {
     expect(replayJobOf({ ...manifest, fictional: false }, files)).toBeUndefined();
     expect(replayJobOf(manifest, { "portrait.jpg": "u" })).toBeUndefined();
     expect(replayJobOf({ ...manifest, steps: [...job.steps].reverse() }, files)).toBeUndefined();
+  });
+});
+
+describe("replay forge client: faces paint in after Wake (forge-creator C1)", () => {
+  /** testJob with a recorded joy and anger face on the head, as replayJobOf would load it. */
+  function facedJob(): ReplayJob {
+    const job = testJob("ghost-f");
+    const rig: Rig = {
+      ...job.rig,
+      layers: job.rig.layers.map((l) =>
+        l.name !== "head"
+          ? l
+          : { ...l, variants: { joy: { file: "head.joy.png", bbox: [16, 8, 4, 4], mode: "over" }, anger: { file: "head.anger.png", bbox: [16, 8, 4, 4], mode: "over" } } },
+      ),
+    };
+    return { ...job, rig, steps: withFacesStep(job.steps, rig), assets: { ...job.assets, "head.joy.png": PIXEL_PNG, "head.anger.png": PIXEL_PNG } };
+  }
+
+  it("wakes at the start of the expressing hold with no faces, adds the recorded ones family by family, and ends on the recorded rig", async () => {
+    const job = facedJob();
+    const client = createReplayForgeClient({ jobs: async () => [job] });
+    const { jobId } = await client.start(PROMPT);
+    vi.advanceTimersByTime(7400);
+    const filling = await client.poll(jobId);
+    expect(filling.status).toBe("filling");
+    expect(filling.rig).toBeUndefined();
+    vi.advanceTimersByTime(200);
+    const woke = readJobView(await client.poll(jobId));
+    expect(woke?.status).toBe("expressing");
+    expect(woke?.rig?.layers.some((l) => l.variants !== undefined)).toBe(false);
+    for (const layer of woke?.rig?.layers ?? []) expect(woke?.assets?.[layer.file]).toBeDefined();
+    expect(woke?.assets?.["head.joy.png"]).toBeUndefined();
+    expect(woke?.expressions).toEqual({});
+    vi.advanceTimersByTime(REPLAY_FACE_HOLD_MS);
+    const joy = await client.poll(jobId);
+    expect(joy.expressions).toEqual({ joy: "ok" });
+    expect(Object.keys(joy.rig?.layers.find((l) => l.name === "head")?.variants ?? {})).toEqual(["joy"]);
+    expect(joy.assets?.["head.joy.png"]).toBe(PIXEL_PNG);
+    vi.advanceTimersByTime(REPLAY_FACE_HOLD_MS * 2);
+    expect((await client.poll(jobId)).expressions).toEqual({ joy: "ok", showman: "skipped", anger: "ok" });
+    vi.advanceTimersByTime(REPLAY_FACE_HOLD_MS * 3);
+    const done = await client.poll(jobId);
+    expect(done.status).toBe("done");
+    expect(done.rig).toEqual(job.rig);
+    expect(Object.keys(done.expressions ?? {})).toHaveLength(6);
+  });
+
+  it("a recorded job without faces keeps its steps: awake is done", async () => {
+    const client = createReplayForgeClient({ jobs });
+    const { jobId } = await client.start(PROMPT);
+    vi.advanceTimersByTime(7600);
+    const done = await client.poll(jobId);
+    expect(done.status).toBe("done");
+    expect(done.expressions).toBeUndefined();
+  });
+
+  it("every committed job with faces loads with the expressing hold before done", async () => {
+    for (const job of await loadReplayJobs()) {
+      const hasFaces = job.rig.layers.some((l) => l.variants !== undefined);
+      expect(job.steps.map((s) => s.status).includes("expressing")).toBe(hasFaces);
+      expect(job.steps.at(-1)?.status).toBe("done");
+    }
   });
 });

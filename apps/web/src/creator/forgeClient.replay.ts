@@ -1,7 +1,9 @@
 // The replay forge client (creator design.md "Plane and client selection"): on the replay plane the
 // creator forges in the browser from the recorded jobs, with no request to /api. It walks
 // queued -> portrait -> segmenting -> cutting -> filling -> done on each job's recorded holds and
-// returns that job's rig (labelled RECORDED by the page). `?forge=fail:<code>` makes it fail with
+// returns that job's rig (labelled RECORDED by the page). forge-creator C1: a job whose rig has
+// faces walks a synthetic expressing hold before done, awake from its start, its recorded faces
+// arriving one family at a time (@sr/forge/replayFaces, as the server's replay). `?forge=fail:<code>` makes it fail with
 // that code, so every failure state is reachable in replay and in tests.
 //
 // Decisions the spec leaves open:
@@ -14,6 +16,7 @@
 //   start (POST answers 429 / 400); `refused_likeness` and `refused_content` fail after the
 //   portrait step; `upstream` fails while cutting.
 import { requestKey } from "@sr/forge/brief";
+import { assetsWithFaces, facesAt, facesOutcomes, rigWithFaces } from "@sr/forge/replayFaces";
 import type { ForgeErrorCode, ForgeRequest, ForgeStatus, JobView } from "@sr/forge/wire";
 import { ForgeError, isForgeErrorCode, type ForgeClient } from "./forgeClient";
 import { loadReplayJobs, statusAt, type ReplayJob } from "./replayJobs";
@@ -68,12 +71,24 @@ export function parseReplayJobId(jobId: string): { slug: string; startedAt: numb
   return isForgeErrorCode(m[3]) ? { slug: m[1], startedAt, fail: m[3] } : undefined;
 }
 
-const ORDER: readonly ForgeStatus[] = ["queued", "portrait", "segmenting", "cutting", "filling", "done"];
+const ORDER: readonly ForgeStatus[] = ["queued", "portrait", "segmenting", "cutting", "filling", "expressing", "done"];
 
-/** The view of `job` at `status` (portrait from segmenting on, rig and assets when done). */
-export function viewOf(job: ReplayJob, jobId: string, status: ForgeStatus): JobView {
+/**
+ * The view of `job` at `status`, `elapsedMs` after the start: portrait from segmenting on; rig and
+ * assets once awake (through the expressing hold with the faces arrived so far, and at done).
+ */
+export function viewOf(job: ReplayJob, jobId: string, status: ForgeStatus, elapsedMs = Number.POSITIVE_INFINITY): JobView {
   const view: JobView = { jobId, status, plane: "replay" };
   if (ORDER.indexOf(status) >= ORDER.indexOf("segmenting")) view.portraitUrl = job.portraitUrl;
+  if (job.steps.some((s) => s.status === "expressing") && (status === "expressing" || status === "done")) {
+    const arrived = status === "done" ? Number.POSITIVE_INFINITY : facesAt(job.steps, elapsedMs);
+    view.expressions = facesOutcomes(job.rig, arrived);
+    if (status === "expressing") {
+      const rig = rigWithFaces(job.rig, arrived);
+      view.rig = rig;
+      view.assets = assetsWithFaces(job.rig, rig, job.assets);
+    }
+  }
   if (status === "done") {
     view.rig = job.rig;
     view.assets = { ...job.assets };
@@ -115,12 +130,13 @@ export function createReplayForgeClient(options: ReplayClientOptions = {}): Forg
       const id = parseReplayJobId(jobId);
       const job = id === undefined ? undefined : (await jobs()).find((j) => j.slug === id.slug);
       if (id === undefined || job === undefined) throw new ForgeError("bad_input", "No such forge job.");
-      const status = statusAt(job.steps, Math.max(0, now() - id.startedAt));
+      const elapsed = Math.max(0, now() - id.startedAt);
+      const status = statusAt(job.steps, elapsed);
       const failAt = id.fail === undefined ? undefined : FAIL_AFTER[id.fail];
       if (id.fail !== undefined && failAt !== undefined && ORDER.indexOf(status) > ORDER.indexOf(failAt)) {
         return { jobId, status: "failed", plane: "replay", error: { code: id.fail, message: FAIL_MESSAGES[id.fail] } };
       }
-      return viewOf(job, jobId, status);
+      return viewOf(job, jobId, status, elapsed);
     },
   };
 }

@@ -7,8 +7,22 @@
 // time, and every GET derives the status from the elapsed time and the recorded per-status holds
 // (1.5-3 s each). POST picks a job by hashing the prompt (or the upload), so the same text always
 // gets the same character.
+// forge-creator C1: a recorded job whose rig carries expression patches gets one synthetic
+// `expressing` hold after its recorded steps (@sr/forge replayFaces): awake at once with the faces
+// stripped, the recorded faces arriving one family at a time, as a live job wakes after its eyes.
 import { createHash } from "node:crypto";
-import { parseForgeRequest, requestKey, type ForgeRequest, type ForgeStatus, type JobView } from "@sr/forge";
+import {
+  assetsWithFaces,
+  facesAt,
+  facesOutcomes,
+  parseForgeRequest,
+  requestKey,
+  rigWithFaces,
+  withFacesStep,
+  type ForgeRequest,
+  type ForgeStatus,
+  type JobView,
+} from "@sr/forge";
 import { validateRig, type Rig } from "@sr/rig";
 import { errorBody } from "./errors.js";
 import type { ForgeReplay } from "./forge-api.js";
@@ -25,7 +39,7 @@ export interface ReplayJob {
   prompt?: string;
   /** How the recorded job's plate was filled (task 9 jobs record it; older ones were all fallback). */
   fill: "edit" | "fallback";
-  /** Holds per status in order, ending with "done". */
+  /** Holds per status in order, ending with "done" (with the synthetic faces hold when the rig has faces). */
   steps: { status: ForgeStatus; holdMs: number }[];
   portraitUrl: string;
   rig: Rig;
@@ -82,7 +96,7 @@ export function replayJobOf(value: unknown): ReplayJob | undefined {
   if (assets === undefined) return undefined;
   const fill = value.fill === "edit" ? "edit" : "fallback";
   const prompt = typeof value.prompt === "string" ? { prompt: value.prompt } : {};
-  return { slug: value.slug, name: value.name, ...prompt, fill, steps, portraitUrl: base + value.portrait, rig: rig.value, assets };
+  return { slug: value.slug, name: value.name, ...prompt, fill, steps: withFacesStep(steps, rig.value), portraitUrl: base + value.portrait, rig: rig.value, assets };
 }
 
 /** The committed job manifests, bundled at build time (Vite glob import; vitest resolves it the same way). */
@@ -127,9 +141,21 @@ export function statusAt(job: ReplayJob, elapsedMs: number): ForgeStatus {
   return "done";
 }
 
-export function replayView(job: ReplayJob, jobId: string, status: ForgeStatus): JobView {
+/**
+ * The view at `status`, `elapsedMs` after the start: the portrait from segmenting on; the rig and
+ * its assets once awake (at done, and through the synthetic expressing hold with the faces that
+ * have arrived by then, C1); what each arrived family came to when the job has an expressing hold.
+ */
+export function replayView(job: ReplayJob, jobId: string, status: ForgeStatus, elapsedMs = Number.POSITIVE_INFINITY): JobView {
   const view: JobView = { jobId, status, plane: "replay" };
   if (STATUS_ORDER.indexOf(status) >= STATUS_ORDER.indexOf("segmenting")) view.portraitUrl = job.portraitUrl;
+  if (status === "expressing" || status === "done") {
+    const arrived = status === "done" ? Number.POSITIVE_INFINITY : facesAt(job.steps, elapsedMs);
+    const rig = rigWithFaces(job.rig, arrived);
+    view.rig = rig;
+    view.assets = assetsWithFaces(job.rig, rig, job.assets);
+    if (job.steps.some((s) => s.status === "expressing")) view.expressions = facesOutcomes(job.rig, arrived);
+  }
   if (status === "done") {
     view.rig = job.rig;
     view.assets = job.assets;
@@ -156,7 +182,7 @@ export function createForgeReplay(jobs: readonly ReplayJob[]): ForgeReplay {
         return Response.json(errorBody("bad_input", "No such forge job."), { status: 404, headers: NO_STORE });
       }
       const elapsed = Math.max(0, now - Number.parseInt(match[2], 36));
-      return Response.json(replayView(job, jobId, statusAt(job, elapsed)), { headers: NO_STORE });
+      return Response.json(replayView(job, jobId, statusAt(job, elapsed), elapsed), { headers: NO_STORE });
     },
   };
 }

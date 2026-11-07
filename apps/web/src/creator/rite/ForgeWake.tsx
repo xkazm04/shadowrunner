@@ -28,6 +28,9 @@ export type Expressions = NonNullable<JobView["expressions"]>;
 /** The rite's expression progress (character-control 5.4): families answered so far, of six. */
 export const expressionsProgress = (e: Expressions): string => `Expressions ${Object.keys(e).length} / ${EXPRESSION_FAMILIES.length}`;
 
+/** forge-creator C1: after Wake, while the faces still paint in: families answered so far, of six. */
+export const facesPainting = (e: Expressions): string => `Faces ${Object.keys(e).length} / ${EXPRESSION_FAMILIES.length} painting`;
+
 /** The families that came to anything but "ok": they ship procedural only. */
 export const proceduralFamilies = (e: Expressions): ExpressionFamily[] => EXPRESSION_FAMILIES.filter((f) => e[f] !== "ok");
 
@@ -151,9 +154,11 @@ export interface WakeMarkProps {
   id?: string;
   /** What each expression family came to (live jobs). */
   expressions?: Expressions;
+  /** C1: the face is awake and kept while the forge still paints its faces. */
+  painting?: boolean;
 }
 
-export function WakeMark({ name, layers, handoff, keepError, fallback = false, id, expressions }: WakeMarkProps) {
+export function WakeMark({ name, layers, handoff, keepError, fallback = false, id, expressions, painting = false }: WakeMarkProps) {
   if (keepError !== undefined) return <p className={marks.note}>{keepError}</p>;
   if (name === undefined || handoff === undefined) return <p className={marks.note}>The face wakes here when the forge is done.</p>;
   return (
@@ -162,7 +167,13 @@ export function WakeMark({ name, layers, handoff, keepError, fallback = false, i
         {name} is rigged: {layers} layers, lit and breathing. Its lights are pinned to the face now, as on the Forge page.
       </p>
       {fallback && <FallbackNotice />}
-      {expressions !== undefined && <ExpressionsNote expressions={expressions} done />}
+      {painting ? (
+        <p className={marks.note} role="status" data-painting="">
+          {facesPainting(expressions ?? {})}. It is yours already: tune it while they arrive.
+        </p>
+      ) : (
+        expressions !== undefined && <ExpressionsNote expressions={expressions} done />
+      )}
       <a className={`${styles.btn} ${styles.amber}`} href={handoff} onClick={(event) => handleLinkClick(event, handoff)} data-handoff="">
         Open in Anatomy Under Glass <kbd>CH {forge?.channel}</kbd>
       </a>

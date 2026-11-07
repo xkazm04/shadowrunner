@@ -6,7 +6,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./wire": "./src/wire.ts",
-    "./brief": "./src/brief.ts"
+    "./brief": "./src/brief.ts",
+    "./replayFaces": "./src/replayFaces.ts"
   },
   "dependencies": {
     "@sr/rig": "workspace:*",
