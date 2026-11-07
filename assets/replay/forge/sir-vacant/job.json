@@ -154,16 +154,6 @@
             ],
             "mode": "over"
           },
-          "showman": {
-            "file": "head.showman.webp",
-            "bbox": [
-              376,
-              365,
-              270,
-              132
-            ],
-            "mode": "over"
-          },
           "anger": {
             "file": "head.anger.webp",
             "bbox": [
@@ -466,10 +456,6 @@
             }
           ]
         },
-        "emissive": true,
-        "socket": "slit_l.socket.png",
-        "closed": "slit_l.closed.png",
-        "tint": false,
         "variants": {
           "joy": {
             "file": "slit_l.joy.webp",
@@ -479,9 +465,7 @@
               66,
               16
             ],
-            "mode": "replace",
-            "socket": "slit_l.joy.socket.png",
-            "narrowed": true
+            "mode": "replace"
           },
           "showman": {
             "file": "slit_l.showman.webp",
@@ -491,8 +475,7 @@
               66,
               16
             ],
-            "mode": "replace",
-            "socket": "slit_l.showman.socket.png"
+            "mode": "replace"
           },
           "anger": {
             "file": "slit_l.anger.webp",
@@ -502,9 +485,7 @@
               66,
               16
             ],
-            "mode": "replace",
-            "socket": "slit_l.anger.socket.png",
-            "narrowed": true
+            "mode": "replace"
           },
           "gloom": {
             "file": "slit_l.gloom.webp",
@@ -514,9 +495,7 @@
               66,
               16
             ],
-            "mode": "replace",
-            "socket": "slit_l.gloom.socket.png",
-            "narrowed": true
+            "mode": "replace"
           },
           "smug": {
             "file": "slit_l.smug.webp",
@@ -526,9 +505,7 @@
               66,
               16
             ],
-            "mode": "replace",
-            "socket": "slit_l.smug.socket.png",
-            "narrowed": true
+            "mode": "replace"
           },
           "suspicion": {
             "file": "slit_l.suspicion.webp",
@@ -538,41 +515,13 @@
               66,
               16
             ],
-            "mode": "replace",
-            "socket": "slit_l.suspicion.socket.png",
-            "narrowed": true
-          }
-        }
-      },
-      {
-        "name": "slit_l_iris",
-        "z": 10,
-        "kind": "iris",
-        "file": "slit_l_iris.png",
-        "bbox": [
-          563,
-          431,
-          17,
-          17
-        ],
-        "anchor": [
-          571.0867052023121,
-          439.41329479768785
-        ],
-        "follow": "slit_l",
-        "depth": 0.7,
-        "tint": false,
-        "motion": {
-          "pulse": {
-            "amp": 0.3,
-            "freq": 0.3,
-            "phase": 0.25
+            "mode": "replace"
           }
         }
       },
       {
         "name": "slit_r",
-        "z": 11,
+        "z": 10,
         "kind": "eye",
         "file": "slit_r.png",
         "bbox": [
@@ -614,10 +563,6 @@
             }
           ]
         },
-        "emissive": true,
-        "socket": "slit_r.socket.png",
-        "closed": "slit_r.closed.png",
-        "tint": false,
         "variants": {
           "joy": {
             "file": "slit_r.joy.webp",
@@ -627,9 +572,7 @@
               67,
               16
             ],
-            "mode": "replace",
-            "socket": "slit_r.joy.socket.png",
-            "narrowed": true
+            "mode": "replace"
           },
           "showman": {
             "file": "slit_r.showman.webp",
@@ -639,8 +582,7 @@
               67,
               16
             ],
-            "mode": "replace",
-            "socket": "slit_r.showman.socket.png"
+            "mode": "replace"
           },
           "anger": {
             "file": "slit_r.anger.webp",
@@ -650,9 +592,7 @@
               67,
               16
             ],
-            "mode": "replace",
-            "socket": "slit_r.anger.socket.png",
-            "narrowed": true
+            "mode": "replace"
           },
           "gloom": {
             "file": "slit_r.gloom.webp",
@@ -662,9 +602,7 @@
               67,
               16
             ],
-            "mode": "replace",
-            "socket": "slit_r.gloom.socket.png",
-            "narrowed": true
+            "mode": "replace"
           },
           "smug": {
             "file": "slit_r.smug.webp",
@@ -674,8 +612,7 @@
               67,
               16
             ],
-            "mode": "replace",
-            "socket": "slit_r.smug.socket.png"
+            "mode": "replace"
           },
           "suspicion": {
             "file": "slit_r.suspicion.webp",
@@ -685,41 +622,13 @@
               67,
               16
             ],
-            "mode": "replace",
-            "socket": "slit_r.suspicion.socket.png",
-            "narrowed": true
-          }
-        }
-      },
-      {
-        "name": "slit_r_iris",
-        "z": 12,
-        "kind": "iris",
-        "file": "slit_r_iris.png",
-        "bbox": [
-          443,
-          431,
-          17,
-          17
-        ],
-        "anchor": [
-          451.3896848137536,
-          439.48280802292265
-        ],
-        "follow": "slit_r",
-        "depth": 0.7,
-        "tint": false,
-        "motion": {
-          "pulse": {
-            "amp": 0.3,
-            "freq": 0.3,
-            "phase": 0.25
+            "mode": "replace"
           }
         }
       },
       {
         "name": "tag_3",
-        "z": 13,
+        "z": 11,
         "kind": "accessory",
         "file": "tag_3.png",
         "bbox": [
@@ -769,7 +678,7 @@
       },
       {
         "name": "tag_2",
-        "z": 14,
+        "z": 12,
         "kind": "accessory",
         "file": "tag_2.png",
         "bbox": [
@@ -819,7 +728,7 @@
       },
       {
         "name": "tag_1",
-        "z": 15,
+        "z": 13,
         "kind": "accessory",
         "file": "tag_1.png",
         "bbox": [

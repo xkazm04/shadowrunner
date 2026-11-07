@@ -143,6 +143,19 @@ Designed and generated art is stylised and labelled as such in the UI; no real p
   Procedural (no model): the Announcer's and the Lantern's iris layers are cut from their own light
   and the light's place in the eye is filled from the art around it; Reveille's neon dots and Sir
   Vacant's white lights are drawn glow orbs (`orbArt`). No paid call.
+  - Lot Ninety's neutral rest mouth (owner, 2026-11-07: "default face should not smile"): 3 Codex CLI
+    edits (codex-cli 0.166.0, input: his forge portrait) replacing the clenched-teeth grin with closed,
+    level lips, kept in `var/cast-mouth/lot-ninety/`; the third (no corner hooks, no ghost teeth) was
+    resized 1254 -> 1024 and composited into `portrait.png` only inside the old grin's crescent (grown
+    5 px, feathered; the edit's redrawn crease and chin-crease bits inside it replaced by its own
+    nearby skin), so every pixel outside that box (425,386 179x102) is the original. `head.png` and
+    `jaw.png` re-cut from it; the mouth now bends by the lip warp (`Rig.mouth.lips`).
+    His gallery thumbnail `assets/replay/thumbs/lot-ninety.webp` was re-made from the edited portrait
+    (PIL Lanczos, q82); the cast source `assets/characters/cast/lot-ninety/portrait.png` keeps the grin.
+  - Owner verdict 2026-11-07: Reveille, the Tallyman and the Vicar of the Lure were reverted to their
+    2026-11-06 art and rigs, so none of the edits counted above for them ship. Sir Vacant keeps
+    his regenerated faces and the bevor without patches, but his eyes are the 2026-11-06 slits (no
+    socket, light orb or closed edit) and his showman face was dropped (it opened the visor for the orb).
 - **Avatar packs (avatar-pack, 2026-11-04).** Malakor (pre-existing art, above) is never packed:
   `scripts/build-packs.mjs` skips him when it publishes the cast as `/packs/<slug>.srpack`, and the
   creator offers no Export for him, so he is never exported or published as a pack.

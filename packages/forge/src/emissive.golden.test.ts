@@ -103,8 +103,8 @@ describe.each(CAST)("cast rig $slug (golden)", ({ job, dark, lit }) => {
   it("marks what does not glow emissive: false and leaves what glows at its kind's default", () => {
     for (const name of dark) expect(layer(name).emissive, name).toBe(false);
     for (const name of lit) expect([layer(name).emissive, isEmissive(layer(name))], name).toEqual([undefined, true]);
-    // cast-face-pass: a socketed eye whose own art keeps a light beside its iris (Reveille's rings, Sir
-    // Vacant's slits, WP1b's recipes) says so explicitly (`emissive: true`, socketEyes' default being false).
+    // cast-face-pass: a socketed eye whose own art keeps a light beside its iris (the Lantern
+    // Warden's carved holes, WP1b's recipe) says so explicitly (`emissive: true`, socketEyes' default being false).
     const keepsLight = (l: Layer) => l.kind === "eye" && l.socket !== undefined && l.emissive === true;
     for (const l of rig.layers) if (l.emissive !== undefined && !keepsLight(l)) expect(l.emissive, l.name).toBe(!EMISSIVE_KINDS.has(l.kind as LayerKind));
   });

@@ -122,17 +122,12 @@
             {
               "id": "r1",
               "name": "head",
-              "hex": "#aaa581"
+              "hex": "#a8a380"
             },
             {
               "id": "r2",
               "name": "head 2",
               "hex": "#030303"
-            },
-            {
-              "id": "r3",
-              "name": "head 3",
-              "hex": "#7a7e5f"
             }
           ]
         },
@@ -205,14 +200,14 @@
         "kind": "jaw",
         "file": "jaw.png",
         "bbox": [
-          432,
-          397,
-          165,
-          90
+          440,
+          431,
+          149,
+          50
         ],
         "anchor": [
-          515.5840000000001,
-          442.368
+          514,
+          431
         ],
         "follow": "head",
         "depth": 0.62,
@@ -223,17 +218,17 @@
             {
               "id": "r1",
               "name": "jaw",
-              "hex": "#afaa87"
+              "hex": "#a9a480"
+            },
+            {
+              "id": "cavity",
+              "name": "mouth",
+              "hex": "#313224"
             },
             {
               "id": "r2",
               "name": "jaw 2",
-              "hex": "#51513e"
-            },
-            {
-              "id": "r3",
-              "name": "jaw 3",
-              "hex": "#6f6d53"
+              "hex": "#7e7d5e"
             }
           ]
         }
@@ -880,10 +875,16 @@
       }
     ],
     "mouth": {
-      "cx": 515.5,
-      "lineY": 449,
-      "width": 97.75,
-      "render": "still"
+      "cx": 514.5,
+      "lineY": 432,
+      "width": 126.65,
+      "lips": {
+        "left": 454,
+        "right": 575,
+        "upper": 423,
+        "lower": 457,
+        "seam": 432
+      }
     }
   }
 }

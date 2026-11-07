@@ -68,7 +68,7 @@ describe("Layer.emissive in the GL renderer", () => {
     const cases = [
       // Socketed eyes (cast-face-pass): the eye is dark, its iris carries the light.
       { rig: rigOf(lotNinetyJob), dark: ["hand_l", "hand_r", "eye_l", "eye_r"], lit: ["iris_l", "iris_r", "wisp_l", "wisp_r"] },
-      { rig: rigOf(tallymanJob), dark: ["abacus", "beads_1l", "beads_3r", "eye_l1", "eye_r2"], lit: ["iris_l1", "iris_r2"] },
+      { rig: rigOf(tallymanJob), dark: ["abacus", "beads_1l", "beads_3r"], lit: ["eye_l1", "eye_r2"] },
       { rig: rigOf(cardiaJob), dark: ["crown", "eye_l", "eye_r", "spire_3"], lit: ["heart"] },
     ];
     for (const { rig, dark, lit } of cases) {
