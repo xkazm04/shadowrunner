@@ -39,7 +39,7 @@ export type ForgeErrorCode = "quota" | "refused_likeness" | "refused_content" | 
 export interface JobView {
   jobId: string; status: ForgeStatus; plane: "replay" | "live";
   portraitUrl?: string;                 // available from status "segmenting" on
-  rig?: Rig;                            // only when status "done"; layer.file = key in assets
+  rig?: Rig;                            // once awake: "done", or "expressing" after the eye step (forge-creator C1); layer.file = key in assets
   assets?: Record<string, string>;      // file -> URL (https Blob URL on live, data: URL on replay/dev)
   fill?: "edit" | "fallback";
   error?: { code: ForgeErrorCode; message: string };

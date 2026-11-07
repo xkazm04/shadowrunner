@@ -8,6 +8,7 @@
 //   `steps` (status + holdMs, recorded by the forge lane) are the timings instead.
 // - The manifests are imported lazily (one small chunk per job) and the images as URLs, so the
 //   creator's own bundle carries no art; an image is fetched only when it is shown or adopted.
+import { withFacesStep } from "@sr/forge/replayFaces";
 import type { ForgeStatus } from "@sr/forge/wire";
 import { validateRig, type Rig } from "@sr/rig";
 import { rigFiles } from "./library/assets";
@@ -22,7 +23,7 @@ export interface ReplayJob {
   name: string;
   /** The text the job was forged from, when recorded. */
   prompt?: string;
-  /** Holds per status in order, ending with "done" (hold 0). */
+  /** Holds per status in order, ending with "done" (hold 0); a rig with faces adds the synthetic expressing hold (C1). */
   steps: ReplayStep[];
   portraitUrl: string;
   /** A small still of the portrait (`assets/replay/thumbs/<slug>.webp`), when one is committed. */
@@ -84,7 +85,8 @@ export function replayJobOf(value: unknown, files: Readonly<Record<string, strin
     if (url === undefined && layerFiles.has(file)) return undefined;
     if (url !== undefined) assets[file] = url;
   }
-  const job: ReplayJob = { slug: value.slug, name: value.name, steps, portraitUrl, rig: rig.value, assets };
+  // forge-creator C1: a rig with faces gets the synthetic expressing hold (the server's replay does the same).
+  const job: ReplayJob = { slug: value.slug, name: value.name, steps: withFacesStep(steps, rig.value), portraitUrl, rig: rig.value, assets };
   if (typeof value.prompt === "string" && value.prompt !== "") job.prompt = value.prompt;
   if (value.fill === "edit" || value.fill === "fallback") job.fill = value.fill;
   const live = liveOf(value.timings);

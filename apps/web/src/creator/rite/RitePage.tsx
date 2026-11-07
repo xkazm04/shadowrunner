@@ -6,24 +6,23 @@
 // selected). The empty layer slots fill as the job's statuses arrive.
 // cast-forge 4.3, the handshake: words are first briefed (BriefCard in mark I); only the approved
 // brief is drawn (`mode: "brief"`). A drawing still goes straight to Bind and Forge.
+// forge-creator C1: the face is kept and wakes as soon as the job is awake (its eyes settled, the
+// rig final, useKept.ts); the rite then stands at Wake while the six faces paint in.
 import { VOICES } from "@sr/engine";
 import { parseBrief } from "@sr/forge/brief";
 import type { CharacterBrief, ForgeErrorCode, ForgeRequest } from "@sr/forge/wire";
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { usePlane } from "../../app/plane";
 import { handleLinkClick } from "../../app/router";
-import { lookReducer, type LookAction } from "../customize/lookReducer";
 import { briefClientFor, type BriefClient } from "../briefClient";
 import type { ForgeClient } from "../forgeClient";
 import { parseReplayJobId } from "../forgeClient.replay";
-import { recordOf } from "../forge/keep";
 import { useForgeJob } from "../forge/useForgeJob";
 import { Glass } from "../glass/Glass";
 import { useGesturePulse } from "../glass/gestures";
 import { useBlobUrls } from "../glass/LayerRail";
 import { useTyped } from "../glass/SignalCards";
-import type { CharacterRecord } from "../library/libraryStore";
-import { useLibrary, useRigAssets, type UseLibraryOptions } from "../library/useLibrary";
+import { useLibrary, type UseLibraryOptions } from "../library/useLibrary";
 import { loadReplayJobs, type ReplayJob } from "../replayJobs";
 import { useSpeaker } from "../useSpeaker";
 import anatomy from "../glass/Anatomy.module.css";
@@ -33,11 +32,12 @@ import { Handshake } from "./BriefCard";
 import { BindMark, Describe, Marks } from "./Marks";
 import { expressionsProgress, ForgeMark, STEP_VERB, WakeMark } from "./ForgeWake";
 import { planeClient, withSeededStart } from "./planeClient";
-import { ARCHETYPES, bound, DESCRIBE_CODES, PALETTES, requestOf, type Bind, type ForgeDraft } from "./request";
+import { ARCHETYPES, DESCRIBE_CODES, PALETTES, requestOf, type Bind, type ForgeDraft } from "./request";
 import { clockText, markOf, progressIn, RUN_STEPS, secText, slotsAt, startOf, type Mark, type RunStep } from "./riteClock";
 import { Developing, Tape } from "./RiteGlass";
 import { RiteRail } from "./RiteRail";
 import { useBrief } from "./useBrief";
+import { useKept } from "./useKept";
 import styles from "./Rite.module.css";
 
 export interface RitePageProps {
@@ -96,8 +96,6 @@ export function RitePage({ client: given, briefer: givenBriefer, jobs = loadRepl
   const [bind, setBind] = useState<Bind>({});
   const [chosen, setChosen] = useState<0 | 1>(0);
   const [manual, setManual] = useState<Mark | undefined>(undefined);
-  const [kept, setKept] = useState<CharacterRecord | undefined>(undefined);
-  const [keepError, setKeepError] = useState<string | undefined>(undefined);
   const [highlight, setHighlight] = useState<string | undefined>(undefined);
   const [gesture, fireGesture] = useGesturePulse();
   const speaker = useSpeaker((line) => {
@@ -105,6 +103,12 @@ export function RitePage({ client: given, briefer: givenBriefer, jobs = loadRepl
   });
 
   const { state } = job;
+  // An awake (or finished) job goes into the library once, bound as the visitor chose, and is
+  // selected; faces that arrive later fold into it (useKept.ts).
+  const { kept, shown, keepError, clear: forgetKept, dress } = useKept(state, library, bind, drawn);
+  const assets = shown?.assets;
+  const painting = state.phase === "running" && state.awake !== undefined;
+
   const jobId = state.phase === "running" || state.phase === "done" ? state.jobId : undefined;
   // The step on screen: the status the client last reported; a failure freezes the last one.
   const last = useRef<{ jobId: string; status: RunStep; at: number } | undefined>(undefined);
@@ -130,50 +134,23 @@ export function RitePage({ client: given, briefer: givenBriefer, jobs = loadRepl
   const layers = kept?.rig.layers ?? replay?.rig.layers;
   const slots = step === undefined || layers === undefined ? {} : slotsAt(layers, step, p);
 
-  // A finished job goes into the library once, bound as the visitor chose, and is selected.
-  const keptFor = useRef<string | undefined>(undefined);
-  const add = library.add;
-  const ready = library.status === "ready";
-  useEffect(() => {
-    if (state.phase !== "done" || keptFor.current === state.jobId || !ready) return;
-    keptFor.current = state.jobId;
-    setKeepError(undefined);
-    recordOf(state.rig, state.assets)
-      .then(async (record) => {
-        const named = drawn.current === undefined ? record : { ...record, rig: { ...record.rig, name: drawn.current.name } };
-        const dressed = bound(named, bind);
-        await add(dressed);
-        setKept(dressed);
-      })
-      .catch(() => setKeepError("The new face's images could not be kept. Forge again."));
-  }, [state, ready, add, bind]);
-
   // Wake: once the face is drawn it flares and speaks one line.
-  const { assets } = useRigAssets(kept);
   const woke = useRef<string | undefined>(undefined);
   const toggleLine = speaker.toggle;
+  // Keyed on the record's id, not the record: a face folding in later does not cut the line short.
+  const keptId = kept?.id;
+  const drawnOnGlass = assets !== undefined;
   useEffect(() => {
-    if (kept === undefined || assets === undefined || woke.current === kept.id) return undefined;
-    woke.current = kept.id;
+    if (keptId === undefined || !drawnOnGlass || woke.current === keptId) return undefined;
+    woke.current = keptId;
     fireGesture("flare");
     const timer = setTimeout(toggleLine, 900);
     return () => clearTimeout(timer);
-  }, [kept, assets, fireGesture, toggleLine]);
-
-  const dress = useCallback(
-    (action: LookAction) =>
-      setKept((k) => {
-        if (k === undefined) return k;
-        const look = lookReducer(k.look, action);
-        void library.saveLook(k.id, look);
-        return { ...k, look };
-      }),
-    [library],
-  );
+  }, [keptId, drawnOnGlass, fireGesture, toggleLine]);
 
   const failure = state.phase === "failed" ? { code: state.code, message: state.message } : undefined;
   const describeFailure = failure !== undefined && DESCRIBE_CODES.includes(failure.code) ? failure : undefined;
-  const at = markOf(state.phase, chosen, describeFailure === undefined ? "forge" : "describe");
+  const at = markOf(painting ? "done" : state.phase, chosen, describeFailure === undefined ? "forge" : "describe");
   useEffect(() => setManual(undefined), [at]);
   const busy = state.phase === "running" || job.starting;
   // Words are briefed first (cast-forge 4.3); a drawing is drawn as it is.
@@ -190,7 +167,7 @@ export function RitePage({ client: given, briefer: givenBriefer, jobs = loadRepl
 
   const draw = (request: ForgeRequest): void => {
     seeded.current = undefined;
-    setKept(undefined);
+    forgetKept();
     drawn.current = request.brief;
     job.start(request);
   };
@@ -199,7 +176,7 @@ export function RitePage({ client: given, briefer: givenBriefer, jobs = loadRepl
   };
   const tryRealFace = (): void => {
     seeded.current = "refused_likeness";
-    setKept(undefined);
+    forgetKept();
     job.start({ mode: "prompt", prompt: draft.prompt.trim().length >= 10 ? draft.prompt.trim() : "A photograph of a real person's face" });
     seeded.current = undefined;
   };
@@ -210,7 +187,7 @@ export function RitePage({ client: given, briefer: givenBriefer, jobs = loadRepl
   const again = (): void => {
     job.reset();
     handshake.reset();
-    setKept(undefined);
+    forgetKept();
     setChosen(0);
     woke.current = undefined;
   };
@@ -276,11 +253,11 @@ export function RitePage({ client: given, briefer: givenBriefer, jobs = loadRepl
       />
       <section className={anatomy.centre} aria-label="The glass">
         <div className={anatomy.glassBox}>
-          {kept !== undefined && assets !== undefined ? (
+          {kept !== undefined && shown !== undefined ? (
             <Glass
-              rig={kept.rig}
+              rig={shown.rig}
               look={kept.look}
-              assets={assets}
+              assets={shown.assets}
               {...(gesture === undefined ? {} : { gesture })}
               {...(speaker.audio === undefined ? {} : { audio: speaker.audio })}
               {...(highlight === undefined ? {} : { highlight })}
@@ -359,6 +336,7 @@ export function RitePage({ client: given, briefer: givenBriefer, jobs = loadRepl
               {...(kept === undefined ? {} : { name: kept.rig.name, layers: kept.rig.layers.length, handoff: handoffOf(kept.id), id: kept.id })}
               {...(expressions === undefined ? {} : { expressions })}
               {...(keepError === undefined ? {} : { keepError })}
+              painting={painting}
               fallback={fallback}
             />,
           ]}

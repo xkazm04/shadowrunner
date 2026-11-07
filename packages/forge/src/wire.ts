@@ -74,9 +74,13 @@ export interface JobView {
   plane: "replay" | "live";
   /** Available from status "segmenting" on. */
   portraitUrl?: string;
-  /** Only when status is "done"; each `layer.file` is a key in `assets`. */
+  /**
+   * Once the job is awake: at "done", and at "expressing" once the eye step has settled (the rig's
+   * structure is final; forge-creator C1). Each `layer.file` is a key in `assets`. While
+   * "expressing", later views only add `Layer.variants` patches and their files.
+   */
   rig?: Rig;
-  /** file -> URL (https Blob URL on live, data: URL on replay/dev). */
+  /** file -> URL (https Blob URL on live, data: URL on replay/dev); sent with `rig`. */
   assets?: Record<string, string>;
   fill?: "edit" | "fallback";
   /** Brief jobs only, once the parts step has decided. */

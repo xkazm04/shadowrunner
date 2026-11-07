@@ -9,6 +9,13 @@
 //   it at once.
 // - The stored job keeps the request for retry. A picture too large for sessionStorage is stored
 //   without its image; a resumed job that then fails asks for the picture again (bad_input).
+//   A brief job (mode "brief") is stored with its brief and resumed only when that brief still
+//   passes `parseBrief`.
+// - forge-creator C1: the five-minute cap covers only the time to awake (the reducer's `awake`).
+//   After that the faces' tail has its own cap, TAIL_TIMEOUT_MS from `awakeAt` (remembered with the
+//   stored job, so a reload keeps it); running out of it `settle`s the job: done with the faces that
+//   arrived, never failed.
+import { parseBrief } from "@sr/forge/brief";
 import type { ForgeRequest } from "@sr/forge/wire";
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { ForgeError, type ForgeClient } from "../forgeClient";
@@ -18,6 +25,8 @@ export const POLL_MS = 1500;
 export const SLOW_POLL_MS = 5000;
 export const SLOW_AFTER_MS = 60_000;
 export const TIMEOUT_MS = 5 * 60_000;
+/** After awake: how long the faces may keep painting before the job settles as it stands. */
+export const TAIL_TIMEOUT_MS = 6 * 60_000;
 export const MAX_POLL_FAILURES = 3;
 export const JOB_KEY = "sr-forge-job";
 
@@ -25,6 +34,8 @@ export interface StoredJob {
   jobId: string;
   startedAt: number;
   request: ForgeRequest;
+  /** C1: when the job was first seen awake, ms. */
+  awakeAt?: number;
 }
 
 type Fields = Record<string, unknown>;
@@ -38,11 +49,17 @@ export function readStoredJob(storage: Storage | undefined): StoredJob | undefin
     const value: unknown = JSON.parse(text);
     if (!isRecord(value) || typeof value.jobId !== "string" || typeof value.startedAt !== "number" || !isRecord(value.request)) return undefined;
     const r = value.request;
-    if (r.mode !== "prompt" && r.mode !== "image") return undefined;
+    if (r.mode !== "prompt" && r.mode !== "image" && r.mode !== "brief") return undefined;
     const request: ForgeRequest = { mode: r.mode };
+    if (r.mode === "brief") {
+      const brief = parseBrief(r.brief);
+      if (!brief.ok) return undefined;
+      request.brief = brief.value;
+    }
     if (typeof r.prompt === "string") request.prompt = r.prompt;
     if (typeof r.imageBase64 === "string") request.imageBase64 = r.imageBase64;
-    return { jobId: value.jobId, startedAt: value.startedAt, request };
+    const awakeAt = typeof value.awakeAt === "number" && Number.isFinite(value.awakeAt) ? { awakeAt: value.awakeAt } : {};
+    return { jobId: value.jobId, startedAt: value.startedAt, request, ...awakeAt };
   } catch {
     return undefined;
   }
@@ -105,11 +122,20 @@ export function useForgeJob(client: ForgeClient, options: ForgeJobOptions = {}):
   // Resume a job this tab started before it left the page (or reloaded).
   useEffect(() => {
     const stored = readStoredJob(storage);
-    if (stored !== undefined) dispatch({ type: "start", jobId: stored.jobId, request: stored.request, at: stored.startedAt });
+    if (stored !== undefined) {
+      dispatch({ type: "start", jobId: stored.jobId, request: stored.request, at: stored.startedAt, ...(stored.awakeAt === undefined ? {} : { awakeAt: stored.awakeAt }) });
+    }
     // Read once at mount.
   }, []);
 
   const running = state.phase === "running" ? state : undefined;
+  // The poll loop reads the latest awake state without restarting on every view.
+  const awakeRef = useRef<{ awake: boolean; awakeAt?: number }>({ awake: false });
+  const isAwake = running?.awake !== undefined;
+  const awakeSince = running?.awakeAt;
+  useEffect(() => {
+    awakeRef.current = { awake: isAwake, ...(awakeSince === undefined ? {} : { awakeAt: awakeSince }) };
+  });
   const jobId = running?.jobId;
   const startedAt = running?.startedAt;
   const request = running?.request;
@@ -120,18 +146,26 @@ export function useForgeJob(client: ForgeClient, options: ForgeJobOptions = {}):
     let live = true;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let failures = 0;
+    let polled = false;
     const tick = async (): Promise<void> => {
       if (!live) return;
       const elapsed = now() - startedAt;
-      if (elapsed >= TIMEOUT_MS) {
+      const { awake, awakeAt } = awakeRef.current;
+      if (awakeAt === undefined && elapsed >= TIMEOUT_MS) {
         dispatch({ type: "fail", code: "upstream", message: "The forge took longer than five minutes.", request });
         return;
       }
+      // A resumed job remembered awake polls once for its rig before its tail can settle it.
+      if (awakeAt !== undefined && now() - awakeAt >= TAIL_TIMEOUT_MS && (awake || polled)) {
+        dispatch({ type: "settle", message: "The forge took longer than five minutes." });
+        return;
+      }
       try {
+        polled = true;
         const view = await clientRef.current.poll(jobId);
         if (!live) return;
         failures = 0;
-        dispatch({ type: "view", view });
+        dispatch({ type: "view", view, at: now() });
         if (view.status === "done" || view.status === "failed") return;
       } catch (error) {
         if (!live) return;
@@ -161,7 +195,9 @@ export function useForgeJob(client: ForgeClient, options: ForgeJobOptions = {}):
 
   // Remember the running job; forget it once it ends.
   useEffect(() => {
-    if (state.phase === "running") writeStoredJob(storage, { jobId: state.jobId, startedAt: state.startedAt, request: state.request });
+    if (state.phase === "running") {
+      writeStoredJob(storage, { jobId: state.jobId, startedAt: state.startedAt, request: state.request, ...(state.awakeAt === undefined ? {} : { awakeAt: state.awakeAt }) });
+    }
     else if (state.phase === "done" || state.phase === "failed") writeStoredJob(storage, undefined);
   }, [state, storage]);
 

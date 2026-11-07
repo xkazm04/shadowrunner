@@ -129,13 +129,28 @@ describe("replay plane", () => {
     expect(jobId).toMatch(/^replay_[a-z-]+_[0-9a-z]+$/);
     const seen: string[] = [];
     let last: JobView | undefined;
-    for (let t = t0; t <= t0 + 20_000; t += 500) {
+    // forge-creator C1: every bundled job has faces, so it walks a synthetic expressing hold, awake.
+    const WALK = [...ORDER.slice(0, 5), "expressing", "done"];
+    const patchCounts: number[] = [];
+    for (let t = t0; t <= t0 + 20_000; t += 250) {
       last = await view(await bundledReplay.get(jobId, t));
       if (seen.at(-1) !== last.status) seen.push(last.status);
       expect(last.plane).toBe("replay");
-      expect("portraitUrl" in last).toBe(ORDER.indexOf(last.status) >= 2);
+      expect("portraitUrl" in last).toBe(WALK.indexOf(last.status) >= 2);
+      expect("rig" in last).toBe(last.status === "expressing" || last.status === "done");
+      if (last.status === "expressing") {
+        const awake = validateRig(last.rig);
+        expect(awake.ok).toBe(true);
+        if (awake.ok) {
+          for (const layer of awake.value.layers) expect(last.assets?.[layer.file]).toBeDefined();
+          patchCounts.push(awake.value.layers.reduce((n, l) => n + Object.keys(l.variants ?? {}).length, 0));
+        }
+      }
     }
-    expect(seen).toEqual(ORDER);
+    expect(seen).toEqual(WALK);
+    expect(patchCounts[0]).toBe(0);
+    expect(patchCounts.every((n, i) => i === 0 || n >= (patchCounts[i - 1] ?? 0))).toBe(true);
+    expect(last?.expressions === undefined ? 0 : Object.keys(last.expressions).length).toBe(6);
     expect(["edit", "fallback"]).toContain(last?.fill);
     const rig = validateRig(last?.rig);
     expect(rig.ok).toBe(true);

@@ -33,3 +33,4 @@ export * from "./eyeArt.js";
 export * from "./eyeOrb.js";
 export * from "./faceEyes.js";
 export * from "./stability.js";
+export * from "./replayFaces.js";
