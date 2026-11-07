@@ -168,6 +168,28 @@ describe("the handshake", () => {
     expect(nameInput()?.value).toBe("The Tallyman");
   });
 
+  it("C4: the hook and up to three example lines are editable; an over-long line names its rule; blank slots are left out", async () => {
+    const tally = testBriefs()[1];
+    if (tally === undefined) throw new Error("no brief");
+    const withLines = { ...tally, example_lines: ["Every one of you is counted.", "Stand still, I lost my place."] };
+    await open({ brief: async () => ({ brief: withLines, plane: "live" }) });
+    await briefFor(TALLY);
+    const line = (n: number) => q<HTMLTextAreaElement>(`textarea[aria-label="Line ${n}"]`) as HTMLTextAreaElement;
+    expect([line(1).value, line(2).value, line(3).value]).toEqual(["Every one of you is counted.", "Stand still, I lost my place.", ""]);
+    await type(line(2), "x".repeat(161));
+    expect(button("Draw it").disabled).toBe(true);
+    expect(q('[role="status"]')?.textContent).toBe("Line 2 must be at most 160 characters.");
+    await type(line(2), "");
+    await type(line(3), "  Again, from the top.  ");
+    const hook = card()?.querySelector<HTMLTextAreaElement>("textarea") as HTMLTextAreaElement;
+    await type(hook, "Counts chat aloud and never loses count.");
+    expect(button("Draw it").disabled).toBe(false);
+    await click(button("Draw it"));
+    await flush();
+    expect(sent[0]?.brief?.example_lines).toEqual(["Every one of you is counted.", "Again, from the top."]);
+    expect(sent[0]?.brief?.persona_hook).toBe("Counts chat aloud and never loses count.");
+  });
+
   it("shows the ask in flight, then the card when it lands", async () => {
     const pending: ((r: BriefResponse) => void)[] = [];
     const tally = testBriefs()[1];

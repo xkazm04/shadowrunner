@@ -149,6 +149,18 @@
   cursor: pointer;
 }
 
+/* C4: the character sheet (who it is on air), read-only under VOICE. */
+.sheetLines {
+  display: grid;
+  gap: var(--sr-space-1);
+  margin: 0;
+  padding: 0 0 0 var(--sr-space-3);
+  color: var(--sr-text-strong);
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text-sm);
+  line-height: 1.4;
+}
+
 .transcript {
   min-block-size: 1.25rem;
   margin: var(--sr-space-2) 0 0;

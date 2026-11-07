@@ -31,6 +31,7 @@ import {
   type ShowScript,
 } from "@sr/engine";
 import type { Fetcher } from "../app/plane";
+import type { LocalScript } from "./sheetShow";
 import { HEALTH_POLL_MS, INITIAL_STAGE, stageStep, type StageEvent, type StageState } from "./stage";
 
 /** The default beat, and how long a caption-only line stays up (requirement 4.3). */
@@ -91,6 +92,8 @@ export interface ShowDeps {
   /** Blob -> URL for the player, and its release. */
   objectUrl(blob: Blob): string;
   revokeUrl(url: string): void;
+  /** C4, a sheet show on replay: replies and recordings come from here; no engine or voice request is made. */
+  local?: LocalScript;
 }
 
 /** The show clock: whole ms since start, strictly increasing per stamp. */
@@ -284,7 +287,7 @@ export function createShow(deps: ShowDeps): Show {
     };
     let reply: EngineReply;
     try {
-      reply = await requestReply(deps.fetch, req);
+      reply = deps.local === undefined ? await requestReply(deps.fetch, req) : deps.local.reply(req);
     } catch {
       if (!live(gen)) return;
       apply({ kind: "engine", ok: false });
@@ -304,17 +307,19 @@ export function createShow(deps: ShowDeps): Show {
     const caption = (voiced: boolean): Caption => ({ beat, line: reply.line, reply, voiced, ...(answered === undefined ? {} : { answered }) });
     set({ beat: beat + 1 });
 
-    const blob = await voiceFor(reply.line);
+    // A local script plays only an exact recording (a static URL, nothing to revoke); else the voice endpoint.
+    const recorded = deps.local?.recording(reply.line);
+    const blob = deps.local === undefined ? await voiceFor(reply.line) : undefined;
     if (!live(gen)) return;
-    if (blob === undefined) {
+    release();
+    const url = blob === undefined ? recorded : deps.objectUrl(blob);
+    if (url === undefined) {
       set({ caption: caption(false) });
       apply({ kind: "line", speaking: true });
       schedule(BEAT_MS, gen);
       return;
     }
-    release();
-    const url = deps.objectUrl(blob);
-    currentUrl = url;
+    if (blob !== undefined) currentUrl = url;
     set({ caption: caption(snap.sound === "on") });
     apply({ kind: "line", speaking: true });
     const startedAt = deps.now();

@@ -63,7 +63,8 @@
 
 .input,
 .role,
-.motion {
+.motion,
+.say {
   box-sizing: border-box;
   min-inline-size: 0;
   padding: var(--sr-space-1) var(--sr-space-2);
@@ -86,7 +87,6 @@
   font-size: var(--sr-size-text-lg);
 }
 
-.hook,
 .why {
   margin: var(--sr-space-1) 0 0;
   color: var(--sr-text);
@@ -168,6 +168,20 @@
 }
 
 /* The motion is a short sentence: it wraps and grows with its words instead of scrolling. */
+.say {
+  display: block;
+  inline-size: 100%;
+  field-sizing: content;
+  min-block-size: 2lh;
+  line-height: 1.35;
+  resize: vertical;
+}
+
+.lines {
+  display: grid;
+  gap: var(--sr-space-1);
+}
+
 .motion {
   grid-area: motion;
   inline-size: 100%;

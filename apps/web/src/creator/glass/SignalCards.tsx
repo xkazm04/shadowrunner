@@ -3,7 +3,9 @@
 // channel actions (Put on air to CH 2, Characters to CH 4) taken from the page manifest. Put on air
 // records the character first (`sr.onAir`, character-control), so the stage shows it.
 // "Export pack" (spec avatar-pack) opens the Export sheet for any character but the seeded Malakor.
+// C4: a forged character's sheet (archetype, hook, example lines) is shown under VOICE, read-only.
 import { VOICE_IDS, VOICES, type VoiceId } from "@sr/engine";
+import type { CharacterSheet } from "@sr/pack";
 import type { Gesture } from "@sr/rig";
 import { useEffect, useState } from "react";
 import { PAGES } from "../../app/pages";
@@ -88,6 +90,25 @@ export function VoiceCard({ voice, onVoice, onSpeak, speaking, line }: VoiceCard
           {line ?? ""}
         </span>
       </p>
+    </section>
+  );
+}
+
+/** C4: who a forged character is on air, from the brief the streamer approved (read-only). */
+export function SheetCard({ sheet }: { sheet: CharacterSheet }) {
+  return (
+    <section className={styles.card} aria-labelledby="sheet-title" data-sheet="">
+      <h2 id="sheet-title" className={styles.cardTitle}>
+        ON AIR AS <small>{sheet.archetype}</small>
+      </h2>
+      <p className={styles.voiceNote}>{sheet.hook}</p>
+      {sheet.lines.length > 0 && (
+        <ul className={styles.sheetLines} aria-label="Its lines">
+          {sheet.lines.map((line, i) => (
+            <li key={i}>{line}</li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }

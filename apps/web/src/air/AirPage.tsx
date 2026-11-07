@@ -10,6 +10,8 @@
 // character-control 6: the face is the character "Put on air" recorded (onAir.ts), with its saved
 // look; Malakor with his default look when none is recorded or it is gone. The reply's emotion
 // still sets look.emotion. The persona, the voice and the recorded show are the character's own (cast.ts).
+// C4: a forged character with a sheet and no recorded show plays its sheet's script; on replay the
+// script runs in the browser (no engine or voice request) and the slate says SCRIPTED.
 import { AvatarCanvas, type RigAssets } from "@sr/avatar";
 import { MAX_CHAT_CHARS } from "@sr/engine";
 import { defaultLook, type Look, type Rig } from "@sr/rig";
@@ -19,10 +21,11 @@ import styles from "./air.module.css";
 import { Captions } from "./Captions";
 import { CatacombFront, CatacombLights, CatacombPlate } from "./Catacomb";
 import { Chat } from "./Chat";
-import { castFor } from "./cast";
+import { castBank, castFor } from "./cast";
 import { loadRigAssets, MALAKOR_NAME, malakorRig } from "./malakor";
 import { OnAirLamp, VoiceTally } from "./OnAirLamp";
 import { useOnAir, type OnAirState } from "./onAir";
+import { localScript } from "./sheetShow";
 import { useLoudness } from "./useLoudness";
 import { useShow } from "./useShow";
 import { useStageLights } from "./useStageLights";
@@ -143,8 +146,14 @@ export function AirPage({ plane, badge, controls, strip }: AirPageProps) {
   const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
   const loudness = useLoudness(audio);
   const speaker = typeof who === "object" ? who : undefined;
-  const { id, name, voice } = speaker ?? {};
-  const cast = useMemo(() => castFor(id === undefined || name === undefined || voice === undefined ? undefined : { id, name, voice }), [id, name, voice]);
+  const { id, name, voice, sheet } = speaker ?? {};
+  const cast = useMemo(
+    () => castFor(id === undefined || name === undefined || voice === undefined ? undefined : { id, name, voice, ...(sheet === undefined ? {} : { sheet }) }),
+    [id, name, voice, sheet],
+  );
+  // The sheet's script on replay: answered in the browser, so no paid endpoint is ever asked.
+  const scripted = cast.scripted === true && plane === "replay";
+  const local = useMemo(() => (scripted ? localScript(cast.show, cast.persona.voice, castBank()) : undefined), [scripted, cast]);
   const { snapshot, now, post, soundOn } = useShow({
     show: cast.show,
     persona: cast.persona,
@@ -152,6 +161,7 @@ export function AirPage({ plane, badge, controls, strip }: AirPageProps) {
     // The show waits for the on-air lookup, so Malakor never starts talking in someone else's place.
     audio: who === "looking" ? null : audio,
     ensureRunning: loudness.ensureRunning,
+    ...(local === undefined ? {} : { local }),
   });
   const { status, caption, chat, sound } = snapshot;
   const speaking = status === "speaking";
@@ -215,6 +225,11 @@ export function AirPage({ plane, badge, controls, strip }: AirPageProps) {
           <div className={styles.slate}>
             <h1 className={styles.name}>{title}</h1>
             <p className={styles.from}>live from the Ninth Dark</p>
+            {scripted && (
+              <p className={styles.scripted} data-script="sheet">
+                SCRIPTED <small>its own lines</small>
+              </p>
+            )}
             <VoiceTally voiced={voiced} />
           </div>
           <OnAirLamp lit={onAir} />

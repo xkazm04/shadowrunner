@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { rigAssetsOf } from "../creator/library/assets";
 import { openLibrary, type CharacterRecord, type LibraryStore } from "../creator/library/libraryStore";
 import type { VoiceId } from "@sr/engine";
+import type { CharacterSheet } from "@sr/pack";
 import type { OnAirCharacter } from "../landing/cast";
 
 export const ON_AIR_KEY = "sr.onAir";
@@ -35,6 +36,8 @@ export function readOnAirId(): string | undefined {
 export interface OnAirRecord extends OnAirCharacter {
   id: string;
   voice: VoiceId;
+  /** Who a forged character is on air (C4), when its record has a sheet. */
+  sheet?: CharacterSheet;
 }
 
 export interface OnAirOptions {
@@ -50,7 +53,8 @@ export async function loadOnAir({ open = () => openLibrary(), decode = (r) => ri
     const entry = await (await open()).get(id);
     if (entry?.kind !== "ok") return undefined;
     const { record } = entry;
-    return { id: record.id, voice: record.voice, name: record.rig.name, rig: record.rig, look: record.look, assets: await decode(record) };
+    const sheet = record.sheet === undefined ? {} : { sheet: record.sheet };
+    return { id: record.id, voice: record.voice, name: record.rig.name, rig: record.rig, look: record.look, assets: await decode(record), ...sheet };
   } catch {
     return undefined;
   }

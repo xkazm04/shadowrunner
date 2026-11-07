@@ -1,9 +1,10 @@
 // The handshake card (cast-forge requirement 4.3): the brief the writer returned, laid out for
-// approval inside mark I. The streamer may rename the character, rename its style, and change each
-// planned part's role and motion or drop a part; "Draw it" starts the portrait from this brief
+// approval inside mark I. The streamer may rename the character, rewrite its persona hook and its
+// example lines (C4: up to three, what it says on air when no engine is live), rename its style,
+// and change each planned part's role and motion or drop a part; "Draw it" starts the portrait from this brief
 // (blocked while the edits break a rule, with the rule named), "Ask again" re-briefs from the words.
 // A recorded brief carries the RECORDED tag. The accent swatch is the brief's own colour data.
-import { BRIEF_ROLES, parseBrief, type BriefError } from "@sr/forge/brief";
+import { BRIEF_MAX_EXAMPLE_LINES, BRIEF_ROLES, parseBrief, type BriefError } from "@sr/forge/brief";
 import type { BriefPart, CharacterBrief } from "@sr/forge/wire";
 import { useEffect, useId, useRef, type CSSProperties } from "react";
 import marks from "./Marks.module.css";
@@ -23,6 +24,8 @@ export interface BriefCardProps {
 
 const FIELD: Readonly<Record<string, string>> = {
   "$.name": "The name",
+  "$.persona_hook": "The hook",
+  "$.example_lines": "The lines",
   "$.style.name": "The style",
   "$.parts": "The parts",
 };
@@ -30,13 +33,26 @@ const FIELD: Readonly<Record<string, string>> = {
 /** A parseBrief error in the card's words: the field (or part) and the rule. */
 export function problemOf(brief: CharacterBrief, error: BriefError | undefined): string | undefined {
   if (error === undefined) return undefined;
+  const line = /^\$\.example_lines\[(\d+)\]$/.exec(error.path);
+  if (line?.[1] !== undefined) return `Line ${Number(line[1]) + 1} ${error.message}.`;
   const part = /^\$\.parts\[(\d+)\]\.?(\w*)/.exec(error.path);
   const who = part?.[1] === undefined ? (FIELD[error.path] ?? "The brief") : `${brief.parts[Number(part[1])]?.name ?? "A part"}${part[2] ? ` ${part[2]}` : ""}`;
   return `${who} ${error.message}.`;
 }
 
+/** A typed line break becomes a space: hook and lines are one line each. */
+const oneLine = (text: string): string => text.replace(/\s*\n\s*/g, " ");
+
+/** The brief as parseBrief should see it: blank example lines are left out (a cleared slot is no line). */
+export function briefToCheck(brief: CharacterBrief): CharacterBrief {
+  const { example_lines: raw, ...rest } = brief;
+  const lines = (raw ?? []).filter((l) => l.trim() !== "");
+  return lines.length === 0 ? rest : { ...rest, example_lines: lines };
+}
+
 export function BriefCard({ brief, recorded, problem, busy, onEdit, onDraw, onAgain }: BriefCardProps) {
   const nameId = useId();
+  const hookId = useId();
   const styleId = useId();
   // The card arrives in view and in focus, so a keyboard or screen-reader user lands on it.
   const self = useRef<HTMLElement>(null);
@@ -51,6 +67,9 @@ export function BriefCard({ brief, recorded, problem, busy, onEdit, onDraw, onAg
         return { name: p.name, role: p.role, what: p.what, ...(p.follow === undefined ? {} : { follow: p.follow }), ...(motion === "" ? {} : { motion }) };
       }),
     });
+  // Three slots; a slot keeps its place while it is blank (briefToCheck drops it).
+  const slots = Array.from({ length: BRIEF_MAX_EXAMPLE_LINES }, (_, i) => brief.example_lines?.[i] ?? "");
+  const setLine = (at: number, text: string) => onEdit({ ...brief, example_lines: slots.map((l, i) => (i === at ? text : l)) });
   const lamp = { "--lamp": brief.accent_hex, "--lamp-2": brief.secondary_hex ?? brief.accent_hex } as CSSProperties;
   return (
     <section ref={self} tabIndex={-1} className={styles.card} aria-label="The brief" data-brief={recorded ? "recorded" : "live"}>
@@ -64,9 +83,18 @@ export function BriefCard({ brief, recorded, problem, busy, onEdit, onDraw, onAg
           NAME
         </label>
         <input id={nameId} className={styles.input} value={brief.name} maxLength={80} spellCheck={false} onChange={(e) => onEdit({ ...brief, name: e.currentTarget.value })} />
-        <p className={styles.hook}>
-          {brief.persona_hook}
-        </p>
+        <label className={marks.lbl} htmlFor={hookId}>
+          HOOK <small>who it is on air</small>
+        </label>
+        <textarea id={hookId} className={styles.say} value={brief.persona_hook} maxLength={480} rows={2} onChange={(e) => onEdit({ ...brief, persona_hook: oneLine(e.currentTarget.value) })} />
+        <span className={marks.lbl}>
+          LINES <small>what it says on air, up to {BRIEF_MAX_EXAMPLE_LINES}</small>
+        </span>
+        <div className={styles.lines} role="group" aria-label="Example lines">
+          {slots.map((line, i) => (
+            <textarea key={i} className={styles.say} aria-label={`Line ${i + 1}`} value={line} placeholder="a line in its own voice" maxLength={200} rows={1} onChange={(e) => setLine(i, oneLine(e.currentTarget.value))} />
+          ))}
+        </div>
         <label className={marks.lbl} htmlFor={styleId}>
           STYLE <small>its edges are the cut lines</small>
         </label>
@@ -145,7 +173,7 @@ export function Handshake({ state, busy, onEdit, onDraw, onAgain }: HandshakePro
       </div>
     );
   }
-  const checked = parseBrief(state.brief);
+  const checked = parseBrief(briefToCheck(state.brief));
   const problem = checked.ok ? undefined : problemOf(state.brief, checked.errors[0]);
   return (
     <BriefCard

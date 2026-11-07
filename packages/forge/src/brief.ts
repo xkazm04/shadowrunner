@@ -37,11 +37,16 @@ export const BRIEF_LIMITS = {
   styleName: 60,
   styleWhy: 300,
   portrait_prompt: MAX_PORTRAIT_PROMPT,
+  /** One example line (C4): a spoken on-air line stays short. */
+  example_line: 160,
 } as const;
+
+/** At most this many example lines in a brief (the character sheet's lines on air). */
+export const BRIEF_MAX_EXAMPLE_LINES = 3;
 
 /** design.md "Brief and handshake", exact; the design's line breaks are joined with single spaces. */
 export function BRIEF_PROMPT(request: string): string {
-  return `You design an original character to be a live 2.5D streaming co-host. It will be drawn as one portrait and cut into animation layers. From the streamer's request below, return JSON only with the fields name, one_line_request, archetype, persona_hook, accent_hex, secondary_hex, silhouette, parts, style, portrait_prompt. Rules: original fiction, never a real person or an existing character, no text or logos, horror not gore. The portrait is a frontal, centred, symmetrical head-and-shoulders bust on an empty near-black background with the jaw and both eyes visible. parts lists 6 to 24 parts, each a separate shape that does not overlap another, each with a role from head, jaw, eye_l, eye_r, eye, monocle, crown, hat, hair, accessory, torso, float, pulse; always include head, exactly one jaw, eyes and torso (a set of teeth or a lip that drops with the jaw may be a second part with role jaw that follows the jaw), and give the character one or two signature parts that float or pulse on their own, saying how they move. Choose a hard-edged graphic art style such as leaded stained glass, low-poly planes, flat poster fills with ink outlines, pixel art or a faceted painting, never soft painterly realism: its edges become the cut lines. portrait_prompt is under 900 characters, describes the character and every part in that style, and ends with the framing rules. Request: ${request.trim().slice(0, MAX_BRIEF_REQUEST)}`;
+  return `You design an original character to be a live 2.5D streaming co-host. It will be drawn as one portrait and cut into animation layers. From the streamer's request below, return JSON only with the fields name, one_line_request, archetype, persona_hook, accent_hex, secondary_hex, silhouette, parts, style, portrait_prompt. Rules: original fiction, never a real person or an existing character, no text or logos, horror not gore. The portrait is a frontal, centred, symmetrical head-and-shoulders bust on an empty near-black background with the jaw and both eyes visible. parts lists 6 to 24 parts, each a separate shape that does not overlap another, each with a role from head, jaw, eye_l, eye_r, eye, monocle, crown, hat, hair, accessory, torso, float, pulse; always include head, exactly one jaw, eyes and torso (a set of teeth or a lip that drops with the jaw may be a second part with role jaw that follows the jaw), and give the character one or two signature parts that float or pulse on their own, saying how they move. Choose a hard-edged graphic art style such as leaded stained glass, low-poly planes, flat poster fills with ink outlines, pixel art or a faceted painting, never soft painterly realism: its edges become the cut lines. portrait_prompt is under 900 characters, describes the character and every part in that style, and ends with the framing rules. example_lines gives three short lines the character would say on air in its own voice, each under 160 characters. Request: ${request.trim().slice(0, MAX_BRIEF_REQUEST)}`;
 }
 
 /**
@@ -82,6 +87,7 @@ export const BRIEF_SCHEMA = {
       properties: { name: { type: "string" }, why: { type: "string" } },
     },
     portrait_prompt: { type: "string" },
+    example_lines: { type: "array", items: { type: "string" }, description: "three short in-character lines" },
   },
 } as const;
 
@@ -105,7 +111,8 @@ const EYE_ROLES: readonly PartRole[] = ["eye_l", "eye_r", "eye"];
  * secondary `#rrggbb`; 6..24 parts with roles from PART_ROLES and unique `[a-z0-9_]` names (not
  * reserved); exactly one head and one jaw, plus at most one more jaw-role part (a teeth or lip set,
  * Reveille's teeth) whose follow names the jaw; at least one eye and one torso; a follow names another
- * part and the follow chain has no cycle; unknown fields are ignored.
+ * part and the follow chain has no cycle; optional example_lines: at most 3 lines of at most 160
+ * characters each (an empty list is omitted); unknown fields are ignored.
  */
 export function parseBrief(value: unknown): BriefResult {
   const errors: BriefError[] = [];
@@ -142,6 +149,7 @@ export function parseBrief(value: unknown): BriefResult {
   }
 
   const parts = parseBriefParts(value.parts, errors, text);
+  const lines = parseExampleLines(value.example_lines, err, text);
   if (errors.length > 0 || [name, oneLine, archetype, hook, accent, silhouette, prompt, style, parts].includes(undefined)) {
     return { ok: false, errors };
   }
@@ -156,11 +164,21 @@ export function parseBrief(value: unknown): BriefResult {
     parts: parts ?? [],
     style: style ?? { name: "", why: "" },
     portrait_prompt: prompt ?? "",
+    ...(lines === undefined || lines.length === 0 ? {} : { example_lines: lines }),
   };
   return { ok: true, value: brief };
 }
 
 type Text = (v: unknown, path: string, max: number) => string | undefined;
+
+/** Optional `example_lines`: at most 3 non-empty lines of at most 160 characters; an empty list is omitted. */
+function parseExampleLines(value: unknown, err: (path: string, message: string) => undefined, text: Text): string[] | undefined {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value)) return err("$.example_lines", "must be an array of lines");
+  if (value.length > BRIEF_MAX_EXAMPLE_LINES) return err("$.example_lines", `must list at most ${BRIEF_MAX_EXAMPLE_LINES} lines`);
+  const out = value.map((line, i) => text(line, `$.example_lines[${i}]`, BRIEF_LIMITS.example_line));
+  return out.every((line): line is string => line !== undefined) ? out : undefined;
+}
 
 function parseBriefParts(value: unknown, errors: BriefError[], text: Text): BriefPart[] | undefined {
   const err = (path: string, message: string): undefined => {

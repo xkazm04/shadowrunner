@@ -69,6 +69,29 @@ describe("castFor", () => {
     expect(castFor({ id: "forged-1", name: "Ghost", voice: "velvet" })).toEqual(castFor(undefined));
   });
 
+  it("C4: a forged character with a sheet goes on air as itself: own name, hook, lines, chosen voice, chat name", () => {
+    const sheet = { archetype: "Drowned diver", hook: "Hums shanties between lines.", lines: ["Forty fathoms of chat.", "Bubbles mean I laugh."] };
+    const cast = castFor({ id: "forged-1", name: "Brine, of the Forty Fathoms", voice: "velvet", sheet });
+    expect(cast.scripted).toBe(true);
+    expect(cast.self).toBe(chatName("Brine, of the Forty Fathoms"));
+    expect(cast.self).toBe("Brine");
+    expect(cast.persona.characterId).toBe("forged-1");
+    expect(cast.persona.name).toBe("Brine, of the Forty Fathoms");
+    expect(cast.persona.voice).toBe("velvet");
+    expect(cast.persona.bible).not.toBe(MALAKOR_PERSONA.bible);
+    expect(cast.persona.bible).not.toContain("Malakor");
+    for (const text of ["Brine, of the Forty Fathoms", sheet.hook, sheet.archetype, ...sheet.lines]) expect(cast.persona.bible).toContain(text);
+    expect(cast.show.characterId).toBe("forged-1");
+    expect(cast.show.beats.map((b) => b.reply.line)).toEqual(sheet.lines);
+  });
+
+  it("C4: a cast character with a recorded show keeps its show even with a sheet", () => {
+    const sheet = { archetype: "A", hook: "H", lines: ["L"] };
+    const withSheet = castFor({ id: "replay-reveille", name: NAMES.reveille ?? "", voice: "rasp", sheet });
+    expect(withSheet).toEqual(castFor({ id: "replay-reveille", name: NAMES.reveille ?? "", voice: "rasp" }));
+    expect(castFor({ id: "malakor", name: "Arch-Lich Malakor", voice: "clerk", sheet }).persona.bible).toBe(MALAKOR_PERSONA.bible);
+  });
+
   it("posts a long name as its first clause", () => {
     expect(chatName("Auntie Asp, Keeper of the Stone Stacks")).toBe("Auntie Asp");
     expect(chatName("Sir Vacant")).toBe("Sir Vacant");

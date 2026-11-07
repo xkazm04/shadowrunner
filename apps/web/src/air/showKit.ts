@@ -4,12 +4,15 @@
 import { ScriptedEngine, type EngineRequest, type ShowScript } from "@sr/engine";
 import { vi } from "vitest";
 import { MALAKOR_NAME, MALAKOR_PERSONA, malakorShow } from "./malakor";
+import type { LocalScript } from "./sheetShow";
 import { createShow, type PlayResult, type ShowDeps } from "./show";
 
 export interface Seen {
   engine: EngineRequest[];
   voice: string[];
   played: string[];
+  /** Every URL the fake fetch was asked for. */
+  fetched: string[];
 }
 
 export interface Options {
@@ -20,6 +23,8 @@ export interface Options {
   engineFails?: number;
   /** /api/health answers, in order; the last one repeats. Default: always healthy. */
   health?: boolean[];
+  /** C4: the sheet script answered in the browser. */
+  local?: LocalScript;
 }
 
 /** The audio of every line lasts this long in the fake player. */
@@ -28,9 +33,10 @@ export const LINE_MS = 12_000;
 export function setup(options: Options = {}) {
   const show = options.show ?? malakorShow();
   const engine = new ScriptedEngine(show);
-  const seen: Seen = { engine: [], voice: [], played: [] };
+  const seen: Seen = { engine: [], voice: [], played: [], fetched: [] };
   let engineFails = options.engineFails ?? 0;
   const fetch: ShowDeps["fetch"] = async (url, init) => {
+    seen.fetched.push(url);
     const body: unknown = JSON.parse(String(init?.body));
     if (url === "/api/engine/reply") {
       const req = body as EngineRequest;
@@ -68,6 +74,7 @@ export function setup(options: Options = {}) {
     },
     objectUrl: () => `blob:${seen.played.length}`,
     revokeUrl: () => undefined,
+    ...(options.local === undefined ? {} : { local: options.local }),
   };
   return { show: createShow(deps), seen, healthCalls };
 }

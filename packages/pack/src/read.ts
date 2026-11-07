@@ -3,6 +3,7 @@
 import { parseRigJson, readLook, type Rig } from "@sr/rig";
 import { unzipSync, type Unzipped } from "fflate";
 import { mimeOf, rigFiles } from "./files.js";
+import { readSheet } from "./sheet.js";
 import { PACK_FORMAT, PACK_LICENCES, PACK_MAX_BYTES, PACK_VERSION, type PackErrorCode, type PackLicence, type PackManifest, type PackResult } from "./types.js";
 
 type Fields = Record<string, unknown>;
@@ -103,7 +104,10 @@ export async function readPack(source: Uint8Array | ArrayBuffer | Blob): Promise
     const data = entries[`files/${name}`];
     if (data !== undefined) files[name] = new Blob([data], { type: mimeOf(name) });
   }
-  return { ok: true, pack: { manifest: { ...fields, look }, rig, look, voice: fields.voice, files } };
+  // An optional sheet that does not read is dropped, not refused: the face still loads (C4).
+  const sheet = raw.sheet === undefined ? undefined : readSheet(raw.sheet);
+  const extra = sheet === undefined ? {} : { sheet };
+  return { ok: true, pack: { manifest: { ...fields, look, ...extra }, rig, look, voice: fields.voice, ...extra, files } };
 }
 
 /** `readPack` of a Blob, or of the bytes fetched from a URL (`fetch_failed` on a non-2xx or network error). */

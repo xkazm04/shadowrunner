@@ -212,7 +212,8 @@ follows the jaw), and give the character one or two signature parts that float o
 move. Choose a hard-edged graphic art style such as leaded stained glass, low-poly planes, flat poster
 fills with ink outlines, pixel art or a faceted painting, never soft painterly realism: its edges become
 the cut lines. portrait_prompt is under 900 characters, describes the character and every part in that
-style, and ends with the framing rules. Request: <request>"
+style, and ends with the framing rules. example_lines gives three short lines the character would say
+on air in its own voice, each under 160 characters. Request: <request>"
 `parseBrief` validates every field and range (hex colours, part count, roles, unique `[a-z0-9_]`
 names, follow targets; exactly one head and one jaw, plus at most one more jaw-role part whose follow
 names the jaw); an invalid answer is retried once, then `upstream`. The brief model is the

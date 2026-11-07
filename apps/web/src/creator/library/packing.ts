@@ -9,7 +9,7 @@ export function canExport(record: CharacterRecord): boolean {
   return record.seeded !== true;
 }
 
-/** The pack input for a record: its rig, images, look and voice as saved now. */
+/** The pack input for a record: its rig, images, look, voice and character sheet as saved now. */
 export function packInputOf(record: CharacterRecord, { licence, author }: { licence: PackLicence; author?: string }): PackInput {
   const name = author?.trim() ?? "";
   return {
@@ -20,6 +20,7 @@ export function packInputOf(record: CharacterRecord, { licence, author }: { lice
     licence,
     ...(name === "" ? {} : { author: name }),
     createdAt: record.createdAt,
+    ...(record.sheet === undefined ? {} : { sheet: record.sheet }),
   };
 }
 
@@ -40,6 +41,7 @@ export function recordOfPack(pack: AvatarPack, takenIds: ReadonlySet<string>, no
     look: pack.look,
     voice: isVoiceId(pack.voice) ? pack.voice : DEFAULT_VOICE,
     createdAt: now.toISOString(),
+    ...(pack.sheet === undefined ? {} : { sheet: pack.sheet }),
   };
 }
 

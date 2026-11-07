@@ -22,7 +22,7 @@ import { MoodDial } from "./MoodDial";
 import { PaletteCard } from "./PaletteCard";
 import { decodePixels, type PixelReader } from "./pixels";
 import { ShapeCard } from "./ShapeCard";
-import { ChannelActions, GestureCard, VoiceCard } from "./SignalCards";
+import { ChannelActions, GestureCard, SheetCard, VoiceCard } from "./SignalCards";
 import { SignalTabs, type SignalTab } from "./SignalTabs";
 import { reducedMotion, usePick } from "./usePick";
 import { useLookAround } from "./useLookAround";
@@ -186,6 +186,7 @@ export function Anatomy({ record, library, cast, badge, readPixels = decodePixel
                   speaking={speaker.line !== undefined}
                   {...(speaker.line === undefined ? {} : { line: speaker.line.reply.line })}
                 />
+                {record.sheet !== undefined && <SheetCard sheet={record.sheet} />}
               </>
             ),
             look: (

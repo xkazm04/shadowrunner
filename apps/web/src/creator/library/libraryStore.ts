@@ -15,6 +15,7 @@
 //   second object store `meta` (database version 2), so a preset the user deleted is not put back
 //   and a new recorded job still joins an old library once.
 import { VOICE_IDS, type VoiceId } from "@sr/engine";
+import { readSheet, type CharacterSheet } from "@sr/pack";
 import { defaultLook, readLook, validateRig, type Look, type Rig } from "@sr/rig";
 import { extraFiles } from "./assets";
 
@@ -39,6 +40,8 @@ export interface CharacterRecord {
   createdAt: string;
   /** Malakor; cannot be deleted. */
   seeded?: true;
+  /** Who a forged character is on air: its approved brief (C4). Omitted when it has none. */
+  sheet?: CharacterSheet;
 }
 
 export type LibraryEntry =
@@ -113,6 +116,9 @@ export function readRecord(value: unknown): LibraryEntry {
     createdAt: typeof value.createdAt === "string" ? value.createdAt : new Date(0).toISOString(),
   };
   if (value.seeded === true) record.seeded = true;
+  // A sheet that does not read is dropped (the stage then treats the character as before C4).
+  const sheet = value.sheet === undefined ? undefined : readSheet(value.sheet);
+  if (sheet !== undefined) record.sheet = sheet;
   return { kind: "ok", record };
 }
 
