@@ -374,7 +374,7 @@ export function poseLayers(rig: Rig, look: Look, drive: Drive, options: PoseOpti
       const [bx, by] = layer.bbox;
       const [ax, ay] = layer.anchor;
       const [px, py] = apply(sim, ax, ay);
-      const faces = strengthen(facesOf(layer, look, drive.mood), face.expression.strength);
+      const faces = strengthen(facesOf(layer, look, drive.mood, face.expression.faces), face.expression.strength);
       const closure = closureOf(eye ?? layer);
       const lids = (eye ?? layer).closed !== undefined;
       const squint = layer.kind === "eye" ? clamp(squintOf(layer, faces, frame.mood.squint), 0, 1) : 0;

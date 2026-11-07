@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 // character-control task 4, requirement 6: the stage shows the character "Put on air" recorded,
 // with its saved look (the stage still leaves the backdrop out), and Malakor when the record is
-// missing. <AvatarCanvas> is a probe; the library is the in-memory twin.
+// missing (the look's face profile, retired faces included, rides along). <AvatarCanvas> is a probe; the library is the in-memory twin.
 import type { AvatarCanvasProps } from "@sr/avatar";
 import { defaultLook } from "@sr/rig";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -28,7 +28,7 @@ vi.mock(import("./malakor"), async (original) => ({ ...(await original()), loadR
 function record(): CharacterRecord {
   const rig = testRig("ghost-1", "Ghost One");
   const assets = Object.fromEntries(rig.layers.map((l) => [l.file, new Blob([l.file])]));
-  const look = { ...defaultLook(rig), hidden: ["crown"], shape: { crown: { size: 1.5, sx: 1, sy: 1, dx: 0, dy: 0, rot: 0 } } };
+  const look = { ...defaultLook(rig), hidden: ["crown"], shape: { crown: { size: 1.5, sx: 1, sy: 1, dx: 0, dy: 0, rot: 0 } }, face: { expression: { faces: { showman: "procedural" as const } } } };
   return { id: rig.id, rig, assets, look, voice: "crypt", createdAt: "2026-11-01T00:00:00.000Z" };
 }
 
@@ -63,6 +63,8 @@ describe("AirPage on air", () => {
     expect(face?.rig.id).toBe("ghost-1");
     expect(face?.look.shape?.crown?.size).toBe(1.5);
     expect(face?.look.hidden).toEqual(["background", "crown"]);
+    // retire-a-face: a face retired in the creator stays retired on air.
+    expect(face?.look.face).toEqual({ expression: { faces: { showman: "procedural" } } });
     expect(m.container.querySelector("h1")?.textContent).toBe("Ghost One");
   });
 

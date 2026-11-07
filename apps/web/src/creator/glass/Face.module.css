@@ -83,7 +83,50 @@
   gap: var(--sr-space-1);
 }
 
+/* FACES (retire-a-face): one row per expression family, name | state | Show | Retire. A painted
+   family's state reads in face-glow, like a changed slider; no transitions, so nothing to still. */
+.families {
+  display: grid;
+  gap: var(--sr-space-1);
+  margin: var(--sr-space-1) 0;
+  padding: 0;
+  list-style: none;
+}
+
+.family {
+  display: grid;
+  grid-template-columns: 6.5rem 1fr auto auto;
+  align-items: center;
+  gap: var(--sr-space-2);
+  color: var(--sr-text);
+  font-size: var(--sr-size-text-sm);
+}
+
+.familyName {
+  color: var(--sr-text-strong);
+  text-transform: capitalize;
+}
+
+.familyState {
+  font-family: var(--sr-font-type);
+}
+
+.family[data-state="painted"] .familyState {
+  color: var(--sr-face-glow);
+  font-weight: 700;
+}
+
+.family button:disabled {
+  color: var(--sr-text-muted);
+  cursor: not-allowed;
+}
+
 @media (max-width: 30rem) {
+  .family {
+    grid-template-columns: 5.5rem 1fr auto auto;
+    gap: var(--sr-space-1);
+  }
+
   .row {
     grid-template-columns: 6.25rem 1fr 3.25rem;
     gap: var(--sr-space-1);

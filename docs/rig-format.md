@@ -332,6 +332,7 @@ optional and omitted when absent:
 | `motion.gesture` | 1 | `[0, 2]` | Multiplier of the gesture peaks. |
 | `motion.breath` | 0.3 | `[0, 1]` | Breathing idle amplitude (see "Eyes"). |
 | `expression.strength` | 1 | `[0, 1]` | Multiplier of every expression face's weight. |
+| `expression.faces` | none | family -> `"procedural"` | Retired faces (retire-a-face): each named family's painted face is not drawn, as if no layer had a variant for it, so procedural motion carries that mood. Omitted when no family is retired. |
 | `mouth.emotion` | 1 | `[0, 1.5]` | Multiplier of the emotion's bias on the player's mouth (warp and drawn). |
 
 `resolveFace(rig, look)` (`packages/rig/src/face.ts`) is the only place defaults apply: each field
@@ -339,6 +340,16 @@ is `Look.face`'s, else `Rig.face`'s, else the default, clamped to its range. `re
 stored profile (a field that is not a finite number in range is reported and dropped). Every
 consumer reads the profile through `resolveFace`: the avatar player every frame (a look may change
 live), and the creator's Face panel.
+
+`expression.faces` (amended by retire-a-face; the format stays version 1) is not a number, so it
+has no default or range: its keys are expression families (`joy`, `showman`, `anger`, `gloom`,
+`smug`, `suspicion`) and its only value is `"procedural"`. `resolveFace` takes the **union** of
+`Rig.face`'s and `Look.face`'s retirements, so a look can retire a family the rig paints but cannot
+bring back one the rig itself retired. `readFace` keeps known families set to `"procedural"`,
+reports and drops any other value, and drops unknown families silently; the families are written
+in the order above. The creator's Face tab writes it on the look (Retire / Restore per family), so
+it is saved with the character, rides `sr.onAir` to the stage, embed, overlay and studio, and
+travels in a pack's manifest `look`.
 
 ### PartShape
 
@@ -425,7 +436,7 @@ One per drawn layer, in `z` order. A layer is drawn unless it is named in `look.
 | `rotation` | number | Radians, clockwise on the y-down canvas, about the posed anchor. |
 | `opacity` | number | 0..1. 1, except an iris whose eye has `closed` art: `1 - closure` while it blinks. |
 | `tint` | number | Light gain multiplied into the layer colour; 1 = as drawn. |
-| `faces` | `{ family, weight }[]` | Only on a layer with `variants`: with `m = smoothstep(mix)`, the outgoing family at `1 - m` and the incoming at `m`, each listed only if the layer has a variant for it (one family on both sides is listed once at 1; zero weights are dropped), each times `expression.strength` (face-control). Omitted when empty: the base only. The renderer draws the base at opacity `1 - sum(weights of replace faces)`, then each patch at its weight, in the layer's transform. |
+| `faces` | `{ family, weight }[]` | Only on a layer with `variants`: with `m = smoothstep(mix)`, the outgoing family at `1 - m` and the incoming at `m`, each listed only if the layer has a variant for it and the profile does not retire it (`expression.faces`, retire-a-face) (one family on both sides is listed once at 1; zero weights are dropped), each times `expression.strength` (face-control). Omitted when empty: the base only. The renderer draws the base at opacity `1 - sum(weights of replace faces)`, then each patch at its weight, in the layer's transform. |
 | `closed` | number | Only on an `eye` with `closed` art while it blinks (face-control): the closure 0..1; the renderer draws the closed art over the eye at that weight. |
 
 ### Rules

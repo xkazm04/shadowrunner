@@ -1,20 +1,27 @@
 // The face profile (face-control): defaults, limits, the merge of Rig.face and Look.face, and the
 // checked read of a stored profile. Every consumer (the avatar driver and pose, the creator's Face
 // panel) reads the profile through `resolveFace`, so defaults live in exactly one place.
-import type { Look, Rig, RigFace } from "./types.js";
+//
+// retire-a-face: `expression.faces` names families whose painted face is retired to procedural
+// motion. It is not a number, so it is not a FACE_FIELDS entry: `readFace` reads it on its own,
+// `withRetired` sets it, and `resolveFace` takes the union of Rig.face's and Look.face's (a look can
+// retire a family the rig paints; it cannot bring back one the rig itself retired).
+import { EXPRESSION_FAMILIES } from "./control.js";
+import type { ExpressionFamily, Look, RetiredFaces, Rig, RigFace } from "./types.js";
 
 /** A profile with every field filled. */
 export interface ResolvedFace {
   gaze: { range: number; saccadeRate: number; habits: { chat: number; content: number; host: number } };
   motion: { drift: number; tilt: number; gesture: number; breath: number };
-  expression: { strength: number };
+  /** `faces`: every retired family (Rig.face's and Look.face's), `{}` when none is. */
+  expression: { strength: number; faces: RetiredFaces };
   mouth: { emotion: number };
 }
 
 export const FACE_DEFAULTS: ResolvedFace = {
   gaze: { range: 0.6, saccadeRate: 1.2, habits: { chat: 1, content: 1, host: 1 } },
   motion: { drift: 1, tilt: 1, gesture: 1, breath: 0.3 },
-  expression: { strength: 1 },
+  expression: { strength: 1, faces: {} },
   mouth: { emotion: 1 },
 };
 
@@ -76,9 +83,38 @@ export function resolveFace(rig: Pick<Rig, "face"> | undefined, look?: Pick<Look
       habits: { chat: pick("gaze.habits.chat"), content: pick("gaze.habits.content"), host: pick("gaze.habits.host") },
     },
     motion: { drift: pick("motion.drift"), tilt: pick("motion.tilt"), gesture: pick("motion.gesture"), breath: pick("motion.breath") },
-    expression: { strength: pick("expression.strength") },
+    expression: { strength: pick("expression.strength"), faces: { ...retiredOf(rig?.face), ...retiredOf(look?.face) } },
     mouth: { emotion: pick("mouth.emotion") },
   };
+}
+
+/** The families `face` retires, read leniently (anything but `"procedural"` on a known family is ignored). */
+function retiredOf(face: RigFace | undefined): RetiredFaces {
+  const faces: unknown = isRecord(face) && isRecord(face.expression) ? face.expression.faces : undefined;
+  const out: RetiredFaces = {};
+  if (!isRecord(faces)) return out;
+  for (const family of EXPRESSION_FAMILIES) if (faces[family] === "procedural") out[family] = "procedural";
+  return out;
+}
+
+/** Whether `family`'s painted face is retired in a resolved profile. */
+export const isRetired = (face: Pick<ResolvedFace, "expression">, family: ExpressionFamily): boolean => face.expression.faces[family] === "procedural";
+
+/**
+ * `face` with `family` retired (or restored), a new object. Families stay in EXPRESSION_FAMILIES
+ * order; an empty `faces`, `expression` or profile is left out (`{}` when nothing is left).
+ */
+export function withRetired(face: RigFace | undefined, family: ExpressionFamily, retired: boolean): RigFace {
+  const base: RigFace = isRecord(face) ? (JSON.parse(JSON.stringify(face)) as RigFace) : {};
+  const now = retiredOf(base);
+  const faces: RetiredFaces = {};
+  for (const f of EXPRESSION_FAMILIES) if (f === family ? retired : now[f] !== undefined) faces[f] = "procedural";
+  const expression = { ...base.expression };
+  delete expression.faces;
+  if (Object.keys(faces).length > 0) expression.faces = faces;
+  delete base.expression;
+  if (Object.keys(expression).length > 0) base.expression = expression;
+  return base;
 }
 
 export interface FaceProblem {
@@ -88,8 +124,9 @@ export interface FaceProblem {
 
 /**
  * A stored profile: every known field that is a finite number inside its limits is kept, anything
- * else is reported (`problems`) and dropped. Unknown keys are dropped silently. Undefined when
- * nothing is left.
+ * else is reported (`problems`) and dropped; so is an `expression.faces` entry that is not
+ * `"procedural"`. Unknown keys (and unknown families) are dropped silently. Undefined when nothing is
+ * left.
  */
 export function readFace(value: unknown, path: string): { face?: RigFace; problems: FaceProblem[] } {
   if (value === undefined) return { problems: [] };
@@ -107,5 +144,15 @@ export function readFace(value: unknown, path: string): { face?: RigFace; proble
     }
     face = withFaceValue(face, field, at);
   }
-  return face === undefined ? { problems } : { face, problems };
+  const faces: unknown = isRecord(value.expression) ? value.expression.faces : undefined;
+  if (faces !== undefined && !isRecord(faces)) problems.push({ path: `${path}.expression.faces`, message: `${path}.expression.faces: expected an object of family -> "procedural"` });
+  if (isRecord(faces)) {
+    for (const family of EXPRESSION_FAMILIES) {
+      const v = faces[family];
+      if (v === undefined) continue;
+      if (v === "procedural") face = withRetired(face, family, true);
+      else problems.push({ path: `${path}.expression.faces.${family}`, message: `${path}.expression.faces.${family}: expected "procedural"` });
+    }
+  }
+  return face === undefined || Object.keys(face).length === 0 ? { problems } : { face, problems };
 }

@@ -64,11 +64,13 @@ Optional fields are **omitted, never `null`**.
 | `gesture` | string, optional | `nod`, `tilt`, `lean_in`, `recoil`, `glare` or `flare` |
 | `regions` | object, optional | region colours keyed `<layer>/<slotId>` -> `#rrggbb` |
 | `shape` | object, optional | part reshapes keyed by layer name |
+| `face` | object, optional | the viewer's face profile (`RigFace`, rig-format.md "Face profile"), including `expression.faces`, the families retired to procedural motion |
 
 The look is read against the pack's own rig (`@sr/rig` `readLook(look, rig)`). A missing or
 malformed base field (palette colours as `#rrggbb` for `glow`, `eye`, `rim`, `mouth`; `hidden`;
 a known `emotion`; a known `gesture` when present) makes the pack invalid (`bad_look`). A single
-`regions` or `shape` entry that does not fit the rig is dropped, not fatal.
+`regions` or `shape` entry that does not fit the rig is dropped, not fatal, as is a `face` field
+out of range or an `expression.faces` value other than `"procedural"`.
 
 ### Licence values
 | value | meaning |
