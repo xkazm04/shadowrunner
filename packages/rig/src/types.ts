@@ -183,6 +183,9 @@ export interface Rig {
  * A face profile (face-control). Every field is optional; `resolveFace` (face.ts) fills defaults
  * and clamps to FACE_LIMITS. `Look.face` overrides `Rig.face` field by field.
  */
+/** Expression families whose painted face is retired to procedural motion (retire-a-face). */
+export type RetiredFaces = Partial<Record<ExpressionFamily, "procedural">>;
+
 export interface RigFace {
   gaze?: {
     /** How far the iris travels, 0..1 of the socket's half extent. */
@@ -200,8 +203,11 @@ export interface RigFace {
     /** Breathing idle amplitude, 0 = none. */
     breath?: number;
   };
-  /** How strongly the painted expression faces show, 0..1. */
-  expression?: { strength?: number };
+  /**
+   * How strongly the painted expression faces show, 0..1; `faces` retires a family's painted face
+   * to procedural motion (retire-a-face), as if its variants were absent. Omitted when none is.
+   */
+  expression?: { strength?: number; faces?: RetiredFaces };
   /** How strongly emotion bends the mouth (warp and drawn), 0..1.5. */
   mouth?: { emotion?: number };
 }

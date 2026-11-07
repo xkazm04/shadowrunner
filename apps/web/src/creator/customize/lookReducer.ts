@@ -16,6 +16,10 @@
 //   value (Rig.face, else FACE_DEFAULTS) is deleted, as is an empty `look.face`, so an untouched
 //   face leaves no trace and the character's own profile shows through. A value outside FACE_LIMITS
 //   is clamped; one that is not a finite number is refused (same look back).
+// - Retired faces (retire-a-face) live in `look.face.expression.faces` (withRetired keeps them in
+//   family order, an empty map left out). Retiring a retired family or restoring a painted one gives
+//   the same look back. "Reset to character default" (faceReset) resets the sliders but keeps the
+//   retirements: they have their own Restore, and a verdict on a face is not a slider tweak.
 import {
   clampShape,
   defaultLook,
@@ -24,7 +28,9 @@ import {
   faceValue,
   isIdentityShape,
   withFaceValue,
+  withRetired,
   type Emotion,
+  type ExpressionFamily,
   type FaceField,
   type Look,
   type Palette,
@@ -44,8 +50,10 @@ export type LookAction =
   | { type: "shapeResetAll" }
   /** One face profile field set over `rig`'s own profile. */
   | { type: "face"; field: FaceField; value: number; rig: Pick<Rig, "face"> }
-  /** Back to the character's own profile: `look.face` deleted. */
-  | { type: "faceReset" };
+  /** Back to the character's own profile: `look.face` deleted but for its retired faces. */
+  | { type: "faceReset" }
+  /** One family's painted face retired to procedural motion (`retired: true`) or restored. */
+  | { type: "retire"; family: ExpressionFamily; retired: boolean };
 
 const HEX = /^#?([0-9a-f]{6})$/i;
 
@@ -79,6 +87,14 @@ const without = <T>(map: Readonly<Record<string, T>> | undefined, key: string): 
   Object.fromEntries(Object.entries(map ?? {}).filter(([k]) => k !== key));
 
 const sortedUnique = (names: readonly string[]): string[] => [...new Set(names)].sort();
+
+/** `look` with `face` (left out when undefined or empty). */
+function withFace(look: Look, face: Look["face"]): Look {
+  const next = copy(look);
+  delete next.face;
+  if (face !== undefined && Object.keys(face).length > 0) next.face = face;
+  return next;
+}
 
 export function lookReducer(look: Look, action: LookAction): Look {
   switch (action.type) {
@@ -128,17 +144,15 @@ export function lookReducer(look: Look, action: LookAction): Look {
       const [min, max] = FACE_LIMITS[action.field];
       const value = Math.min(max, Math.max(min, action.value));
       const own = faceValue(action.rig.face, action.field) ?? faceValue(FACE_DEFAULTS, action.field);
-      const face = withFaceValue(look.face, action.field, value === own ? undefined : value);
-      const next = copy(look);
-      delete next.face;
-      if (Object.keys(face).length > 0) next.face = face;
-      return next;
+      return withFace(look, withFaceValue(look.face, action.field, value === own ? undefined : value));
     }
     case "faceReset": {
       if (look.face === undefined) return look;
-      const next = copy(look);
-      delete next.face;
-      return next;
+      return withFace(look, look.face.expression?.faces === undefined ? undefined : { expression: { faces: { ...look.face.expression.faces } } });
+    }
+    case "retire": {
+      if ((look.face?.expression?.faces?.[action.family] === "procedural") === action.retired) return look;
+      return withFace(look, withRetired(look.face, action.family, action.retired));
     }
   }
 }

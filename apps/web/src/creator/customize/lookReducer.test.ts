@@ -1,4 +1,4 @@
-import { defaultLook, FACE_FIELDS, FACE_LIMITS, faceValue, readFace, resolveFace, type Emotion, type Look, type Palette } from "@sr/rig";
+import { defaultLook, EXPRESSION_FAMILIES, FACE_FIELDS, FACE_LIMITS, faceValue, readFace, resolveFace, type Emotion, type Look, type Palette } from "@sr/rig";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { testRig } from "../testFixtures";
@@ -34,6 +34,7 @@ const actionArb: fc.Arbitrary<LookAction> = fc.oneof(
     rig: fc.constant(testRig()),
   }),
   fc.constant({ type: "faceReset" as const }),
+  fc.record({ type: fc.constant("retire" as const), family: fc.constantFrom(...EXPRESSION_FAMILIES), retired: fc.boolean() }),
 );
 
 function deepFreeze<T>(value: T): T {
@@ -145,5 +146,35 @@ describe("lookReducer face (face-control)", () => {
     expect("face" in lookReducer(moody, { type: "faceReset" })).toBe(false);
     expect(lookReducer(base, { type: "faceReset" })).toBe(base);
     expect("face" in lookReducer(moody, { type: "reset", rig })).toBe(false);
+  });
+});
+
+describe("lookReducer retire (retire-a-face)", () => {
+  const rig = testRig();
+  const base = defaultLook(rig);
+
+  it("retire then restore is the identity; the same state twice gives the same look back (property)", () => {
+    fc.assert(
+      fc.property(lookArb, fc.array(actionArb, { maxLength: 6 }), fc.constantFrom(...EXPRESSION_FAMILIES), (look, actions, family) => {
+        const start = actions.reduce(lookReducer, look);
+        if (start.face?.expression?.faces?.[family] !== undefined) return;
+        const retired = lookReducer(start, { type: "retire", family, retired: true });
+        expect(retired.face?.expression?.faces?.[family]).toBe("procedural");
+        expect(lookReducer(retired, { type: "retire", family, retired: true })).toBe(retired);
+        expect(lookReducer(retired, { type: "retire", family, retired: false })).toEqual(start);
+      }),
+    );
+  });
+
+  it("writes look.face.expression.faces in family order, keeps it through other edits and faceReset; reset clears it", () => {
+    const one = lookReducer(base, { type: "retire", family: "showman", retired: true });
+    expect(one.face).toEqual({ expression: { faces: { showman: "procedural" } } });
+    const two = lookReducer(lookReducer(one, { type: "retire", family: "joy", retired: true }), { type: "face", field: "gaze.range", value: 0.2, rig });
+    expect(JSON.stringify(two.face?.expression)).toBe('{"faces":{"joy":"procedural","showman":"procedural"}}');
+    expect(lookReducer(two, { type: "faceReset" }).face).toEqual({ expression: { faces: { joy: "procedural", showman: "procedural" } } });
+    expect(lookReducer(two, { type: "emotion", emotion: "theatrical" }).face).toEqual(two.face);
+    expect("face" in lookReducer(two, { type: "reset", rig })).toBe(false);
+    expect(lookReducer(base, { type: "retire", family: "gloom", retired: false })).toBe(base);
+    expect("face" in lookReducer(one, { type: "retire", family: "showman", retired: false })).toBe(false);
   });
 });

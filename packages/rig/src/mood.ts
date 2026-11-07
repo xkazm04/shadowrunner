@@ -13,10 +13,12 @@
 // - Faces: when the outgoing and incoming families are the same (amused -> delighted, both joy) the
 //   one family is listed once with weight 1, so a crossfade between two moods of one family never
 //   dims its face; zero weights are dropped, and an empty list is omitted.
+// - Retired faces (retire-a-face): a family in `retired` adds no weight, exactly as if the layer had
+//   no variant for it, so procedural motion carries that mood; other families keep their weights.
 import { moodDrive, smoothstep, type EmotionDrive } from "./look.js";
 import { EMOTION_FAMILY, clampShape } from "./control.js";
 import type { LayerPose } from "./pose.js";
-import type { ExpressionFamily, Layer, Look, PartShape, Rig } from "./types.js";
+import type { ExpressionFamily, Layer, Look, PartShape, RetiredFaces, Rig } from "./types.js";
 
 /** design.md: the inner end turns by `-browLift * BROW_TILT_DEG_PER_LIFT` degrees on the left brow. */
 export const BROW_TILT_DEG_PER_LIFT = 600;
@@ -57,8 +59,8 @@ export function browPoses(rig: Rig, browLift: number): Map<string, BrowPose> {
   return out;
 }
 
-/** design.md "Faces": the layer's face weights, or undefined when it shows only its base. */
-export function facesOf(layer: Layer, look: Pick<Look, "emotion">, mood: { from: Look["emotion"]; mix: number } | undefined): LayerPose["faces"] {
+/** design.md "Faces": the layer's face weights, or undefined when it shows only its base. A `retired` family adds none. */
+export function facesOf(layer: Layer, look: Pick<Look, "emotion">, mood: { from: Look["emotion"]; mix: number } | undefined, retired?: RetiredFaces): LayerPose["faces"] {
   const variants = layer.variants;
   if (variants === undefined) return undefined;
   const fb = EMOTION_FAMILY[look.emotion];
@@ -66,7 +68,7 @@ export function facesOf(layer: Layer, look: Pick<Look, "emotion">, mood: { from:
   const m = mood === undefined ? 1 : smoothstep(mood.mix);
   const weights = new Map<ExpressionFamily, number>();
   const add = (family: ExpressionFamily | null, weight: number): void => {
-    if (family === null || variants[family] === undefined || weight <= 0) return;
+    if (family === null || variants[family] === undefined || weight <= 0 || retired?.[family] === "procedural") return;
     weights.set(family, (weights.get(family) ?? 0) + weight);
   };
   add(fa, 1 - m);

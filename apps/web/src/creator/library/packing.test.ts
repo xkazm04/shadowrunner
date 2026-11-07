@@ -2,7 +2,7 @@ import { readPack, writePack, type AvatarPack, type PackErrorCode } from "@sr/pa
 import { defaultLook } from "@sr/rig";
 import { describe, expect, it } from "vitest";
 import { testRig } from "../testFixtures";
-import type { CharacterRecord } from "./libraryStore";
+import { readRecord, type CharacterRecord } from "./libraryStore";
 import { canExport, importError, packInputOf, recordOfPack } from "./packing";
 
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
@@ -95,6 +95,24 @@ describe("packInputOf", () => {
     const plain = await readPack(await writePack(packInputOf(r, { licence: "CC0-1.0", author: "" })));
     if (!plain.ok) throw new Error(plain.error.detail);
     expect("face" in recordOfPack(plain.pack, new Set(), NOW).look).toBe(false);
+  });
+
+  it("retire-a-face: retired faces survive export and import and a library reload (readRecord)", async () => {
+    const r = record();
+    const face = { expression: { strength: 0.6, faces: { joy: "procedural" as const, showman: "procedural" as const } } };
+    const tuned = { ...r, look: { ...r.look, emotion: "theatrical" as const, face } };
+    const read = await readPack(await writePack(packInputOf(tuned, { licence: "CC0-1.0", author: "" })));
+    if (!read.ok) throw new Error(read.error.detail);
+    const back = recordOfPack(read.pack, new Set(), NOW);
+    expect(back.look.face).toEqual(face);
+    const reloaded = readRecord(back);
+    if (reloaded.kind !== "ok") throw new Error("the record did not reload");
+    expect(reloaded.record.look.face).toEqual(face);
+    // A value other than "procedural" is dropped on reload, never the look.
+    const bad = readRecord({ ...back, look: { ...back.look, face: { expression: { faces: { joy: "maybe" } } } } });
+    if (bad.kind !== "ok") throw new Error("the record did not reload");
+    expect(bad.record.look.emotion).toBe("theatrical");
+    expect("face" in bad.record.look).toBe(false);
   });
 });
 

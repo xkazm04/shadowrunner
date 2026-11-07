@@ -7,6 +7,8 @@
 // Shape); selecting a part (a Layer stack name, or a pick on the glass) switches to Look.
 // face-control: a third tab, Face (FaceCard), writes Look.face through the same reducer and save;
 // its Look around steers the glass's gaze (useLookAround).
+// retire-a-face: under it, FACES (FaceFamilies) retires or restores each family's painted face
+// through the same reducer and save; its Show puts the glass, never the saved look, at a family.
 import type { VoiceId } from "@sr/engine";
 import { regionKey, resolveFace, resolveGesture, type Emotion, type Gesture, type Look } from "@sr/rig";
 import { useCallback, useEffect, useReducer, useRef, useState, type CSSProperties, type ReactNode } from "react";
@@ -15,6 +17,7 @@ import type { CharacterRecord } from "../library/libraryStore";
 import { useRigAssets, type Library } from "../library/useLibrary";
 import { useSpeaker } from "../useSpeaker";
 import { FaceCard } from "./FaceCard";
+import { FAMILY_EMOTION, FaceFamilies, useFacePreview } from "./FaceFamilies";
 import { Glass } from "./Glass";
 import { gestureLabel, useGesturePulse } from "./gestures";
 import { LayerRail, useBlobUrls } from "./LayerRail";
@@ -68,6 +71,9 @@ export function Anatomy({ record, library, cast, badge, readPixels = decodePixel
   const [highlight, setHighlight] = useState<string | undefined>(undefined);
   const [around, setAround] = useState(false);
   const gaze = useLookAround(around, resolveFace(record.rig, look).gaze.habits);
+  const reduced = reducedMotion();
+  const { preview, show } = useFacePreview(reduced);
+  const glassLook = preview === undefined ? look : { ...look, emotion: FAMILY_EMOTION[preview] };
   const { assets, failed } = useRigAssets(record);
   const thumbs = useBlobUrls(record.assets);
   const speaker = useSpeaker((line) => {
@@ -119,7 +125,9 @@ export function Anatomy({ record, library, cast, badge, readPixels = decodePixel
       ? "Speaking"
       : gesture !== undefined && lastGesture !== undefined
         ? `Gesture · ${lastGesture}`
-        : `${look.emotion === "neutral" ? "Idle" : title(look.emotion)} · ${gaze === undefined ? "blinking" : `looking to ${gaze}`}`;
+        : preview !== undefined
+          ? `Showing ${preview}`
+          : `${look.emotion === "neutral" ? "Idle" : title(look.emotion)} · ${gaze === undefined ? "blinking" : `looking to ${gaze}`}`;
   const shown = record.rig.layers.filter((l) => l.visible !== false && !look.hidden.includes(l.name)).length;
   const changed =
     JSON.stringify(look.palette) !== JSON.stringify(record.rig.palette) || look.hidden.length > 0 || look.emotion !== "neutral" || look.regions !== undefined || look.shape !== undefined || look.face !== undefined;
@@ -140,7 +148,7 @@ export function Anatomy({ record, library, cast, badge, readPixels = decodePixel
         <div className={styles.glassBox}>
           <Glass
             rig={record.rig}
-            look={look}
+            look={glassLook}
             {...(assets === undefined ? {} : { assets })}
             {...(gesture === undefined ? {} : { gesture })}
             {...(speaker.audio === undefined ? {} : { audio: speaker.audio })}
@@ -207,15 +215,25 @@ export function Anatomy({ record, library, cast, badge, readPixels = decodePixel
               </>
             ),
             face: (
-              <FaceCard
-                rig={record.rig}
-                look={look}
-                onFace={(field, value) => dispatch({ type: "face", field, value, rig: record.rig })}
-                onReset={() => dispatch({ type: "faceReset" })}
-                lookAround={around}
-                onLookAround={setAround}
-                reduced={reducedMotion()}
-              />
+              <>
+                <FaceCard
+                  rig={record.rig}
+                  look={look}
+                  onFace={(field, value) => dispatch({ type: "face", field, value, rig: record.rig })}
+                  onReset={() => dispatch({ type: "faceReset" })}
+                  lookAround={around}
+                  onLookAround={setAround}
+                  reduced={reduced}
+                />
+                <FaceFamilies
+                  rig={record.rig}
+                  look={look}
+                  onRetire={(family, retired) => dispatch({ type: "retire", family, retired })}
+                  preview={preview}
+                  onShow={show}
+                  reduced={reduced}
+                />
+              </>
             ),
           }}
         />
