@@ -8,12 +8,19 @@
 // as job assets and written into the rig's `variants`. A throw records "failed"; a refused charge
 // (the daily budget), a face over the limits or an edit that changed no layer records "skipped" (the
 // family stays procedural). Expressions never fail the forge: after the sixth family the job is `done`.
+// forge-creator C3: the edit is phrased in the brief's eye material when it has one (`eyesMaterial`),
+// and a family the gate (or the unsocketed drift flag) refused is re-run on the next GET at attempt
+// + 1 (`faceRetry`: STRICTER sentences, at most attempt 2 per family and MAX_EXTRA_EDITS re-runs per
+// forge, each charged first); `expressionAttempt` and `extraEdits` track it in the job record. A
+// family's outcome is written only when it settles, so faces only ever add variants.
 import { EXPRESSION_FAMILIES, type ExpressionFamily, type Rig } from "@sr/rig";
 import {
   cutVariants,
   decodeImage,
   encodePng,
   expressionPrompt,
+  eyesMaterial,
+  faceRetry,
   faceShape,
   faceStability,
   isBrowLayer,
@@ -21,7 +28,7 @@ import {
   registerEdit,
   socketFile,
   socketVariant,
-  type ExpressionOutcome,
+  type FaceVerdict,
   type ForgeJob,
   type Rgba,
 } from "@sr/forge";
@@ -50,12 +57,14 @@ async function faceLayers(rig: Rig, assets: Record<string, string>, ctx: StepCon
   return out;
 }
 
-async function expressOne(job: ForgeJob, family: ExpressionFamily, ctx: StepContext): Promise<ExpressionOutcome> {
+/** One edit of one family at `attempt`: "refused" when the stability gate or the drift flag turned it down. */
+async function expressOne(job: ForgeJob, family: ExpressionFamily, ctx: StepContext, attempt: number): Promise<FaceVerdict> {
   const { rig, assets, portraitUrl, portraitMime } = job;
   if (rig === undefined || assets === undefined || portraitUrl === undefined || portraitMime === undefined) return "failed";
   const bytes = await ctx.store.readImage(portraitUrl);
   if (!(await ctx.charge(COST_USD.expression))) return "skipped";
-  const prompt = expressionPrompt(job.brief?.name ?? rig.name, family, job.brief?.style.name);
+  if (attempt > 0) job.extraEdits = (job.extraEdits ?? 0) + 1;
+  const prompt = expressionPrompt(job.brief?.name ?? rig.name, family, job.brief?.style.name, attempt, eyesMaterial(job.brief?.face?.eyes));
   const edit = await ctx.gemini.editImage({ mimeType: portraitMime, data: bytes }, prompt, { timeoutMs: EXPRESSION_TIMEOUT_MS });
   const portrait = decoded(bytes);
   const raw = decoded(edit.data);
@@ -68,14 +77,18 @@ async function expressOne(job: ForgeJob, family: ExpressionFamily, ctx: StepCont
     edited = registerEdit(raw, portrait, rig, face).image;
     const stability = faceStability(edited, portrait, rig, face, socketing.stability);
     if (!isStable(stability, socketing.floor)) {
-      console.warn(`forge: expression ${family} skipped (iris drift ${stability.irisDriftPx.toFixed(1)} px, outside the band ${stability.outsideBandMean.toFixed(1)})`);
-      return "skipped";
+      console.warn(`forge: expression ${family} refused at attempt ${attempt} (iris drift ${stability.irisDriftPx.toFixed(1)} px, outside the band ${stability.outsideBandMean.toFixed(1)})`);
+      return "refused";
     }
   }
   const cut = cutVariants(rig, layers, portrait, edited, family);
   const names = Object.keys(cut.patches);
-  if ((socketing === undefined && cut.flagged) || names.length === 0) {
-    console.warn(`forge: expression ${family} skipped (${cut.flagged ? `drift ${cut.drift.toFixed(1)}` : "no layer changed"})`);
+  if (socketing === undefined && cut.flagged) {
+    console.warn(`forge: expression ${family} refused at attempt ${attempt} (drift ${cut.drift.toFixed(1)})`);
+    return "refused";
+  }
+  if (names.length === 0) {
+    console.warn(`forge: expression ${family} skipped (no layer changed)`);
     return "skipped";
   }
   const stored: Record<string, string> = {};
@@ -121,14 +134,22 @@ export async function expressStep(job: ForgeJob, ctx: StepContext): Promise<void
   const index = job.expressionIndex ?? 0;
   const family = EXPRESSION_FAMILIES[index];
   if (family !== undefined) {
-    let outcome: ExpressionOutcome;
+    const attempt = job.expressionAttempt ?? 0;
+    let verdict: FaceVerdict;
     try {
-      outcome = await expressOne(job, family, ctx);
+      verdict = await expressOne(job, family, ctx, attempt);
     } catch (err) {
       console.warn(`forge: expression ${family} failed (${err instanceof Error ? err.name : typeof err})`);
-      outcome = "failed";
+      verdict = "failed";
     }
-    job.expressions = { ...job.expressions, [family]: outcome };
+    const next = faceRetry(verdict, { attempt, extraEdits: job.extraEdits ?? 0 });
+    if (next.retry) {
+      // The same family again on the next GET, stricter; the index and the outcomes stay as they are.
+      job.expressionAttempt = next.attempt;
+      return;
+    }
+    delete job.expressionAttempt;
+    job.expressions = { ...job.expressions, [family]: next.outcome };
   }
   if (index + 1 < EXPRESSION_FAMILIES.length) {
     job.expressionIndex = index + 1;

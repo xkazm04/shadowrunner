@@ -8,16 +8,35 @@ import { luma } from "./mask.js";
 import { EYE_OPAQUE, inDisc, medianColour, type EyeLook, type Iris } from "./eyes.js";
 import type { Rgba } from "./types.js";
 
-/** The iris-free edit: paint the whites where the irises are, nothing else. */
-export function irisFreePrompt(name: string, style?: string): string {
-  const frame = `Edit this portrait of ${name}. In both eyes, remove the irises and pupils and paint the white of the eye in their place, so each eye opening shows only its white, shaded like the rest of that white. Keep the eyelids, lashes, lid lines, the eye openings' shape and size, and every other pixel of the image exactly as it is: do not close, move or reshape the eyes, and do not change the brows, face, hair, colours, lighting or background.`;
-  return style === undefined || style.trim() === "" ? frame : `${frame} The art style is ${style.trim()}.`;
+const withStyle = (frame: string, style?: string): string => (style === undefined || style.trim() === "" ? frame : `${frame} The art style is ${style.trim()}.`);
+
+/**
+ * The iris-free edit: paint the whites where the irises are, nothing else. forge-creator C3:
+ * `material` (eyesMaterial's sentence, from the brief's "Its eyes are ..." line) swaps the human
+ * frame for one in the character's own material: the central light or spot is filled with the eye's
+ * own material, no whites, no eyeballs. Without it the prompt is byte-identical to before C3.
+ */
+export function irisFreePrompt(name: string, style?: string, material?: string): string {
+  const said = material?.trim() ?? "";
+  const frame =
+    said === ""
+      ? `Edit this portrait of ${name}. In both eyes, remove the irises and pupils and paint the white of the eye in their place, so each eye opening shows only its white, shaded like the rest of that white. Keep the eyelids, lashes, lid lines, the eye openings' shape and size, and every other pixel of the image exactly as it is: do not close, move or reshape the eyes, and do not change the brows, face, hair, colours, lighting or background.`
+      : `Edit this portrait of ${name}. ${said} In both eyes, remove only the small central light, pupil or spot and fill its place with the same material, colour and shading as the rest of that eye, so each eye keeps its outline and reads as empty. Keep the eye openings' shape and size, and every other pixel of the image exactly as it is: do not close, move or reshape the eyes, and do not change the face, hair, colours, lighting or background.`;
+  return withStyle(frame, style);
 }
 
-/** The closed-eyes edit: the closed-lid art a blink crossfades to. */
-export function closedEyesPrompt(name: string, style?: string): string {
-  const frame = `Edit this portrait of ${name}. Close both eyes: paint the upper eyelids lowered all the way down to meet the lower lids, with the lashes along the closed lid line, in the same skin, shading and art style as the lids around them. Keep the brows, the lid creases above, the face and every other pixel of the image exactly as it is.`;
-  return style === undefined || style.trim() === "" ? frame : `${frame} The art style is ${style.trim()}.`;
+/**
+ * The closed-eyes edit: the closed-lid art a blink crossfades to. forge-creator C3: `material`
+ * closes the eyes in that material, as the offline CLOSED prompts do (scripts/cast/five/prompts.mjs:
+ * a candle gone out, a neon ring's lower arc, a glass pane over the disc): no skin lids, no lashes.
+ */
+export function closedEyesPrompt(name: string, style?: string, material?: string): string {
+  const said = material?.trim() ?? "";
+  const frame =
+    said === ""
+      ? `Edit this portrait of ${name}. Close both eyes: paint the upper eyelids lowered all the way down to meet the lower lids, with the lashes along the closed lid line, in the same skin, shading and art style as the lids around them. Keep the brows, the lid creases above, the face and every other pixel of the image exactly as it is.`
+      : `Edit this portrait of ${name}. ${said} Close both eyes in that same material, the way such a thing shuts or goes dark (a light switched off, a hole covered, a slit narrowed to a line, a pane drawn over), with no eyelids of skin, no lashes and no eyeballs. Keep the exact place and outline of both eyes, and every other pixel of the image exactly as it is, including the mouth.`;
+  return withStyle(frame, style);
 }
 
 /** Near the iris (1.8 radii), a pixel the iris-free edit changed by more than this summed |RGB| was iris light. */

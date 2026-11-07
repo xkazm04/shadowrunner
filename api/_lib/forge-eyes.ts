@@ -7,7 +7,7 @@
 // (`<eye>.painted.png`, `iris-free.png`) so every later expression GET re-reads the same socketing
 // (`liveSocketing`) without the 50 KB job record carrying pixels. An eye it is unsure of stays one
 // piece; no eye socketed leaves the rig as it was (`eyes: "none"`).
-import { closedEyesPrompt, decodeImage, encodePng, faceShape, faceStability, irisFreePrompt, registerEdit, socketEyes, unsocketed, type EyeSocketing, type ForgeJob, type Rgba, type StabilityEye } from "@sr/forge";
+import { closedEyesPrompt, decodeImage, encodePng, eyesMaterial, faceShape, faceStability, irisFreePrompt, registerEdit, socketEyes, unsocketed, type EyeSocketing, type ForgeJob, type Rgba, type StabilityEye } from "@sr/forge";
 import type { Rig } from "@sr/rig";
 import { COST_USD } from "./costs.js";
 import type { StepContext } from "./forge-steps.js";
@@ -58,7 +58,9 @@ export async function eyesStep(job: ForgeJob, ctx: StepContext): Promise<void> {
   if (portrait === undefined) return;
   const name = job.brief?.name ?? rig.name;
   const style = job.brief?.style.name;
-  const [clean, closed] = await Promise.all([edit(job, ctx, irisFreePrompt(name, style), portrait), edit(job, ctx, closedEyesPrompt(name, style), portrait)]);
+  // forge-creator C3: a brief that says what its eyes are has both edits phrased in that material.
+  const material = eyesMaterial(job.brief?.face?.eyes);
+  const [clean, closed] = await Promise.all([edit(job, ctx, irisFreePrompt(name, style, material), portrait), edit(job, ctx, closedEyesPrompt(name, style, material), portrait)]);
   const images = await layerImages(rig, assets, ctx);
   const out = socketEyes(rig, images, { ...(clean === undefined ? {} : { clean }), ...(closed === undefined ? {} : { closed }) });
   for (const note of out.notes) console.warn(`forge: ${note}`);

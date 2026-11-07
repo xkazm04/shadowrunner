@@ -1,6 +1,8 @@
 // The handshake card (cast-forge requirement 4.3): the brief the writer returned, laid out for
 // approval inside mark I. The streamer may rename the character, rewrite its persona hook and its
 // example lines (C4: up to three, what it says on air when no engine is live), rename its style,
+// the eyes line (C3: "Its eyes are ...", what a face that is not human has for eyes; the live eye and
+// expression edits are phrased in it; empty means human eyes, the field omitted),
 // and change each planned part's role and motion or drop a part; "Draw it" starts the portrait from this brief
 // (blocked while the edits break a rule, with the rule named), "Ask again" re-briefs from the words.
 // A recorded brief carries the RECORDED tag. The accent swatch is the brief's own colour data.
@@ -26,6 +28,8 @@ const FIELD: Readonly<Record<string, string>> = {
   "$.name": "The name",
   "$.persona_hook": "The hook",
   "$.example_lines": "The lines",
+  "$.face": "The eyes line",
+  "$.face.eyes": "The eyes line",
   "$.style.name": "The style",
   "$.parts": "The parts",
 };
@@ -43,16 +47,24 @@ export function problemOf(brief: CharacterBrief, error: BriefError | undefined):
 /** A typed line break becomes a space: hook and lines are one line each. */
 const oneLine = (text: string): string => text.replace(/\s*\n\s*/g, " ");
 
-/** The brief as parseBrief should see it: blank example lines are left out (a cleared slot is no line). */
+/** The brief as parseBrief should see it: blank example lines are left out (a cleared slot is no line), a blank eyes line too. */
 export function briefToCheck(brief: CharacterBrief): CharacterBrief {
-  const { example_lines: raw, ...rest } = brief;
+  const { example_lines: raw, face, ...rest } = brief;
   const lines = (raw ?? []).filter((l) => l.trim() !== "");
-  return lines.length === 0 ? rest : { ...rest, example_lines: lines };
+  return { ...rest, ...(lines.length === 0 ? {} : { example_lines: lines }), ...(face === undefined || face.eyes.trim() === "" ? {} : { face }) };
+}
+
+/** The brief with its eyes line set; an empty line leaves the field out (human eyes). */
+export function withEyes(brief: CharacterBrief, eyes: string): CharacterBrief {
+  const rest: CharacterBrief = { ...brief };
+  delete rest.face;
+  return eyes.trim() === "" ? rest : { ...rest, face: { eyes } };
 }
 
 export function BriefCard({ brief, recorded, problem, busy, onEdit, onDraw, onAgain }: BriefCardProps) {
   const nameId = useId();
   const hookId = useId();
+  const eyesId = useId();
   const styleId = useId();
   // The card arrives in view and in focus, so a keyboard or screen-reader user lands on it.
   const self = useRef<HTMLElement>(null);
@@ -94,6 +106,13 @@ export function BriefCard({ brief, recorded, problem, busy, onEdit, onDraw, onAg
           {slots.map((line, i) => (
             <textarea key={i} className={styles.say} aria-label={`Line ${i + 1}`} value={line} placeholder="a line in its own voice" maxLength={200} rows={1} onChange={(e) => setLine(i, oneLine(e.currentTarget.value))} />
           ))}
+        </div>
+        <label className={marks.lbl} htmlFor={eyesId}>
+          EYES <small>what they are made of; empty for human eyes</small>
+        </label>
+        <div className={styles.eyes}>
+          <span aria-hidden="true">Its eyes are</span>
+          <textarea id={eyesId} className={styles.say} aria-label="Its eyes are" value={brief.face?.eyes ?? ""} placeholder="carved holes lit from inside" maxLength={280} rows={1} onChange={(e) => onEdit(withEyes(brief, oneLine(e.currentTarget.value)))} />
         </div>
         <label className={marks.lbl} htmlFor={styleId}>
           STYLE <small>its edges are the cut lines</small>

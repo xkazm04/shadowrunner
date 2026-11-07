@@ -6,6 +6,7 @@
 import { EXPRESSION_FAMILIES, type ExpressionFamily, type Result, validateRig } from "@sr/rig";
 import { FORGE_STEPS, type ExpressionOutcome, type ForgeJob, type ForgeStep, type PortraitMime } from "./job.js";
 import { parseBrief, type BriefError } from "./brief.js";
+import { MAX_EXTRA_EDITS, MAX_FACE_ATTEMPT } from "./faceMaterial.js";
 import { settleBriefParts } from "./briefParts.js";
 import { parseParts, type ParsedParts, type PartsError } from "./parts.js";
 import type { BriefRequest, CharacterBrief, ForgeErrorCode, ForgeRequest, ForgeStatus } from "./wire.js";
@@ -234,6 +235,14 @@ export function parseForgeJob(text: string): ForgeJob | undefined {
   if (j.expressionIndex !== undefined) {
     if (!isCount(j.expressionIndex) || j.expressionIndex > EXPRESSION_FAMILIES.length) return undefined;
     job.expressionIndex = j.expressionIndex;
+  }
+  if (j.expressionAttempt !== undefined) {
+    if (!isCount(j.expressionAttempt) || j.expressionAttempt < 1 || j.expressionAttempt > MAX_FACE_ATTEMPT) return undefined;
+    job.expressionAttempt = j.expressionAttempt;
+  }
+  if (j.extraEdits !== undefined) {
+    if (!isCount(j.extraEdits) || j.extraEdits < 1 || j.extraEdits > MAX_EXTRA_EDITS) return undefined;
+    job.extraEdits = j.extraEdits;
   }
   if (j.eyes !== undefined) {
     if (j.eyes !== "edit" && j.eyes !== "fallback" && j.eyes !== "none") return undefined;

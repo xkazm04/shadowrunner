@@ -39,6 +39,8 @@ export const BRIEF_LIMITS = {
   portrait_prompt: MAX_PORTRAIT_PROMPT,
   /** One example line (C4): a spoken on-air line stays short. */
   example_line: 160,
+  /** The eyes line (C3): the words after "Its eyes are", one sentence in the edit prompts. */
+  eyes: 200,
 } as const;
 
 /** At most this many example lines in a brief (the character sheet's lines on air). */
@@ -46,7 +48,7 @@ export const BRIEF_MAX_EXAMPLE_LINES = 3;
 
 /** design.md "Brief and handshake", exact; the design's line breaks are joined with single spaces. */
 export function BRIEF_PROMPT(request: string): string {
-  return `You design an original character to be a live 2.5D streaming co-host. It will be drawn as one portrait and cut into animation layers. From the streamer's request below, return JSON only with the fields name, one_line_request, archetype, persona_hook, accent_hex, secondary_hex, silhouette, parts, style, portrait_prompt. Rules: original fiction, never a real person or an existing character, no text or logos, horror not gore. The portrait is a frontal, centred, symmetrical head-and-shoulders bust on an empty near-black background with the jaw and both eyes visible. parts lists 6 to 24 parts, each a separate shape that does not overlap another, each with a role from head, jaw, eye_l, eye_r, eye, monocle, crown, hat, hair, accessory, torso, float, pulse; always include head, exactly one jaw, eyes and torso (a set of teeth or a lip that drops with the jaw may be a second part with role jaw that follows the jaw), and give the character one or two signature parts that float or pulse on their own, saying how they move. Choose a hard-edged graphic art style such as leaded stained glass, low-poly planes, flat poster fills with ink outlines, pixel art or a faceted painting, never soft painterly realism: its edges become the cut lines. portrait_prompt is under 900 characters, describes the character and every part in that style, and ends with the framing rules. example_lines gives three short lines the character would say on air in its own voice, each under 160 characters. Request: ${request.trim().slice(0, MAX_BRIEF_REQUEST)}`;
+  return `You design an original character to be a live 2.5D streaming co-host. It will be drawn as one portrait and cut into animation layers. From the streamer's request below, return JSON only with the fields name, one_line_request, archetype, persona_hook, accent_hex, secondary_hex, silhouette, parts, style, portrait_prompt. Rules: original fiction, never a real person or an existing character, no text or logos, horror not gore. The portrait is a frontal, centred, symmetrical head-and-shoulders bust on an empty near-black background with the jaw and both eyes visible. parts lists 6 to 24 parts, each a separate shape that does not overlap another, each with a role from head, jaw, eye_l, eye_r, eye, monocle, crown, hat, hair, accessory, torso, float, pulse; always include head, exactly one jaw, eyes and torso (a set of teeth or a lip that drops with the jaw may be a second part with role jaw that follows the jaw), and give the character one or two signature parts that float or pulse on their own, saying how they move. Choose a hard-edged graphic art style such as leaded stained glass, low-poly planes, flat poster fills with ink outlines, pixel art or a faceted painting, never soft painterly realism: its edges become the cut lines. portrait_prompt is under 900 characters, describes the character and every part in that style, and ends with the framing rules. example_lines gives three short lines the character would say on air in its own voice, each under 160 characters. When the eyes are not ordinary human eyes, face.eyes says in under 200 characters what its eyes are made of and must stay, the words after "Its eyes are": carved holes lit from inside, a visor slit, glass beads. Request: ${request.trim().slice(0, MAX_BRIEF_REQUEST)}`;
 }
 
 /**
@@ -88,6 +90,12 @@ export const BRIEF_SCHEMA = {
     },
     portrait_prompt: { type: "string" },
     example_lines: { type: "array", items: { type: "string" }, description: "three short in-character lines" },
+    face: {
+      type: "object",
+      additionalProperties: false,
+      required: ["eyes"],
+      properties: { eyes: { type: "string", description: "only for eyes that are not ordinary human eyes: what they are made of" } },
+    },
   },
 } as const;
 
@@ -112,7 +120,8 @@ const EYE_ROLES: readonly PartRole[] = ["eye_l", "eye_r", "eye"];
  * reserved); exactly one head and one jaw, plus at most one more jaw-role part (a teeth or lip set,
  * Reveille's teeth) whose follow names the jaw; at least one eye and one torso; a follow names another
  * part and the follow chain has no cycle; optional example_lines: at most 3 lines of at most 160
- * characters each (an empty list is omitted); unknown fields are ignored.
+ * characters each (an empty list is omitted); optional face: an object whose eyes is a line of at
+ * most 200 characters (C3); unknown fields are ignored.
  */
 export function parseBrief(value: unknown): BriefResult {
   const errors: BriefError[] = [];
@@ -150,6 +159,7 @@ export function parseBrief(value: unknown): BriefResult {
 
   const parts = parseBriefParts(value.parts, errors, text);
   const lines = parseExampleLines(value.example_lines, err, text);
+  const face = parseFace(value.face, err, text);
   if (errors.length > 0 || [name, oneLine, archetype, hook, accent, silhouette, prompt, style, parts].includes(undefined)) {
     return { ok: false, errors };
   }
@@ -165,6 +175,7 @@ export function parseBrief(value: unknown): BriefResult {
     style: style ?? { name: "", why: "" },
     portrait_prompt: prompt ?? "",
     ...(lines === undefined || lines.length === 0 ? {} : { example_lines: lines }),
+    ...(face === undefined ? {} : { face }),
   };
   return { ok: true, value: brief };
 }
@@ -178,6 +189,14 @@ function parseExampleLines(value: unknown, err: (path: string, message: string) 
   if (value.length > BRIEF_MAX_EXAMPLE_LINES) return err("$.example_lines", `must list at most ${BRIEF_MAX_EXAMPLE_LINES} lines`);
   const out = value.map((line, i) => text(line, `$.example_lines[${i}]`, BRIEF_LIMITS.example_line));
   return out.every((line): line is string => line !== undefined) ? out : undefined;
+}
+
+/** Optional `face` (C3): an object whose `eyes` is one non-empty line within BRIEF_LIMITS.eyes. */
+function parseFace(value: unknown, err: (path: string, message: string) => undefined, text: Text): CharacterBrief["face"] {
+  if (value === undefined) return undefined;
+  if (!isRecord(value)) return err("$.face", "must be an object with eyes");
+  const eyes = text(value.eyes, "$.face.eyes", BRIEF_LIMITS.eyes);
+  return eyes === undefined ? undefined : { eyes };
 }
 
 function parseBriefParts(value: unknown, errors: BriefError[], text: Text): BriefPart[] | undefined {

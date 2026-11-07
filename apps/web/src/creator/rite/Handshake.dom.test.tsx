@@ -190,6 +190,38 @@ describe("the handshake", () => {
     expect(sent[0]?.brief?.persona_hook).toBe("Counts chat aloud and never loses count.");
   });
 
+  it("C3: the eyes line is one editable line; over-long text names its rule and blocks Draw it; empty is omitted", async () => {
+    const tally = testBriefs()[1];
+    if (tally === undefined) throw new Error("no brief");
+    await open({ brief: async () => ({ brief: { ...tally, face: { eyes: "a pince-nez over two bead eyes" } }, plane: "live" }) });
+    await briefFor(TALLY);
+    const eyes = () => q<HTMLTextAreaElement>('textarea[aria-label="Its eyes are"]') as HTMLTextAreaElement;
+    expect(eyes().value).toBe("a pince-nez over two bead eyes");
+    expect(card()?.textContent).toContain("Its eyes are");
+    await type(eyes(), "x".repeat(201));
+    expect(button("Draw it").disabled).toBe(true);
+    expect(q('[role="status"]')?.textContent).toBe("The eyes line must be at most 200 characters.");
+    await type(eyes(), "two abacus beads,\n polished black");
+    expect(button("Draw it").disabled).toBe(false);
+    await type(eyes(), "");
+    expect(button("Draw it").disabled).toBe(false);
+    await type(eyes(), "two abacus beads,\n polished black");
+    await click(button("Draw it"));
+    await flush();
+    expect(sent[0]?.brief?.face).toEqual({ eyes: "two abacus beads, polished black" });
+  });
+
+  it("C3: a cleared eyes line leaves the face out of the drawn brief", async () => {
+    const tally = testBriefs()[1];
+    if (tally === undefined) throw new Error("no brief");
+    await open({ brief: async () => ({ brief: { ...tally, face: { eyes: "bead eyes" } }, plane: "live" }) });
+    await briefFor(TALLY);
+    await type(q<HTMLTextAreaElement>('textarea[aria-label="Its eyes are"]') as HTMLTextAreaElement, "");
+    await click(button("Draw it"));
+    await flush();
+    expect(sent[0]?.brief !== undefined && "face" in sent[0].brief).toBe(false);
+  });
+
   it("shows the ask in flight, then the card when it lands", async () => {
     const pending: ((r: BriefResponse) => void)[] = [];
     const tally = testBriefs()[1];
