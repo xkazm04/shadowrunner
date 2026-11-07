@@ -6,6 +6,7 @@ import type { ExpressionFamily, Rig } from "@sr/rig";
 import { describe, expectTypeOf, it } from "vitest";
 import type { BriefResponse, CastPick, CharacterBrief, ForgeErrorCode, ForgeRequest, ForgeStatus, JobView } from "@sr/forge/wire";
 import type * as root from "@sr/forge";
+import type { FaceGate } from "@sr/forge/faceGate";
 
 describe("@sr/forge/wire", () => {
   it("ForgeStatus is exactly the design.md statuses, including filling and expressing", () => {
@@ -49,6 +50,7 @@ describe("@sr/forge/wire", () => {
       fill?: "edit" | "fallback";
       decomposition?: "named" | "fallback";
       expressions?: Partial<Record<ExpressionFamily, "ok" | "skipped" | "failed">>;
+      expressionGate?: FaceGate;
       error?: { code: ForgeErrorCode; message: string };
     }>();
     const queued: JobView = { jobId: "j1", status: "queued", plane: "replay" };

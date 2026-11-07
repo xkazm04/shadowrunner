@@ -197,4 +197,31 @@ describe("wake after eyes, faces paint in", () => {
     expect(step()).toBe("done");
     expect(faces(await keptRig())).toEqual(faces(rigWith(6)));
   }, 60_000);
+
+  it("S1: a family the gate refused carries its reading into the kept record mid-forge, and Wake says why", async () => {
+    const reading = { reason: "iris" as const, irisDriftPx: 7.2, limit: 4, attempts: 3 };
+    const inner = slowClient([]);
+    const client: ForgeClient = {
+      start: (req) => inner.start(req),
+      async poll(jobId) {
+        const v = await inner.poll(jobId);
+        if (v.expressions?.gloom === undefined || v.rig === undefined) return v;
+        // gloom is refused: no gloom patch, "skipped", and why.
+        const rig = { ...v.rig, layers: v.rig.layers.map((l) => (l.variants?.gloom === undefined ? l : { ...l, variants: Object.fromEntries(Object.entries(l.variants).filter(([f]) => f !== "gloom")) })) };
+        return { ...v, rig, assets: assetsOf(rig), expressions: { ...v.expressions, gloom: "skipped" }, expressionGate: { gloom: reading } };
+      },
+    };
+    await open(client);
+    await forge();
+    await until(AWAKE + 4 * FACE + 6 * S);
+    expect(step()).toBe("expressing");
+    const mid = await store.get(RIG.id);
+    expect(mid?.kind === "ok" && mid.record.faceGate).toEqual({ gloom: reading });
+    await until(DONE + 6 * S);
+    expect(step()).toBe("done");
+    const got = await store.get(RIG.id);
+    expect(got?.kind === "ok" && got.record.faceGate).toEqual({ gloom: reading });
+    expect(got?.kind === "ok" && faces(got.record.rig)).not.toContain("eye_l.gloom");
+    expect(view.container.querySelector("[data-procedural]")?.textContent).toBe("gloom · procedural, the eyes moved 7.2 px (limit 4)");
+  }, 60_000);
 });

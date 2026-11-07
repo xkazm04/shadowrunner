@@ -10,7 +10,11 @@
 // - Merges run one at a time, each from the latest kept record, so a look edit during a fetch is kept.
 // - The glass shows a rig only with the images decoded for that rig (`shown`), so a merge never
 //   flashes the glass empty or pairs a new rig with old images.
+// - forge-creator S1: the job's gate readings (why a family has no painted face) ride on the record
+//   as `faceGate`, written at keep and again whenever the job reports new ones, through the same
+//   one-at-a-time chain, so the Face tab can say why after a reload. A replay job has none.
 import type { RigAssets } from "@sr/avatar";
+import type { FaceGate } from "@sr/forge/faceGate";
 import type { CharacterBrief } from "@sr/forge/wire";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { lookReducer, type LookAction } from "../customize/lookReducer";
@@ -28,6 +32,14 @@ export function characterOf(state: ForgeState): { jobId: string; character: Woke
   if (state.phase === "running" && state.awake !== undefined) return { jobId: state.jobId, character: state.awake };
   return undefined;
 }
+
+/** The job's gate readings so far (S1), if any. */
+export function gateOf(state: ForgeState): FaceGate | undefined {
+  return state.phase === "running" || state.phase === "done" ? state.gate : undefined;
+}
+
+/** `record` carrying `gate` (or as it is, when there is none). */
+export const withGate = (record: CharacterRecord, gate: FaceGate | undefined): CharacterRecord => (gate === undefined ? record : { ...record, faceGate: gate });
 
 export interface Kept {
   kept?: CharacterRecord;
@@ -55,8 +67,11 @@ export function useKept(state: ForgeState, library: Pick<Library, "status" | "ad
   const merging = useRef<Promise<void>>(Promise.resolve());
   const now = characterOf(state);
   const latest = useRef(now);
+  const gate = gateOf(state);
+  const latestGate = useRef(gate);
   useEffect(() => {
     latest.current = now;
+    latestGate.current = gate;
   });
   const { add, saveLook } = library;
   const ready = library.status === "ready";
@@ -71,7 +86,7 @@ export function useKept(state: ForgeState, library: Pick<Library, "status" | "ad
     recordOf(character.rig, character.assets)
       .then(async (record) => {
         const named = drawn.current === undefined ? record : withBrief(record, drawn.current);
-        const dressed = bound(named, bind);
+        const dressed = withGate(bound(named, bind), latestGate.current);
         await add(dressed);
         if (keptFor.current !== jobId) return;
         base.current = character;
@@ -105,6 +120,25 @@ export function useKept(state: ForgeState, library: Pick<Library, "status" | "ad
       }
     });
   }, [kept, rig, add, setKept]);
+
+  // S1: fold newer gate readings into the kept record, in the same chain as the faces.
+  const gateKey = gate === undefined ? "" : JSON.stringify(gate);
+  useEffect(() => {
+    if (kept === undefined || gateKey === "" || gateKey === JSON.stringify(kept.faceGate ?? null)) return;
+    merging.current = merging.current.then(async () => {
+      const current = keptRef.current;
+      const next = latestGate.current;
+      if (current === undefined || next === undefined || keptFor.current !== latest.current?.jobId) return;
+      if (JSON.stringify(next) === JSON.stringify(current.faceGate ?? null)) return;
+      const record = withGate(current, next);
+      setKept(record);
+      try {
+        await add(record);
+      } catch {
+        // The reading is a note: the kept character stands without it.
+      }
+    });
+  }, [kept, gateKey, add, setKept]);
 
   // Decode the kept rig's images; the glass keeps the last decoded pair until the next is ready.
   const keptRig = kept?.rig;

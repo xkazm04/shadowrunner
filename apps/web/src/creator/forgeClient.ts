@@ -10,6 +10,7 @@
 //   `upstream`. The creator therefore has one failure path.
 // - A job view is checked before use (`readJobView`): unknown status, wrong plane, a `rig` that
 //   fails `validateRig` or non-string asset URLs make the response `upstream`, never a crash.
+import { readFaceGate } from "@sr/forge/faceGate";
 import type { ForgeErrorCode, ForgeRequest, ForgeStatus, JobView } from "@sr/forge/wire";
 import { EXPRESSION_FAMILIES, validateRig, type ExpressionFamily } from "@sr/rig";
 import { apiFetch, type Fetcher } from "../app/plane";
@@ -106,6 +107,9 @@ export function readJobView(value: unknown): JobView | undefined {
     }
     view.expressions = expressions;
   }
+  // forge-creator S1: why a family has no painted face; a malformed reading is dropped, not the view.
+  const gate = readFaceGate(value.expressionGate);
+  if (gate !== undefined) view.expressionGate = gate;
   if (value.error !== undefined) {
     const error = value.error;
     if (!isRecord(error) || !isForgeErrorCode(error.code) || typeof error.message !== "string") return undefined;

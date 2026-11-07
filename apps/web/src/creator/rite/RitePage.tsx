@@ -365,6 +365,7 @@ export function RitePage({ client: given, briefer: givenBriefer, caster, casting
               key="w"
               {...(kept === undefined ? {} : { name: kept.rig.name, layers: kept.rig.layers.length, handoff: handoffOf(kept.id), id: kept.id })}
               {...(expressions === undefined ? {} : { expressions })}
+              {...(kept?.faceGate === undefined ? {} : { gate: kept.faceGate })}
               {...(keepError === undefined ? {} : { keepError })}
               painting={painting}
               fallback={fallback}

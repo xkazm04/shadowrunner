@@ -9,6 +9,7 @@ import { parseBrief, type BriefError } from "./brief.js";
 import { MAX_EXTRA_EDITS, MAX_FACE_ATTEMPT } from "./faceMaterial.js";
 import { CAST_SIZE } from "./cast.js";
 import { castRecordOf, type CastRecord } from "./castJob.js";
+import { readFaceGate } from "./faceGate.js";
 import { settleBriefParts } from "./briefParts.js";
 import { parseParts, type ParsedParts, type PartsError } from "./parts.js";
 import type { BriefRequest, CastPick, CastRequest, CharacterBrief, ForgeErrorCode, ForgeRequest, ForgeStatus } from "./wire.js";
@@ -287,6 +288,9 @@ export function parseForgeJob(text: string): ForgeJob | undefined {
     if (!expressions) return undefined;
     job.expressions = expressions;
   }
+  // forge-creator S1: a note, not the character: malformed readings are dropped, never the job.
+  const gate = readFaceGate(j.expressionGate);
+  if (gate !== undefined) job.expressionGate = gate;
   if (j.error !== undefined) {
     if (!isRecord(j.error) || !isCode(j.error.code) || !isString(j.error.message)) return undefined;
     job.error = { code: j.error.code, message: j.error.message };
