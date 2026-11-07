@@ -72,6 +72,27 @@
   font-style: italic;
 }
 
+/* C4: a forged character's sheet script on the recorded plane, said as plainly as RECORDED. */
+.scripted {
+  display: inline-block;
+  margin: var(--sr-space-2) 0 0;
+  padding: var(--sr-space-1) var(--sr-space-2);
+  background-color: var(--sr-surface-2);
+  color: var(--sr-text-strong);
+  border: thin solid var(--sr-signal-warn);
+  border-radius: var(--sr-radius-1);
+  font-family: var(--sr-font-mono);
+  font-size: var(--sr-size-text-sm);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.scripted small {
+  font-size: inherit;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
 .controls {
   display: flex;
   flex-wrap: wrap;

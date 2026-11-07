@@ -53,6 +53,7 @@ Optional fields are **omitted, never `null`**.
 | `source` | `"forge"` \| `"replay"` \| `"import"` | how the rig was made (`rig.source`) |
 | `fictional` | `true`, optional | present exactly when `rig.fictional` is true: the character depicts no real person |
 | `createdAt` | string, optional | ISO 8601 creation time of the character, when known |
+| `sheet` | object, optional | who the character is on air (below); omitted when it has none |
 | `files` | string[] | every image name under `files/`, sorted |
 
 ### Look
@@ -71,6 +72,18 @@ malformed base field (palette colours as `#rrggbb` for `glow`, `eye`, `rim`, `mo
 a known `emotion`; a known `gesture` when present) makes the pack invalid (`bad_look`). A single
 `regions` or `shape` entry that does not fit the rig is dropped, not fatal, as is a `face` field
 out of range or an `expression.faces` value other than `"procedural"`.
+
+### Sheet
+| field | type | meaning |
+|---|---|---|
+| `archetype` | string | what kind of character it is, 1-120 characters |
+| `hook` | string | its persona hook, 1-400 characters |
+| `lines` | string[] | 0-3 example lines it would say on air, each 1-160 characters |
+
+The sheet is the brief the streamer approved for a forged character (`@sr/pack` `readSheet`). The
+stage builds the character's persona from it, and on the replay plane plays its lines as a short
+scripted show. Text is trimmed. A sheet that breaks a rule is dropped, not fatal: the face still
+loads. Readers that do not know `sheet` ignore it.
 
 ### Licence values
 | value | meaning |

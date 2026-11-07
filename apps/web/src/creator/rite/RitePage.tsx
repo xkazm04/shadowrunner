@@ -16,7 +16,7 @@ import { lookReducer, type LookAction } from "../customize/lookReducer";
 import { briefClientFor, type BriefClient } from "../briefClient";
 import type { ForgeClient } from "../forgeClient";
 import { parseReplayJobId } from "../forgeClient.replay";
-import { recordOf } from "../forge/keep";
+import { recordOf, withBrief } from "../forge/keep";
 import { useForgeJob } from "../forge/useForgeJob";
 import { Glass } from "../glass/Glass";
 import { useGesturePulse } from "../glass/gestures";
@@ -140,7 +140,7 @@ export function RitePage({ client: given, briefer: givenBriefer, jobs = loadRepl
     setKeepError(undefined);
     recordOf(state.rig, state.assets)
       .then(async (record) => {
-        const named = drawn.current === undefined ? record : { ...record, rig: { ...record.rig, name: drawn.current.name } };
+        const named = drawn.current === undefined ? record : withBrief(record, drawn.current);
         const dressed = bound(named, bind);
         await add(dressed);
         setKept(dressed);

@@ -8,6 +8,7 @@ export { readPack, loadPack } from "./read.js";
 export { packFileName, packReadme, LICENCE_LABELS, PACK_FORMAT_DOC } from "./readme.js";
 export { rigFiles, mimeOf } from "./files.js";
 export { packErrorSentence } from "./sentences.js";
+export { readSheet, SHEET_LIMITS, type CharacterSheet } from "./sheet.js";
 
 export const PACKAGE = "@sr/pack";
 

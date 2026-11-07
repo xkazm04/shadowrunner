@@ -47,6 +47,8 @@ export interface CharacterBrief {
   style: { name: string; why: string };
   /** At most 900 characters. */
   portrait_prompt: string;
+  /** Up to 3 short in-character lines (the character sheet's lines on air); omitted when none. */
+  example_lines?: string[];
 }
 
 /** Body of `POST /api/forge/brief`. */

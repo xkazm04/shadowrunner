@@ -1,5 +1,6 @@
 // @sr/pack wire types: the .srpack format (spec .kiro/specs/avatar-pack, design "Wire types").
 import type { Look, Rig } from "@sr/rig";
+import type { CharacterSheet } from "./sheet.js";
 
 export const PACK_FORMAT = "srpack";
 export const PACK_VERSION = 1;
@@ -30,6 +31,8 @@ export interface PackManifest {
   fictional?: true;
   /** The library record's createdAt when known. */
   createdAt?: string;
+  /** Who the character is on air (a forged character's approved brief); omitted when none. */
+  sheet?: CharacterSheet;
   /** Every image under files/, sorted. */
   files: string[];
 }
@@ -39,6 +42,8 @@ export interface AvatarPack {
   rig: Rig;
   look: Look;
   voice: string;
+  /** The manifest's sheet when it reads (`readSheet`); a sheet that does not read is dropped. */
+  sheet?: CharacterSheet;
   /** Keyed by file name; MIME from the extension (png/webp/jpg). */
   files: Record<string, Blob>;
 }
@@ -51,6 +56,7 @@ export interface PackInput {
   licence: PackLicence;
   author?: string;
   createdAt?: string;
+  sheet?: CharacterSheet;
   /** Default: now. */
   exportedAt?: string;
 }

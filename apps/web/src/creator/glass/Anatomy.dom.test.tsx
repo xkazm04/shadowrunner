@@ -187,3 +187,17 @@ describe("mood, gestures, voice", () => {
     }
   });
 });
+
+describe("C4: the character sheet", () => {
+  it("is shown under VOICE for a record with a sheet, and absent without one", async () => {
+    expect(view.container.querySelector("[data-sheet]")).toBeNull();
+    await view.unmount();
+    const sheet = { archetype: "Drowned diver", hook: "Hums shanties between lines.", lines: ["Forty fathoms of chat.", "Bubbles mean I laugh."] };
+    view = await mount(<Anatomy record={{ ...record(), sheet }} library={lib} />);
+    await elapse(0);
+    const card = view.container.querySelector("[data-sheet]");
+    expect(card?.textContent).toContain("Drowned diver");
+    expect(card?.textContent).toContain("Hums shanties between lines.");
+    expect([...(card?.querySelectorAll("li") ?? [])].map((li) => li.textContent)).toEqual(sheet.lines);
+  });
+});

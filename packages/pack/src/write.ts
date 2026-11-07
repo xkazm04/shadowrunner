@@ -4,6 +4,7 @@ import { readLook, serializeRig, validateRig } from "@sr/rig";
 import { zipSync, type Zippable } from "fflate";
 import { inlineToFiles, rigFiles } from "./files.js";
 import { packReadme } from "./readme.js";
+import { readSheet } from "./sheet.js";
 import { PACK_FORMAT, PACK_VERSION, type PackInput, type PackManifest } from "./types.js";
 
 /**
@@ -40,6 +41,7 @@ export async function writePack(input: PackInput): Promise<Uint8Array> {
   const files = [...images.keys()].sort();
 
   const author = input.author?.trim() ?? "";
+  const sheet = input.sheet === undefined ? undefined : readSheet(input.sheet);
   const manifest: PackManifest = {
     format: PACK_FORMAT,
     version: PACK_VERSION,
@@ -54,6 +56,7 @@ export async function writePack(input: PackInput): Promise<Uint8Array> {
     source: rig.source,
     ...(rig.fictional === true ? { fictional: true as const } : {}),
     ...(input.createdAt === undefined ? {} : { createdAt: input.createdAt }),
+    ...(sheet === undefined ? {} : { sheet }),
     files,
   };
 

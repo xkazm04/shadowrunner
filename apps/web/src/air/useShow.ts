@@ -5,6 +5,7 @@
 import type { Persona, ShowScript } from "@sr/engine";
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 import { apiFetch, fetchHealth, type Fetcher } from "../app/plane";
+import type { LocalScript } from "./sheetShow";
 import { createShow, type PlayResult, type Show, type ShowSnapshot, type VoicePlayer } from "./show";
 
 /** A line that has not ended after this long counts as failed (a stalled stream). */
@@ -58,6 +59,8 @@ export interface UseShowOptions {
   audio: HTMLAudioElement | null;
   ensureRunning: () => Promise<boolean>;
   fetch?: Fetcher;
+  /** C4: a sheet show on replay runs in the browser (sheetShow.ts). */
+  local?: LocalScript;
 }
 
 export interface UseShow {
@@ -73,7 +76,7 @@ const IDLE: ShowSnapshot = { status: "booting", chat: [], sound: "on", beat: 0 }
 const idleShow: Pick<Show, "subscribe" | "snapshot"> = { subscribe: () => () => undefined, snapshot: () => IDLE };
 
 /** The show starts once the stage's <audio> element exists; the face may still be loading. */
-export function useShow({ show, persona, self, audio, ensureRunning, fetch = apiFetch }: UseShowOptions): UseShow {
+export function useShow({ show, persona, self, audio, ensureRunning, fetch = apiFetch, local }: UseShowOptions): UseShow {
   const controller = useMemo(() => {
     if (audio === null) return undefined;
     return createShow({
@@ -87,8 +90,9 @@ export function useShow({ show, persona, self, audio, ensureRunning, fetch = api
       player: createElementPlayer(audio, ensureRunning),
       objectUrl: (blob) => URL.createObjectURL(blob),
       revokeUrl: (url) => URL.revokeObjectURL(url),
+      ...(local === undefined ? {} : { local }),
     });
-  }, [show, persona, self, fetch, audio, ensureRunning]);
+  }, [show, persona, self, fetch, audio, ensureRunning, local]);
 
   useEffect(() => {
     if (controller === undefined) return undefined;
