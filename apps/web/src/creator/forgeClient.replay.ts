@@ -16,6 +16,7 @@
 //   start (POST answers 429 / 400); `refused_likeness` and `refused_content` fail after the
 //   portrait step; `upstream` fails while cutting.
 import { requestKey } from "@sr/forge/brief";
+import { parseReplayBatchId } from "@sr/forge/cast";
 import { assetsWithFaces, facesAt, facesOutcomes, rigWithFaces } from "@sr/forge/replayFaces";
 import type { ForgeErrorCode, ForgeRequest, ForgeStatus, JobView } from "@sr/forge/wire";
 import { ForgeError, isForgeErrorCode, type ForgeClient } from "./forgeClient";
@@ -118,6 +119,13 @@ export function createReplayForgeClient(options: ReplayClientOptions = {}): Forg
   return {
     async start(req) {
       if (options.fail === "quota" || options.fail === "bad_input") throw new ForgeError(options.fail, FAIL_MESSAGES[options.fail]);
+      // forge-creator L2: a cast candidate plays the recorded job it showed (castClient.ts).
+      if (req.candidate !== undefined) {
+        const slug = parseReplayBatchId(req.candidate.batchId)?.slugs[req.candidate.index];
+        const cast = slug === undefined ? undefined : (await jobs()).find((j) => j.slug === slug);
+        if (cast === undefined) throw new ForgeError("bad_input", "No such casting batch.");
+        return { jobId: replayJobId(cast.slug, now(), options.fail) };
+      }
       const key = keyOf(req);
       if (key === undefined) throw new ForgeError("bad_input", "Describe a character or bring a picture.");
       const list = await jobs();

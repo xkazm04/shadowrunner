@@ -17,6 +17,63 @@ export interface ForgeRequest {
   imageBase64?: string;
   /** mode "brief" (cast-forge 4.3): the brief the streamer approved, checked again by the server. */
   brief?: CharacterBrief;
+  /**
+   * mode "brief", forge-creator L2: the casting candidate the streamer chose. The job continues
+   * from that draft portrait and its decomposition (no second portrait, no second segmentation).
+   */
+  candidate?: CastPick;
+}
+
+/** forge-creator L2: one candidate of a casting batch, by the batch's id and its index (0..CAST_SIZE-1). */
+export interface CastPick {
+  batchId: string;
+  index: number;
+}
+
+/** Body of `POST /api/forge/drafts` (L2); answered with `202 { batchId }`. */
+export interface CastRequest {
+  brief: CharacterBrief;
+  /** A re-roll ("None of these"): the batch it replaces. Omitted: a fresh batch (one forge use). */
+  after?: string;
+}
+
+/** A casting batch's status, in step order (L2). */
+export type CastStatus = "drafting" | "segmenting" | "cutting" | "ready" | "failed";
+
+/**
+ * One draft of a casting batch (L2). `state`: "cut" has a provisional rig; "uncut" has a portrait
+ * whose planned parts could not be read or cut (casting it asks the parts again); "failed" has no
+ * portrait; "drafting" is still on its way. The lists are facts, always present (empty when none).
+ */
+export interface CastCandidateView {
+  index: number;
+  state: "drafting" | "cut" | "uncut" | "failed";
+  portraitUrl?: string;
+  /** Provisional: cut over the deterministic fallback plate; no fill edit, no eyes, no faces. */
+  rig?: Rig;
+  /** file -> URL, sent with `rig`. */
+  assets?: Record<string, string>;
+  /** Planned parts (the brief's names) the parts model did not find on this draft. */
+  missing: string[];
+  /** Found parts whose cut came out empty. */
+  empty: string[];
+  /** Assembly warnings, in words. */
+  warnings: string[];
+  /** One line about the candidate (why it failed, or what a recorded one is). */
+  note?: string;
+}
+
+/** Body of `GET /api/forge/drafts/:batchId` (L2). Optional fields omitted, never null. */
+export interface CastView {
+  batchId: string;
+  status: CastStatus;
+  plane: "replay" | "live";
+  /** Re-rolls this batch may still make ("None of these"). */
+  rerollsLeft: number;
+  candidates: CastCandidateView[];
+  /** Once cast: the forge job continued from the chosen candidate. */
+  jobId?: string;
+  error?: { code: ForgeErrorCode; message: string };
 }
 
 /** One planned part of a brief (cast-forge design.md "Brief and handshake"). */

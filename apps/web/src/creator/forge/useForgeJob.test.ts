@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { testBriefs } from "../testFixtures";
 import { JOB_KEY, pollDelay, POLL_MS, readStoredJob, SLOW_POLL_MS } from "./useForgeJob";
 
 function memoryStorage(entries: Record<string, string> = {}): Storage {
@@ -31,5 +32,12 @@ describe("readStoredJob", () => {
     expect(readStoredJob(memoryStorage({ [JOB_KEY]: JSON.stringify({ ...job, request: { mode: "video" } }) }))).toBeUndefined();
     expect(readStoredJob(memoryStorage())).toBeUndefined();
     expect(readStoredJob(undefined)).toBeUndefined();
+  });
+});
+
+describe("readStoredJob, forge-creator L2", () => {
+  it("keeps a cast job's candidate, so its retry casts again instead of painting a new portrait", () => {
+    const job = { jobId: "j", startedAt: 5, request: { mode: "brief", brief: testBriefs()[0], candidate: { batchId: "b".repeat(32), index: 2 } } };
+    expect(readStoredJob(memoryStorage({ [JOB_KEY]: JSON.stringify(job) }))).toEqual(job);
   });
 });

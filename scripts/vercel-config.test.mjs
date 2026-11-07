@@ -8,6 +8,8 @@ const FILES = [
   "api/cron/forge-gc.ts",
   "api/engine/reply.ts",
   "api/forge/[jobId].ts",
+  "api/forge/drafts/[batchId].ts",
+  "api/forge/drafts/index.ts",
   "api/forge/index.ts",
   "api/health.ts",
   "api/voice.ts",
@@ -57,6 +59,9 @@ describe("vercel-output config.json", () => {
     expect(resolve(config, "/api/forge")).toEqual({ fn: "/api/forge" });
     expect(resolve(config, "/api/forge/replay_malakor_lx3k9a")).toEqual({ fn: "/api/forge/[jobId]?jobId=replay_malakor_lx3k9a" });
     expect(resolve(config, "/api/forge/abc/")).toEqual({ fn: "/api/forge/[jobId]?jobId=abc" });
+    // forge-creator L2: the casting batch and its polls, never taken for a forge job id.
+    expect(resolve(config, "/api/forge/drafts")).toEqual({ fn: "/api/forge/drafts" });
+    expect(resolve(config, "/api/forge/drafts/replaycast_0p_1_a~b~c")).toEqual({ fn: "/api/forge/drafts/[batchId]?batchId=replaycast_0p_1_a~b~c" });
     expect(resolve(config, "/api/engine/reply")).toEqual({ fn: "/api/engine/reply" });
     expect(resolve(config, "/api/voice")).toEqual({ fn: "/api/voice" });
     expect(resolve(config, "/api/cron/forge-gc")).toEqual({ fn: "/api/cron/forge-gc" });

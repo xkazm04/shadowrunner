@@ -56,6 +56,10 @@ export function readStoredJob(storage: Storage | undefined): StoredJob | undefin
       if (!brief.ok) return undefined;
       request.brief = brief.value;
     }
+    // forge-creator L2: a cast job keeps its candidate, so its retry casts again rather than paint anew.
+    if (r.mode === "brief" && isRecord(r.candidate) && typeof r.candidate.batchId === "string" && typeof r.candidate.index === "number") {
+      request.candidate = { batchId: r.candidate.batchId, index: r.candidate.index };
+    }
     if (typeof r.prompt === "string") request.prompt = r.prompt;
     if (typeof r.imageBase64 === "string") request.imageBase64 = r.imageBase64;
     const awakeAt = typeof value.awakeAt === "number" && Number.isFinite(value.awakeAt) ? { awakeAt: value.awakeAt } : {};

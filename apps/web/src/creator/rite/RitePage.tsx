@@ -8,6 +8,9 @@
 // brief is drawn (`mode: "brief"`). A drawing still goes straight to Bind and Forge.
 // forge-creator C1: the face is kept and wakes as soon as the job is awake (its eyes settled, the
 // rig final, useKept.ts); the rite then stands at Wake while the six faces paint in.
+// forge-creator L2: "Draw it" first casts the brief: three drafts on the glass (CastSheet); only the
+// candidate cast goes to the forge (`candidate`), continuing from its portrait and parts. The
+// default on both planes; `?cast=off` (or `casting={false}`) draws the brief straight away.
 import { VOICES } from "@sr/engine";
 import { parseBrief } from "@sr/forge/brief";
 import type { CharacterBrief, ForgeErrorCode, ForgeRequest } from "@sr/forge/wire";
@@ -15,6 +18,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import { usePlane } from "../../app/plane";
 import { handleLinkClick } from "../../app/router";
 import { briefClientFor, type BriefClient } from "../briefClient";
+import { castClientFor, type CastClient } from "../castClient";
 import type { ForgeClient } from "../forgeClient";
 import { parseReplayJobId } from "../forgeClient.replay";
 import { useForgeJob } from "../forge/useForgeJob";
@@ -37,6 +41,9 @@ import { clockText, markOf, progressIn, RUN_STEPS, secText, slotsAt, startOf, ty
 import { Developing, Tape } from "./RiteGlass";
 import { RiteRail } from "./RiteRail";
 import { useBrief } from "./useBrief";
+import { useCast } from "./useCast";
+import { CastSheet } from "./CastSheet";
+import { sheetOf } from "./castState";
 import { useKept } from "./useKept";
 import styles from "./Rite.module.css";
 
@@ -45,6 +52,10 @@ export interface RitePageProps {
   client?: ForgeClient;
   /** Default: the brief client for the plane. */
   briefer?: BriefClient;
+  /** Default: the casting client for the plane (L2). */
+  caster?: CastClient;
+  /** L2: cast from three drafts before forging a brief. Default: on, unless the address has `cast=off`. */
+  casting?: boolean;
   /** Default: the committed recordings. */
   jobs?: () => Promise<readonly ReplayJob[]>;
   library?: UseLibraryOptions;
@@ -84,12 +95,13 @@ function handoffOf(id: string): string {
   return `/creator${url.search}`;
 }
 
-export function RitePage({ client: given, briefer: givenBriefer, jobs = loadReplayJobs, library: libraryOptions = {} }: RitePageProps) {
+export function RitePage({ client: given, briefer: givenBriefer, caster, casting = !new URLSearchParams(window.location.search).getAll("cast").includes("off"), jobs = loadReplayJobs, library: libraryOptions = {} }: RitePageProps) {
   const plane = usePlane();
   const seeded = useRef<ForgeErrorCode | undefined>(undefined);
   const client = useMemo(() => withSeededStart(given ?? planeClient(plane, window.location.search), () => seeded.current, { jobs }), [given, plane, jobs]);
   const job = useForgeJob(client);
   const handshake = useBrief(useMemo(() => givenBriefer ?? briefClientFor(plane), [givenBriefer, plane]));
+  const cast = useCast(useMemo(() => caster ?? castClientFor(plane, { jobs }), [caster, plane, jobs]));
   const drawn = useRef<CharacterBrief | undefined>(undefined);
   const library = useLibrary(libraryOptions);
   const [draft, setDraft] = useState<ForgeDraft>({ prompt: "" });
@@ -153,6 +165,8 @@ export function RitePage({ client: given, briefer: givenBriefer, jobs = loadRepl
   const at = markOf(painting ? "done" : state.phase, chosen, describeFailure === undefined ? "forge" : "describe");
   useEffect(() => setManual(undefined), [at]);
   const busy = state.phase === "running" || job.starting;
+  const cs = cast.state;
+  const castOn = cs.phase !== "idle" && state.phase === "idle" && !job.starting;
   // Words are briefed first (cast-forge 4.3); a drawing is drawn as it is.
   const words = requestOf({ prompt: draft.prompt }, bind);
   const hs = handshake.state;
@@ -171,8 +185,20 @@ export function RitePage({ client: given, briefer: givenBriefer, jobs = loadRepl
     drawn.current = request.brief;
     job.start(request);
   };
+  // A brief is cast first (L2); a drawing, or casting off, is drawn as it is.
+  const drawBrief = (brief: CharacterBrief): void => (casting ? cast.start(brief) : draw({ mode: "brief", brief }));
   const forge = (): void => {
-    if (asked.ok) draw(asked.request);
+    if (asked.ok && asked.request.brief !== undefined) drawBrief(asked.request.brief);
+    else if (asked.ok) draw(asked.request);
+  };
+  const castOne = (index: number): void => {
+    if (cs.phase === "ready") draw({ mode: "brief", brief: cs.brief, candidate: { batchId: cs.view.batchId, index } });
+  };
+  // L2: a failed cast job is cast again from its brief (its batch is spent); anything else re-sent.
+  const retry = (request: ForgeRequest): void => {
+    if (request.candidate === undefined || request.brief === undefined) return job.start(request);
+    job.reset();
+    cast.start(request.brief);
   };
   const tryRealFace = (): void => {
     seeded.current = "refused_likeness";
@@ -182,10 +208,12 @@ export function RitePage({ client: given, briefer: givenBriefer, jobs = loadRepl
   };
   const edit = (): void => {
     job.reset();
+    cast.back();
     setChosen(0);
   };
   const again = (): void => {
     job.reset();
+    cast.back();
     handshake.reset();
     forgetKept();
     setChosen(0);
@@ -253,7 +281,9 @@ export function RitePage({ client: given, briefer: givenBriefer, jobs = loadRepl
       />
       <section className={anatomy.centre} aria-label="The glass">
         <div className={anatomy.glassBox}>
-          {kept !== undefined && shown !== undefined ? (
+          {castOn ? (
+            <CastSheet state={cs} name={cs.brief.name} recorded={recorded || sheetOf(cs)?.plane === "replay"} busy={busy} onCast={castOne} onReroll={cast.reroll} onBack={cast.back} />
+          ) : kept !== undefined && shown !== undefined ? (
             <Glass
               rig={shown.rig}
               look={kept.look}
@@ -317,7 +347,7 @@ export function RitePage({ client: given, briefer: givenBriefer, jobs = loadRepl
               {...(briefBlocked === undefined ? {} : { briefBlocked })}
               {...(hs.phase === "idle"
                 ? {}
-                : { brief: <Handshake state={hs} busy={busy} onEdit={handshake.edit} onDraw={(brief) => draw({ mode: "brief", brief })} onAgain={askBrief} /> })}
+                : { brief: <Handshake state={hs} busy={busy || cs.phase === "casting"} onEdit={handshake.edit} onDraw={drawBrief} onAgain={askBrief} /> })}
             />,
             <BindMark key="b" bind={bind} onBind={setBind} busy={busy} recorded={recorded} onForge={forge} {...(blocked === undefined ? {} : { blocked })} />,
             <ForgeMark
@@ -328,7 +358,7 @@ export function RitePage({ client: given, briefer: givenBriefer, jobs = loadRepl
               recorded={recorded}
               fallback={fallback}
               {...(expressions === undefined ? {} : { expressions })}
-              {...(state.phase === "failed" ? { onRetry: () => job.start(state.retry) } : {})}
+              {...(state.phase === "failed" ? { onRetry: () => retry(state.retry) } : {})}
               onEdit={edit}
             />,
             <WakeMark

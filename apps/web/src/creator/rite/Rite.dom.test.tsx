@@ -3,6 +3,7 @@
 // arrive, a finished job is kept bound as chosen and handed to /creator, a real face is refused with
 // the API's refused_likeness copy and the words are kept, and the other failures land on Forge.
 // cast-forge 4.3: words are briefed first (the recorded brief on replay) and the approved brief drawn.
+// forge-creator L2: these cover the direct path (`casting={false}`); Cast.dom.test.tsx covers casting.
 import type { AvatarCanvasProps } from "@sr/avatar";
 import type { ForgeErrorCode } from "@sr/forge/wire";
 import { act } from "react";
@@ -40,7 +41,7 @@ async function flush(): Promise<void> {
 }
 
 async function open(client: ForgeClient): Promise<void> {
-  view = await mount(<RitePage client={client} briefer={createReplayBriefClient(async () => testBriefs())} jobs={jobs} library={{ open: async () => store, cast: async () => [] }} />);
+  view = await mount(<RitePage casting={false} client={client} briefer={createReplayBriefClient(async () => testBriefs())} jobs={jobs} library={{ open: async () => store, cast: async () => [] }} />);
   await flush();
 }
 

@@ -16,6 +16,7 @@ import {
   facesAt,
   facesOutcomes,
   parseForgeRequest,
+  parseReplayBatchId,
   requestKey,
   rigWithFaces,
   withFacesStep,
@@ -100,7 +101,7 @@ export function replayJobOf(value: unknown): ReplayJob | undefined {
 }
 
 /** The committed job manifests, bundled at build time (Vite glob import; vitest resolves it the same way). */
-function bundledJobs(): ReplayJob[] {
+export function bundledJobs(): ReplayJob[] {
   const manifests = import.meta.glob("../../assets/replay/forge/*/job.json", { eager: true, import: "default" });
   const jobs: ReplayJob[] = [];
   for (const [path, manifest] of Object.entries(manifests)) {
@@ -171,7 +172,13 @@ export function createForgeReplay(jobs: readonly ReplayJob[]): ForgeReplay {
     async post(body, now) {
       const parsed = parseForgeRequest(body);
       if (!parsed.ok) return Response.json(errorBody("bad_input", parsed.errors.message), { status: 400, headers: NO_STORE });
-      const job = pickJob(parsed.value, jobs);
+      // forge-creator L2: a cast candidate plays the recorded job it showed (forge-cast-replay.ts).
+      const pick = parsed.value.candidate;
+      const cast = pick === undefined ? undefined : parseReplayBatchId(pick.batchId)?.slugs[pick.index];
+      if (pick !== undefined && (cast === undefined || !bySlug.has(cast))) {
+        return Response.json(errorBody("bad_input", "No such casting batch."), { status: 400, headers: NO_STORE });
+      }
+      const job = cast === undefined ? pickJob(parsed.value, jobs) : bySlug.get(cast);
       if (job === undefined) return unavailable();
       return Response.json({ jobId: replayJobId(job.slug, now) }, { status: 202, headers: NO_STORE });
     },

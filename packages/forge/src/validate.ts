@@ -7,9 +7,11 @@ import { EXPRESSION_FAMILIES, type ExpressionFamily, type Result, validateRig } 
 import { FORGE_STEPS, type ExpressionOutcome, type ForgeJob, type ForgeStep, type PortraitMime } from "./job.js";
 import { parseBrief, type BriefError } from "./brief.js";
 import { MAX_EXTRA_EDITS, MAX_FACE_ATTEMPT } from "./faceMaterial.js";
+import { CAST_SIZE } from "./cast.js";
+import { castRecordOf, type CastRecord } from "./castJob.js";
 import { settleBriefParts } from "./briefParts.js";
 import { parseParts, type ParsedParts, type PartsError } from "./parts.js";
-import type { BriefRequest, CharacterBrief, ForgeErrorCode, ForgeRequest, ForgeStatus } from "./wire.js";
+import type { BriefRequest, CastPick, CastRequest, CharacterBrief, ForgeErrorCode, ForgeRequest, ForgeStatus } from "./wire.js";
 
 /** Upper bound of the user's text in a request (the prompt uses at most MAX_CHARACTER_TEXT of it). */
 export const MAX_REQUEST_PROMPT = 2000;
@@ -66,9 +68,41 @@ export function parseForgeRequest(text: string): Result<ForgeRequest, RequestErr
   if (body.mode === "brief") {
     const brief = parseBrief(body.brief);
     if (!brief.ok) return badInput(`The brief is not valid: ${briefProblem(brief.errors)}.`);
-    return { ok: true, value: { mode: "brief", brief: brief.value } };
+    if (body.candidate === undefined) return { ok: true, value: { mode: "brief", brief: brief.value } };
+    const candidate = castPickOf(body.candidate);
+    if (candidate === undefined) return badInput("The chosen candidate is not valid.");
+    return { ok: true, value: { mode: "brief", brief: brief.value, candidate } };
   }
   return badInput("Unknown forge mode.");
+}
+
+/** A casting batch id: a live one (32 hex) or a replay one (`replaycast_...`, cast.ts). */
+export const CAST_BATCH_ID = /^[A-Za-z0-9_~-]{8,200}$/;
+
+/** forge-creator L2: `{ batchId, index }` with index 0..CAST_SIZE-1; undefined when off-contract. */
+function castPickOf(v: unknown): CastPick | undefined {
+  if (!isRecord(v) || typeof v.batchId !== "string" || !CAST_BATCH_ID.test(v.batchId)) return undefined;
+  const index = v.index;
+  if (typeof index !== "number" || !Number.isInteger(index) || index < 0 || index >= CAST_SIZE) return undefined;
+  return { batchId: v.batchId, index };
+}
+
+/** The POST /api/forge/drafts body (L2): a brief that passes `parseBrief`, and `after` (a batch id) for a re-roll. */
+export function parseCastRequest(text: string): Result<CastRequest, RequestError> {
+  const decoded = decode(text);
+  if (!decoded.ok || !isRecord(decoded.value)) return badInput("The request is not a JSON object.");
+  const brief = parseBrief(decoded.value.brief);
+  if (!brief.ok) return badInput(`The brief is not valid: ${briefProblem(brief.errors)}.`);
+  const after = decoded.value.after;
+  if (after === undefined) return { ok: true, value: { brief: brief.value } };
+  if (typeof after !== "string" || !CAST_BATCH_ID.test(after)) return badInput("The batch to re-roll is not valid.");
+  return { ok: true, value: { brief: brief.value, after } };
+}
+
+/** A casting record read back from the job store (castJob.ts); undefined when off-contract. */
+export function parseCastRecord(text: string): CastRecord | undefined {
+  const decoded = decode(text);
+  return decoded.ok ? castRecordOf(decoded.value) : undefined;
 }
 
 /** The first broken rule of a brief, for a bad_input message (a path and a rule, never a value). */

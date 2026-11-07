@@ -4,7 +4,7 @@
 // unions are closed: if a type widens, the directive becomes unused and typecheck fails.
 import type { ExpressionFamily, Rig } from "@sr/rig";
 import { describe, expectTypeOf, it } from "vitest";
-import type { BriefResponse, CharacterBrief, ForgeErrorCode, ForgeRequest, ForgeStatus, JobView } from "@sr/forge/wire";
+import type { BriefResponse, CastPick, CharacterBrief, ForgeErrorCode, ForgeRequest, ForgeStatus, JobView } from "@sr/forge/wire";
 import type * as root from "@sr/forge";
 
 describe("@sr/forge/wire", () => {
@@ -20,13 +20,15 @@ describe("@sr/forge/wire", () => {
     >();
   });
 
-  it("ForgeRequest is the POST /api/forge body (cast-forge 4.3 adds mode brief)", () => {
+  it("ForgeRequest is the POST /api/forge body (cast-forge 4.3 adds mode brief, L2 the cast candidate)", () => {
     expectTypeOf<ForgeRequest>().toEqualTypeOf<{
       mode: "prompt" | "image" | "brief";
       prompt?: string;
       imageBase64?: string;
       brief?: CharacterBrief;
+      candidate?: CastPick;
     }>();
+    expectTypeOf<CastPick>().toEqualTypeOf<{ batchId: string; index: number }>();
     const prompt: ForgeRequest = { mode: "prompt", prompt: "a lich in a moth-eaten robe" };
     const image: ForgeRequest = { mode: "image", imageBase64: "iVBORw0KGgo=" };
     expectTypeOf(prompt).toExtend<ForgeRequest>();

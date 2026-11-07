@@ -85,12 +85,12 @@ export function uploadMime(bytes: Uint8Array): PortraitMime | undefined {
   return bytes.length >= 12 && tag(0, 4) === "RIFF" && tag(8, 12) === "WEBP" ? "image/webp" : undefined;
 }
 
-function extensionOf(mime: string): "png" | "jpg" | "webp" {
+export function extensionOf(mime: string): "png" | "jpg" | "webp" {
   return mime === "image/png" ? "png" : mime === "image/webp" ? "webp" : "jpg";
 }
 
 /** Decodes a generated portrait (or plate) and holds it to 1024 x 1024. */
-function decodePortrait(bytes: Uint8Array): Rgba {
+export function decodePortrait(bytes: Uint8Array): Rgba {
   const decoded = decodeImage(bytes);
   if (!decoded.ok) throw fail("upstream", "The forge painted something unreadable.");
   if (decoded.value.width !== PORTRAIT_SIZE || decoded.value.height !== PORTRAIT_SIZE) {
@@ -275,12 +275,14 @@ export function plateFor(portrait: Rgba, parts: readonly Part[], edit?: Rgba): R
 /**
  * Named parts on the cast's path (cast-forge task 11), the one `scripts/cast-forge.mjs` runs
  * (`runPipeline`): `plateNamed` (the edit, or per part the pure fallback), `cutNamed` with the
- * file's cut style, `assembleRig`. `cavity` is the painted mouth (`cutNamed`), for the regions.
+ * file's cut style, `assembleRig`. `cavity` is the painted mouth (`cutNamed`), for the regions;
+ * `empty` the parts whose cut came out empty (L2 lists them on a casting candidate). Without
+ * `edit` the plate is the pure fallback: the provisional rig of a casting candidate (L2).
  */
 export function assembleNamed(portrait: Rgba, named: PartsV2, meta: { id: string; name: string }, edit?: Rgba) {
   const plate = plateNamed(portrait, named.parts, edit);
   const cut = cutNamed(portrait, named.parts, { plate, ...(named.cut ?? {}) });
-  return { assembled: assembleRig(named.parts, cut.layers, { ...meta, portrait, plate }), ...(cut.cavity === undefined ? {} : { cavity: cut.cavity }) };
+  return { assembled: assembleRig(named.parts, cut.layers, { ...meta, portrait, plate }), empty: cut.empty, ...(cut.cavity === undefined ? {} : { cavity: cut.cavity }) };
 }
 
 /** Character-control "Regions": every layer's colour regions, the maps added to the rig's files. */

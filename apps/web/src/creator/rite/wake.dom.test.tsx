@@ -3,6 +3,7 @@
 // eye step takes 35 s, each of the six faces 40 s (done at 395 s). Before C1 the rite failed at
 // the five-minute cap; now the face is kept and wakes at ~155 s, the 300 s mark passes, the faces
 // fold into the kept record (the visitor's look edit survives), and a reload mid-forge resumes.
+// forge-creator L2: these cover the direct path (`casting={false}`); Cast.dom.test.tsx covers casting.
 import type { AvatarCanvasProps } from "@sr/avatar";
 import type { JobView } from "@sr/forge/wire";
 import { EXPRESSION_FAMILIES, type ExpressionFamily, type Rig } from "@sr/rig";
@@ -86,7 +87,7 @@ async function flush(): Promise<void> {
 }
 
 async function open(client: ForgeClient): Promise<void> {
-  view = await mount(<RitePage client={client} briefer={createReplayBriefClient(async () => testBriefs())} jobs={async () => [testJob("ghost-a")]} library={{ open: async () => store, cast: async () => [] }} />);
+  view = await mount(<RitePage casting={false} client={client} briefer={createReplayBriefClient(async () => testBriefs())} jobs={async () => [testJob("ghost-a")]} library={{ open: async () => store, cast: async () => [] }} />);
   await flush();
 }
 
