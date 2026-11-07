@@ -1,7 +1,9 @@
 // The rite's last two marks (costume 3.2): Forge lists the job's stages with their recorded holds
 // (and how long the live run that was recorded took), the current one lit; a failure that is not
 // about the description lands here with its copy and a retry. Wake hands the new face to the Forge
-// (/creator, with it selected) or puts it on air.
+// (/creator, with it selected) or puts it on air. forge-creator S1: Wake says briefly why each
+// procedural family is procedural when the job read it ("joy · procedural, the eyes moved 7.2 px").
+import type { FaceGate } from "@sr/forge/faceGate";
 import type { ForgeErrorCode, JobView } from "@sr/forge/wire";
 import { EXPRESSION_FAMILIES, type ExpressionFamily } from "@sr/rig";
 import { PAGES } from "../../app/pages";
@@ -10,6 +12,7 @@ import { writeOnAir } from "../../air/onAir";
 import type { ReplayStep } from "../replayJobs";
 import { RUN_STEPS, secText, type RunStep } from "./riteClock";
 import { FAILURE_COPY } from "./request";
+import { gateWords } from "../forge/gateWords";
 import marks from "./Marks.module.css";
 import styles from "./ForgeWake.module.css";
 
@@ -34,8 +37,14 @@ export const facesPainting = (e: Expressions): string => `Faces ${Object.keys(e)
 /** The families that came to anything but "ok": they ship procedural only. */
 export const proceduralFamilies = (e: Expressions): ExpressionFamily[] => EXPRESSION_FAMILIES.filter((f) => e[f] !== "ok");
 
-/** While expressing, the count; once done, every family that is procedural. */
-export function ExpressionsNote({ expressions, done }: { expressions: Expressions; done: boolean }) {
+/** One procedural family as Wake lists it, with the gate's reason when there is one (S1). */
+export const proceduralText = (f: ExpressionFamily, gate?: FaceGate): string => {
+  const reading = gate?.[f];
+  return reading === undefined ? `${f} · procedural` : `${f} · procedural, ${gateWords(reading)}`;
+};
+
+/** While expressing, the count; once done, every family that is procedural (with why, given `gate`). */
+export function ExpressionsNote({ expressions, done, gate }: { expressions: Expressions; done: boolean; gate?: FaceGate }) {
   if (!done) {
     return (
       <p className={marks.note} role="status" data-expressions="">
@@ -47,7 +56,7 @@ export function ExpressionsNote({ expressions, done }: { expressions: Expression
   if (procedural.length === 0) return null;
   return (
     <p className={marks.note} data-procedural="">
-      {procedural.map((f) => `${f} · procedural`).join(", ")}
+      {procedural.map((f) => proceduralText(f, gate)).join(gate === undefined ? ", " : "; ")}
     </p>
   );
 }
@@ -156,9 +165,11 @@ export interface WakeMarkProps {
   expressions?: Expressions;
   /** C1: the face is awake and kept while the forge still paints its faces. */
   painting?: boolean;
+  /** S1: why each procedural family is procedural (the job's `expressionGate`). */
+  gate?: FaceGate;
 }
 
-export function WakeMark({ name, layers, handoff, keepError, fallback = false, id, expressions, painting = false }: WakeMarkProps) {
+export function WakeMark({ name, layers, handoff, keepError, fallback = false, id, expressions, painting = false, gate }: WakeMarkProps) {
   if (keepError !== undefined) return <p className={marks.note}>{keepError}</p>;
   if (name === undefined || handoff === undefined) return <p className={marks.note}>The face wakes here when the forge is done.</p>;
   return (
@@ -172,7 +183,7 @@ export function WakeMark({ name, layers, handoff, keepError, fallback = false, i
           {facesPainting(expressions ?? {})}. It is yours already: tune it while they arrive.
         </p>
       ) : (
-        expressions !== undefined && <ExpressionsNote expressions={expressions} done />
+        expressions !== undefined && <ExpressionsNote expressions={expressions} done {...(gate === undefined ? {} : { gate })} />
       )}
       <a className={`${styles.btn} ${styles.amber}`} href={handoff} onClick={(event) => handleLinkClick(event, handoff)} data-handoff="">
         Open in Anatomy Under Glass <kbd>CH {forge?.channel}</kbd>

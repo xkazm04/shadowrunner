@@ -82,8 +82,8 @@ async function click(el: Element): Promise<void> {
   });
 }
 
-async function openFace(): Promise<void> {
-  view = await mount(<Anatomy record={record()} library={lib} />);
+async function openFace(rec: CharacterRecord = record()): Promise<void> {
+  view = await mount(<Anatomy record={rec} library={lib} />);
   await elapse(0);
   const tab = [...view.container.querySelectorAll<HTMLElement>('[role="tab"]')].find((t) => t.textContent === "Face");
   if (tab === undefined) throw new Error("no Face tab");
@@ -172,5 +172,36 @@ describe("the FACES card", () => {
     expect(q("[data-families-state]").textContent).toContain("Show holds a still until you press it again.");
     await click(show("joy"));
     expect(last().look.emotion).toBe("neutral");
+  });
+});
+
+// forge-creator S1: a family with no painted face says why when the record carries the forge's reading.
+describe("why a face was refused", () => {
+  /** testRig with painted faces for joy and showman only. */
+  function twoFaced(): CharacterRecord {
+    const base = record();
+    const variants = { joy: PATCH, showman: PATCH };
+    return { ...base, rig: { ...base.rig, layers: base.rig.layers.map((l) => (l.name === "head" ? { ...l, variants } : l)) } };
+  }
+
+  it("names the reason with its number for each family that has a reading, the general note for the rest", async () => {
+    await openFace({
+      ...twoFaced(),
+      faceGate: { anger: { reason: "iris", irisDriftPx: 7.2, limit: 4, attempts: 3 }, gloom: { reason: "budget" }, smug: { reason: "band", outsideBandMean: 9.4, limit: 7.6, attempts: 1 } },
+    });
+    const why = (family: string): string => row(family).querySelector("[data-family-why]")?.textContent ?? "";
+    expect(why("anger")).toBe("Not painted: the eyes moved 7.2 px (limit 4), 3 tries.");
+    expect(why("gloom")).toBe("Not painted: the daily budget ran out.");
+    expect(why("smug")).toBe("Not painted: it repainted outside the brows (change 9.4, limit 7.6).");
+    expect(state("anger")).toBe("Procedural");
+    expect(row("suspicion").querySelector("[data-family-why]")).toBeNull();
+    expect(row("joy").querySelector("[data-family-why]")).toBeNull();
+    expect(q("[data-families-note]").textContent).toBe("No painted face for suspicion: this character shows that mood by procedural motion only.");
+  });
+
+  it("a record without readings shows the existing copy; a reading for a painted family is not shown", async () => {
+    await openFace({ ...record(), faceGate: { joy: { reason: "no_change" } } });
+    expect(view.container.querySelector("[data-family-why]")).toBeNull();
+    expect(q("[data-families-note]").textContent).toBe("No painted face for suspicion: this character shows that mood by procedural motion only.");
   });
 });

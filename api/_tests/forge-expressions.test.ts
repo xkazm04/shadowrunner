@@ -33,6 +33,33 @@ function edited(shift: number, everywhere = false): GeminiImage {
   return { mimeType: "image/png", data: encodePng(decoded.value) };
 }
 
+/** The portrait with `shift` added to everything well below the eyes (the face repainted outside the brow+lid band). */
+function belowEyes(shift: number): GeminiImage {
+  const decoded = decodeImage(PORTRAIT.data);
+  if (!decoded.ok) throw new Error("portrait");
+  const { width, data } = decoded.value;
+  const bottom = Math.max(...EYE_BOXES.map(([, , y1 = 0]) => y1)) + 60;
+  for (let i = 0; i < data.length / 4; i++) {
+    if ((Math.floor(i / width) * 1000) / width > bottom) for (let c = 0; c < 3; c++) data[i * 4 + c] = (data[i * 4 + c] ?? 0) + shift;
+  }
+  return { mimeType: "image/png", data: encodePng(decoded.value) };
+}
+
+/** The portrait with the pixels inside each eye box moved `dx` px to the right (the irises move; nothing else). */
+function irisMoved(dx: number): GeminiImage {
+  const decoded = decodeImage(PORTRAIT.data);
+  if (!decoded.ok) throw new Error("portrait");
+  const { width, height } = decoded.value;
+  const src = decoded.value.data;
+  const data = new Uint8ClampedArray(src);
+  for (const [y0 = 0, x0 = 0, y1 = 0, x1 = 0] of EYE_BOXES) {
+    const [px0, px1, py0, py1] = [x0, x1, y0, y1].map((v) => Math.round((v * width) / 1000)) as [number, number, number, number];
+    for (let y = py0; y < Math.min(py1, height); y++)
+      for (let x = px0 + dx; x < Math.min(px1, width); x++) for (let c = 0; c < 4; c++) data[(y * width + x) * 4 + c] = src[(y * width + x - dx) * 4 + c] ?? 0;
+  }
+  return { mimeType: "image/png", data: encodePng({ width, height, data }) };
+}
+
 const WARDEN: CharacterBrief = {
   name: "The Lantern Warden",
   one_line_request: "a pumpkin-headed night watchman",
@@ -195,5 +222,44 @@ describe("live expressions", () => {
     expect(prompts.filter((p) => p.kind === "expression").length).toBeGreaterThan(0);
     for (const p of prompts) expect(p.prompt, p.kind).toContain(sentence);
     expect(prompts.some((p) => /remove the irises|paint the upper eyelids/.test(p.prompt))).toBe(false);
+  });
+});
+
+describe("S1: why a face was refused (expressionGate)", () => {
+  it("a family refused on every attempt records the last reading and the attempts; a passing family records nothing", { timeout: 120_000 }, async () => {
+    // joy: the irises move on all three edits (attempt 0 and the two stricter re-runs); the rest pass.
+    const { deps } = setup(async (n) => (n <= 3 ? irisMoved(10) : edited(70)));
+    const view = (await forge(deps)).at(-1);
+    expect(view?.status).toBe("done");
+    expect(view?.expressions).toEqual({ joy: "skipped", showman: "ok", anger: "ok", gloom: "ok", smug: "ok", suspicion: "ok" });
+    const joy = view?.expressionGate?.joy;
+    expect(joy).toMatchObject({ reason: "iris", attempts: 3, limit: 4 });
+    expect(joy?.irisDriftPx).toBeGreaterThan(4);
+    expect(Math.round((joy?.irisDriftPx ?? 0) * 10) / 10).toBe(joy?.irisDriftPx);
+    expect(Object.keys(view?.expressionGate ?? {})).toEqual(["joy"]);
+  });
+
+  it("the face over the band, the budget, a failed edit and an unchanged edit each say so", { timeout: 120_000 }, async () => {
+    const replies = [
+      () => Promise.reject(new GeminiError("timeout")),
+      async () => belowEyes(70),
+      async () => belowEyes(70),
+      async () => belowEyes(70),
+      async () => PORTRAIT,
+    ];
+    // fill + two eye edits + five expression edits; smug and suspicion are refused by the budget.
+    const { deps } = setup(async (n) => (replies[n - 1] ?? (async () => PORTRAIT))(), 8);
+    const view = (await forge(deps)).at(-1);
+    expect(view?.status).toBe("done");
+    expect(view?.expressions).toEqual({ joy: "failed", showman: "skipped", anger: "skipped", gloom: "skipped", smug: "skipped", suspicion: "skipped" });
+    const gate = view?.expressionGate;
+    expect(gate?.joy).toEqual({ reason: "failed", attempts: 1 });
+    expect(gate?.showman).toMatchObject({ reason: "band", attempts: 3 });
+    expect(gate?.showman?.outsideBandMean).toBeGreaterThan(gate?.showman?.limit ?? Infinity);
+    expect(gate?.anger).toEqual({ reason: "no_change", attempts: 1 });
+    // gloom's edit is the ninth charge: the budget refuses it before any edit is made.
+    expect(gate?.gloom).toEqual({ reason: "budget" });
+    expect(gate?.smug).toEqual({ reason: "budget" });
+    expect(JSON.stringify(gate).length).toBeLessThan(1000);
   });
 });

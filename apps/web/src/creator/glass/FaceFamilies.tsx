@@ -7,11 +7,16 @@
 //   that is never saved, so the painted face and the procedural motion can be compared on the hero
 //   face itself. Under reduced motion the swap is a still (the glass changes mood at once) that
 //   holds until Show is pressed again, with no timed change.
+// - forge-creator S1: a family with no painted face says why when the record carries the forge's
+//   reading (`CharacterRecord.faceGate`): "Not painted: the eyes moved 7.2 px (limit 4)." Families
+//   without one (the recorded cast, a record kept before S1) keep the general procedural note.
+import type { FaceGate } from "@sr/forge/faceGate";
 import { EXPRESSION_FAMILIES, isRetired, resolveFace, type Emotion, type ExpressionFamily, type Look, type Rig } from "@sr/rig";
 import { useCallback, useEffect, useState } from "react";
 import signal from "./Signal.module.css";
 import lookCss from "./Look.module.css";
 import styles from "./Face.module.css";
+import { gateLine } from "../forge/gateWords";
 
 /** How long Show holds a family on the glass (not under reduced motion). */
 export const SHOW_MS = 2500;
@@ -66,11 +71,14 @@ export interface FaceFamiliesProps {
   preview: ExpressionFamily | undefined;
   onShow: (family: ExpressionFamily) => void;
   reduced: boolean;
+  /** S1: the forge's reading of each family it painted no face for (the kept record's `faceGate`). */
+  gate?: FaceGate;
 }
 
-export function FaceFamilies({ rig, look, onRetire, preview, onShow, reduced }: FaceFamiliesProps) {
+export function FaceFamilies({ rig, look, onRetire, preview, onShow, reduced, gate }: FaceFamiliesProps) {
   const states = familyStates(rig, look);
-  const unpainted = EXPRESSION_FAMILIES.filter((f) => states[f] === "none");
+  const why = (f: ExpressionFamily) => (states[f] === "none" ? gate?.[f] : undefined);
+  const unpainted = EXPRESSION_FAMILIES.filter((f) => states[f] === "none" && why(f) === undefined);
   const retired = EXPRESSION_FAMILIES.filter((f) => states[f] === "retired").length;
   return (
     <section className={signal.card} aria-labelledby="face-families-title" data-card="face-families">
@@ -82,6 +90,7 @@ export function FaceFamilies({ rig, look, onRetire, preview, onShow, reduced }: 
         {EXPRESSION_FAMILIES.map((family) => {
           const state = states[family];
           const canRetire = state === "painted" || state === "retired";
+          const reading = why(family);
           return (
             <li key={family} className={styles.family} data-family={family} data-state={state}>
               <span className={styles.familyName}>{family}</span>
@@ -101,6 +110,11 @@ export function FaceFamilies({ rig, look, onRetire, preview, onShow, reduced }: 
               >
                 {state === "retired" ? "Restore" : "Retire"}
               </button>
+              {reading !== undefined && (
+                <span className={styles.familyWhy} data-family-why={reading.reason}>
+                  {`Not painted: ${gateLine(reading)}.`}
+                </span>
+              )}
             </li>
           );
         })}

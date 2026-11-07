@@ -233,6 +233,7 @@ export function Anatomy({ record, library, cast, badge, readPixels = decodePixel
                   preview={preview}
                   onShow={show}
                   reduced={reduced}
+                  {...(record.faceGate === undefined ? {} : { gate: record.faceGate })}
                 />
               </>
             ),

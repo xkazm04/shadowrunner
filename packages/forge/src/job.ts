@@ -2,6 +2,7 @@
 // JobStore between steps (KV on the live plane, at most 50 KB): statuses, parts and URLs, never
 // image bytes. `toJobView` is the only way a record reaches the client.
 import type { ExpressionFamily, Rig } from "@sr/rig";
+import type { FaceGate } from "./faceGate.js";
 import type { Part, PartsV2 } from "./types.js";
 import type { CharacterBrief, Decomposition, ForgeErrorCode, ForgeStatus, JobView } from "./wire.js";
 
@@ -57,6 +58,11 @@ export interface ForgeJob {
   extraEdits?: number;
   /** What each expression family came to, from "expressing" on. */
   expressions?: Partial<Record<ExpressionFamily, ExpressionOutcome>>;
+  /**
+   * forge-creator S1: why each family that settled "skipped" or "failed" has no painted face (the
+   * last attempt's reading and the edits spent, faceGate.ts); never set for an "ok" family.
+   */
+  expressionGate?: FaceGate;
   error?: { code: ForgeErrorCode; message: string };
   timings?: Partial<Record<ForgeStep, number>>;
 }
@@ -87,6 +93,7 @@ export function toJobView(job: ForgeJob): JobView {
     ...(job.fill !== undefined && job.status === "done" ? { fill: job.fill } : {}),
     ...(job.decomposition === undefined ? {} : { decomposition: job.decomposition }),
     ...(job.expressions === undefined ? {} : { expressions: { ...job.expressions } }),
+    ...(job.expressionGate === undefined ? {} : { expressionGate: { ...job.expressionGate } }),
     ...(job.status === "failed" && job.error !== undefined ? { error: job.error } : {}),
   };
 }

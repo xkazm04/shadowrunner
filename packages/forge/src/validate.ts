@@ -7,6 +7,7 @@ import { EXPRESSION_FAMILIES, type ExpressionFamily, type Result, validateRig } 
 import { FORGE_STEPS, type ExpressionOutcome, type ForgeJob, type ForgeStep, type PortraitMime } from "./job.js";
 import { parseBrief, type BriefError } from "./brief.js";
 import { MAX_EXTRA_EDITS, MAX_FACE_ATTEMPT } from "./faceMaterial.js";
+import { readFaceGate } from "./faceGate.js";
 import { settleBriefParts } from "./briefParts.js";
 import { parseParts, type ParsedParts, type PartsError } from "./parts.js";
 import type { BriefRequest, CharacterBrief, ForgeErrorCode, ForgeRequest, ForgeStatus } from "./wire.js";
@@ -253,6 +254,9 @@ export function parseForgeJob(text: string): ForgeJob | undefined {
     if (!expressions) return undefined;
     job.expressions = expressions;
   }
+  // forge-creator S1: a note, not the character: malformed readings are dropped, never the job.
+  const gate = readFaceGate(j.expressionGate);
+  if (gate !== undefined) job.expressionGate = gate;
   if (j.error !== undefined) {
     if (!isRecord(j.error) || !isCode(j.error.code) || !isString(j.error.message)) return undefined;
     job.error = { code: j.error.code, message: j.error.message };

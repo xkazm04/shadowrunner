@@ -85,6 +85,11 @@ stage builds the character's persona from it, and on the replay plane plays its 
 scripted show. Text is trimmed. A sheet that breaks a rule is dropped, not fatal: the face still
 loads. Readers that do not know `sheet` ignore it.
 
+Not in a pack: the forge's face-gate readings (why a family has no painted face, "the eyes moved
+7.2 px"; forge-creator S1). They are a note about one forge run, kept on the creator's library
+record (`CharacterRecord.faceGate`), not part of the character, so a pack never writes them and the
+manifest has no field for them. An imported character's Face tab shows the general procedural note.
+
 ### Licence values
 | value | meaning |
 |---|---|

@@ -116,6 +116,13 @@
   font-weight: 700;
 }
 
+/* S1: why a family has no painted face, on its own line under the row. */
+.familyWhy {
+  grid-column: 1 / -1;
+  color: var(--sr-text-muted);
+  font-size: var(--sr-size-text-sm);
+}
+
 .family button:disabled {
   color: var(--sr-text-muted);
   cursor: not-allowed;

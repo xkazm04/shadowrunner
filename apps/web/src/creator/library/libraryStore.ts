@@ -15,6 +15,7 @@
 //   second object store `meta` (database version 2), so a preset the user deleted is not put back
 //   and a new recorded job still joins an old library once.
 import { VOICE_IDS, type VoiceId } from "@sr/engine";
+import { readFaceGate, type FaceGate } from "@sr/forge/faceGate";
 import { readSheet, type CharacterSheet } from "@sr/pack";
 import { defaultLook, readLook, validateRig, type Look, type Rig } from "@sr/rig";
 import { extraFiles } from "./assets";
@@ -42,6 +43,12 @@ export interface CharacterRecord {
   seeded?: true;
   /** Who a forged character is on air: its approved brief (C4). Omitted when it has none. */
   sheet?: CharacterSheet;
+  /**
+   * forge-creator S1: the forge's reading of each family it painted no face for (why: the eyes
+   * moved, it repainted outside the brows, ...), so the Face tab can say so after a reload. A
+   * library note only: packs do not carry it (docs/pack-format.md). Omitted when there is none.
+   */
+  faceGate?: FaceGate;
 }
 
 export type LibraryEntry =
@@ -119,6 +126,9 @@ export function readRecord(value: unknown): LibraryEntry {
   // A sheet that does not read is dropped (the stage then treats the character as before C4).
   const sheet = value.sheet === undefined ? undefined : readSheet(value.sheet);
   if (sheet !== undefined) record.sheet = sheet;
+  // S1: malformed readings are dropped (the Face tab then says what it said before them).
+  const faceGate = readFaceGate(value.faceGate);
+  if (faceGate !== undefined) record.faceGate = faceGate;
   return { kind: "ok", record };
 }
 

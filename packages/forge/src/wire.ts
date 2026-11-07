@@ -2,6 +2,7 @@
 // Types only, so it is safe to import in the browser. This is the ONLY declaration of these
 // names; the creator imports them from "@sr/forge/wire" and never redeclares them.
 import type { ExpressionFamily, Rig } from "@sr/rig";
+import type { FaceGate } from "./faceGate.js";
 import type { PartRole } from "./types.js";
 
 /** Job status, in step order. `filling` sits between `cutting` and `done`. */
@@ -96,5 +97,7 @@ export interface JobView {
   decomposition?: Decomposition;
   /** Live jobs from "expressing" on (character-control): what each expression family came to. */
   expressions?: Partial<Record<ExpressionFamily, "ok" | "skipped" | "failed">>;
+  /** forge-creator S1: why a family that settled without a painted face did (faceGate.ts). */
+  expressionGate?: FaceGate;
   error?: { code: ForgeErrorCode; message: string };
 }
