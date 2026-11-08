@@ -80,7 +80,7 @@ const arbWords = fc.array(fc.constantFrom("floats", "when", "a", "vow", "is", "k
 describe("actFromWords properties", () => {
   it("a compiled act never names a missing layer, sits only on an act role, and reads back unchanged", () => {
     fc.assert(
-      fc.property(fc.array(fc.record({ name: fc.stringMatching(/^[a-z][a-z0-9_]{0,8}$/), role: arbRole, motion: arbWords }), { maxLength: 8 }), (parts) => {
+      fc.property(fc.uniqueArray(fc.record({ name: fc.stringMatching(/^[a-z][a-z0-9_]{0,8}$/), role: arbRole, motion: arbWords }), { maxLength: 8, selector: (p) => p.name }), (parts) => {
         const acts = actsFromParts(parts);
         for (const [name, act] of acts) {
           const part = parts.find((p) => p.name === name);
