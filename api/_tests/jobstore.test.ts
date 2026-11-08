@@ -112,6 +112,15 @@ describe("MemoryJobStore", () => {
     await expect(store.putImage(ID, "../x.png", PNG)).rejects.toThrow(RangeError);
     await expect(store.putImage(ID, "x.svg", { ...PNG, contentType: "image/svg+xml" })).rejects.toThrow(RangeError);
   });
+  it("stores a socketed eye's expression socket (<layer>.<family>.socket.png) and still refuses paths", async () => {
+    const store = new MemoryJobStore<Job>();
+    for (const file of ["eye_l.png", "head.joy.png", "eye_l.socket.png", "eye_l.joy.socket.png"]) {
+      expect((await store.putImage(ID, file, PNG)).startsWith("data:image/png;base64,")).toBe(true);
+    }
+    for (const file of ["a..png", "a.b.c.d.png", ".png", "a/b.png", "eye_l..socket.png"]) {
+      await expect(store.putImage(ID, file, PNG)).rejects.toThrow(RangeError);
+    }
+  });
 });
 
 describe("RedisBlobJobStore (fake KV and Blob)", () => {
