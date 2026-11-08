@@ -13,6 +13,8 @@
 // - forge-creator S1: the job's gate readings (why a family has no painted face) ride on the record
 //   as `faceGate`, written at keep and again whenever the job reports new ones, through the same
 //   one-at-a-time chain, so the Face tab can say why after a reload. A replay job has none.
+// - forge-creator S2: a live job's character is kept with its `source` (job id, end of life, the
+//   brief's eyes line), so the Face tab can repaint one face within the job's 24 h. Replay has none.
 import type { RigAssets } from "@sr/avatar";
 import type { FaceGate } from "@sr/forge/faceGate";
 import type { CharacterBrief } from "@sr/forge/wire";
@@ -22,7 +24,7 @@ import { mergeFaces, newFiles, type Woken } from "../forge/faces";
 import type { ForgeState } from "../forge/forgeReducer";
 import { recordOf, withBrief } from "../forge/keep";
 import { rigAssetsOf, urlsToBlobs } from "../library/assets";
-import type { CharacterRecord } from "../library/libraryStore";
+import type { CharacterRecord, CharacterSource } from "../library/libraryStore";
 import type { Library } from "../library/useLibrary";
 import { bound, type Bind } from "./request";
 
@@ -37,6 +39,19 @@ export function characterOf(state: ForgeState): { jobId: string; character: Woke
 export function gateOf(state: ForgeState): FaceGate | undefined {
   return state.phase === "running" || state.phase === "done" ? state.gate : undefined;
 }
+
+/**
+ * S2: where a live job's character can still have one face repainted (its job id and end of life)
+ * with the brief's eyes line; undefined on replay (no `expiresAt`) and before the job is known.
+ */
+export function sourceOf(state: ForgeState, brief: CharacterBrief | undefined): CharacterSource | undefined {
+  if ((state.phase !== "running" && state.phase !== "done") || state.expiresAt === undefined) return undefined;
+  const eyes = brief?.face?.eyes;
+  return { jobId: state.jobId, expiresAt: state.expiresAt, ...(eyes === undefined ? {} : { eyes }) };
+}
+
+/** `record` carrying `source` (or as it is, when there is none). */
+export const withSource = (record: CharacterRecord, source: CharacterSource | undefined): CharacterRecord => (source === undefined ? record : { ...record, source });
 
 /** `record` carrying `gate` (or as it is, when there is none). */
 export const withGate = (record: CharacterRecord, gate: FaceGate | undefined): CharacterRecord => (gate === undefined ? record : { ...record, faceGate: gate });
@@ -69,9 +84,11 @@ export function useKept(state: ForgeState, library: Pick<Library, "status" | "ad
   const latest = useRef(now);
   const gate = gateOf(state);
   const latestGate = useRef(gate);
+  const latestSource = useRef(sourceOf(state, drawn.current));
   useEffect(() => {
     latest.current = now;
     latestGate.current = gate;
+    latestSource.current = sourceOf(state, drawn.current);
   });
   const { add, saveLook } = library;
   const ready = library.status === "ready";
@@ -86,7 +103,8 @@ export function useKept(state: ForgeState, library: Pick<Library, "status" | "ad
     recordOf(character.rig, character.assets)
       .then(async (record) => {
         const named = drawn.current === undefined ? record : withBrief(record, drawn.current);
-        const dressed = withGate(bound(named, bind), latestGate.current);
+        const source = latestSource.current;
+        const dressed = withSource(withGate(bound(named, bind), latestGate.current), source?.jobId === jobId ? source : undefined);
         await add(dressed);
         if (keptFor.current !== jobId) return;
         base.current = character;

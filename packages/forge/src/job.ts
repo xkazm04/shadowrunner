@@ -3,8 +3,15 @@
 // image bytes. `toJobView` is the only way a record reaches the client.
 import type { ExpressionFamily, Rig } from "@sr/rig";
 import type { FaceGate } from "./faceGate.js";
+import type { RepaintLedger } from "./faceRepaint.js";
 import type { Part, PartsV2 } from "./types.js";
 import type { CharacterBrief, Decomposition, ForgeErrorCode, ForgeStatus, JobView } from "./wire.js";
+
+/** A job's lifetime (api/_lib/jobstore.ts JOB_TTL_SECONDS; the Blob sweep removes its images after it). */
+export const JOB_LIFETIME_MS = 24 * 60 * 60 * 1000;
+
+/** forge-creator S2: when a job's repaint window closes: its start + JOB_LIFETIME_MS (its first images go then). */
+export const jobExpiresAt = (job: Pick<ForgeJob, "createdAt">): number => job.createdAt + JOB_LIFETIME_MS;
 
 export type PortraitMime = "image/png" | "image/jpeg" | "image/webp";
 
@@ -63,6 +70,8 @@ export interface ForgeJob {
    * last attempt's reading and the edits spent, faceGate.ts); never set for an "ok" family.
    */
   expressionGate?: FaceGate;
+  /** forge-creator S2: repaints spent and their answers by request key (faceRepaint.ts); unset before the first. */
+  repaints?: RepaintLedger;
   error?: { code: ForgeErrorCode; message: string };
   timings?: Partial<Record<ForgeStep, number>>;
 }
@@ -94,6 +103,7 @@ export function toJobView(job: ForgeJob): JobView {
     ...(job.decomposition === undefined ? {} : { decomposition: job.decomposition }),
     ...(job.expressions === undefined ? {} : { expressions: { ...job.expressions } }),
     ...(job.expressionGate === undefined ? {} : { expressionGate: { ...job.expressionGate } }),
+    ...(awake && job.plane === "live" ? { expiresAt: jobExpiresAt(job) } : {}),
     ...(job.status === "failed" && job.error !== undefined ? { error: job.error } : {}),
   };
 }

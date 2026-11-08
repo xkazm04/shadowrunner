@@ -110,6 +110,9 @@ export function readJobView(value: unknown): JobView | undefined {
   // forge-creator S1: why a family has no painted face; a malformed reading is dropped, not the view.
   const gate = readFaceGate(value.expressionGate);
   if (gate !== undefined) view.expressionGate = gate;
+  // forge-creator S2: the repaint window's end (a live job's); malformed, it is dropped, not the view.
+  const expiresAt = value.expiresAt;
+  if (typeof expiresAt === "number" && Number.isSafeInteger(expiresAt) && expiresAt > 0) view.expiresAt = expiresAt;
   if (value.error !== undefined) {
     const error = value.error;
     if (!isRecord(error) || !isForgeErrorCode(error.code) || typeof error.message !== "string") return undefined;

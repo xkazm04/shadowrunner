@@ -5,14 +5,15 @@
 // Messages name the rule broken, never the offending value, so upstream text cannot leak.
 import { EXPRESSION_FAMILIES, type ExpressionFamily, type Result, validateRig } from "@sr/rig";
 import { FORGE_STEPS, type ExpressionOutcome, type ForgeJob, type ForgeStep, type PortraitMime } from "./job.js";
-import { parseBrief, type BriefError } from "./brief.js";
+import { BRIEF_LIMITS, parseBrief, type BriefError } from "./brief.js";
 import { MAX_EXTRA_EDITS, MAX_FACE_ATTEMPT } from "./faceMaterial.js";
 import { CAST_SIZE } from "./cast.js";
 import { castRecordOf, type CastRecord } from "./castJob.js";
 import { readFaceGate } from "./faceGate.js";
+import { REPAINT_KEY, readRepaintLedger } from "./faceRepaint.js";
 import { settleBriefParts } from "./briefParts.js";
 import { parseParts, type ParsedParts, type PartsError } from "./parts.js";
-import type { BriefRequest, CastPick, CastRequest, CharacterBrief, ForgeErrorCode, ForgeRequest, ForgeStatus } from "./wire.js";
+import type { BriefRequest, CastPick, CastRequest, CharacterBrief, ForgeErrorCode, ForgeRequest, ForgeStatus, RepaintRequest } from "./wire.js";
 
 /** Upper bound of the user's text in a request (the prompt uses at most MAX_CHARACTER_TEXT of it). */
 export const MAX_REQUEST_PROMPT = 2000;
@@ -108,6 +109,23 @@ export function parseCastRecord(text: string): CastRecord | undefined {
 
 /** The first broken rule of a brief, for a bad_input message (a path and a rule, never a value). */
 export const briefProblem = (errors: readonly BriefError[]): string => (errors[0] === undefined ? "unknown" : `${errors[0].path} ${errors[0].message}`);
+
+/**
+ * The POST /api/forge/:jobId/faces body (forge-creator S2): a `family`, a `key` (REPAINT_KEY), an
+ * optional `eyes` line (one line within BRIEF_LIMITS.eyes; blank means none) and `hint: "too_subtle"`.
+ */
+export function parseRepaintRequest(text: string): Result<RepaintRequest, RequestError> {
+  const decoded = decode(text);
+  if (!decoded.ok || !isRecord(decoded.value)) return badInput("The request is not a JSON object.");
+  const { family, key, eyes, hint } = decoded.value;
+  if (typeof family !== "string" || !(EXPRESSION_FAMILIES as readonly string[]).includes(family)) return badInput("Name one of the six faces.");
+  if (typeof key !== "string" || !REPAINT_KEY.test(key)) return badInput("The repaint key is not valid.");
+  if (hint !== undefined && hint !== "too_subtle") return badInput("Unknown repaint hint.");
+  if (eyes !== undefined && typeof eyes !== "string") return badInput("The eyes line must be text.");
+  const line = typeof eyes === "string" ? eyes.replace(/\s+/g, " ").trim() : "";
+  if (line.length > BRIEF_LIMITS.eyes) return badInput(`Keep the eyes line under ${BRIEF_LIMITS.eyes} characters.`);
+  return { ok: true, value: { family: family as ExpressionFamily, key, ...(line === "" ? {} : { eyes: line }), ...(hint === undefined ? {} : { hint }) } };
+}
 
 /** The POST /api/forge/brief body: a non-blank `request` of at most MAX_REQUEST_PROMPT characters. */
 export function parseBriefRequest(text: string): Result<BriefRequest, RequestError> {
@@ -291,6 +309,12 @@ export function parseForgeJob(text: string): ForgeJob | undefined {
   // forge-creator S1: a note, not the character: malformed readings are dropped, never the job.
   const gate = readFaceGate(j.expressionGate);
   if (gate !== undefined) job.expressionGate = gate;
+  // forge-creator S2: the repaint ledger guards money, so an unreadable one refuses the job.
+  if (j.repaints !== undefined) {
+    const repaints = readRepaintLedger(j.repaints);
+    if (repaints === undefined) return undefined;
+    job.repaints = repaints;
+  }
   if (j.error !== undefined) {
     if (!isRecord(j.error) || !isCode(j.error.code) || !isString(j.error.message)) return undefined;
     job.error = { code: j.error.code, message: j.error.message };

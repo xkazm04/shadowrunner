@@ -49,6 +49,28 @@ export interface CharacterRecord {
    * library note only: packs do not carry it (docs/pack-format.md). Omitted when there is none.
    */
   faceGate?: FaceGate;
+  /**
+   * forge-creator S2: the live forge job a character was kept from, while one face may be repainted
+   * (`POST /api/forge/:jobId/faces`, open until `expiresAt`, epoch ms), and the brief's eyes line the
+   * repaint starts from. A library note only: packs do not carry it. Omitted for recorded, replay
+   * and imported characters.
+   */
+  source?: CharacterSource;
+}
+
+export interface CharacterSource {
+  jobId: string;
+  expiresAt: number;
+  /** The words after "Its eyes are" (the brief's face.eyes); omitted when the brief had none. */
+  eyes?: string;
+}
+
+/** A stored source, or undefined when it is off-contract (the record then has no repaint). */
+export function readSource(v: unknown): CharacterSource | undefined {
+  if (!isRecord(v) || typeof v.jobId !== "string" || !/^[A-Za-z0-9_-]{8,64}$/.test(v.jobId)) return undefined;
+  if (typeof v.expiresAt !== "number" || !Number.isSafeInteger(v.expiresAt) || v.expiresAt <= 0) return undefined;
+  if (v.eyes !== undefined && (typeof v.eyes !== "string" || v.eyes.length > 200)) return undefined;
+  return { jobId: v.jobId, expiresAt: v.expiresAt, ...(typeof v.eyes === "string" && v.eyes.trim() !== "" ? { eyes: v.eyes } : {}) };
 }
 
 export type LibraryEntry =
@@ -129,6 +151,9 @@ export function readRecord(value: unknown): LibraryEntry {
   // S1: malformed readings are dropped (the Face tab then says what it said before them).
   const faceGate = readFaceGate(value.faceGate);
   if (faceGate !== undefined) record.faceGate = faceGate;
+  // S2: a malformed source is dropped (the Face tab then offers no repaint).
+  const source = readSource(value.source);
+  if (source !== undefined) record.source = source;
   return { kind: "ok", record };
 }
 

@@ -6,7 +6,7 @@
 //   `variants`; every patch a has is in b unchanged; each new patch names files a never named.
 // - `mergeFaces(a, b)`: b (with a's asset URLs kept for a's files) when b is an additive extension
 //   of a, passes `validateRig` and has a URL for every layer file; otherwise a, untouched.
-import { validateRig, type Layer, type Rig } from "@sr/rig";
+import { validateRig, type ExpressionFamily, type Layer, type LayerPatch, type Rig } from "@sr/rig";
 import { rigFiles } from "../library/assets";
 
 export interface Woken {
@@ -70,4 +70,40 @@ export function mergeFaces(a: Woken, b: Woken): Woken {
 export function newFiles(prev: Rig, next: Rig): string[] {
   const known = new Set(rigFiles(prev));
   return rigFiles(next).filter((f) => !known.has(f));
+}
+
+/**
+ * forge-creator S2, accept a repainted face. `withRepaint(rig, family, layers)` is `rig` with
+ * `family`'s face replaced as a whole by `layers` (patches by layer name):
+ * - every layer named in `layers` gets `variants[family]` = its patch (added, or replacing that
+ *   layer's old patch for the SAME family);
+ * - every other layer loses its `variants[family]` (so the old and the new face never mix; a layer
+ *   left with no variants omits the field);
+ * - nothing else changes: other families' patches, every other layer field, the layer order, the rig.
+ * Undefined (the record is left as it is) when `layers` is empty, names a layer the rig lacks, or a
+ * patch names a file the rig already names, or when the result fails `validateRig`.
+ */
+export function withRepaint(rig: Rig, family: ExpressionFamily, layers: Readonly<Record<string, LayerPatch>>): Rig | undefined {
+  const names = Object.keys(layers);
+  if (names.length === 0 || names.some((n) => !rig.layers.some((l) => l.name === n))) return undefined;
+  const known = new Set(rigFiles(rig));
+  for (const patch of Object.values(layers)) if (known.has(patch.file) || (patch.socket !== undefined && known.has(patch.socket))) return undefined;
+  const next: Rig = { ...rig, layers: rig.layers.map((layer) => withFamilyPatch(layer, family, layers[layer.name])) };
+  const checked = validateRig(next);
+  return checked.ok ? checked.value : undefined;
+}
+
+/** `layer` with `family`'s patch set to `patch` (or removed when undefined); other families in their order. */
+function withFamilyPatch(layer: Layer, family: ExpressionFamily, patch: LayerPatch | undefined): Layer {
+  const variants: NonNullable<Layer["variants"]> = Object.fromEntries(Object.entries(layer.variants ?? {}).filter(([f]) => f !== family));
+  if (patch !== undefined) variants[family] = patch;
+  const out: Layer = { ...layer };
+  delete out.variants;
+  return Object.keys(variants).length === 0 ? out : { ...out, variants };
+}
+
+/** True when `b` is `a` with only `family`'s patches changed (the rule `withRepaint` keeps). */
+export function onlyFamilyChanged(a: Rig, b: Rig, family: ExpressionFamily): boolean {
+  const strip = (rig: Rig): Rig => ({ ...rig, layers: rig.layers.map((layer) => withFamilyPatch(layer, family, undefined)) });
+  return same(strip(a), strip(b));
 }

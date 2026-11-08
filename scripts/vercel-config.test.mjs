@@ -8,6 +8,7 @@ const FILES = [
   "api/cron/forge-gc.ts",
   "api/engine/reply.ts",
   "api/forge/[jobId].ts",
+  "api/forge/[jobId]/faces.ts",
   "api/forge/drafts/[batchId].ts",
   "api/forge/drafts/index.ts",
   "api/forge/index.ts",
@@ -62,6 +63,8 @@ describe("vercel-output config.json", () => {
     // forge-creator L2: the casting batch and its polls, never taken for a forge job id.
     expect(resolve(config, "/api/forge/drafts")).toEqual({ fn: "/api/forge/drafts" });
     expect(resolve(config, "/api/forge/drafts/replaycast_0p_1_a~b~c")).toEqual({ fn: "/api/forge/drafts/[batchId]?batchId=replaycast_0p_1_a~b~c" });
+    // forge-creator S2: repaint one face of a job.
+    expect(resolve(config, "/api/forge/0123456789abcdef0123456789abcdef/faces")).toEqual({ fn: "/api/forge/[jobId]/faces?jobId=0123456789abcdef0123456789abcdef" });
     expect(resolve(config, "/api/engine/reply")).toEqual({ fn: "/api/engine/reply" });
     expect(resolve(config, "/api/voice")).toEqual({ fn: "/api/voice" });
     expect(resolve(config, "/api/cron/forge-gc")).toEqual({ fn: "/api/cron/forge-gc" });

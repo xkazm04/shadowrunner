@@ -2,7 +2,7 @@
 // job lease, shared by POST /api/forge and GET /api/forge/:jobId. Everything that can spend money
 // or reach the network is in `ForgeDeps`, so tests inject fakes. `x-sr-plane: replay` (or a replay
 // deploy) sends both routes to the recorded forges, which make no paid call and no fetch.
-import { parseCastRecord, parseForgeJob, parseForgeRequest, toJobView, MAX_UPLOAD_BASE64, MAX_UPLOAD_BYTES, UPLOAD_LIMIT_MESSAGE, type CastRecord, type ForgeJob } from "@sr/forge";
+import { isAwake, parseCastRecord, parseForgeJob, parseForgeRequest, toJobView, MAX_UPLOAD_BASE64, MAX_UPLOAD_BYTES, UPLOAD_LIMIT_MESSAGE, type CastRecord, type ForgeJob } from "@sr/forge";
 import { COST_USD } from "./costs.js";
 import { ApiError, errorBody, errorResponse } from "./errors.js";
 import { geminiFromEnv, type GeminiClient } from "./gemini.js";
@@ -112,6 +112,11 @@ export async function handleForgeGet(req: Request, deps: ForgeDeps): Promise<Res
     await store.put(job);
     const next = await runStep(job, context(deps, store, clientIp(req)));
     delete next.stepStartedAt;
+    // forge-creator S2: a repaint may have written its ledger while this step ran; keep the newer one.
+    if (isAwake(job)) {
+      const latest = await store.get(jobId);
+      if (latest?.repaints !== undefined) next.repaints = latest.repaints;
+    }
     await store.put(next);
     return jobResponse(next);
   } catch (err) {
@@ -119,7 +124,8 @@ export async function handleForgeGet(req: Request, deps: ForgeDeps): Promise<Res
   }
 }
 
-function context(deps: ForgeDeps, store: JobStore<ForgeJob>, ip: string): StepContext {
+/** The step context of one request (a forge step, or a repaint: forge-repaint.ts). */
+export function context(deps: ForgeDeps, store: JobStore<ForgeJob>, ip: string): StepContext {
   let gemini: GeminiClient | undefined;
   return {
     get gemini() {

@@ -95,7 +95,7 @@
 
 .family {
   display: grid;
-  grid-template-columns: 6.5rem 1fr auto auto;
+  grid-template-columns: 6.5rem 1fr auto auto auto;
   align-items: center;
   gap: var(--sr-space-2);
   color: var(--sr-text);
@@ -123,6 +123,55 @@
   font-size: var(--sr-size-text-sm);
 }
 
+/* S2: the repaint panel under FACES, a quiet inset in the card's own colours; nothing moves. */
+.repaint {
+  display: grid;
+  gap: var(--sr-space-1);
+  margin: var(--sr-space-1) 0;
+  padding: var(--sr-space-2);
+  border: thin solid var(--sr-line);
+  border-radius: var(--sr-radius-1);
+  background-color: var(--sr-surface-2);
+}
+
+.repaintTitle {
+  margin: 0;
+  color: var(--sr-text-strong);
+  font-size: var(--sr-size-text-sm);
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.repaintField {
+  display: grid;
+  gap: var(--sr-space-1);
+  color: var(--sr-text);
+  font-size: var(--sr-size-text-sm);
+}
+
+.repaintField input {
+  min-block-size: 2.25rem;
+  padding: 0 var(--sr-space-1);
+  border: thin solid var(--sr-line);
+  border-radius: var(--sr-radius-1);
+  background-color: var(--sr-surface-1);
+  color: var(--sr-text-strong);
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text-sm);
+}
+
+.repaintField input:focus-visible {
+  outline: 0.1875rem solid var(--sr-accent);
+  outline-offset: 0.125rem;
+}
+
+.repaintRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sr-space-1);
+}
+
+.repaint button:disabled,
 .family button:disabled {
   color: var(--sr-text-muted);
   cursor: not-allowed;
@@ -130,7 +179,7 @@
 
 @media (max-width: 30rem) {
   .family {
-    grid-template-columns: 5.5rem 1fr auto auto;
+    grid-template-columns: 5.5rem 1fr auto auto auto;
     gap: var(--sr-space-1);
   }
 

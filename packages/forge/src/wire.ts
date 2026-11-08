@@ -1,8 +1,8 @@
 // @sr/forge/wire: the forge wire contract (forge-pipeline design.md "Contracts (wire names)").
 // Types only, so it is safe to import in the browser. This is the ONLY declaration of these
 // names; the creator imports them from "@sr/forge/wire" and never redeclares them.
-import type { ExpressionFamily, Rig } from "@sr/rig";
-import type { FaceGate } from "./faceGate.js";
+import type { ExpressionFamily, LayerPatch, Rig } from "@sr/rig";
+import type { FaceGate, FaceGateReading } from "./faceGate.js";
 import type { PartRole } from "./types.js";
 
 /** Job status, in step order. `filling` sits between `cutting` and `done`. */
@@ -156,5 +156,38 @@ export interface JobView {
   expressions?: Partial<Record<ExpressionFamily, "ok" | "skipped" | "failed">>;
   /** forge-creator S1: why a family that settled without a painted face did (faceGate.ts). */
   expressionGate?: FaceGate;
+  /**
+   * forge-creator S2: a live job once awake: when it expires (epoch ms, its start + 24 h), the end
+   * of the window in which one face can be repainted (`POST /api/forge/:jobId/faces`).
+   */
+  expiresAt?: number;
   error?: { code: ForgeErrorCode; message: string };
+}
+
+/** forge-creator S2: the streamer's hint for a repaint: the face painted too faint (no stricter wording). */
+export type RepaintHint = "too_subtle";
+
+/** Body of `POST /api/forge/:jobId/faces` (forge-creator S2): repaint one expression family. */
+export interface RepaintRequest {
+  family: ExpressionFamily;
+  /** The words after "Its eyes are" (at most 200 characters); omitted: the brief's line, if any. */
+  eyes?: string;
+  hint?: RepaintHint;
+  /** Idempotency key (REPAINT_KEY): the same key again answers the first result without spending. */
+  key: string;
+}
+
+/**
+ * Answer of `POST /api/forge/:jobId/faces` (S2): a candidate, never written into the job's rig.
+ * `ok`: it passed the gate and `patch` is the family's face (patches by layer name, and the URL of
+ * every file they name); otherwise `gate` says why. `left`: repaints still open for the family and
+ * the job. `plane: "replay"`: the recorded face, unchanged (labelled RECORDED).
+ */
+export interface RepaintCandidate {
+  family: ExpressionFamily;
+  ok: boolean;
+  plane: "replay" | "live";
+  patch?: { layers: Record<string, LayerPatch>; assets: Record<string, string> };
+  gate?: FaceGateReading;
+  left: { family: number; job: number };
 }
