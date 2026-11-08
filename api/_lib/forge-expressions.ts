@@ -15,7 +15,7 @@
 // family's outcome is written only when it settles, so faces only ever add variants.
 // forge-creator S1: a family that settles "skipped" or "failed" also writes why into
 // `expressionGate` (faceGate.ts): the last attempt's reading and the edits it spent.
-import { EXPRESSION_FAMILIES, type ExpressionFamily, type Rig } from "@sr/rig";
+import { EXPRESSION_FAMILIES, type ExpressionFamily, type LayerPatch, type Rig } from "@sr/rig";
 import {
   EXPRESSION_DRIFT_LIMIT,
   IRIS_DRIFT_LIMIT,
@@ -65,7 +65,7 @@ async function faceLayers(rig: Rig, assets: Record<string, string>, ctx: StepCon
 }
 
 /** What one edit came to, with the gate's reading when it was not kept (S1; `attempts` is added on settling). */
-interface Attempt {
+export interface Attempt {
   verdict: FaceVerdict;
   reading?: FaceGateReading;
   /** False when no edit was made (the charge was refused, or there was nothing to edit). */
@@ -74,14 +74,24 @@ interface Attempt {
 
 const FAILED: Attempt = { verdict: "failed", reading: gateReading("failed"), edited: true };
 
-/** One edit of one family at `attempt`: "refused" when the stability gate or the drift flag turned it down. */
-async function expressOne(job: ForgeJob, family: ExpressionFamily, ctx: StepContext, attempt: number): Promise<Attempt> {
-  const { rig, assets, portraitUrl, portraitMime } = job;
-  if (rig === undefined || assets === undefined || portraitUrl === undefined || portraitMime === undefined) return { ...FAILED, edited: false };
-  const bytes = await ctx.store.readImage(portraitUrl);
-  if (!(await ctx.charge(COST_USD.expression))) return { verdict: "skipped", reading: gateReading("budget"), edited: false };
-  if (attempt > 0) job.extraEdits = (job.extraEdits ?? 0) + 1;
-  const prompt = expressionPrompt(job.brief?.name ?? rig.name, family, job.brief?.style.name, attempt, eyesMaterial(job.brief?.face?.eyes));
+/** What one family's edit came to (`paintFamily`): on "ok" its patches by layer name and the files it stored under the job. */
+export interface Painted extends Attempt {
+  patches?: Record<string, LayerPatch>;
+  stored?: Record<string, string>;
+}
+
+/**
+ * One edit of one family with a given `prompt` (the caller has charged it): the edit, laid back on
+ * the portrait (`registerEdit`), the stability gate (or the unsocketed drift flag), `cutVariants`,
+ * each socketed eye's patch re-read, and the patch files stored under the job. The job record is NOT
+ * changed: the forge writes the patches into its rig (`expressOne`); a repaint (forge-creator S2,
+ * forge-repaint.ts) hands them to the client as a candidate. `tag` names a repaint's files apart from
+ * the forge's (`<layer>.<family>_<tag>.png`); omitted, the forge's own names.
+ */
+export async function paintFamily(job: ForgeJob, family: ExpressionFamily, prompt: string, ctx: StepContext, bytes: Uint8Array, tag?: string): Promise<Painted> {
+  const { rig, assets, portraitMime } = job;
+  if (rig === undefined || assets === undefined || portraitMime === undefined) return FAILED;
+  const attempt = tag === undefined ? `attempt ${job.expressionAttempt ?? 0}` : `repaint ${tag}`;
   const edit = await ctx.gemini.editImage({ mimeType: portraitMime, data: bytes }, prompt, { timeoutMs: EXPRESSION_TIMEOUT_MS });
   const portrait = decoded(bytes);
   const raw = decoded(edit.data);
@@ -94,7 +104,7 @@ async function expressOne(job: ForgeJob, family: ExpressionFamily, ctx: StepCont
     edited = registerEdit(raw, portrait, rig, face).image;
     const stability = faceStability(edited, portrait, rig, face, socketing.stability);
     if (!isStable(stability, socketing.floor)) {
-      console.warn(`forge: expression ${family} refused at attempt ${attempt} (iris drift ${stability.irisDriftPx.toFixed(1)} px, outside the band ${stability.outsideBandMean.toFixed(1)})`);
+      console.warn(`forge: expression ${family} refused at ${attempt} (iris drift ${stability.irisDriftPx.toFixed(1)} px, outside the band ${stability.outsideBandMean.toFixed(1)})`);
       const reading =
         stability.irisDriftPx > IRIS_DRIFT_LIMIT
           ? gateReading("iris", { irisDriftPx: stability.irisDriftPx, limit: IRIS_DRIFT_LIMIT })
@@ -105,7 +115,7 @@ async function expressOne(job: ForgeJob, family: ExpressionFamily, ctx: StepCont
   const cut = cutVariants(rig, layers, portrait, edited, family);
   const names = Object.keys(cut.patches);
   if (socketing === undefined && cut.flagged) {
-    console.warn(`forge: expression ${family} refused at attempt ${attempt} (drift ${cut.drift.toFixed(1)})`);
+    console.warn(`forge: expression ${family} refused at ${attempt} (drift ${cut.drift.toFixed(1)})`);
     return { verdict: "refused", reading: gateReading("drift", { drift: cut.drift, limit: EXPRESSION_DRIFT_LIMIT }), edited: true };
   }
   if (names.length === 0) {
@@ -113,22 +123,37 @@ async function expressOne(job: ForgeJob, family: ExpressionFamily, ctx: StepCont
     return { verdict: "skipped", reading: gateReading("no_change"), edited: true };
   }
   const stored: Record<string, string> = {};
-  const patches: Record<string, NonNullable<Rig["layers"][number]["variants"]>[ExpressionFamily]> = {};
+  const patches: Record<string, LayerPatch> = {};
+  const suffix = tag === undefined ? family : `${family}_${tag}`;
   for (const name of names) {
     const entry = cut.patches[name];
     if (entry === undefined) continue;
     let { patch, image } = entry;
+    if (tag !== undefined) patch = { ...patch, file: `${name}.${suffix}.png` };
     const eye = socketing?.eyes.find((e) => e.name === name);
     if (eye !== undefined) {
       const v = socketVariant(eye, image);
       image = v.image;
-      const socket = socketFile(`${name}.${family}`);
+      const socket = socketFile(`${name}.${suffix}`);
       stored[socket] = await ctx.store.putImage(job.jobId, socket, { bytes: encodePng(v.socket), contentType: "image/png" });
       patch = { ...patch, socket, ...(v.narrowed ? { narrowed: true as const } : {}) };
     }
     stored[patch.file] = await ctx.store.putImage(job.jobId, patch.file, { bytes: encodePng(image), contentType: "image/png" });
     patches[name] = patch;
   }
+  return { verdict: "ok", edited: true, patches, stored };
+}
+
+/** One edit of one family at `attempt`: "refused" when the stability gate or the drift flag turned it down. */
+async function expressOne(job: ForgeJob, family: ExpressionFamily, ctx: StepContext, attempt: number): Promise<Attempt> {
+  const { rig, assets, portraitUrl, portraitMime } = job;
+  if (rig === undefined || assets === undefined || portraitUrl === undefined || portraitMime === undefined) return { ...FAILED, edited: false };
+  const bytes = await ctx.store.readImage(portraitUrl);
+  if (!(await ctx.charge(COST_USD.expression))) return { verdict: "skipped", reading: gateReading("budget"), edited: false };
+  if (attempt > 0) job.extraEdits = (job.extraEdits ?? 0) + 1;
+  const prompt = expressionPrompt(job.brief?.name ?? rig.name, family, job.brief?.style.name, attempt, eyesMaterial(job.brief?.face?.eyes));
+  const { patches, stored, ...result } = await paintFamily(job, family, prompt, ctx, bytes);
+  if (result.verdict !== "ok" || patches === undefined || stored === undefined) return result;
   job.assets = { ...assets, ...stored };
   job.rig = {
     ...rig,
@@ -137,7 +162,7 @@ async function expressOne(job: ForgeJob, family: ExpressionFamily, ctx: StepCont
       return patch === undefined ? layer : { ...layer, variants: { ...layer.variants, [family]: patch } };
     }),
   };
-  return { verdict: "ok", edited: true };
+  return result;
 }
 
 /** One step of the `expressing` status (see the header): the eyes first, then one family per GET; the sixth moves the job to `done`. */

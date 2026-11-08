@@ -10,7 +10,8 @@
     "./acts": "./src/briefActs.ts",
     "./replayFaces": "./src/replayFaces.ts",
     "./cast": "./src/cast.ts",
-    "./faceGate": "./src/faceGate.ts"
+    "./faceGate": "./src/faceGate.ts",
+    "./faceRepaint": "./src/faceRepaint.ts"
   },
   "dependencies": {
     "@sr/rig": "workspace:*",

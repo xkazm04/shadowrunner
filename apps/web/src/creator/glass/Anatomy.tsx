@@ -10,6 +10,8 @@
 // retire-a-face: under it, FACES (FaceFamilies) retires or restores each family's painted face
 // through the same reducer and save; its Show puts the glass, never the saved look, at a family.
 // tiger L1: under GESTURE, SIGNATURE ACTS (ActsCard) rehearses each act on the glass.
+// forge-creator S2: FACES can repaint one face of a live-forged character (useRepaint); while a
+// candidate is on screen the glass shows that family on the current or the candidate face.
 import type { VoiceId } from "@sr/engine";
 import { regionKey, resolveFace, resolveGesture, type Emotion, type Gesture, type Look } from "@sr/rig";
 import { useCallback, useEffect, useReducer, useRef, useState, type CSSProperties, type ReactNode } from "react";
@@ -31,6 +33,8 @@ import { ChannelActions, GestureCard, SheetCard, VoiceCard } from "./SignalCards
 import { SignalTabs, type SignalTab } from "./SignalTabs";
 import { reducedMotion, usePick } from "./usePick";
 import { useLookAround } from "./useLookAround";
+import { useRepaint } from "./useRepaint";
+import { repaintWindow } from "../forge/repaint";
 import styles from "./Anatomy.module.css";
 import signal from "./Signal.module.css";
 
@@ -77,8 +81,16 @@ export function Anatomy({ record, library, cast, badge, readPixels = decodePixel
   const gaze = useLookAround(around, resolveFace(record.rig, look).gaze.habits);
   const reduced = reducedMotion();
   const { preview, show } = useFacePreview(reduced);
-  const glassLook = preview === undefined ? look : { ...look, emotion: FAMILY_EMOTION[preview] };
   const { assets, failed } = useRigAssets(record);
+  const repaint = useRepaint(record, look, library.add);
+  const [windowNow] = useState(() => Date.now());
+  // S2: a candidate on screen puts the glass at its family, on the face chosen (current or candidate).
+  const compare = repaint.state.step === "candidate" ? repaint.state : undefined;
+  const onCandidate = compare !== undefined && compare.shown === "candidate" && compare.preview.assets !== undefined ? compare.preview : undefined;
+  const glassFamily = compare?.family ?? preview;
+  const glassLook = glassFamily === undefined ? look : { ...look, emotion: FAMILY_EMOTION[glassFamily] };
+  const glassRig = onCandidate?.rig ?? actedRig;
+  const glassAssets = onCandidate?.assets ?? assets;
   const thumbs = useBlobUrls(record.assets);
   const speaker = useSpeaker((line) => {
     if (line.reply.gesture !== undefined) fireGesture(line.reply.gesture);
@@ -151,9 +163,9 @@ export function Anatomy({ record, library, cast, badge, readPixels = decodePixel
       <section className={styles.centre} aria-label={`The glass: ${record.rig.name}`}>
         <div className={styles.glassBox}>
           <Glass
-            rig={actedRig}
+            rig={glassRig}
             look={glassLook}
-            {...(assets === undefined ? {} : { assets })}
+            {...(glassAssets === undefined ? {} : { assets: glassAssets })}
             {...(gesture === undefined ? {} : { gesture })}
             {...(act === undefined ? {} : { act })}
             {...(speaker.audio === undefined ? {} : { audio: speaker.audio })}
@@ -240,6 +252,8 @@ export function Anatomy({ record, library, cast, badge, readPixels = decodePixel
                   onShow={show}
                   reduced={reduced}
                   {...(record.faceGate === undefined ? {} : { gate: record.faceGate })}
+                  windowState={repaintWindow(record, windowNow)}
+                  repaint={repaint}
                 />
               </>
             ),

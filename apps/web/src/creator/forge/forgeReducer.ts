@@ -23,6 +23,8 @@
 //   stays). Once awake nothing fails the job: `done` keeps the awake rig when its own rig is not an
 //   additive extension, and a failure (a failed view, a client fail, `settle` at the tail's cap)
 //   finishes it as `done` with the faces that arrived; the rest stay procedural.
+// - forge-creator S2: a live view's `expiresAt` (the end of the repaint window) is kept from the
+//   first view that names it through `done`; a replay job never has one.
 import type { FaceGate } from "@sr/forge/faceGate";
 import type { Decomposition, ForgeErrorCode, ForgeRequest, ForgeStatus, JobView } from "@sr/forge/wire";
 import { validateRig, type Rig } from "@sr/rig";
@@ -48,8 +50,10 @@ export type ForgeState =
       awake?: Woken;
       /** C1: when the client first saw the job awake (or, on a resumed job, remembered it), ms. */
       awakeAt?: number;
+      /** S2: a live job's end of life (epoch ms), from the first view that names it: the repaint window. */
+      expiresAt?: number;
     }
-  | { phase: "done"; rig: Rig; assets: Record<string, string>; jobId: string; plane: JobView["plane"]; portraitUrl?: string; decomposition?: Decomposition; expressions?: Expressions; gate?: FaceGate }
+  | { phase: "done"; rig: Rig; assets: Record<string, string>; jobId: string; plane: JobView["plane"]; portraitUrl?: string; decomposition?: Decomposition; expressions?: Expressions; gate?: FaceGate; expiresAt?: number }
   | { phase: "failed"; code: ForgeErrorCode; message: string; retry: ForgeRequest };
 
 export type ForgeEvent =
@@ -82,6 +86,9 @@ function woken(view: JobView): Woken | string {
 
 const planeOf = (jobId: string): JobView["plane"] => (jobId.startsWith("replay_") ? "replay" : "live");
 
+/** S2: a live job's end of life, from this view or an earlier one (never on replay). */
+const expiresOf = (view: JobView, state: Running): number | undefined => (view.plane === "live" ? (view.expiresAt ?? state.expiresAt) : undefined);
+
 /** An awake job as done, with what it has (C1: never a failure once awake). */
 function settled(state: Running, awake: Woken, plane: JobView["plane"] = planeOf(state.jobId)): ForgeState {
   return finish(state, { jobId: state.jobId, status: "done", plane, rig: awake.rig, assets: { ...awake.assets } });
@@ -105,6 +112,8 @@ function finish(state: Running, view: JobView): ForgeState {
   if (expressions !== undefined) done.expressions = { ...expressions };
   const gate = view.expressionGate ?? state.gate;
   if (gate !== undefined) done.gate = { ...gate };
+  const expiresAt = expiresOf(view, state);
+  if (expiresAt !== undefined) done.expiresAt = expiresAt;
   return done;
 }
 
@@ -154,17 +163,19 @@ export function forgeReducer(state: ForgeState, event: ForgeEvent): ForgeState {
       const sameExpressions = JSON.stringify(expressions) === JSON.stringify(state.expressions);
       const gate = view.expressionGate ?? state.gate;
       const sameGate = JSON.stringify(gate) === JSON.stringify(state.gate);
+      const expiresAt = expiresOf(view, state);
       if (rank(view.status) < rank(state.status)) return state;
       // C1: only an expressing view wakes the job; a later rig folds in only when it adds faces.
       const got = view.status === "expressing" && view.rig !== undefined ? woken(view) : undefined;
       const character = got === undefined || typeof got === "string" ? state.awake : state.awake === undefined ? got : mergeFaces(state.awake, got);
       const sameStatus = rank(view.status) === rank(state.status);
-      if (sameStatus && portraitUrl === state.portraitUrl && decomposition === state.decomposition && sameExpressions && sameGate && character === state.awake) return state;
+      if (sameStatus && portraitUrl === state.portraitUrl && decomposition === state.decomposition && sameExpressions && sameGate && character === state.awake && expiresAt === state.expiresAt) return state;
       const next: Running = { ...state, status: view.status };
       if (portraitUrl !== undefined) next.portraitUrl = portraitUrl;
       if (decomposition !== undefined) next.decomposition = decomposition;
       if (expressions !== undefined) next.expressions = { ...expressions };
       if (gate !== undefined) next.gate = { ...gate };
+      if (expiresAt !== undefined) next.expiresAt = expiresAt;
       if (character !== undefined) {
         next.awake = character;
         next.awakeAt = state.awakeAt ?? event.at ?? state.startedAt;

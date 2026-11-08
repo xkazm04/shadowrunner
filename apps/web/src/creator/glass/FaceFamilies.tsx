@@ -10,6 +10,10 @@
 // - forge-creator S1: a family with no painted face says why when the record carries the forge's
 //   reading (`CharacterRecord.faceGate`): "Not painted: the eyes moved 7.2 px (limit 4)." Families
 //   without one (the recorded cast, a record kept before S1) keep the general procedural note.
+// - forge-creator S2: a character kept from a live forge (`CharacterRecord.source`) has a Repaint
+//   key per family (RepaintPanel, useRepaint): one paid edit of that face within the job's 24 h,
+//   shown beside the current face and kept only on Accept. After the 24 h the keys are disabled
+//   and say so; a recorded, replay or imported character has none.
 import type { FaceGate } from "@sr/forge/faceGate";
 import { EXPRESSION_FAMILIES, isRetired, resolveFace, type Emotion, type ExpressionFamily, type Look, type Rig } from "@sr/rig";
 import { useCallback, useEffect, useState } from "react";
@@ -17,6 +21,9 @@ import signal from "./Signal.module.css";
 import lookCss from "./Look.module.css";
 import styles from "./Face.module.css";
 import { gateLine } from "../forge/gateWords";
+import type { RepaintWindow } from "../forge/repaint";
+import { EXPIRED_NOTE, RepaintPanel } from "./RepaintPanel";
+import type { Repaint } from "./useRepaint";
 
 /** How long Show holds a family on the glass (not under reduced motion). */
 export const SHOW_MS = 2500;
@@ -73,9 +80,13 @@ export interface FaceFamiliesProps {
   reduced: boolean;
   /** S1: the forge's reading of each family it painted no face for (the kept record's `faceGate`). */
   gate?: FaceGate;
+  /** S2: whether a face can be repainted (the record's source window), and the repaint itself. */
+  windowState?: RepaintWindow;
+  repaint?: Repaint;
 }
 
-export function FaceFamilies({ rig, look, onRetire, preview, onShow, reduced, gate }: FaceFamiliesProps) {
+export function FaceFamilies({ rig, look, onRetire, preview, onShow, reduced, gate, windowState = "none", repaint }: FaceFamiliesProps) {
+  const repainting = repaint !== undefined && repaint.state.step !== "idle" && repaint.state.step !== "asking";
   const states = familyStates(rig, look);
   const why = (f: ExpressionFamily) => (states[f] === "none" ? gate?.[f] : undefined);
   const unpainted = EXPRESSION_FAMILIES.filter((f) => states[f] === "none" && why(f) === undefined);
@@ -110,6 +121,20 @@ export function FaceFamilies({ rig, look, onRetire, preview, onShow, reduced, ga
               >
                 {state === "retired" ? "Restore" : "Retire"}
               </button>
+              {windowState !== "none" && repaint !== undefined && (
+                <button
+                  type="button"
+                  className={signal.key}
+                  disabled={windowState === "expired" || repainting}
+                  aria-pressed={repaint.state.step !== "idle" && repaint.state.family === family}
+                  aria-label={`Repaint the ${family} face`}
+                  {...(windowState === "expired" ? { "aria-describedby": "face-families-expired" } : {})}
+                  data-repaint-family={family}
+                  onClick={() => repaint.open(family)}
+                >
+                  Repaint
+                </button>
+              )}
               {reading !== undefined && (
                 <span className={styles.familyWhy} data-family-why={reading.reason}>
                   {`Not painted: ${gateLine(reading)}.`}
@@ -119,6 +144,12 @@ export function FaceFamilies({ rig, look, onRetire, preview, onShow, reduced, ga
           );
         })}
       </ul>
+      {windowState === "expired" && (
+        <p id="face-families-expired" className={lookCss.note} data-repaint-expired="">
+          {EXPIRED_NOTE}
+        </p>
+      )}
+      {windowState === "open" && repaint !== undefined && <RepaintPanel repaint={repaint} />}
       {unpainted.length > 0 && (
         <p className={lookCss.note} data-families-note="">
           {`No painted face for ${unpainted.join(", ")}: this character shows ${unpainted.length === 1 ? "that mood" : "those moods"} by procedural motion only.`}

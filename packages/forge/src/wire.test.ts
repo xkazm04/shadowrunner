@@ -51,6 +51,7 @@ describe("@sr/forge/wire", () => {
       decomposition?: "named" | "fallback";
       expressions?: Partial<Record<ExpressionFamily, "ok" | "skipped" | "failed">>;
       expressionGate?: FaceGate;
+      expiresAt?: number;
       error?: { code: ForgeErrorCode; message: string };
     }>();
     const queued: JobView = { jobId: "j1", status: "queued", plane: "replay" };

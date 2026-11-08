@@ -89,6 +89,9 @@ Not in a pack: the forge's face-gate readings (why a family has no painted face,
 7.2 px"; forge-creator S1). They are a note about one forge run, kept on the creator's library
 record (`CharacterRecord.faceGate`), not part of the character, so a pack never writes them and the
 manifest has no field for them. An imported character's Face tab shows the general procedural note.
+Nor the repaint source (`CharacterRecord.source`, forge-creator S2): the live forge job a character
+was kept from and its 24 h window for repainting one face. An imported character has none, so its
+Face tab offers no Repaint.
 
 ### Licence values
 | value | meaning |
