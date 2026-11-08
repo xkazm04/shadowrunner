@@ -1,0 +1,24 @@
+{
+  "id": "2026-11-07-forge-creator",
+  "area": [
+    "packages/forge/src",
+    "apps/web/src/creator"
+  ],
+  "head": "aaa2b54ff738d3eb8e56188749c6de524eb68fff",
+  "created": "2026-11-07T20:40:33.956Z",
+  "rounds": {
+    "1": {
+      "started": "2026-11-07T20:48:40.254Z",
+      "seats": {},
+      "finished": "2026-11-07T21:09:39.866Z",
+      "stray_changes": 0
+    },
+    "2": {
+      "started": "2026-11-07T21:10:00.251Z",
+      "seats": {},
+      "finished": "2026-11-07T21:16:12.094Z",
+      "stray_changes": 0
+    }
+  },
+  "seats": "codex:gpt-6.1-sol@xhigh,claude:claude-opus-5-5@xhigh"
+}

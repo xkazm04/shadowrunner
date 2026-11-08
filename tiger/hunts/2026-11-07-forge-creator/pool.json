@@ -1,0 +1,494 @@
+{
+  "proposals": [
+    {
+      "id": "P01",
+      "seat": "claude-claude-opus-5-5_xhigh",
+      "round": 1,
+      "title": "Let the brief write the face's material, so non-human faces stop getting human eyes",
+      "kind": "connect",
+      "outcome": "A streamer whose co-host is a pumpkin, a skull, a helm or a glass creature gets expression, iris-free and closed-eye edits phrased in the character's own material (carved holes recut, socket rims lifted, visor slits narrowed). Today every live character gets a prompt about brows, eyelids and irises. The streamer can read and edit that one sentence on the brief card before paying.",
+      "builds_on": "The cast's hand-written per-character face recipes (scripts/cast/five/prompts.mjs, scripts/cast/faces/) and expressionPrompt's existing `material` and `attempt` parameters, plus the human-approved brief that already writes the parts plan and the portrait prompt.",
+      "mechanism": "Add optional `face?: { eyes, keep, mouth?, families? }` to CharacterBrief and BRIEF_SCHEMA. When it is omitted, prompts stay byte-identical to today. Add one sentence to BRIEF_PROMPT asking for it whenever the eyes are not human eyes. Move the offline `facePrompt` frame into packages/forge as `facePromptFromBrief(brief, family, attempt)`. forge-expressions.ts:58 uses it when `brief.face` exists; when only a material sentence is present, the field fills expressionPrompt's `material`. irisFreePrompt and closedEyesPrompt take the same material, as the offline CLOSED prompts do. BriefCard shows 'Its eyes are ...' as one editable line, and parseBrief checks lengths. The offline five then build from `face` blocks in their briefs, so the cast and the product run one prompt.",
+      "anchors": [
+        "api/_lib/forge-expressions.ts:53-60",
+        "packages/forge/src/expressions.ts:57-77",
+        "scripts/cast/five/prompts.mjs:1-6",
+        "scripts/cast/five/prompts.mjs:83-92",
+        "packages/forge/src/eyeArt.ts:11-21",
+        "packages/forge/src/brief.ts:43-86",
+        "packages/forge/src/wire.ts:35-50",
+        "apps/web/src/creator/rite/BriefCard.tsx:38-110"
+      ],
+      "evidence": "Observed: the header of scripts/cast/five/prompts.mjs records that the strict prompt's brows/eyelids/irises wording made the editor paint human eyes on every old face of the five non-human characters. Material-specific prompts then got 24 faces through the gate from 54 edits (docs/provenance.md:124-130). The live step calls expressionPrompt(name, family, style) with no material and no attempt, though the function takes both (forge-expressions.ts:58, expressions.ts:72). The brief prompt steers toward exactly these characters (hard-edged graphic styles, horror): 5 of the 13 cast characters have no human eyes. On a rig whose eyes cannot be socketed, live faces are gated only by the 20/255 drift flag (forge-expressions.ts:66-80), so a pumpkin with human eyes can ship. Hypothesis: Gemini responds to material wording the way the offline Codex editor did.",
+      "effort": "S",
+      "risk": "The brief model may mislabel a human character's eyes or write a vague material. Mitigation: the field is optional, shown and editable before 'Draw it', and the result is still measured by faceStability. Recorded briefs and the 14 recorded jobs carry no `face` field, so they are untouched.",
+      "verify": "(1) Golden test: the five FIVE entries written as brief `face` blocks give facePromptFromBrief strings byte-identical to facePrompt for 5 characters x 6 families x 3 attempts (90 strings). Briefs without `face` give byte-identical expressionPrompt output. (2) Live A/B on the five non-human portraits, one attempt per family, today's prompt vs the brief's material. Count gate passes, and count eyes repainted as human (measureIris finds a 'white' iris where the base reads glow or dark). Success: the material arm reaches at least the offline per-edit rate (24/54, about 44%) and the human-eye count drops to about zero.",
+      "why_groundbreaking": "The face pass stops being tuned only for human faces. Every live forge gets the recipe the owner wrote by hand for nine characters: written once by the brief model, approved by the streamer, and run on the same path as the cast.",
+      "parents": [],
+      "anchor_check": {
+        "ok": 8,
+        "total": 8,
+        "bad": []
+      }
+    },
+    {
+      "id": "P02",
+      "seat": "claude-claude-opus-5-5_xhigh",
+      "round": 1,
+      "title": "Wake the face at assembly, then paint the six faces behind it with retries",
+      "kind": "deepen",
+      "outcome": "The streamer gets a living, saved character as soon as it is cut and assembled, not after the eye edits and six face edits in sequence. Faces then paint in while they tune it. Faces the gate refuses get the cast's stricter re-runs. Reloading the page no longer abandons a brief-mode forge.",
+      "builds_on": "The stepwise job (one step per GET), expressions that never fail the forge and fall back to procedural motion, and the STRICTER retry ladder the offline cast already uses.",
+      "mechanism": "(a) toJobView sends rig and assets from `expressing` on. The rig is complete at that point; face variants are optional additions. forgeReducer gets an 'awake' sub-state, and RitePage keeps the record and runs Wake then. (b) Later polls return the rig with new variants. The creator merges a newer rig into the kept record only when layers and files are unchanged except for new variant patches and extra files, and validateRig passes. (c) expressStep reruns a family the gate refused with expressionPrompt(..., attempt + 1), up to 3 attempts, with a per-forge cap (e.g. 4 extra edits, $0.56) behind ctx.charge. (d) The 5-minute client cap applies only until awake; the tail gets its own cap. readStoredJob accepts mode 'brief'.",
+      "anchors": [
+        "packages/forge/src/job.ts:59-73",
+        "api/_lib/forge-steps.ts:320-329",
+        "api/_lib/forge-expressions.ts:109-139",
+        "packages/forge/src/expressions.ts:57-61",
+        "apps/web/src/creator/forge/useForgeJob.ts:34-49",
+        "apps/web/src/creator/forge/useForgeJob.ts:123-130",
+        "apps/web/src/creator/forge/forgeReducer.ts:56-68",
+        "apps/web/src/creator/rite/RitePage.tsx:137-149"
+      ],
+      "evidence": "Observed: the assembled rig exists from `expressing` on (forge-steps.ts:325-328), but JobView only sends it at done (job.ts:67-68). By the step timeouts, the tail alone is eyes 35 s + 6 x 40 s = 275 s, 92% of the client's 300 s cap (useForgeJob.ts:20). When the cap trips, the job fails client-side after the money is spent, and because steps only run on client GETs, the server job stops there. The Rite sends mode 'brief' (RitePage.tsx:184), which readStoredJob rejects (useForgeJob.ts:41), so a reload abandons the main-path forge. Retry ladder: offline, 28 of 46 families (the face-control four plus the four human-eyed cast) passed on the first edit, and the STRICTER re-runs brought that to 41 (docs/provenance.md:81-86, 108-114). Live always sends attempt 0. Full live end-to-end time is not measured, so the cap risk is arithmetic, not observed.",
+      "effort": "M",
+      "risk": "It could break 'the client never shows a half-built rig' if a merge changed layers. Mitigation: accept only additive variant updates that pass validateRig, and keep the procedural rig if the tail dies. Retries add spend; they are capped per forge and sit under the daily USD cap.",
+      "verify": "In useForgeJob and Rite dom tests with a fake clock and client (120 s to assembly, eyes 35 s, six 40 s families): today the job fails at 300 s with 'took longer than five minutes' and nothing is kept; after the change a valid record is kept at about 120 s and holds every passing face at the end. A reload during `expressing` of a brief job resumes polling (today readStoredJob returns undefined). In forge-expressions tests, a fake editor that is refused on attempt 0 and passes on attempt 1 ends the family 'ok' (today 'skipped'), with total charged edits at most 6 + the cap.",
+      "why_groundbreaking": "Time to a living face drops from the whole pipeline to the cut, and the expensive tail can no longer lose a paid forge. With the timeout race gone, the tail can spend on retries.",
+      "parents": [],
+      "anchor_check": {
+        "ok": 8,
+        "total": 8,
+        "bad": []
+      }
+    },
+    {
+      "id": "P03",
+      "seat": "claude-claude-opus-5-5_xhigh",
+      "round": 1,
+      "title": "Cast the portrait from three cheap drafts before the forge spends",
+      "kind": "connect",
+      "outcome": "After approving the brief, the streamer sees three draft portraits from the unused draft model ($0.04 each) and picks one. Only then does the forge spend on the final portrait, fill, eyes and six faces. This brings the owner's casting step for the cast into the product.",
+      "builds_on": "The brief handshake (approve the words before paying), the stepwise job, and the defined-but-unused draft image model in the Gemini client.",
+      "mechanism": "New `POST /api/forge/drafts {brief}`. On live it makes three parallel generateImage(portraitPromptFromBrief(brief), { draft: true }) calls with small framing or seed-sentence variations. They are charged in USD only (count: false, since the brief already counted the IP use), stored as job-scoped blobs, and returned as URLs. Picking one calls POST /api/forge { mode: 'brief', brief, draft }, and startJob either runs a final-model edit of the chosen draft ('render this design at final quality, same composition') or keeps the draft as is. Replay twin: the cast job matched by request plus two recorded jobs chosen by pickIndex with salts. Picking one plays that job, labelled RECORDED. The glass shows the three as a contact sheet; 'None of these' re-rolls the drafts cheaply or returns to the brief.",
+      "anchors": [
+        "api/_lib/gemini.ts:89-91",
+        "api/_lib/gemini.ts:172-177",
+        "api/_lib/costs.ts:5-13",
+        "api/_lib/forge-steps.ts:129-137",
+        ".kiro/specs/cast-forge/tasks.md:3-6",
+        "api/_lib/quota.ts:37",
+        "api/_lib/forge-replay.ts:100-115",
+        "apps/web/src/creator/rite/BriefCard.tsx:105-110"
+      ],
+      "evidence": "Observed: the hand-built cast the live path is measured against came from a Casting Call in which 20 concepts were rendered in 3 styles and 8 advanced ('the twelve others failed in every style', tasks.md:3-6), about 8 of 60 renders. The streamer gets one render, and it commits a pipeline of about $1.41 by costs.ts (portrait, fill, 2 eye edits and 6 faces at $0.14, plus parts). The per-IP cap is 3 forge uses a day (quota.ts:37), and the brief spends one (forge-brief.ts:93). The draft model and the `draft` option exist, but no step uses them (gemini.ts:89-91, 174-176). Prior art: Midjourney's grid of four candidates with U1-U4 upscale is the standard pick-then-finalize pattern (https://www.asla.org/2024/07/25/variation-and-upscale-functions-in-midjourney-a-beginners-guide/). Hypothesis: choosing among drafts raises the share of portraits that cut as 'named' and pass faces.",
+      "effort": "M",
+      "risk": "The final render may drift from the chosen draft. Mitigation: lay it back on the draft with registerEdit, and fall back to the draft as the portrait above a drift limit. Drafts add about 10-15 s and $0.12 per forge, but a bad portrait now wastes $0.12 instead of about $1.41.",
+      "verify": "(1) Replay scenario test: 'Draw it' shows three RECORDED portraits, picking the second plays that recorded job to done, and no fetch is made. (2) Cost: a forge abandoned at the drafts charges at most $0.12 in the quota ledger, against the full pipeline today. (3) On a fixed set of 13 live briefs (the cast's one_line_requests plus the presets), compare first-draft and chosen-draft forges on the share ending decomposition 'named' and on mean painted families. Success: the chosen arm is higher on both.",
+      "why_groundbreaking": "The product gains the owner's casting step: quality starts from a choice instead of a single roll, for under a tenth of a forge's cost.",
+      "parents": [],
+      "anchor_check": {
+        "ok": 8,
+        "total": 8,
+        "bad": []
+      }
+    },
+    {
+      "id": "P04",
+      "seat": "claude-claude-opus-5-5_xhigh",
+      "round": 1,
+      "title": "Give the streamer the owner's face pass: keep, retire or repaint each face",
+      "kind": "deepen",
+      "outcome": "On Wake and in the Face tab, the streamer sees the six painted faces side by side. For each one they can keep it, retire it to procedural motion, or repaint just that family (one paid edit within the job's 24 h). Today they have one global strength slider, or a full re-forge.",
+      "builds_on": "The gated six-family expression faces, the face profile (RigFace) already carried in looks and packs, and the per-family expressOne step.",
+      "mechanism": "Extend RigFace compatibly with `expression.families?: Partial<Record<ExpressionFamily, number>>` (0..1, omitted = 1). resolveFace resolves it, and it multiplies the pose's `faces` weights. FaceCard gets a six-tile strip (the rig drawn at each family at full weight) with Keep and Procedural. Repaint: `POST /api/forge/:jobId/faces { family }` reruns expressOne with attempt + 1 on the stored portrait and socketing. It is charged one edit in USD only, at most N per job, and returns the new patch, which the client merges as in the wake-at-assembly proposal. Replay twin: it answers with the recorded face unchanged, labelled RECORDED. Packs carry the profile as they do today.",
+      "anchors": [
+        "api/_lib/forge-expressions.ts:53-107",
+        "apps/web/src/creator/glass/FaceCard.tsx:56-64",
+        "packages/rig/src/face.ts:69-80",
+        "docs/rig-format.md:319-336",
+        "docs/rig-format.md:428",
+        "apps/web/src/creator/rite/ForgeWake.tsx:31-50",
+        "docs/provenance.md:155-158",
+        "api/_lib/jobstore.ts:12"
+      ],
+      "evidence": "Observed: the automatic gate is necessary but not enough. On 2026-11-07 the owner reverted three characters' gate-passed faces (Reveille, the Tallyman, the Vicar), dropped Sir Vacant's showman face and reworked Lot Ninety's mouth, changing 5 of 13 characters (provenance.md:155-158, commit aaa2b54). The streamer only has `expression.strength`, one multiplier for every face (rig-format.md:334, FaceCard.tsx:58-62), and Wake only lists the procedural families (ForgeWake.tsx:31-50). The job keeps the portrait and assets for 24 h (jobstore.ts:12), so one family can be rerun for $0.14 instead of re-forging for about $1.41. Hypothesis: streamers will reject faces at a rate close to the owner's.",
+      "effort": "M",
+      "risk": "This adds a field to the public rig, look and pack formats. Mitigation: it is optional, omitted by default, readFace drops bad values, and packs round-trip it. Repaints cost money; they are capped per job, go through the USD charge gate, and work only on live jobs within the job's 24 h lifetime.",
+      "verify": "(1) Pose test: with families { showman: 0 }, poseLayers' `faces` never lists showman while the other families keep their weights, and the 14 recorded jobs and published .srpacks give byte-identical poses. (2) On Sir Vacant's recorded rig, retiring showman in the Face tab reproduces the owner's 11-07 drop with no asset change, and the choice survives export and import. (3) A live repaint of a 'skipped' family, with a fake editor that passes attempt 1, adds that family's variants to the kept record, and total charged edits for the job stay within the cap.",
+      "why_groundbreaking": "The human check that changed 5 of the 13 cast characters becomes part of the product. The streamer, not a threshold, decides which faces go on air, and fixing one face costs one edit instead of a forge.",
+      "parents": [],
+      "anchor_check": {
+        "ok": 8,
+        "total": 8,
+        "bad": []
+      }
+    },
+    {
+      "id": "P05",
+      "seat": "claude-claude-opus-5-5_xhigh",
+      "round": 1,
+      "title": "Make every forge check itself against the cast, and repair the part it flags",
+      "kind": "leap",
+      "outcome": "Every forge, live or recorded, comes with the cast's own review sheet (rest, jaw open, turns, motion) and a measured check: seams, holes on a turn, ghosts, empty parts, and the face gate's numbers. The forge repairs the part a check names with one targeted re-ask. The product gets its first quality number: how close a live forge comes to the hand-built cast.",
+      "builds_on": "The deterministic cutter and compositor, the ledger's codified failures, the review sheet the owner reads by eye offline, and the strict job record that already tracks fill, eyes and expression outcomes.",
+      "mechanism": "New pure module packages/forge/src/proof.ts. It composes the rig with compositeRig at the cast sheet's poses (scripts/cast-forge.mjs: rest, jaw open, 15-degree turns, motion at t0 and t1.7) and runs detectors taken from the ledger's 'what broke' entries: (1) rest fidelity against the portrait inside the figure (the seam test's tolerance of 8, as a runtime check); (2) holes: ground showing inside the rest silhouette at any pose (the 'line of ground beside the turned helm'); (3) ghosts: figure pixels on no moving layer that stay behind when a neighbouring part moves (hinge bosses, a glove's cuff); (4) empty parts from cutNamed and assembleRig's warnings, both computed today and dropped by the live path; (5) the face gate's numbers. On live, cutAndAssemble runs the check. A blocking failure that names a part triggers one repair ask on the next GET: partsPromptFromBrief plus the detector's note in the ledger's words (e.g. 'trace glove_l as one outline including the cuff'). The forge re-cuts and keeps whichever version scores better. The check never fails a forge. JobView gains an optional `proof` field { checks, parity }, Wake shows the sheet with a Proof badge, and the 14 recorded jobs get theirs precomputed.",
+      "anchors": [
+        "packages/forge/src/composite.ts:26-31",
+        "packages/forge/src/seams.test.ts:1-19",
+        "scripts/cast-forge.mjs:7-13",
+        "api/_lib/forge-steps.ts:280-284",
+        "api/_lib/forge-steps.ts:315-320",
+        "packages/forge/src/assemble.ts:36-43",
+        "docs/cast-forge-ledger.md:255-262",
+        "docs/cast-forge-ledger.md:452-514"
+      ],
+      "evidence": "Observed: the dossier states that there is no automated quality judge or score anywhere and that how close a live forge gets to the cast is not measured. The defects the owner caught by eye are geometric and repeatable: ghosts on a turn from pixels on no part, ground lines beside a turned part, single outlines that miss a piece (ledger :255-262, :292-297). The repo already has the measuring pieces: compositeRig, the seam check (seams.test.ts, tolerance 8), `uncovered` (scripts/cast/measure.mjs:301), and cutNamed's `empty` and assembleRig's `warnings`, which the live path drops (forge-steps.ts:280-284, :320). Decision 0003: 5 of 19 live polygons crossed themselves. Prior art: generate, critique and refine loops beat one-shot output by about 20% absolute on average (Self-Refine, https://arxiv.org/abs/2303.17651). Hypothesis: one targeted re-ask fixes a meaningful share of flagged parts.",
+      "effort": "L",
+      "risk": "False positives on stylised art (pixel art, glows) could trigger needless re-asks or worry users. Mitigation: calibrate thresholds so all 14 owner-approved jobs pass, never fail a forge on the check, and cap repair at one ask ($0.01 for the parts call plus a re-cut). Compute must fit the 60 s step lease: six 1024 x 1024 composites are cheap next to registerEdit, but this should be measured.",
+      "verify": "(1) Calibration: all 14 recorded jobs report zero blocking checks. (2) Each detector goes red on at least one seeded ledger regression, e.g. Lot Ninety's glove cut as one outline that misses the cuff, Sir Vacant's hinge bosses dropped, the torso backing stopped at the head polygon, or Saint Cardia's simplified hood outline. (3) On a fixed live set of 13 briefs, publish blocking checks per forge before and after the repair ask. Success: the share of forges with at least one blocking check falls, and live-vs-cast parity is reported as a number for the first time.",
+      "why_groundbreaking": "The forge becomes a rigger that checks its own work against a hand-built cast and fixes it. The owner's review by eye becomes a product feature, and every character gets a quality number.",
+      "parents": [],
+      "anchor_check": {
+        "ok": 8,
+        "total": 8,
+        "bad": []
+      }
+    },
+    {
+      "id": "P06",
+      "seat": "codex-gpt-6.1-sol_xhigh",
+      "round": 1,
+      "title": "Audition every expression before putting the face on air",
+      "kind": "deepen",
+      "outcome": "Streamers can compare each painted expression with its procedural alternative, choose which preserves their character, and carry those choices into subsequent performances and exports.",
+      "builds_on": "The forge already combines six expression families, measured drift checks and procedural fallback. Anatomy supplies the renderer, mood controls and autosaved looks.",
+      "mechanism": "Ship a small client-only feature in roughly 2–4 days: an optional audition that steps through six families with turns, blinking and mouth movement using AvatarCanvas's existing drive override. Each family offers Painted and Procedural previews. Persist explicit family overrides in an optional Look field and apply them when calculating face weights. Reduced motion uses manually stepped stills. Export the same saved choices through the existing pack path.",
+      "anchors": [
+        "apps/web/src/creator/glass/Anatomy.tsx:173-218",
+        "packages/avatar/src/react/AvatarCanvas.tsx:52-66",
+        "packages/rig/src/mood.ts:60-75",
+        "packages/rig/src/readLook.ts:40-61",
+        "apps/web/src/creator/library/packing.ts:12-23",
+        "api/_lib/forge-expressions.ts:66-79",
+        "docs/provenance.md:155-158"
+      ],
+      "evidence": "Observed: the owner reverted three recent character upgrades and removed Sir Vacant's showman face. The numerical gate therefore does not settle artistic approval. The renderer already supports deterministic drive overrides, and absent variants already fall back to base art. Hypothesis: a short audition catches unacceptable expressions before a streamer discovers them during a performance.",
+      "effort": "S",
+      "risk": "An additional review step could slow first use. Make it optional, reversible and available later in the Face tab; store only explicit overrides.",
+      "verify": "Selecting Procedural for joy removes painted joy patches for both amused and delighted while leaving anger available. The choice survives reload, on-air handoff and pack export/import. Every recorded rig can complete the audition without an API call, including its manually stepped reduced-motion version.",
+      "why_groundbreaking": "The creator gains a durable artistic approval step. Each saved judgment improves every later use of that character without another generation.",
+      "parents": [],
+      "anchor_check": {
+        "ok": 7,
+        "total": 7,
+        "bad": []
+      }
+    },
+    {
+      "id": "P07",
+      "seat": "codex-gpt-6.1-sol_xhigh",
+      "round": 1,
+      "title": "Repaint one rejected expression without reforging the character",
+      "kind": "extend",
+      "outcome": "A streamer can improve one disappointing expression while keeping the portrait, anatomy, voice, customisation and five successful expression families.",
+      "builds_on": "Expression generation already operates one family at a time, registers edits against the original portrait and stores patches separately. The offline cast workflow already retries and pins individual attempts.",
+      "mechanism": "Add a repair action beside each auditioned family. A request containing the source job, family, short correction and idempotency key creates a separate candidate revision. Reuse the original portrait, layers and socket information; run only that family's edit, registration, stability gate and patch extraction. Compare the candidate before accepting it, then merge only its family assets into the library record. Initially offer repair while the existing 24-hour source job remains available, storing its reference and expiry locally. Supply recorded success, refusal and quota outcomes through the replay plane.",
+      "anchors": [
+        "api/_lib/forge-expressions.ts:53-105",
+        "api/_lib/forge-eyes.ts:83-108",
+        "api/_lib/forge-api.ts:88-105",
+        "api/_lib/jobstore.ts:1-16",
+        "apps/web/src/creator/rite/ForgeWake.tsx:106-124",
+        "apps/web/src/creator/forge/keep.ts:25-38",
+        "api/_lib/costs.ts:5-15",
+        "docs/provenance.md:81-89"
+      ],
+      "evidence": "Observed: one documented offline batch required 37 edits for 24 expression targets; later Auntie Asp corrections changed brows while preserving earlier eye faces. Live generation currently makes one attempt per family. These offline results establish the usefulness of selective iteration, not a live success rate. The configured estimate for one expression edit is $0.14; end-to-end live repair economics remain unmeasured.",
+      "effort": "M",
+      "risk": "Retries can consume budget without producing a better face. Show the configured estimate, cap attempts, deduplicate requests and retain the current character until the user accepts a candidate. Explain source expiry before offering repair.",
+      "verify": "With a fake provider, repairing joy makes exactly one image edit and no portrait-generation, segmentation, fill or eye-edit calls. Base assets and the other five families remain byte-identical. Duplicate submissions spend once; quota denial or failed stability leaves the saved character intact. A replay-forcing header produces zero paid calls.",
+      "why_groundbreaking": "A forge becomes a character that can be improved incrementally. Streamers can invest in a promising result instead of gambling its successful features on another complete generation.",
+      "parents": [],
+      "anchor_check": {
+        "ok": 8,
+        "total": 8,
+        "bad": []
+      }
+    },
+    {
+      "id": "P08",
+      "seat": "codex-gpt-6.1-sol_xhigh",
+      "round": 1,
+      "title": "Carry the approved personality from the brief onto the stage",
+      "kind": "connect",
+      "outcome": "A newly forged co-host performs as the character the streamer approved, using its own persona and selected voice after saving, reloading and sharing.",
+      "builds_on": "The handshake already produces an archetype and persona hook. The engine already accepts a character bible, and recorded cast members already derive theirs from hooks and example lines.",
+      "mechanism": "Preserve a validated character sheet containing the approved archetype, persona hook and three editable example lines when keeping the forge. Add it as optional library and pack metadata, then carry it through loadOnAir. Resolve the live persona independently of whether a recorded show exists. For replay, assemble a finite fictional script from the saved example lines, explicitly labelled SCRIPTED within the RECORDED plane; play audio only when a matching recording exists. Expose the sheet and introduction rehearsal in the creator.",
+      "anchors": [
+        "packages/forge/src/brief.ts:29-44",
+        "apps/web/src/creator/rite/RitePage.tsx:133-149",
+        "apps/web/src/creator/library/libraryStore.ts:30-42",
+        "apps/web/src/air/onAir.ts:34-53",
+        "apps/web/src/air/cast.ts:47-60",
+        "packages/engine/src/persona.ts:54-70",
+        "packages/engine/src/cast.ts:91-98",
+        "packages/pack/src/types.ts:11-35"
+      ],
+      "evidence": "Observed: keeping a forge preserves the approved name but discards its persona hook. CharacterRecord has no personality field. castFor returns Malakor's entire house cast when the selected character has no recorded show, including his persona and voice. The missing information already exists before generation; connecting it requires no additional model call. Whether a short hook sustains a distinctive conversational register is a hypothesis.",
+      "effort": "M",
+      "risk": "A thin hook may produce generic dialogue. Let streamers edit reference lines and rehearse the introduction; bound and validate imported metadata and retain the engine's existing governing rules.",
+      "verify": "Forge an original ghost librarian and auctioneer, reload each, then export/import them. Their next live engine requests must contain the correct name, hook, examples and selected voice, with neither receiving Malakor's bible. Replay must present their own scripted captions with zero paid calls. Existing packs and all 14 recorded jobs must still load.",
+      "why_groundbreaking": "The approved brief becomes the source of both visual and conversational identity. Creating a distinctive face finally carries through to creating a distinctive co-host.",
+      "parents": [],
+      "anchor_check": {
+        "ok": 8,
+        "total": 8,
+        "bad": []
+      }
+    },
+    {
+      "id": "P09",
+      "seat": "codex-gpt-6.1-sol_xhigh",
+      "round": 1,
+      "title": "Forge a character's signature act from the same brief",
+      "kind": "leap",
+      "outcome": "A streamer can describe an auctioneer whose glove slams 'sold' and receive a character-specific move that can be rehearsed, triggered and shared without rigging or a model call during playback.",
+      "builds_on": "Named decomposition already identifies meaningful parts, pivots, follow chains and periodic motion. The creator and engine already emit gesture events that can trigger character-specific performances.",
+      "mechanism": "Extend the approved brief with one to three acts described through a bounded schema: trigger, named parts, duration and primitives such as dip, rotate and brighten. After decomposition, compile those primitives against actual layer names and pivots. Compose a one-shot envelope with existing periodic motion and return smoothly to idle. Initially bind acts to existing gesture tokens: the same token can ring Reveille's bells or slam Lot Ninety's glove. Add preview, strength and approval controls in Anatomy. Store acts as optional Rig v1 fields so packs carry the performance; older rigs need no acts.",
+      "anchors": [
+        "packages/forge/src/brief.ts:43-44",
+        "packages/forge/src/briefParts.ts:81-105",
+        "packages/rig/src/motion.ts:22-40",
+        "packages/rig/src/pose.ts:353-394",
+        "packages/engine/src/types.ts:50-55",
+        "apps/web/src/creator/glass/gestures.ts:1-30",
+        "assets/characters/cast/lot-ninety/brief.json:41-51",
+        "docs/cast-forge-ledger.md:385-389"
+      ],
+      "evidence": "Observed: motionFromWords explicitly strips event clauses. Lot Ninety's approved brief requests a 'sold' slam, while the ledger identifies event-driven motion as the missing capability behind several characters' signature actions. Thus character concepts already contain performances the pipeline cannot deliver. Hypothesis: compiling these intentions into approved acts creates a stronger reason to keep and reuse characters; there is no usage evidence yet.",
+      "effort": "L",
+      "risk": "A move can expose unpainted backing or obscure the face. Start with detached or adequately backed parts, constrain travel, require audition approval and limit overlapping acts. Give every act a readable static cue under reduced motion.",
+      "verify": "Recorded Lot Ninety and Reveille acts must fire once from both creator buttons and their mapped engine gestures, return to idle within two seconds and survive pack export/import. Playback makes zero paid calls. A fresh brief must compile an act against generated part names without manually entered coordinates. In a pilot, at least four of five novice users should create and reuse one signature act within five minutes.",
+      "why_groundbreaking": "Shadowrunner could become an atelier for authoring performing characters: the user specifies how a co-host behaves physically as part of creating it. Its strongest asset—approved, meaningful anatomy—becomes an executable vocabulary of acting.",
+      "parents": [],
+      "anchor_check": {
+        "ok": 8,
+        "total": 8,
+        "bad": []
+      }
+    },
+    {
+      "id": "P10",
+      "seat": "claude-claude-opus-5-5_xhigh",
+      "round": 2,
+      "title": "Put a forged co-host on air as itself, with a signature move its words fire",
+      "kind": "connect",
+      "outcome": "A forged character goes on air under its own name, with its approved hook and example lines as its bible and the voice chosen at Bind, instead of Malakor's show, bible and 'clerk' voice. Its signature part plays its own move once when the character says its cue word: Lot Ninety's glove slams on 'Sold', Reveille's bells shake on 'Ring'. This works live and on replay, with no model call during playback, and it survives reload and .srpack export.",
+      "builds_on": "The approved brief's persona_hook and part motion words, castBible (already handles a missing show), the stage's caption-driven gesture path, and each part's approved periodic motion with its pivots.",
+      "mechanism": "(1) Character sheet: at keep, write an optional `sheet {archetype, hook, lines<=3, acts?}` from the approved brief into CharacterRecord and the pack metadata. The lines come from an optional `example_lines` field in BRIEF_SCHEMA, filled in the same brief call. When there is no recorded show, castFor uses persona {characterId: record.id, name, bible: castBible(name, hook, undefined) plus the lines, voice: speaker.voice} and self = chatName(name). On replay with no show, it plays a looped script of the sheet's lines labelled SCRIPTED, with audio only when a recording exists. (2) Acts follow the ledger's own minimal design ('an engine event that fires a part's motion once'), not a new vocabulary. Add an optional `Layer.act {cue: string[] (<=3 words), gain 1..3, s 0.6..1.5}`. Given drive.act {layer, startedAt}, poseLayers plays that layer's own float/pulse once under a one-period envelope times gain (a dip-and-return when the part has no motion) and returns exactly to idle. Under reduced motion it shows a one-beat tint cue instead. (3) Compile from words: a pure `actFromWords` turns the clause motionFromWords drops today, or a quoted word, into the act ('sold' slam -> cue 'sold'; 'shakes when ringing' -> cue 'ring'; 'when something is approved' -> cue 'approved'). Acts are limited to float, accessory and crown parts. BriefCard shows each act as one editable line ('hand_r: on \"sold\", slams'). (4) Fire: AirPage already passes caption.reply.gesture while speaking. Next to that, it fires the act when the spoken line contains a cue word (word boundary, case-insensitive), at index/length x the line's audio duration, at most once per line with a 3 s cooldown. The sheet's bible gains one sentence per act ('Say \"sold\" when a poll is decided') so the live engine uses its cue. (5) Anatomy gets a Rehearse button per act.",
+      "anchors": [
+        "apps/web/src/air/cast.ts:51-61",
+        "apps/web/src/air/malakor.ts:18",
+        "packages/engine/src/cast.ts:91-98",
+        "apps/web/src/creator/forge/keep.ts:26-39",
+        "apps/web/src/air/AirPage.tsx:183-207",
+        "packages/forge/src/briefParts.ts:81-105",
+        "packages/rig/src/motion.ts:22-40",
+        "packages/rig/src/pose.ts:353-394",
+        "assets/characters/cast/lot-ninety/brief.json:47-51",
+        "docs/cast-forge-ledger.md:385-388"
+      ],
+      "evidence": "Observed: castFor returns the house cast when a record has no show (cast.ts:58-59), and MALAKOR_PERSONA's voice is 'clerk' (malakor.ts:18). So today a live forge speaks as Malakor, posts under his name and ignores the Bind voice. recordOf keeps no hook (keep.ts:32-39), and castBible already takes an undefined show (engine cast.ts:95). motionFromWords drops event clauses (briefParts.ts:100). Six of the eight cast briefs have one: Lot Ninety's 'sold' slam, Reveille's 'shakes when ringing', Sir Vacant's 'floods when a vow is kept', the Redactor's 'thunks when something is approved', the Tallyman's 'pulses when a count is finished' (plus Auntie Asp's turn toward the speaker, which is gaze, not an act). The ledger names this as an open decision and proposes firing a part's motion once (ledger:386-388). Lot Ninety's recorded show already says 'Sold' in three beats (lot-ninety-night.json:18-20), whose gestures are tilt and lean_in. Reveille's says 'Ring!' and 'I ring'. Cue words therefore hit these lines with zero new recordings, where P09's gesture binding would fire on unrelated 'flare' beats. Hypothesis: timing by character index lands close enough to the spoken word, and a one-shot of the part's own approved motion reads as a deliberate act.",
+      "effort": "L",
+      "risk": "It widens the public Rig v1 and pack formats on a point the owner left open. Mitigation: spec it with Kiro first. Both fields are optional and omitted by default, and the readers drop bad entries, so the 14 recorded jobs and existing packs stay byte-identical. A bigger move can expose unpainted backing. Mitigation: start with float, accessory and crown parts only, clamp gain, and require a Rehearse before an act is saved. A cue word could fire too often. Mitigation: one act per line and a cooldown.",
+      "verify": "(1) For a live-forged record with no show, castFor's persona has its own name, hook, lines and chosen voice, and never MALAKOR_PERSONA's bible. Chat posts under chatName(name), and the sheet survives reload and export/import. (2) Replay: with Lot Ninety on air, hand_r's act fires on exactly the three 'Sold' beats and no others. Under reduced motion it shows only the static cue. Zero fetches. (3) actFromWords on the 8 cast briefs yields acts for Lot Ninety, Reveille, Sir Vacant, the Redactor and the Tallyman and none for the rest. A property test shows a compiled act never names a missing layer. (4) Pose test: s seconds after an act, poseLayers is byte-identical to idle, and rigs without acts pose byte-identically to today.",
+      "why_groundbreaking": "The approved brief stops being only a drawing brief and becomes the character: what the streamer approved is how it talks, sounds and moves on air. Today a forged co-host is Malakor wearing a new face.",
+      "parents": [
+        "P08",
+        "P09"
+      ],
+      "anchor_check": {
+        "ok": 10,
+        "total": 10,
+        "bad": []
+      }
+    },
+    {
+      "id": "P11",
+      "seat": "claude-claude-opus-5-5_xhigh",
+      "round": 2,
+      "title": "Explain each refused face, then repaint it in the character's own material",
+      "kind": "deepen",
+      "outcome": "In the Face tab, each of the six families shows its painted face next to procedural motion, with a plain reason when it has no face: 'the eyes moved 7.2 px', 'it repainted outside the brows', 'the daily budget ran out'. The streamer can retire any face (on every record, recorded ones included). On a live forge within 24 h they can repaint one family. The repaint uses a prompt built from that reason and one editable line about what the character's eyes are made of. The candidate is shown beside the current face and merged only on Accept, and only if it passes the gate.",
+      "builds_on": "The per-family expressOne, the gate's own measurements (faceStability's irisDriftPx and outsideBandMean, cutVariants' drift), expressionPrompt's unused attempt and material parameters, and the offline recipe that worked: material sentences plus STRICTER re-runs.",
+      "mechanism": "(1) Keep the reading: the job stores an optional `expressionGate[family] = {irisDriftPx?, outsideBandMean?, limit?, reason: 'iris'|'band'|'drift'|'no_change'|'budget'|'failed'}`, at most six small entries. Today these numbers only reach console.warn. JobView forwards it, and the recorded jobs get theirs computed offline. (2) Retire, the client half of P06, on all planes: add an optional `Look.faces?: Partial<Record<ExpressionFamily, 'procedural'>>`. readLook keeps only valid entries, facesOf skips a retired family, and packs and on-air already carry Look. (3) Repaint, P07's setup made smarter: keep stores {jobId, expiresAt}. `POST /api/forge/:jobId/faces {family, eyes?, key}` reruns expressOne with a prompt picked from the reason. 'iris' gives attempt 1 (STRICTER[0], the irises do not move). 'band' or 'drift' gives STRICTER[1] (a tiny retouch). A family the streamer retired with no gate failure gets attempt 1 plus a chip ('too subtle' drops the stricter wording; 'wrong kind of eyes' leans on material). The material is the editable 'Its eyes are ...' line, prefilled from P01's brief.face when present, else from the style. It fills expressionPrompt's material argument. Each repaint is charged in USD only, deduplicated by key, at most 2 per family and 4 per job. The reply carries a candidate patch and its gate reading, the client shows current against candidate, and on Accept it merges the additive variant patch after validateRig. The replay twin answers with the recorded face, labelled RECORDED, and honours x-sr-plane.",
+      "anchors": [
+        "api/_lib/forge-expressions.ts:53-80",
+        "packages/forge/src/expressions.ts:57-77",
+        "packages/rig/src/face.ts:7-19",
+        "packages/rig/src/mood.ts:61-77",
+        "packages/rig/src/readLook.ts:40-61",
+        "apps/web/src/creator/glass/FaceCard.tsx:56-64",
+        "apps/web/src/creator/forge/keep.ts:26-39",
+        "api/_lib/jobstore.ts:12",
+        "docs/provenance.md:81-86",
+        "docs/provenance.md:124-131",
+        "docs/provenance.md:155-158"
+      ],
+      "evidence": "Observed: offline, the face-control four's 24 families reached 22 passes over 37 edits once STRICTER re-runs were added (provenance.md:81-86). For the non-human five, the material-specific prompt got 24 of 54 edits through (provenance.md:124-131) after the human-eye wording had painted eyeballs. Live sends attempt 0 with no material (forge-expressions.ts:58). The gate's numbers exist and are thrown away to the console (:71, :78), so neither the streamer nor a retry knows why a face was refused. RigFace carries only expression.strength (face.ts:10), and facesOf adds every variant present (mood.ts:61-77). The owner's 11-07 verdict (reverting three characters' new faces and dropping Sir Vacant's showman, provenance.md:155-158) is exactly a retire action. A repaint costs $0.14 (costs.ts) against about $1.40 for a full re-forge. Hypothesis, unmeasured live: wording picked from the diagnosis plus a material line beats a blind re-run of the same prompt.",
+      "effort": "M",
+      "risk": "A repaint can spend without getting better. Mitigation: capped, charged in USD only, deduplicated, and the candidate never replaces the current face without Accept; retiring costs nothing. The mapping from reason to wording is a heuristic. Mitigation: record the reading before and after each repaint in the job so the mapping can be measured and tuned. Look.faces is a public-format addition. Mitigation: optional, unknown values dropped, and the 14 recorded jobs are untouched.",
+      "verify": "(1) Pose: with Look.faces {showman: 'procedural'}, poseLayers never lists showman and the other families keep their weights. On Sir Vacant's recorded rig this reproduces the owner's 11-07 drop with no asset change, and it survives reload and pack export/import. (2) Job: a fake gate that refuses joy for iris drift records reason 'iris' with the number, and the Face tab shows 'the eyes moved 7.2 px'. (3) Repaint with a fake editor: the prompt contains STRICTER[0] and the material line; exactly one edit call, with no portrait, parts, fill or eye calls; a duplicate key spends once; Decline leaves the record byte-identical; Accept adds only that family's patches. (4) Live A/B on the refused families of the five non-human portraits: repaint picked by diagnosis plus material, against a blind attempt+1. Success: a higher pass rate and fewer eyes repainted as human.",
+      "why_groundbreaking": "The gate stops being a silent judge. The streamer sees why a face was refused and can overrule it either way. Fixing one face costs $0.14 with the recipe the owner used, instead of about $1.40 to roll everything again.",
+      "parents": [
+        "P07",
+        "P06",
+        "P01",
+        "P04"
+      ],
+      "anchor_check": {
+        "ok": 11,
+        "total": 11,
+        "bad": []
+      }
+    },
+    {
+      "id": "P12",
+      "seat": "codex-gpt-6.1-sol_xhigh",
+      "round": 2,
+      "title": "Keep the character early and audition atomic face upgrades",
+      "kind": "connect",
+      "outcome": "The streamer can use and keep the assembled character while its face work continues, resume that work after reloading, and accept or reject eye and expression upgrades without losing tuning or the last usable version.",
+      "builds_on": "Assembly already produces a valid rig before expression work; the library stores complete local assets, and individual expression families already produce separate patches.",
+      "mechanism": "Publish a validated assembly checkpoint and save its required assets locally before Wake. Track refinement through an application-level job controller with validated source-job, expiry and revision metadata, so leaving the Rite does not abandon polling and reopening resumes within the existing source lifetime. Treat eye socketing as a complete structural revision: immutable asset URLs, a topology identifier and a validated rig manifest. Download and decode its files before atomically accepting it. Bind subsequent family candidates to that topology and never merge patches across incompatible eye revisions. Use the same candidate mechanism for initial faces and requested repairs; acceptance updates rig and assets while preserving the latest look, voice and per-family procedural choices. Repairs require an atomic idempotency reservation and a bounded USD budget. Replay supplies base, socketed, accepted, refused and quota fixtures; auditions offer manually stepped stills under reduced motion.",
+      "anchors": [
+        "packages/forge/src/job.ts:59-73",
+        "api/_lib/forge-steps.ts:298-328",
+        "packages/forge/src/faceEyes.ts:199-232",
+        "api/_lib/forge-expressions.ts:53-105",
+        "apps/web/src/creator/forge/useForgeJob.ts:105-152",
+        "apps/web/src/creator/forge/keep.ts:11-37",
+        "apps/web/src/creator/library/libraryStore.ts:50-61",
+        "packages/avatar/src/react/AvatarCanvas.tsx:52-66"
+      ],
+      "evidence": "Observed: the assembly checkpoint exists, current delivery waits for done, brief resumption is rejected, and eye socketing changes both topology and base image content. Observed: the owner rejected several gate-passed upgrades. Hypothesis: a locally durable character plus explicit candidate acceptance reduces abandoned paid work and unwanted visual changes; no usage or full live-latency evidence establishes the size of that benefit.",
+      "effort": "L",
+      "risk": "Stale revisions could mix incompatible assets or overwrite concurrent tuning; mitigate with immutable manifests, topology checks, revision-checked transactions and preloaded rendering before commit. A closed browser still pauses GET-driven work, so present it as resumable refinement and preserve the usable checkpoint when the source expires.",
+      "verify": "With assembly at 120 seconds, eyes taking 35 seconds and six families taking 40 seconds each, a usable record is saved at assembly and survives the five-minute boundary. Reload during refinement resumes the same source job. Accepting socketed eyes installs every required asset together; incompatible family patches are refused. Rejecting a candidate preserves the prior visual version, and accepted changes retain intervening look and voice edits through export/import. Duplicate repair submissions authorize at most one paid edit; forced replay makes zero paid calls.",
+      "why_groundbreaking": "A forge becomes a durable character with reviewable upgrades instead of a single all-or-nothing wait. Initial generation and later repairs share one safe acceptance mechanism, including the structural eye changes the additive merge overlooks.",
+      "parents": [
+        "P02",
+        "P04",
+        "P06",
+        "P07"
+      ],
+      "anchor_check": {
+        "ok": 8,
+        "total": 8,
+        "bad": []
+      }
+    },
+    {
+      "id": "P13",
+      "seat": "codex-gpt-6.1-sol_xhigh",
+      "round": 2,
+      "title": "Audition draft anatomy before funding the finished character",
+      "kind": "connect",
+      "outcome": "Before paying for fill, eyes and expressions, the streamer can compare three designs moving as provisional rigs, see missing planned parts, and choose the exact portrait and anatomy that will continue through the forge.",
+      "builds_on": "The unused draft model, approved named-part brief, deterministic fallback fill and cutter, and the cast's existing posed review sheets.",
+      "mechanism": "Create a bounded casting batch containing three draft portraits and one charged named-parts probe per portrait. Reuse settleBriefParts, plateNamed, cutNamed and assembleRig to build provisional rigs with explicitly labelled fallback backing. Show portrait-versus-rest, open jaw, left/right turns and signature motion using the existing pose-sheet recipe. Preserve missing planned names, cut.empty and assembly warnings as separate factual diagnostics; show ambiguous holes and ghosts for human inspection without claiming an automatic quality score. Selection carries a server-owned candidate ID referencing the exact portrait bytes and validated decomposition into the remaining pipeline, avoiding another portrait render or segmentation call. A redraw creates a new candidate requiring another audition. Reserve the existing forge admission at batch creation, charge child calls with count:false, cap rerolls and make finishing a batch idempotent. Replay uses explicitly labelled recorded candidate sets and the same selection flow.",
+      "anchors": [
+        "api/_lib/gemini.ts:173-176",
+        "api/_lib/costs.ts:5-21",
+        "packages/forge/src/briefParts.ts:157-192",
+        "packages/forge/src/cutNamed.ts:32-40",
+        "api/_lib/forge-steps.ts:216-232",
+        "api/_lib/forge-steps.ts:280-283",
+        "scripts/cast-forge.mjs:57-86",
+        "api/_lib/quota.ts:18-23"
+      ],
+      "evidence": "Observed: the required draft, decomposition, fallback assembly and posed-sheet primitives already exist; live assembly currently discards empty-part information. The configured estimate for three drafts and three single segmentation probes is $0.15, or $0.18 including the existing brief, before finishing or rerolls. Hypothesis: choosing on appearance and provisional motion improves useful-character yield; draft-model visual quality and predictive value of fallback-backed previews remain unmeasured.",
+      "effort": "M",
+      "risk": "Fallback backing can make a promising candidate look worse than its eventual painted fill, and draft quality may trail the final model; label provisional artifacts, distinguish missing anatomy from backing quality, and compare completed results against the current final-model baseline before rollout.",
+      "verify": "A fake provider produces exactly three draft images and at most three segmentation calls for the initial batch, with no paid fill, eye or expression calls before selection. Finishing preserves the selected portrait hash and decomposition and makes no portrait-generation or segmentation call. Missing planned parts appear in diagnostics, while intentional dark gaps receive no automatic failure label. Replay supports selection and rejection with zero paid calls, including stepped reduced-motion previews. On fixed briefs, compare completed chosen candidates against first-candidate and current-pipeline controls using blinded appearance and motion review.",
+      "why_groundbreaking": "Casting becomes a choice between performing designs, with the selected pixels and anatomy preserved into production. It moves useful quality review ahead of expensive finishing while replacing an unsupported universal quality score with inspectable evidence.",
+      "parents": [
+        "P03",
+        "P05"
+      ],
+      "anchor_check": {
+        "ok": 8,
+        "total": 8,
+        "bad": []
+      }
+    }
+  ],
+  "ratings": [
+    {
+      "id": "P06",
+      "score": 7,
+      "why": "Checked: RigFace has only expression.strength (face.ts:10), facesOf adds every variant present (mood.ts:61-77), and amused/delighted both map to joy (control.ts:11-12), so a per-family retire is really missing and the verify step makes sense. It is client-only, works on recorded rigs too, and covers the owner's 11-07 reverts and the showman drop. It only hides a bad face, and the MoodDial already shows each painted family, so the 'audition' half largely exists.",
+      "by": "claude-claude-opus-5-5_xhigh"
+    },
+    {
+      "id": "P07",
+      "score": 5,
+      "why": "Checked: expressOne needs only the job's rig, assets, portraitUrl and socketing (forge-expressions.ts:53-66), the KV record lives 24 h (jobstore.ts:12), and provenance.md:81-86 shows 37 edits for 24 families, so a one-family repair can be built. But it reruns the attempt-0 prompt with no material sentence (forge-expressions.ts:58) plus free text, instead of the STRICTER and material wording that worked offline. It is live-only within 24 h, and recordOf keeps no jobId (keep.ts:26-39).",
+      "by": "claude-claude-opus-5-5_xhigh"
+    },
+    {
+      "id": "P08",
+      "score": 8,
+      "why": "Checked: castFor returns the house cast whenever a record has no recorded show (air/cast.ts:58-59), so a live forge goes on air with Malakor's bible, posts as Malakor and speaks with MALAKOR_PERSONA's 'clerk' voice whatever the streamer picked (malakor.ts:18). recordOf keeps no hook (keep.ts:32-39), and castBible already accepts a missing show (engine cast.ts:95). This is a severe, verified break in the 'talks' half of the job, and the fix is cheap. The example lines are not in BRIEF_SCHEMA yet.",
+      "by": "claude-claude-opus-5-5_xhigh"
+    },
+    {
+      "id": "P09",
+      "score": 5,
+      "why": "Checked: motionFromWords drops event clauses (briefParts.ts:100), Lot Ninety's brief asks for a 'sold' slam (brief.json:51), and the ledger lists event-driven motion as an open owner decision (ledger:386-388), so the gap is real. But it is L effort with a new primitive vocabulary. It binds acts to gesture tokens that the recorded shows use for unrelated lines: Lot Ninety's 'Sold' beats are tilt/lean_in. It also skips the ledger's simpler 'fire a part's own motion once' design.",
+      "by": "claude-claude-opus-5-5_xhigh"
+    },
+    {
+      "id": "P01",
+      "score": 9,
+      "why": "forge-expressions.ts:58 omits the existing material parameter, eyeArt.ts:11-20 assumes human eyes, and five/prompts.mjs:1-6 documents the resulting corruption, making this a strong small fix whose live-model benefit still needs measurement.",
+      "by": "codex-gpt-6.1-sol_xhigh"
+    },
+    {
+      "id": "P02",
+      "score": 7,
+      "why": "job.ts:67-68 and useForgeJob.ts:41,123-128 confirm delayed delivery, broken brief resumption and the timeout risk, but faceEyes.ts:199-231 replaces eye assets and adds iris layers, so the proposed additive-only merge cannot deliver the eye upgrade.",
+      "by": "codex-gpt-6.1-sol_xhigh"
+    },
+    {
+      "id": "P03",
+      "score": 5,
+      "why": "gemini.ts:173-176 confirms unused draft generation, but stability.ts:223-255 only aligns translation and scale rather than preventing redesign, and forge-api.ts:67 counts another admission after forge-brief.ts:93, weakening the fidelity and quota assumptions.",
+      "by": "codex-gpt-6.1-sol_xhigh"
+    },
+    {
+      "id": "P04",
+      "score": 8,
+      "why": "FaceCard.tsx:58-64 exposes only global expression strength, provenance.md:155-158 confirms artistic rejection after automatic gating, and forge-expressions.ts:53-105 supports selective edits, although returning an unchanged recorded face would provide a weak replay demonstration.",
+      "by": "codex-gpt-6.1-sol_xhigh"
+    },
+    {
+      "id": "P05",
+      "score": 3,
+      "why": "composite.ts:8-31 supports posed sheets and forge-steps.ts:280-320 drops useful diagnostics, but measure.mjs:301-305 requires an independently supplied part mask and seams.test.ts:43-73 checks only polygon interiors, leaving automatic ghost attribution and the promised parity score unsupported.",
+      "by": "codex-gpt-6.1-sol_xhigh"
+    }
+  ],
+  "seats": {
+    "claude-claude-opus-5-5_xhigh": {
+      "letter": "A",
+      "spec": "claude:claude-opus-5-5@xhigh"
+    },
+    "codex-gpt-6.1-sol_xhigh": {
+      "letter": "B",
+      "spec": "codex:gpt-6.1-sol@xhigh"
+    }
+  },
+  "problems": {}
+}
