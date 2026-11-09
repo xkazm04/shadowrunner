@@ -36,6 +36,13 @@ export interface FrameClock {
    * (eyeGain, brow shift) fades with the pose. Absent = settled.
    */
   mood?: Drive["mood"];
+  /**
+   * The head's turn this frame (perfection-pass V2): yaw and pitch as shares of rig-core's
+   * YAW_LIMIT_DEG and PITCH_LIMIT_DEG, -1..1, as the pose turned it (gesture and mood included).
+   * Absent or zero = facing front: the WebGL renderer bends and relights nothing (gl/turn.ts).
+   * The canvas2D fallback ignores it and keeps the rigid pan.
+   */
+  turn?: { yaw: number; pitch: number };
 }
 
 export interface Renderer {
@@ -56,6 +63,6 @@ export interface CanvasHost {
   height: number;
   getContext(contextId: "webgl2", options?: WebGLContextAttributes): WebGL2RenderingContext | null;
   getContext(contextId: "2d", options?: CanvasRenderingContext2DSettings): CanvasRenderingContext2D | null;
-  addEventListener(type: "webglcontextlost", listener: (event: Event) => void): void;
-  removeEventListener(type: "webglcontextlost", listener: (event: Event) => void): void;
+  addEventListener(type: "webglcontextlost" | "webglcontextrestored", listener: (event: Event) => void): void;
+  removeEventListener(type: "webglcontextlost" | "webglcontextrestored", listener: (event: Event) => void): void;
 }

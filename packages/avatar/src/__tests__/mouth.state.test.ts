@@ -59,7 +59,8 @@ describe("a rig without mouth", () => {
 
   it("draws no mouth and opens the jaw from the raw level, exactly as before", () => {
     const out = run(plain, { emotion: "delighted", level: 0.4 });
-    expect(Object.keys(out.clock).sort()).toEqual(["reducedMotion", "t"]);
+    // No mouth key (perfection-pass V2 adds `turn` while the head is turned: delighted holds a pitch).
+    expect(Object.keys(out.clock).filter((k) => k !== "turn").sort()).toEqual(["reducedMotion", "t"]);
     const same = run(plain, { emotion: "delighted", level: 0.4, mouth: { shapes: { ...restWeights(), rest: 0, closed: 1 } } });
     expect(same.poses).toEqual(out.poses);
   });

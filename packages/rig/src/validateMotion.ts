@@ -5,7 +5,11 @@
 // `.float.rot_deg`, `.float.phase`, `.pulse.amp`, `.pulse.freq`, `.pulse.phase`, `.blink.freq`,
 // `.blink.phase` (blink: cast-forge task 6; that it sits on an eye layer is validateRig's check).
 // A range that depends on the canvas (float amp) is checked only against a known canvas size.
-import type { BlinkMotion, FloatMotion, Motion, PulseMotion } from "./types.js";
+// `Rig.motion` / `Look.motion` (perfection-pass V1) are read by `readRigMotion`: `spring` in
+// [0, SPRING_STRENGTH_MAX] at `<path>.spring`, the whole field at `<path>` when not an object.
+// `Rig.turn` / `Look.turn` (perfection-pass V2) are read by `readRigTurn` the same way: `warp` and
+// `light` in [0, 1] at `<path>.warp` / `<path>.light`.
+import type { BlinkMotion, FloatMotion, Motion, PulseMotion, RigMotion, RigTurn } from "./types.js";
 
 /** Float amplitude limit, as a fraction of the canvas width (x) and height (y). */
 export const FLOAT_AMP_MAX = 0.05;
@@ -120,6 +124,36 @@ export function readPulse(value: unknown, path: string): { pulse?: PulseMotion; 
   const reader = new MotionReader();
   const pulse = reader.pulse(value, path);
   return { ...(pulse === undefined ? {} : { pulse }), problems: reader.problems };
+}
+
+/** The largest secondary motion strength (perfection-pass V1, `RigMotion.spring`). */
+export const SPRING_STRENGTH_MAX = 2;
+
+/**
+ * `Rig.motion` or `Look.motion` at `path` (perfection-pass V1); absent is fine. Faults: not an
+ * object (at `path`), `spring` not a number in [0, SPRING_STRENGTH_MAX] (at `<path>.spring`).
+ */
+export function readRigMotion(value: unknown, path: string): { motion?: RigMotion; problems: MotionProblem[] } {
+  if (value === undefined) return { problems: [] };
+  if (!isRecord(value)) return { problems: [{ path, message: `${path}: when present, expected a motion object, got ${describe(value)}` }] };
+  const reader = new MotionReader();
+  const spring = value.spring === undefined ? undefined : reader.number(value.spring, `${path}.spring`, 0, SPRING_STRENGTH_MAX);
+  if (reader.problems.length > 0) return { problems: reader.problems };
+  return { motion: spring === undefined ? {} : { spring }, problems: [] };
+}
+
+/**
+ * `Rig.turn` or `Look.turn` at `path` (perfection-pass V2); absent is fine. Faults: not an object
+ * (at `path`), `warp` or `light` not a number in [0, 1] (at `<path>.warp` / `<path>.light`).
+ */
+export function readRigTurn(value: unknown, path: string): { turn?: RigTurn; problems: MotionProblem[] } {
+  if (value === undefined) return { problems: [] };
+  if (!isRecord(value)) return { problems: [{ path, message: `${path}: when present, expected a turn object, got ${describe(value)}` }] };
+  const reader = new MotionReader();
+  const warp = value.warp === undefined ? undefined : reader.number(value.warp, `${path}.warp`, 0, 1);
+  const light = value.light === undefined ? undefined : reader.number(value.light, `${path}.light`, 0, 1);
+  if (reader.problems.length > 0) return { problems: reader.problems };
+  return { turn: { ...(warp === undefined ? {} : { warp }), ...(light === undefined ? {} : { light }) }, problems: [] };
 }
 
 /** `Layer.motion` at `path` (e.g. `$.layers[3].motion`); absent is fine. */

@@ -1,4 +1,5 @@
-// WebGL2 context creation and loss handling (avatar-renderer req 1.2, 2.1, 2.3).
+// WebGL2 context creation, loss and restore handling (avatar-renderer req 1.2, 2.1, 2.3;
+// perfection-pass P1).
 import type { CanvasHost } from "../render/types.js";
 
 /** Transparent, premultiplied canvas (req 1.2). Antialiasing is off: layers draw into an FBO. */
@@ -20,18 +21,30 @@ export function createGlContext(canvas: CanvasHost): WebGL2RenderingContext | nu
   }
 }
 
-/** Calls `onLost` once, on the first `webglcontextlost`; returns the unsubscribe. */
-export function watchContextLoss(canvas: CanvasHost, onLost: () => void): () => void {
+/**
+ * Calls `onLost` on each `webglcontextlost` and `onRestored` on the `webglcontextrestored` that
+ * follows it (perfection-pass P1), until the returned unsubscribe. The loss event's default is
+ * prevented: that is what asks the browser to restore the context at all.
+ */
+export function watchContext(canvas: CanvasHost, onLost: () => void, onRestored: () => void): () => void {
+  let lost = false;
   let done = false;
-  const listener = (): void => {
-    if (done) return;
-    done = true;
-    canvas.removeEventListener("webglcontextlost", listener);
+  const lostListener = (event: Event): void => {
+    event.preventDefault();
+    if (done || lost) return;
+    lost = true;
     onLost();
   };
-  canvas.addEventListener("webglcontextlost", listener);
+  const restoredListener = (): void => {
+    if (done || !lost) return;
+    lost = false;
+    onRestored();
+  };
+  canvas.addEventListener("webglcontextlost", lostListener);
+  canvas.addEventListener("webglcontextrestored", restoredListener);
   return () => {
     done = true;
-    canvas.removeEventListener("webglcontextlost", listener);
+    canvas.removeEventListener("webglcontextlost", lostListener);
+    canvas.removeEventListener("webglcontextrestored", restoredListener);
   };
 }

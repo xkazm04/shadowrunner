@@ -19,6 +19,8 @@ export interface IrisClip {
   maskM: number[];
   /** Up to three mask textures and their weights. */
   masks: { texture: GlTexture; weight: number }[];
+  /** The eye clipping it (perfection-pass V2: a turn bends the iris as the eye's point under it). */
+  eye: Layer;
 }
 
 /** The eye an iris is clipped by: a posed eye layer with a `socket`. */
@@ -50,7 +52,7 @@ export function irisClipOf(layer: Layer, pose: LayerPose, layers: ReadonlyMap<st
     masks.set(texture, (masks.get(texture) ?? 0) + weight);
   }
   const list = [...masks].map(([texture, weight]) => ({ texture, weight })).slice(0, 3);
-  return { maskM: [map[0], map[1], 0, map[2], map[3], 0, map[4], map[5], 1], masks: list };
+  return { maskM: [map[0], map[1], 0, map[2], map[3], 0, map[4], map[5], 1], masks: list, eye: found.eye };
 }
 
 /** Binds the clip's masks (units 2-4) and sets the iris program's mask uniforms. */

@@ -5,6 +5,7 @@
 // adds the iris twin of the base program: the same pass with the eye's socket masks (gl/iris.ts).
 import { GLOW_SATURATION, S_FLOOR, S_KEEP } from "../render/recolour.js";
 import { MAW_DARK_LUMA, MAW_TAPS } from "../mouth/warp.js";
+import { createTurnGrid, TURN_FS, TURN_LIGHT_STEP, TURN_UNIFORMS, TURN_VS } from "./turn.js";
 import { WARP_GLSL, WARP_UNIFORMS } from "./warp.js";
 
 /**
@@ -45,6 +46,8 @@ void main() {
 // Unit corner -> the layer's rest bbox in rig px -> device px (u_m, an affine) -> clip space. The
 // warp twin (the art mouth, gl/warp.ts) covers u_draw instead, and v_uv runs past 0..1 outside u_rect.
 // The iris twin (face-control) also carries the rest point into the eye's socket uv (u_maskM).
+// Depth turn (perfection-pass V2, gl/turn.ts): the rest point is shifted by `turnAt` before u_m while
+// u_turnK.xy is not zero (an iris by its eye's point under it, u_turnEye); v_rest feeds the light.
 const baseVs = (warp: boolean, mask = false): string => `#version 300 es
 layout(location = 0) in vec2 a_corner;
 uniform vec4 u_rect;${warp ? `
@@ -52,23 +55,30 @@ uniform vec4 u_draw;` : ""}
 uniform mat3 u_m;
 uniform vec2 u_res;${mask ? `
 uniform mat3 u_maskM;
+uniform vec4 u_turnEye;
 out vec2 v_mask;` : ""}
 out vec2 v_uv;
+${TURN_VS}
 void main() {${mask ? `
   v_mask = (u_maskM * vec3(u_rect.xy + a_corner * u_rect.zw, 1.0)).xy;` : ""}
 ${
   warp
     ? `  v_uv = (u_draw.xy + a_corner * u_draw.zw - u_rect.xy) / u_rect.zw;
-  vec2 device = (u_m * vec3(u_draw.xy + a_corner * u_draw.zw, 1.0)).xy;`
+  vec2 rest = u_draw.xy + a_corner * u_draw.zw;`
     : `  v_uv = a_corner;
-  vec2 device = (u_m * vec3(u_rect.xy + a_corner * u_rect.zw, 1.0)).xy;`
+  vec2 rest = u_rect.xy + a_corner * u_rect.zw;`
 }
+  v_rest = rest;
+  if (u_turnK.x != 0.0 || u_turnK.y != 0.0) rest += turnAt(${mask ? "u_turnEye.z > 0.0 ? u_turnEye.xy + v_mask * u_turnEye.zw : rest" : "rest"});
+  vec2 device = (u_m * vec3(rest, 1.0)).xy;
   gl_Position = vec4(device.x / u_res.x * 2.0 - 1.0, 1.0 - device.y / u_res.y * 2.0, 0.0, 1.0);
 }`;
 
 // Premultiplied texel x light gain, plus a rim term: smoothstep on the alpha gradient (4 taps),
 // kept inside the layer by its own alpha and weighted by the texel's own brightness, so the black
 // fill around cut parts (straight cut lines, inpaint patches) never draws a lit outline.
+// Depth turn (perfection-pass V2, gl/turn.ts TURN_LIGHT_STEP): while u_turnK.z is set, the colour and
+// the rim are relit for the turn from the same 4 taps (their alpha and luminance): no new tap.
 // Emissive layers also write their bright parts (a bright-pass on the lit colour) to the glow
 // source; other layers write their alpha there, so whatever is in front occludes the glow.
 // Recolour (character-control design.md "Recolour"), only when u_recolour is set (a look equal to
@@ -144,15 +154,20 @@ const float S_FLOOR = ${S_FLOOR.toFixed(4)};
 const float GLOW_SAT = ${GLOW_SATURATION.toFixed(4)};
 layout(location = 0) out vec4 o_color;
 layout(location = 1) out vec4 o_glow;
-${RECOLOUR_GLSL}${warp ? `
+${RECOLOUR_GLSL}
+${TURN_FS}${warp ? `
 ${WARP_GLSL}
 float inLayer(vec2 uv) { return uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0 ? 1.0 : 0.0; }` : ""}
 void main() {
 ${warp ? WARP_SAMPLE : `  vec2 uv = v_uv;
   vec4 tex = texture(u_tex, uv);`}
   vec2 d = u_texel * 2.0;
-  float gx = texture(u_tex, uv + vec2(d.x, 0.0)).a - texture(u_tex, uv - vec2(d.x, 0.0)).a;
-  float gy = texture(u_tex, uv + vec2(0.0, d.y)).a - texture(u_tex, uv - vec2(0.0, d.y)).a;
+  vec4 tR = texture(u_tex, uv + vec2(d.x, 0.0));
+  vec4 tL = texture(u_tex, uv - vec2(d.x, 0.0));
+  vec4 tD = texture(u_tex, uv + vec2(0.0, d.y));
+  vec4 tU = texture(u_tex, uv - vec2(0.0, d.y));
+  float gx = tR.a - tL.a;
+  float gy = tD.a - tU.a;
   vec2 muv = u_mapRect.xy + uv * u_mapRect.zw;
   float slot = texture(u_map, clamp(muv, 0.0, 1.0)).r;
   float albedo = tex.a > 0.0 ? max(tex.r, max(tex.g, tex.b)) / tex.a : 0.0;
@@ -170,7 +185,7 @@ ${warp ? WARP_SAMPLE : `  vec2 uv = v_uv;
     }
     if (on) rgb = recolour(hsl, target) * tex.a;
   }
-  float alpha = tex.a;
+${TURN_LIGHT_STEP}  float alpha = tex.a;
 ${warp ? WARP_INTERIOR : ""}  vec4 color = vec4(rgb * u_gain + u_rim * rim * alpha, alpha) * u_opacity;${mask ? `
   color *= clamp(socketAt(v_mask), 0.0, 1.0);` : ""}
   o_color = color;
@@ -228,12 +243,12 @@ export interface Program<K extends string> {
 
 const BASE_UNIFORMS = [
   "u_rect", "u_m", "u_res", "u_tex", "u_map", "u_texel", "u_opacity", "u_gain", "u_rim", "u_emissive",
-  "u_recolour", "u_light", "u_mapRect", "u_slotOn", "u_slots",
+  "u_recolour", "u_light", "u_mapRect", "u_slotOn", "u_slots", ...TURN_UNIFORMS,
 ] as const;
 export type BaseUniform = (typeof BASE_UNIFORMS)[number];
 const WARP_PROGRAM_UNIFORMS = [...BASE_UNIFORMS, ...WARP_UNIFORMS] as const;
 export type WarpProgramUniform = (typeof WARP_PROGRAM_UNIFORMS)[number];
-const IRIS_PROGRAM_UNIFORMS = [...BASE_UNIFORMS, "u_maskM", "u_mask0", "u_mask1", "u_mask2", "u_maskW"] as const;
+const IRIS_PROGRAM_UNIFORMS = [...BASE_UNIFORMS, "u_maskM", "u_mask0", "u_mask1", "u_mask2", "u_maskW", "u_turnEye"] as const;
 export type IrisProgramUniform = (typeof IRIS_PROGRAM_UNIFORMS)[number];
 
 export interface Programs {
@@ -247,6 +262,8 @@ export interface Programs {
   composite: Program<"u_scene" | "u_glow" | "u_tint">;
   /** Unit quad, 4 corners as a triangle strip at attribute 0. */
   quad: { vao: WebGLVertexArrayObject; buffer: WebGLBuffer };
+  /** The unit grid a turned head's layers are drawn with (gl/turn.ts), same attribute. */
+  grid: { vao: WebGLVertexArrayObject; buffer: WebGLBuffer };
 }
 
 function shader(gl: WebGL2RenderingContext, type: GLenum, source: string): WebGLShader {
@@ -304,6 +321,7 @@ export function createPrograms(gl: WebGL2RenderingContext): Programs {
     blur: link(gl, QUAD_VS, BLUR_FS, ["u_src", "u_step"]),
     composite: link(gl, QUAD_VS, COMPOSITE_FS, ["u_scene", "u_glow", "u_tint"]),
     quad: createQuad(gl),
+    grid: createTurnGrid(gl),
   };
 }
 
@@ -311,4 +329,6 @@ export function deletePrograms(gl: WebGL2RenderingContext, p: Programs): void {
   for (const { program } of [p.base, p.warp, p.iris, p.extract, p.blur, p.composite]) gl.deleteProgram(program);
   gl.deleteVertexArray(p.quad.vao);
   gl.deleteBuffer(p.quad.buffer);
+  gl.deleteVertexArray(p.grid.vao);
+  gl.deleteBuffer(p.grid.buffer);
 }

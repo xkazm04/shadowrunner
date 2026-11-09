@@ -34,6 +34,8 @@ they disagree, the spec wins and this page and the code are fixed to match.
 | `layers` | Layer[] | yes | The layer stack. |
 | `mouth` | RigMouth | no | Where the talking mouth is drawn (see "Mouth"). Omitted when the art owns its mouth. |
 | `face` | RigFace | no | The character's face profile (see "Face profile"): gaze, motion and expression strengths. Omitted means the defaults. Amended by face-control; the format stays version 1. |
+| `motion` | `{ spring?: number }` | no | Secondary motion (perfection-pass V1): `spring` in [0, 2] scales how far loose parts lag and settle (see Pose, Rules, "Secondary motion"); omitted means 1, 0 turns it off; `Look.motion` wins. Faults are `bad_shape` at `$.motion` / `$.motion.spring`. |
+| `turn` | `{ warp?: number; light?: number }` | no | Depth turn and lighting (perfection-pass V2, WebGL only): `warp` in [0, 1] bends the head's layers with a head turn, `light` in [0, 1] moves the light across the face (see "Depth turn in the avatar"); omitted means the defaults (0.5 each; warp lowered for pixel art and mouthless heads), 0 turns one off; `Look.turn` wins field by field. Faults are `bad_shape` at `$.turn` / `$.turn.warp` / `$.turn.light`. |
 
 ### Mouth
 
@@ -307,6 +309,8 @@ a valid Rig. It returns `{ rig, warnings }`, where each warning is `{ layer, mes
 | `regions` | object | no | Region colours: key `"<layer>/<slotId>"` (`regionKey`), value `#rrggbb`. An absent key draws the region as painted. Amended by character-control. |
 | `shape` | object | no | Part reshapes: key a layer name, value a PartShape (see "Reshape"). An absent layer keeps its shape. Amended by character-control. |
 | `face` | RigFace | no | The viewer's face profile (face-control), over `Rig.face` field by field (see "Face profile"). Saved with the look and carried in packs. |
+| `motion` | `{ spring?: number }` | no | The viewer's secondary motion strength (perfection-pass V1), over `Rig.motion`. `readLook` drops a bad one, never the look. |
+| `turn` | `{ warp?: number; light?: number }` | no | The viewer's depth turn strengths (perfection-pass V2), over `Rig.turn` field by field. `readLook` drops a bad one, never the look. |
 
 **Emotion** is one of `"neutral"`, `"amused"`, `"smug"`, `"irritated"`, `"furious"`,
 `"delighted"`, `"bored"`, `"suspicious"`, `"grim"`, `"theatrical"`.
@@ -438,6 +442,7 @@ The per-frame input from the avatar driver.
 | `mood` | `{ from: Emotion, mix: number }` | no | An emotion change in progress (character-control): every mood column is `lerp(from, look.emotion, smoothstep(mix))`, and the faces fade from `from`'s family to the look's. Omitted means mix 1. The avatar advances `mix` over `MOOD_FADE_S` (0.25 s); reduced motion sets it to 1. |
 | `gaze` | `{ x: number, y: number }` | no | Where the irises look (face-control), -1..1 per axis of the socket's half extents (clamped); x positive is screen right, y down. Omitted means rest. |
 | `act` | `{ layer: string, startedAt: number }` | no | A signature act in play (tiger L1): that layer's act from `startedAt` (seconds, same clock as `t`) for its `s`. A layer that is missing is a no-op; a layer without `act` plays with the defaults. Omitted means none. |
+| `spring` | SpringChannels | no | Secondary motion (perfection-pass V1): the springs' lag, `{ yaw, pitch, roll, scale, lift, actDx, actDy, actRot, actLayer? }` (see Rules, "Secondary motion"). Omitted means none, as does `still`. |
 
 `GESTURE_DURATION_S` is `0.4`: every gesture curve runs for 0.4 s from `startedAt`, shaped as a
 half-sine `sin(pi * elapsed / 0.4)` that peaks halfway at the design value. Outside that window the
@@ -490,6 +495,21 @@ One per drawn layer, in `z` order. A layer is drawn unless it is named in `look.
   `gain*0.02*height*e` px down. Followers are carried as by the float. Outside that window the motion
   is exactly the idle one, so `s` seconds after an act the pose is the idle pose. Under `still` there
   is no movement: the tint is times 1.3 for the first half of the act (one static beat), then as idle.
+- **Secondary motion** (perfection-pass V1, `packages/rig/src/spring.ts`). `drive.spring` is the lag
+  of one damped spring per channel (head yaw and pitch as shares of their limits, the head group's
+  roll in radians, its gesture scale and lift, and a playing act's own move of `actLayer`); the
+  avatar steps them on its clock (2.2 Hz, damping 0.45, solved exactly, so any frame rate gives the
+  same motion) toward `springTargetOf(rig, look, drive)`. The lag moves a loose part's bbox centre by
+  `e` px (each channel's own rigid motion at that point; the act channels only for followers of
+  `actLayer`). A part pinned away from its centre swings about its anchor by the part of `e` across
+  its lever over `max(lever, 0.12 * height)`; a floating part pinned near its centre moves by `e`. Who
+  springs and how much is read from the rig alone (`springParts`): accessory and crown layers only,
+  never a brow or anything a jaw, eye or iris follows or is followed by, less the more it covers the
+  face box (eye, iris and jaw boxes; none at 30 %), more the lighter it is, a part with no float swings
+  at 0.35 and, off the head, not at all. Swing at most 0.2 rad, move at most 6 % of the bbox's shorter
+  side; the swing is added to the float in the carry, so followers ride it. Strength
+  `look.motion.spring ?? rig.motion.spring ?? 1` scales it (0 off). Absent, all zero or under `still`:
+  no change.
 - **Gestures**, at their peak: `nod` adds 6° of pitch; `tilt` rotates the head 5°; `lean_in`
   scales the head by 1.04; `recoil` scales it by 0.96 and lifts it by 1% of height; `glare` sets
   the eye tint to 1.6; `flare` sets the tint of the emissive layers (`emissive`, else the kinds
@@ -594,6 +614,42 @@ How the WebGL2 art-mouth warp (`packages/avatar/src/mouth/warp.ts`, `gl/warp.ts`
   steps. The point is not resampled at the cell's centre: a forged pixel portrait's grid is neither
   on the canvas origin nor regular (the Redactor's period measures 7.0-7.3 px with its phase
   drifting across the face), and centre samples would land on its soft cell borders.
+
+### Depth turn in the avatar
+
+How the WebGL2 renderer reads `turn` (perfection-pass V2, `packages/rig/src/turn.ts`,
+`packages/avatar/src/gl/turn.ts`; behaviour, not wire format). The frame clock carries the pose's
+yaw and pitch (shares of 22° and 12°, gesture and mood included) while the head is turned and a
+strength is above 0; facing front, or with `warp` and `light` both 0, the frame is drawn exactly as
+before, call for call. **Canvas2D never bends or relights: it keeps the rigid depth pan.**
+
+- **Strength.** `look.turn.<field> ?? rig.turn.<field> ?? default`, clamped to [0, 1]. The default
+  light is 0.5. The default warp is 0.5, lowered by two art rules (never a value the rig or look
+  sets): pixel art (`mouth.cell`) 0, since a bend breaks its grid; a head the forge found no lips on
+  (no `mouth`: a clock, a helmet, a fish, a skull) 0.3, since a rigid face's straight painted lines
+  bow at the human default.
+- **Head.** The first visible `head` layer that follows no head, and every layer whose follow chain
+  reaches a `head` (face, eyes, irises, lids, brows, jaw, hair, hat, held props). Body, background
+  and what follows the torso keep the pan. The face is an ellipse in rest px: centred between the
+  head's eyes, 1.6 times their half span wide (at most the head's half width), 1.3 times that tall
+  (at most the head's half height), its centre 0.15 of its height below the eye line; a head without
+  eyes uses its bbox.
+- **Bend** (`warp`). Every head layer is drawn as a 32 x 32 grid whose rest points move by
+  `(A, B) w(q)`: `A = warp * yaw * 0.25 * rx`, `B = warp * pitch * 0.15 * ry`, `w` a smooth bump
+  `(1 - u^2)^2 (1 - v^2)^2` over 1.25 face radii (below the face it ends at the head layer's bottom
+  edge at the latest, so the neck never opens on the body). The face slides toward the turn and
+  compresses on the far side; the outline and anything off the face stay put. All head layers share
+  the one field in rest px, so features, face patches, closed lids, the art-mouth warp and the drawn
+  mouth stay registered (the grid's own error is under 0.9 rig px on the cast at warp 1), and an
+  iris moves as the point of its eye under it.
+- **Light** (`light`). At rest nothing changes: the painted shading is taken as right facing front.
+  Turned, each pixel of a head layer (not an eye, iris or emissive layer) is scaled by
+  `1 + 0.6 * light * (shade(R n) - shade(n))`, with `n` the face ellipsoid's normal at the rest
+  point bent by the luminance gradient of the rim's four taps, `R` the turn's rotation, `shade` a
+  wrapped Lambert term toward a key light from the upper left in front; the brightening is tinted by
+  `palette.rim`. The rim (alpha gradient, same taps) is scaled by `1 + 2 * light * delta` for its
+  edge's own normal, so it grows on the edge turning into the light and fades on the other. No new
+  texture taps.
 
 ## Example
 

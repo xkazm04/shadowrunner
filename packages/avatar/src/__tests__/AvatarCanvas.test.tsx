@@ -100,7 +100,8 @@ describe("<AvatarCanvas>", () => {
       const layer = rig.layers.find((l) => l.name === pose.name);
       if (layer === undefined) throw new Error(pose.name);
       const m = layerAffine(layer, pose, view, lookLight(rig, look).browY);
-      return [m[0], m[1], 0, m[2], m[3], 0, m[4], m[5], 1].map((v) => expect.closeTo(v, 9));
+      // u_m is a Float32Array (perfection-pass P1): GL holds float32 either way.
+      return [m[0], m[1], 0, m[2], m[3], 0, m[4], m[5], 1].map((v) => Math.fround(v));
     });
     expect(uniforms("uniformMatrix3fv", "u_m").map((args) => args[1])).toEqual(expected);
   });

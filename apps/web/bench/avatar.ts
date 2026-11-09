@@ -3,9 +3,15 @@
 // interval (rAF to rAF, what a viewer sees) and of the CPU time spent per frame, plus `info()`.
 // Results go to #result and `window.avatarBench`; `data-done` on <body> marks the end.
 // ?react=1 mounts <AvatarCanvas> instead (a live check of the wrapper in a real browser; no timing).
+// ?loop=n (perfection-pass P1) warms up, then exposes `window.avatarPhases`: each phase (the pose
+// alone, the draw of fixed poses alone, the whole frame) runs n frames back to back and returns the
+// mean CPU microseconds per frame. A driver reads the JS heap around each call (CDP
+// `Runtime.getHeapUsage`, with a young generation large enough that no scavenge runs inside a
+// phase, `--js-flags=--min-semi-space-size=64`) for the bytes allocated per frame; the page's own
+// `performance.memory` is too coarse for it.
 import "@sr/theme/halloween.css";
-import { advanceFrame, AvatarCanvas, createCanvas2dRenderer, createRenderer, initialState, type Renderer, type RigAssets } from "@sr/avatar";
-import { defaultLook, EMOTION_TABLE, importLegacyLayers, poseLayers, type Drive, type Emotion, type Look, type Rig } from "@sr/rig";
+import { advanceFrame, AvatarCanvas, createCanvas2dRenderer, createRenderer, initialState, springLag, stepSpring, type Renderer, type RigAssets, type SpringState } from "@sr/avatar";
+import { defaultLook, EMOTION_TABLE, importLegacyLayers, poseLayers, springTargetOf, type Drive, type Emotion, type Look, type Rig } from "@sr/rig";
 import { createElement } from "react";
 import { createRoot } from "react-dom/client";
 import layersJson from "../../../assets/characters/malakor/rig/layers.json";
@@ -24,10 +30,62 @@ export interface BenchResult {
   visibleLayers: number;
 }
 
+/** ?loop=n: each phase runs n frames and returns the mean CPU microseconds per frame. */
+export interface LoopPhases {
+  mode: "webgl2" | "2d";
+  frames: number;
+  pose(): number;
+  draw(): number;
+  frame(): number;
+}
+
 declare global {
   interface Window {
     avatarBench?: BenchResult;
+    avatarPhases?: LoopPhases;
   }
+}
+
+/** Runs `body` `frames` times back to back; mean CPU microseconds per frame. */
+function measure(frames: number, body: (i: number) => void): number {
+  const begin = performance.now();
+  for (let i = 0; i < frames; i += 1) body(i);
+  return Math.round(((performance.now() - begin) * 10000) / frames) / 10;
+}
+
+/** ?loop=n: driver + pose, draw of fixed poses, and the whole frame, each n frames after a warm-up. */
+function loopPhases(renderer: Renderer, rig: Rig, look: Look, frames: number): LoopPhases {
+  let state = initialState(1);
+  let spring: SpringState | undefined;
+  const dt = 1 / 60;
+  // The drive as the frame body makes it (perfection-pass V1): the springs stepped toward this frame's target.
+  // Its yaw and pitch go to the renderer as the clock's turn, as the frame body hands them (V2).
+  const turn = { yaw: 0, pitch: 0 };
+  const driven = (): Drive => {
+    const next = advanceFrame(state, { dt, level: 0, gaze: "host", reducedMotion: false });
+    const target = springTargetOf(rig, look, next.drive);
+    turn.yaw = target.yaw;
+    turn.pitch = target.pitch;
+    spring = stepSpring(spring, next.state.t - state.t, target);
+    state = next.state;
+    const lag = springLag(spring);
+    return lag === undefined ? next.drive : { ...next.drive, spring: lag };
+  };
+  const posed = (): ReturnType<typeof poseLayers> => poseLayers(rig, look, driven());
+  const fixed = posed();
+  const fixedTurn = { ...turn };
+  const whole = (): void => {
+    const drive = driven();
+    renderer.draw(poseLayers(rig, look, drive), look, { t: drive.t, reducedMotion: false, turn });
+  };
+  for (let i = 0; i < 300; i += 1) whole();
+  return {
+    mode: renderer.info().mode,
+    frames,
+    pose: () => measure(frames, () => void posed()),
+    draw: () => measure(frames, (i) => renderer.draw(fixed, look, { t: i / 60, reducedMotion: false, turn: fixedTurn })),
+    frame: () => measure(frames, whole),
+  };
 }
 
 const params = new URLSearchParams(window.location.search);
@@ -109,6 +167,13 @@ async function main(): Promise<void> {
   const resize = (): void => renderer.resize(stage.clientWidth, stage.clientHeight, window.devicePixelRatio || 1);
   resize();
   window.addEventListener("resize", resize);
+  const loop = Number(params.get("loop") ?? 0);
+  if (loop > 0) {
+    window.avatarPhases = loopPhases(renderer, rig, look, loop);
+    report(`loop ready: ${loop} frames per phase`);
+    document.body.dataset.done = "1";
+    return;
+  }
 
   const seconds = Number(params.get("seconds") ?? 10) || 10;
   const frozen = frozenDrive();

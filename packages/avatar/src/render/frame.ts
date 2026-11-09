@@ -44,9 +44,24 @@ export function fitView(rig: Pick<Rig, "width" | "height">, width: number, heigh
 
 /** Maps the layer's rest canvas px (its bbox) to device px for `pose`; `browY` shifts eye layers without a socket. */
 export function layerAffine(layer: Layer, pose: LayerPose, view: View, browY: number): Affine {
-  const [bx, by] = layer.bbox;
-  const [ax, ay] = layer.anchor;
-  const [sx, sy] = pose.scale;
+  const m = layerMat3(AFFINE_SCRATCH, layer, pose, view, browY);
+  return [m[0] ?? 0, m[1] ?? 0, m[3] ?? 0, m[4] ?? 0, m[6] ?? 0, m[7] ?? 0];
+}
+
+const AFFINE_SCRATCH = new Float64Array(9);
+
+/**
+ * `layerAffine` written into `out` as a column-major mat3 `[a, b, 0, c, d, 0, e, f, 1]` (perfection-pass
+ * P1: the GL layer draw reuses one Float32Array for `u_m`, no array per layer). Returns `out`.
+ */
+export function layerMat3<T extends Float32Array | Float64Array>(out: T, layer: Layer, pose: LayerPose, view: View, browY: number): T {
+  // Indexed reads, not destructuring: an array pattern can allocate an iterator per call.
+  const bx = layer.bbox[0];
+  const by = layer.bbox[1];
+  const ax = layer.anchor[0];
+  const ay = layer.anchor[1];
+  const sx = pose.scale[0];
+  const sy = pose.scale[1];
   const cos = Math.cos(pose.rotation);
   const sin = Math.sin(pose.rotation);
   // Rest -> posed rig px: P(q) = A' + R S (q - A), A' = A + (x - bx, y - by) (+ brow for eyes).
@@ -57,7 +72,16 @@ export function layerAffine(layer: Layer, pose: LayerPose, view: View, browY: nu
   const px = ax + pose.x - bx;
   const py = ay + pose.y - by + (layer.kind === "eye" && layer.socket === undefined ? browY : 0);
   const k = view.scale;
-  return [k * a0, k * b0, k * c0, k * d0, k * (px - a0 * ax - c0 * ay) + view.ox, k * (py - b0 * ax - d0 * ay) + view.oy];
+  out[0] = k * a0;
+  out[1] = k * b0;
+  out[2] = 0;
+  out[3] = k * c0;
+  out[4] = k * d0;
+  out[5] = 0;
+  out[6] = k * (px - a0 * ax - c0 * ay) + view.ox;
+  out[7] = k * (py - b0 * ax - d0 * ay) + view.oy;
+  out[8] = 1;
+  return out;
 }
 
 /** Applies an affine to a point. */

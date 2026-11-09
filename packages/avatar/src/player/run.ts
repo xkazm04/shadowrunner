@@ -13,6 +13,10 @@
 //   parent, or with `autoSize: false`, the caller calls `resize`.
 // - Gaze is "host" (the face looks out of the frame, at the viewer), as AvatarCanvas's default.
 // - After `dispose` every method is a no-op.
+// - `pauseOffscreen` (perfection-pass P1, default on): the `start` loop schedules no frame while
+//   the page is hidden or the canvas is fully outside the viewport (render/visibility.ts), and the
+//   first frame back has dt 0. `renderFrame` always steps and draws (a recorder drives it). The
+//   autoSize buffer's DPR is capped at MAX_DPR.
 import type { Emotion, Gesture, LayerPose, Look, Rig } from "@sr/rig";
 import { attachAudio, type AttachAudioOptions, type AudioLevelTap } from "../audio/level.js";
 import type { CreateRendererOptions } from "../gl/renderer.js";
@@ -20,7 +24,8 @@ import { fitView, layerAffine, lookLight } from "../render/frame.js";
 import type { MouthPose, MouthShapesInput } from "../mouth/state.js";
 import { mouthMode, type MouthMode } from "../mouth/anchor.js";
 import type { CanvasHost, FrameClock, Renderer, RigAssets } from "../render/types.js";
-import { isReducedMotion } from "../react/loop.js";
+import { bufferDpr, isReducedMotion } from "../react/loop.js";
+import { watchVisibility } from "../render/visibility.js";
 import { createFrameBody } from "./frame.js";
 import { cutoutLook } from "./cutout.js";
 import type { AvatarPlayer, AvatarPlayerOptions, LayerFrame, PlayerAudio } from "./player.js";
@@ -74,19 +79,32 @@ export function runPlayer(canvas: HTMLCanvasElement, options: AvatarPlayerOption
     drawn = { poses: out.poses, look, mood: out.clock.mood };
   };
 
-  const frame = (now: number): void => {
-    if (disposed || raf === undefined || win === null) return;
+  // The loop runs while `start`ed and the canvas can be seen (perfection-pass P1); `raf` is the
+  // pending frame, undefined while stopped or paused.
+  let running = false;
+  const watch = options.pauseOffscreen === false || win === null ? undefined : watchVisibility(canvas, (visible) => (visible ? schedule() : unschedule()));
+  function schedule(): void {
+    if (!disposed && running && raf === undefined && win !== null && (watch === undefined || watch.visible())) raf = win.requestAnimationFrame(frame);
+  }
+  function unschedule(): void {
+    if (raf !== undefined) win?.cancelAnimationFrame(raf);
+    raf = undefined;
+    lastNow = undefined;
+  }
+  function frame(now: number): void {
+    raf = undefined;
+    if (disposed || !running) return;
     const dt = lastNow === undefined ? 0 : (now - lastNow) / 1000;
     lastNow = now;
     step(dt);
-    raf = win.requestAnimationFrame(frame);
-  };
+    schedule();
+  }
 
   const parent = canvas.parentElement;
   const fit = (): void => {
     if (parent === null) return;
     const box = parent.getBoundingClientRect();
-    renderer.resize(Math.max(1, box.width), Math.max(1, box.height), win?.devicePixelRatio || 1);
+    renderer.resize(Math.max(1, box.width), Math.max(1, box.height), bufferDpr(win?.devicePixelRatio));
   };
   let observer: ResizeObserver | undefined;
   if (options.autoSize !== false && parent !== null) {
@@ -98,9 +116,8 @@ export function runPlayer(canvas: HTMLCanvasElement, options: AvatarPlayerOption
   }
 
   const stop = (): void => {
-    if (raf !== undefined) win?.cancelAnimationFrame(raf);
-    raf = undefined;
-    lastNow = undefined;
+    running = false;
+    unschedule();
   };
 
   const player: AvatarPlayer = {
@@ -134,8 +151,9 @@ export function runPlayer(canvas: HTMLCanvasElement, options: AvatarPlayerOption
       if (!disposed) renderer.resize(width, height, dpr);
     },
     start(): void {
-      if (disposed || raf !== undefined || win === null) return;
-      raf = win.requestAnimationFrame(frame);
+      if (disposed || running || win === null) return;
+      running = true;
+      schedule();
     },
     stop,
     renderFrame(dt: number): void {
@@ -159,6 +177,7 @@ export function runPlayer(canvas: HTMLCanvasElement, options: AvatarPlayerOption
       mouthShown = undefined;
       tap?.detach();
       tap = undefined;
+      watch?.dispose();
       observer?.disconnect();
       renderer.dispose();
     },

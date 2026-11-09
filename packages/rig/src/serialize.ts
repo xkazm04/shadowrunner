@@ -81,6 +81,8 @@ function wireRig(rig: Rig): Rig {
     layers: rig.layers.map(wireLayer),
     ...(rig.mouth === undefined ? {} : { mouth: { cx: rig.mouth.cx, lineY: rig.mouth.lineY, width: rig.mouth.width, ...(rig.mouth.render === undefined ? {} : { render: rig.mouth.render }), ...(rig.mouth.cell === undefined ? {} : { cell: rig.mouth.cell }), ...(rig.mouth.lips === undefined ? {} : { lips: { left: rig.mouth.lips.left, right: rig.mouth.lips.right, upper: rig.mouth.lips.upper, lower: rig.mouth.lips.lower, ...(rig.mouth.lips.seam === undefined ? {} : { seam: rig.mouth.lips.seam }), ...(rig.mouth.lips.maw === true ? { maw: true as const } : {}) } }) } }),
     ...(rig.face === undefined ? {} : { face: JSON.parse(JSON.stringify(rig.face)) as RigFace }),
+    ...(rig.motion === undefined ? {} : { motion: rig.motion.spring === undefined ? {} : { spring: rig.motion.spring } }),
+    ...(rig.turn === undefined ? {} : { turn: { ...(rig.turn.warp === undefined ? {} : { warp: rig.turn.warp }), ...(rig.turn.light === undefined ? {} : { light: rig.turn.light }) } }),
   };
 }
 
