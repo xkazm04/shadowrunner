@@ -1,0 +1,78 @@
+/* Film grain (perfection-pass 5.3; Grain.tsx). One 128 px noise tile repeated over a layer one
+   tile larger than the set on every side, so it can be moved a fraction of a tile without showing
+   an edge. The movement is a stepped `transform` (about 12 steps a second): the layer is painted
+   once and only composited after that. Strength: a fifth of the theme's fog role (no grain token
+   exists; halloween fog 0.35 -> 0.07, baseline 0 -> none). Above the set (the catacomb's front
+   is z 8, earlier in the DOM), below the captions (9) and the top row (10). */
+
+.grain {
+  position: absolute;
+  inset: -8rem;
+  z-index: 8;
+  background-repeat: repeat;
+  background-size: 8rem 8rem;
+  opacity: calc(var(--sr-haunt-fog) * 0.2);
+  pointer-events: none;
+  will-change: transform;
+  animation: grain 0.8s step-end infinite;
+}
+
+@keyframes grain {
+  0% {
+    transform: translate(0, 0);
+  }
+
+  10% {
+    transform: translate(-3.1rem, 2.3rem);
+  }
+
+  20% {
+    transform: translate(4.7rem, -1.4rem);
+  }
+
+  30% {
+    transform: translate(-1.9rem, -5.2rem);
+  }
+
+  40% {
+    transform: translate(2.6rem, 6.1rem);
+  }
+
+  50% {
+    transform: translate(-5.8rem, 0.7rem);
+  }
+
+  60% {
+    transform: translate(1.2rem, -3.6rem);
+  }
+
+  70% {
+    transform: translate(6.4rem, 3.9rem);
+  }
+
+  80% {
+    transform: translate(-4.3rem, -2.8rem);
+  }
+
+  90% {
+    transform: translate(3.3rem, 5.5rem);
+  }
+}
+
+/* The haunt toggle off (a theme whose haunt tokens are zero): no grain at all. */
+:global([data-haunt="off"]) .grain {
+  display: none;
+}
+
+/* Reduced-motion twin: the same grain, standing still. */
+:global([data-motion="reduced"]) .grain {
+  transition: none;
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .grain {
+    transition: none;
+    animation: none;
+  }
+}

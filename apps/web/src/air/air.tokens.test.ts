@@ -97,7 +97,7 @@ function rules(text: string): Rule[] {
   }));
 }
 
-const STAGE_FILES = ["./air.module.css", "./Catacomb.module.css", "./OnAirLamp.module.css", "./Captions.module.css", "./Chat.module.css"];
+const STAGE_FILES = ["./air.module.css", "./Catacomb.module.css", "./OnAirLamp.module.css", "./Captions.module.css", "./Chat.module.css", "./Grain.module.css"];
 const STAGE_CSS = STAGE_FILES.map(css).flatMap((text) => rules(text));
 const FILL_PROPS = ["background-color", "background-image", "background"];
 /** Rules that are not on screen while on air (the dark lamp, the dead line). */
@@ -186,6 +186,26 @@ describe("haunt bound to status in the stage CSS", () => {
     expect(catacomb.find((r) => r.selector === ".halo")?.decls.get("opacity")).toBe("var(--glow)");
     expect(catacomb.find((r) => r.selector === ".refl")?.decls.get("opacity")).toContain("var(--refl)");
     expect(catacomb.find((r) => r.selector === ':global([data-haunt="off"]) .tip')?.decls.get("animation")).toBe("none");
+  });
+
+  it("binds the film grain to the theme's fog, moves it by transform only, and removes it when the theme does not haunt", () => {
+    const grain = rules(css("./Grain.module.css"));
+    const base = grain.find((r) => r.selector === ".grain");
+    expect(base?.decls.get("opacity")).toMatch(/^calc\(var\(--sr-haunt-fog\) \* 0\.\d+\)$/);
+    expect(base?.decls.get("pointer-events")).toBe("none");
+    expect(base?.decls.get("animation")).toMatch(/step-end/);
+    // Every keyframe changes transform and nothing else (no repaint, only compositing).
+    const frames = grain.filter((r) => /^\d+%$/.test(r.selector));
+    expect(frames.length).toBeGreaterThan(5);
+    for (const f of frames) expect([...f.decls.keys()]).toEqual(["transform"]);
+    expect(grain.find((r) => r.selector === ':global([data-haunt="off"]) .grain')?.decls.get("display")).toBe("none");
+    for (const name of ["halloween", "baseline"]) {
+      const fog = Number(themeValues(name).get("haunt-fog"));
+      const strength = fog * Number(/\* (0\.\d+)/.exec(base?.decls.get("opacity") ?? "")?.[1]);
+      // Visible but subtle where the theme haunts; none at all in the baseline theme.
+      if (name === "baseline") expect(strength).toBe(0);
+      else expect(strength > 0.03 && strength < 0.12, `${name} ${strength}`).toBe(true);
+    }
   });
 
   it("binds every haunt token to zero in the baseline theme", () => {

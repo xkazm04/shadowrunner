@@ -52,14 +52,24 @@ export function cuePattern(word: string): RegExp {
 
 /** The first cue word the line says, over every act; undefined when it says none. */
 export function lineCue(line: string, acts: readonly StageAct[]): LineCue | undefined {
-  let best: LineCue | undefined;
+  return lineCues(line, acts)[0];
+}
+
+/**
+ * Every cue word the line says, over every act, in line order (at one index the first act and
+ * word listed win). perfection-pass 5.5: the stage tries them in order until one is past the cooldown.
+ */
+export function lineCues(line: string, acts: readonly StageAct[]): LineCue[] {
+  const found = new Map<number, LineCue>();
   for (const act of acts) {
     for (const word of act.cue) {
-      const index = cuePattern(word).exec(line)?.index;
-      if (index !== undefined && (best === undefined || index < best.index)) best = { layer: act.layer, index, at: index / line.length };
+      const pattern = new RegExp(cuePattern(word).source, "gi");
+      for (const match of line.matchAll(pattern)) {
+        if (!found.has(match.index)) found.set(match.index, { layer: act.layer, index: match.index, at: match.index / line.length });
+      }
     }
   }
-  return best;
+  return [...found.values()].sort((a, b) => a.index - b.index);
 }
 
 /** Whether an act may fire at `now` after the last one at `last` (ms on one clock). */
