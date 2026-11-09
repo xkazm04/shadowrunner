@@ -113,3 +113,24 @@ under `var/perfection/<task>/` (git-ignored) for the owner's board.
 - Task 4's analyser has no phoneme alignment from TTS; shape accuracy is heuristic. The lab's
   scenario harness is the judge, and loudness stays the fallback.
 - Live-plane paths (task 5 req 4) are untested against real providers.
+
+## Amendments (Director, 2026-11-09, after the build)
+- Task 2: `Drive.spring` is `SpringChannels` (`packages/rig/src/spring.ts`): the lag of one spring
+  per head channel (`yaw, pitch, roll, scale, lift, actDx, actDy, actRot, actLayer?`), not a
+  per-layer record. The rig turns the channels into per-layer offsets; nothing is allocated per layer.
+- Task 3: the pose carries no per-layer yaw/pitch. The frame body sets `FrameClock.turn?: { yaw, pitch }`
+  (-1..1); a caller that draws without it gets no turn. Default warp is lowered by rule: pixel art
+  (`mouth.cell`) 0, a head with no measured `mouth` 0.3. The light changes nothing while the head
+  faces front (requirement 3.1 read as covering the whole output).
+- Task 4: `AvatarCanvasProps.level?: () => number` added so the stage analyses audio once.
+- Task 5: the persona system prompt is an array with one cached text block. A reply joins the chat
+  when its line starts, not when it arrives.
+- Task 8: the matcher covers the eight recorded characters that have a recorded brief; the match id
+  is the kebab-cased name and the forge still finds its job by `one_line_request`.
+- Task 9: `LibraryRecord` is `CharacterRecord`; `saveThumb` writes only while the stored key matches.
+- Task 10: requirement 10.2 (PNG served as WebP) is NOT met and stays open: the PNGs are read by
+  the pack builder and bundled by creator globs. `b00.wav` stays as a test source.
+- Task 11: `--heat` stays on the stage root; readers of `--back` are found by `[data-back]` under
+  the root ref instead of new refs.
+- A character duplicated from the house character (Malakor) carries `house: true` and is never
+  exported or published as a pack.

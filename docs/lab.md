@@ -204,7 +204,7 @@ hands it over with `setEmotion`). What the player does with the mix depends on t
 `nowMs` is drawn in the same frame, and L2's painter pairs that mix with the player's alpha from the
 same frame. The jaw mix is read 30 ms ahead (`JAW_LEAD_MS`), because the jaw eases toward its target.
 
-**Scheduler** (`mouth/track.ts`, `mouth/shapes.ts`). The 15 Oculus visemes are grouped into eight
+**Scheduler** (`@sr/avatar` `mouth/track.ts`, shared with the product's lip-sync, and the lab's `mouth/shapes.ts`; the lab maps visemes with `createVisemeTrack(VISEME_SHAPE)`). The 15 Oculus visemes are grouped into eight
 shapes: rest (sil), closed (PP), teeth (FF), tongue (TH, DD, nn), openMid (kk, E), narrow (CH, SS, ih),
 round (RR, oh, ou), openWide (aa). A span waits until its utterance's audio start is known
 (`onAudio`), then becomes a window on the audio clock. Each span's weight rises over `BLEND_MS`

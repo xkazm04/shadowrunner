@@ -50,7 +50,8 @@ function decodeWav(bytes: Uint8Array): { samples: Float32Array; rate: number } {
 const SHOW = JSON.parse(readFileSync(new URL("../../../../assets/replay/shows/malakor-night.json", import.meta.url), "utf8")) as { beats: { wav: string; reply: { line: string } }[] };
 const beat = SHOW.beats[0];
 if (beat === undefined) throw new Error("the replay show has no beats");
-const recorded = decodeWav(readFileSync(new URL(`../../../../assets/replay/shows/${beat.wav}`, import.meta.url)));
+// The shipped clip is AAC (.m4a, perfection-pass task 10); b00.wav is kept beside it as the PCM test source.
+const recorded = decodeWav(readFileSync(new URL(`../../../../assets/replay/shows/${beat.wav.replace(/\.m4a$/, ".wav")}`, import.meta.url)));
 
 /** Every 10 ms of the track: sums to 1, no negative weight, and no shape moves more than `step`. */
 function expectSmoothUnity(track: MouthTrack, step: number): void {
