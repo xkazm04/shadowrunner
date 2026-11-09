@@ -12,6 +12,8 @@
 //   pulse hold at rest; the override Drive gets it too, so a screenshot under reduced motion is still.
 // - Reduced motion is on when `prefers-reduced-motion: reduce` matches OR the nearest `data-motion`
 //   attribute (the shell's) says "reduced".
+// - The drawing buffer's DPR is capped at MAX_DPR (perfection-pass P1) by the loops that size it
+//   themselves (AvatarCanvas, the player's autoSize); a caller of `resize(w, h, dpr)` caps its own.
 import { GESTURE_DURATION_S, type Drive, type Gesture } from "@sr/rig";
 import { toDrive } from "../driver/drive.js";
 import type { LookAtPoint } from "../driver/lookAt.js";
@@ -38,6 +40,17 @@ export interface Frame {
   state: DriverState;
   /** The Drive to pose with (reduced-motion gestures already cut). */
   drive: Drive;
+}
+
+/**
+ * The drawing buffer's device-pixel-ratio cap (perfection-pass P1): past 2 the glow targets and the
+ * fill cost grow with the square of the ratio for no visible gain on a soft painted face.
+ */
+export const MAX_DPR = 2;
+
+/** The ratio to size a drawing buffer with: the device's, at most MAX_DPR; 1 when absent or not positive. */
+export function bufferDpr(dpr: number | undefined): number {
+  return dpr !== undefined && Number.isFinite(dpr) && dpr > 0 ? Math.min(dpr, MAX_DPR) : 1;
 }
 
 /** Reduced motion from the media query and the shell's `data-motion` value. */

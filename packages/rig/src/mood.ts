@@ -44,10 +44,12 @@ export interface BrowPose {
   tiltDeg: number;
 }
 
-/** Per brow layer, its lift and tilt for `browLift` (fraction of rig height, positive raises). */
-export function browPoses(rig: Rig, browLift: number): Map<string, BrowPose> {
+const NO_BROWS: ReadonlyMap<string, BrowPose> = new Map();
+
+/** Per brow layer, its lift and tilt for `browLift` (fraction of rig height, positive raises); one shared empty map at 0. */
+export function browPoses(rig: Rig, browLift: number): ReadonlyMap<string, BrowPose> {
+  if (browLift === 0) return NO_BROWS;
   const out = new Map<string, BrowPose>();
-  if (browLift === 0) return out;
   const brows = rig.layers.filter(isBrowLayer);
   const centre = (layer: Layer): number => layer.bbox[0] + layer.bbox[2] / 2;
   const mid = brows.reduce((sum, layer) => sum + centre(layer), 0) / Math.max(1, brows.length);

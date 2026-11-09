@@ -56,6 +56,6 @@ export interface CanvasHost {
   height: number;
   getContext(contextId: "webgl2", options?: WebGLContextAttributes): WebGL2RenderingContext | null;
   getContext(contextId: "2d", options?: CanvasRenderingContext2DSettings): CanvasRenderingContext2D | null;
-  addEventListener(type: "webglcontextlost", listener: (event: Event) => void): void;
-  removeEventListener(type: "webglcontextlost", listener: (event: Event) => void): void;
+  addEventListener(type: "webglcontextlost" | "webglcontextrestored", listener: (event: Event) => void): void;
+  removeEventListener(type: "webglcontextlost" | "webglcontextrestored", listener: (event: Event) => void): void;
 }

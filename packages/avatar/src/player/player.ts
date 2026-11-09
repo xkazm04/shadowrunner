@@ -29,6 +29,11 @@ export interface AvatarPlayerOptions {
    * is a cutout on whatever the page, the stream or the video puts behind it, as the stage hides it.
    */
   backdrop?: boolean;
+  /**
+   * The `start` loop stops stepping and drawing while the page is hidden or the canvas is fully
+   * outside the viewport, and resumes without a time jump (default true). `renderFrame` never pauses.
+   */
+  pauseOffscreen?: boolean;
 }
 
 export { BACKDROP_LAYER, cutoutLook } from "./cutout.js";

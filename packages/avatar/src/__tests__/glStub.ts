@@ -15,6 +15,8 @@ export interface GlStub {
   reset(): void;
   /** Makes `isContextLost()` true. */
   lose(): void;
+  /** Makes `isContextLost()` false again. */
+  restore(): void;
 }
 
 const CREATE = ["createTexture", "createBuffer", "createFramebuffer", "createProgram", "createShader", "createVertexArray", "createRenderbuffer"];
@@ -73,7 +75,8 @@ export function createGlStub(): GlStub {
       const fn = special[prop];
       return (...args: unknown[]) => {
         bump(prop);
-        log.push([prop, args]);
+        // A reused typed-array uniform is copied, so the log holds the value at the call.
+        log.push([prop, args.map((a) => (a instanceof Float32Array ? Array.from(a) : a))]);
         return fn === undefined ? undefined : fn(...args);
       };
     },
@@ -90,6 +93,9 @@ export function createGlStub(): GlStub {
     },
     lose: () => {
       lost = true;
+    },
+    restore: () => {
+      lost = false;
     },
   };
 }
@@ -138,8 +144,11 @@ export function createCtx2dStub(): Ctx2dStub {
 
 export interface CanvasStub {
   canvas: CanvasHost;
-  /** Fires `webglcontextlost` at the registered listeners. */
-  loseContext(): void;
+  /** Fires `webglcontextlost` at the registered listeners; true when one prevented its default. */
+  loseContext(): boolean;
+  /** Fires `webglcontextrestored` at the registered listeners. */
+  restoreContext(): void;
+  /** Registered listeners, both events. */
   listeners(): number;
 }
 
@@ -154,6 +163,8 @@ export interface CanvasStubOptions {
 
 export function createCanvasStub(options: CanvasStubOptions): CanvasStub {
   const lostListeners = new Set<(event: Event) => void>();
+  const restoredListeners = new Set<(event: Event) => void>();
+  const setOf = (type: string): Set<(event: Event) => void> => (type === "webglcontextrestored" ? restoredListeners : lostListeners);
   function getContext(contextId: "webgl2", o?: WebGLContextAttributes): WebGL2RenderingContext | null;
   function getContext(contextId: "2d", o?: CanvasRenderingContext2DSettings): CanvasRenderingContext2D | null;
   function getContext(contextId: string): WebGL2RenderingContext | CanvasRenderingContext2D | null {
@@ -165,19 +176,25 @@ export function createCanvasStub(options: CanvasStubOptions): CanvasStub {
     width: options.width ?? 300,
     height: options.height ?? 150,
     getContext,
-    addEventListener: (_type, listener) => {
-      lostListeners.add(listener);
+    addEventListener: (type, listener) => {
+      setOf(type).add(listener);
     },
-    removeEventListener: (_type, listener) => {
-      lostListeners.delete(listener);
+    removeEventListener: (type, listener) => {
+      setOf(type).delete(listener);
     },
   };
   return {
     canvas,
     loseContext: () => {
-      const event = stand<Event>({ type: "webglcontextlost", preventDefault: () => undefined });
-      for (const listener of lostListeners) listener(event);
+      let prevented = false;
+      const event = stand<Event>({ type: "webglcontextlost", preventDefault: () => (prevented = true) });
+      for (const listener of [...lostListeners]) listener(event);
+      return prevented;
     },
-    listeners: () => lostListeners.size,
+    restoreContext: () => {
+      const event = stand<Event>({ type: "webglcontextrestored", preventDefault: () => undefined });
+      for (const listener of [...restoredListeners]) listener(event);
+    },
+    listeners: () => lostListeners.size + restoredListeners.size,
   };
 }

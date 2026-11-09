@@ -44,13 +44,14 @@
 //   profile (`resolveFace`: motion.tilt scales the mood's head tilt and pitch, motion.gesture the
 //   gesture peaks, expression.strength the face weights) and the breathing idle. At the default
 //   profile, on a rig without irises or a face profile, every pose is exactly as before.
-import { breathAt, breathes, cellOf, eyeOf, faceOf, irisOffset, layerIndex, snapCell, squintOf, strengthen, type SocketBox } from "./eyes.js";
+import { breathAt, breathes, cellOf, faceOf, irisOffset, snapCell, squintOf, strengthen, type SocketBox } from "./eyes.js";
 import type { ResolvedFace } from "./face.js";
 import type { EmotionDrive } from "./look.js";
 import { browPoses, facesOf, moodOf, shapeOf, type BrowPose } from "./mood.js";
-import { actMotionAt, type ActCue } from "./act.js";
-import { motionAt, ownBlinkAt } from "./motion.js";
-import { IDENTITY, about, apply, compose, turnAbout, type Sim } from "./sim.js";
+import type { ActCue } from "./act.js";
+import { motionAt, NO_MOTION, ownBlinkAt } from "./motion.js";
+import { carriesOf, motionsOf, posePlan, type PosePlan, type World } from "./posePlan.js";
+import { IDENTITY, about, apply, compose, type Sim } from "./sim.js";
 import type { Emotion, ExpressionFamily, Gesture, Layer, LayerKind, Look, Rig } from "./types.js";
 
 // The face-control pose helpers are public through this module (index.ts exports it).
@@ -209,7 +210,7 @@ interface Frame {
   /** The held mood (character-control), crossfaded by `Drive.mood`. */
   mood: EmotionDrive;
   /** Brow layers' lift and turn for the mood's browLift. */
-  brows: Map<string, BrowPose>;
+  brows: ReadonlyMap<string, BrowPose>;
   /** The breathing this frame (face-control, eyes.ts): a rise in canvas px (positive up) and a scale. */
   breath?: { risePx: number; scale: number };
 }
@@ -239,9 +240,8 @@ function frameOf(rig: Rig, look: Look, drive: Drive, face: ResolvedFace): Frame 
 function gestureLocalOf(layer: Layer, frame: Frame, gestured: boolean): Sim {
   if (!gestured) return IDENTITY;
   // Rotate and scale about the anchor, then lift: p -> k R (p - a) + a + (0, lift).
-  const [ax, ay] = layer.anchor;
   const k = 1 + frame.gesture.scale;
-  const turned = about(ax, ay, ((frame.gesture.tiltDeg + frame.mood.headTilt) * Math.PI) / 180, k, k);
+  const turned = about(layer.anchor[0], layer.anchor[1], ((frame.gesture.tiltDeg + frame.mood.headTilt) * Math.PI) / 180, k, k);
   return { ...turned, ty: turned.ty + frame.liftY };
 }
 
@@ -261,8 +261,7 @@ function localOf(layer: Layer, rig: Rig, look: Look, frame: Frame, gestured: boo
 /** The breath about the anchor of a head or body group's root (eyes.ts), outermost of its local transform. */
 function breathOf(layer: Layer, frame: Frame, local: Sim): Sim {
   if (frame.breath === undefined) return local;
-  const [ax, ay] = layer.anchor;
-  const swell = about(ax, ay, 0, frame.breath.scale, frame.breath.scale);
+  const swell = about(layer.anchor[0], layer.anchor[1], 0, frame.breath.scale, frame.breath.scale);
   return compose({ ...swell, ty: swell.ty - frame.breath.risePx }, local);
 }
 
@@ -274,33 +273,29 @@ function finalOf(layer: Layer, gesture: Sim, frame: Frame): Sim {
   const depth = layer.depth ?? DEFAULT_DEPTH[layer.kind];
   const drop = layer.kind === "jaw" ? frame.jawPx * (layer.drop ?? JAW_DROP) : 0;
   return {
-    ...gesture,
+    rot: gesture.rot,
+    kx: gesture.kx,
+    ky: gesture.ky,
     tx: gesture.tx + frame.perDepthX * depth - Math.sin(gesture.rot) * drop,
     ty: gesture.ty + frame.perDepthY * depth + Math.cos(gesture.rot) * drop,
   };
 }
 
-interface World {
-  /** Gesture-only world transform: the part followers inherit. */
-  sim: Sim;
-  /** The layer is a head or follows one, so a head-group gesture already reached it. */
-  headed: boolean;
-  /** The layer is a head or body or follows one, so the breath already reached it. */
-  breathed: boolean;
-}
-
 const BREATHING: ReadonlySet<LayerKind> = new Set(["head", "body"]);
 
-/** Gesture world transforms for every layer, composed down follow chains (missing or cyclic parents act as roots). */
-function worldsOf(rig: Rig, look: Look, frame: Frame, byName: ReadonlyMap<string, Layer>): Map<string, World> {
-  const worlds = new Map<string, World>();
-  const visiting = new Set<string>();
-  const resolve = (layer: Layer): World => {
-    const known = worlds.get(layer.name);
-    if (known !== undefined) return known;
-    visiting.add(layer.name);
-    const parentLayer = layer.follow === undefined ? undefined : byName.get(layer.follow);
-    const parent = parentLayer === undefined || visiting.has(parentLayer.name) ? undefined : resolve(parentLayer);
+/**
+ * Gesture world transforms for every layer into `plan.worlds` (per slot, posePlan.ts), composed down
+ * follow chains (missing or cyclic parents act as roots).
+ */
+function worldsOf(rig: Rig, look: Look, frame: Frame, plan: PosePlan): void {
+  const { slot, parent: parents, worlds, visiting } = plan;
+  const resolve = (s: number): World | undefined => {
+    const known = worlds[s];
+    const layer = rig.layers[s];
+    if (known !== undefined || layer === undefined) return known;
+    visiting[s] = 1;
+    const p = parents[s] ?? -1;
+    const parent = p < 0 || visiting[p] === 1 ? undefined : resolve(p);
     const parentHeaded = parent?.headed ?? false;
     const gestured = layer.kind === "head" && !parentHeaded;
     const breathRoot = BREATHING.has(layer.kind) && !(parent?.breathed ?? false);
@@ -308,12 +303,11 @@ function worldsOf(rig: Rig, look: Look, frame: Frame, byName: ReadonlyMap<string
     const local = breathRoot ? breathOf(layer, frame, own) : own;
     const sim = parent === undefined ? local : compose(parent.sim, local);
     const world: World = { sim, headed: parentHeaded || gestured, breathed: (parent?.breathed ?? false) || breathRoot };
-    visiting.delete(layer.name);
-    worlds.set(layer.name, world);
+    visiting[s] = 0;
+    worlds[s] = world;
     return world;
   };
-  for (const layer of rig.layers) resolve(layer);
-  return worlds;
+  for (let i = 0; i < slot.length; i += 1) resolve(slot[i] ?? i);
 }
 
 function tintOf(layer: Layer, gesture: Peak, glowGain: number): number {
@@ -322,78 +316,66 @@ function tintOf(layer: Layer, gesture: Peak, glowGain: number): number {
 }
 
 /**
- * Per layer, the float it carries: its parent's carried float, then its own float (a turn about
- * its anchor as posed by its gesture transform under the parent's carry, and a move). It is
- * composed after the gesture transform and before the layer's own parallax and jaw drop (a turn
- * about the anchor commutes with a move, so the layer's own float is as if applied last), so a
- * follower turns rigidly with its parent and its parallax stays a pure shift.
+ * Per visible layer, in `z` order (ties keep rig order), the pose for this frame. The output is
+ * fresh every call; the per-rig plan and scratch (posePlan.ts) are reused, so a steady frame
+ * allocates little beyond it (perfection-pass P1).
  */
-function carriesOf(rig: Rig, worlds: Map<string, World>, drive: Drive, byName: ReadonlyMap<string, Layer>): Map<string, Sim> {
-  const carries = new Map<string, Sim>();
-  const visiting = new Set<string>();
-  const resolve = (layer: Layer): Sim => {
-    const known = carries.get(layer.name);
-    if (known !== undefined) return known;
-    visiting.add(layer.name);
-    const parentLayer = layer.follow === undefined ? undefined : byName.get(layer.follow);
-    const inherited = parentLayer === undefined || visiting.has(parentLayer.name) ? IDENTITY : resolve(parentLayer);
-    const motion = actMotionAt(layer, drive.t, drive.still === true, drive.act, rig.height);
-    let carry = inherited;
-    if (motion.rotation !== 0 || motion.dx !== 0 || motion.dy !== 0) {
-      const posed = compose(inherited, worlds.get(layer.name)?.sim ?? IDENTITY);
-      const [qx, qy] = apply(posed, layer.anchor[0], layer.anchor[1]);
-      carry = compose(turnAbout(qx, qy, motion.rotation, motion.dx, motion.dy), inherited);
-    }
-    visiting.delete(layer.name);
-    carries.set(layer.name, carry);
-    return carry;
-  };
-  for (const layer of rig.layers) resolve(layer);
-  return carries;
-}
-
-/** Per visible layer, in `z` order (ties keep rig order), the pose for this frame. */
 export function poseLayers(rig: Rig, look: Look, drive: Drive, options: PoseOptions = {}): LayerPose[] {
   const face = options.face ?? faceOf(rig, look);
   const frame = frameOf(rig, look, drive, face);
-  const { byName } = layerIndex(rig);
-  const worlds = worldsOf(rig, look, frame, byName);
-  const carries = carriesOf(rig, worlds, drive, byName);
-  const hidden = new Set(look.hidden);
-  const shown = (layer: Layer): boolean => layer.visible !== false && !hidden.has(layer.name);
+  const plan = posePlan(rig);
+  worldsOf(rig, look, frame, plan);
+  motionsOf(rig, drive, plan);
+  carriesOf(rig, plan);
+  const hidden: readonly string[] = look.hidden ?? [];
+  const shown = (layer: Layer): boolean => layer.visible !== false && !hidden.includes(layer.name);
   const still = drive.still === true;
-  const simOf = (layer: Layer): Sim => finalOf(layer, compose(carries.get(layer.name) ?? IDENTITY, worlds.get(layer.name)?.sim ?? IDENTITY), frame);
+  const { slot, parent, worlds, carries, motions, order } = plan;
+  // `s` is the slot of the layer's name (its eye's, for an iris: the slot its `follow` names).
+  const simOf = (layer: Layer, s: number): Sim => finalOf(layer, compose(carries[s] ?? IDENTITY, worlds[s]?.sim ?? IDENTITY), frame);
   const cell = cellOf(rig);
   const closureOf = (layer: Layer): number => Math.max(frame.blink, ownBlinkAt(layer.motion, drive.t, still));
-  return rig.layers
-    .map((layer, index) => ({ layer, index, eye: eyeOf(layer, byName) }))
-    .filter(({ layer, eye }) => shown(layer) && (eye === undefined || shown(eye)))
-    .sort((a, b) => a.layer.z - b.layer.z || a.index - b.index)
-    .map(({ layer, eye }): LayerPose => {
-      const motion = actMotionAt(layer, drive.t, still, drive.act, rig.height);
-      // An iris rides its eye's transform, moved by the gaze in the eye's rest frame (eyes.ts), by whole cells on pixel art.
-      const [ox, oy] = eye === undefined ? [0, 0] : snapCell(irisOffset(drive.gaze, options.sockets?.get(eye.name), face.gaze.range), cell);
-      const sim = eye === undefined ? simOf(layer) : compose(simOf(eye), { ...IDENTITY, tx: ox, ty: oy });
-      const [bx, by] = layer.bbox;
-      const [ax, ay] = layer.anchor;
-      const [px, py] = apply(sim, ax, ay);
-      const faces = strengthen(facesOf(layer, look, drive.mood, face.expression.faces), face.expression.strength);
-      const closure = closureOf(eye ?? layer);
-      const lids = (eye ?? layer).closed !== undefined;
-      const squint = layer.kind === "eye" ? clamp(squintOf(layer, faces, frame.mood.squint), 0, 1) : 0;
-      const squash = layer.kind === "eye" ? (lids ? 1 : 1 - BLINK_SQUASH * closure) * (1 - squint) : 1;
-      // A socketed eye's pulse moves to its iris (an iris pulse of its own wins).
-      const gain = layer.kind === "eye" && layer.socket !== undefined ? 1 : eye !== undefined && layer.motion?.pulse === undefined ? motionAt(eye.motion, drive.t, still).gain : motion.gain;
-      return {
-        name: layer.name,
-        x: bx + px - ax,
-        y: by + py - ay,
-        scale: [sim.kx, sim.ky * squash],
-        rotation: sim.rot,
-        opacity: eye !== undefined && lids ? 1 - Math.min(1, closure) : 1,
-        tint: tintOf(layer, frame.gesture, frame.mood.glowGain) * gain,
-        ...(faces === undefined ? {} : { faces }),
-        ...(layer.kind === "eye" && lids && closure > 0 ? { closed: Math.min(1, closure) } : {}),
-      };
-    });
+  const out: LayerPose[] = [];
+  for (let k = 0; k < order.length; k += 1) {
+    const entry = order[k];
+    if (entry === undefined) continue;
+    const { layer, index, eye } = entry;
+    if (!shown(layer) || (eye !== undefined && !shown(eye))) continue;
+    const motion = motions[index] ?? NO_MOTION;
+    // An iris rides its eye's transform, moved by the gaze in the eye's rest frame (eyes.ts), by whole cells on pixel art.
+    let sim: Sim;
+    if (eye === undefined) sim = simOf(layer, slot[index] ?? index);
+    else {
+      const [ox, oy] = snapCell(irisOffset(drive.gaze, options.sockets?.get(eye.name), face.gaze.range), cell);
+      sim = compose(simOf(eye, parent[index] ?? -1), { ...IDENTITY, tx: ox, ty: oy });
+    }
+    // Indexed reads, not array patterns (which can allocate an iterator per call).
+    const ax = layer.anchor[0];
+    const ay = layer.anchor[1];
+    const posed = apply(sim, ax, ay);
+    const px = posed[0];
+    const py = posed[1];
+    const bx = layer.bbox[0];
+    const by = layer.bbox[1];
+    const faces = strengthen(facesOf(layer, look, drive.mood, face.expression.faces), face.expression.strength);
+    const closure = closureOf(eye ?? layer);
+    const lids = (eye ?? layer).closed !== undefined;
+    const squint = layer.kind === "eye" ? clamp(squintOf(layer, faces, frame.mood.squint), 0, 1) : 0;
+    const squash = layer.kind === "eye" ? (lids ? 1 : 1 - BLINK_SQUASH * closure) * (1 - squint) : 1;
+    // A socketed eye's pulse moves to its iris (an iris pulse of its own wins).
+    const gain = layer.kind === "eye" && layer.socket !== undefined ? 1 : eye !== undefined && layer.motion?.pulse === undefined ? motionAt(eye.motion, drive.t, still).gain : motion.gain;
+    const pose: LayerPose = {
+      name: layer.name,
+      x: bx + px - ax,
+      y: by + py - ay,
+      scale: [sim.kx, sim.ky * squash],
+      rotation: sim.rot,
+      opacity: eye !== undefined && lids ? 1 - Math.min(1, closure) : 1,
+      tint: tintOf(layer, frame.gesture, frame.mood.glowGain) * gain,
+    };
+    if (faces !== undefined) pose.faces = faces;
+    if (layer.kind === "eye" && lids && closure > 0) pose.closed = Math.min(1, closure);
+    out.push(pose);
+  }
+  return out;
 }

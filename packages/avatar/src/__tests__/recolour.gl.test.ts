@@ -73,7 +73,8 @@ describe("GL faces", () => {
   it("a replace patch at weight 1 hides its base: one quad, the patch's rect, opacity 1", () => {
     const { stub, rig, draw } = setup();
     draw({ ...defaultLook(rig), emotion: "furious" });
-    expect(stub.count("drawArrays")).toBe(3 + 4);
+    // + 1: the pixel rig has no emissive layer, so the glow pass is the composite alone (perfection-pass P1).
+    expect(stub.count("drawArrays")).toBe(3 + 1);
     expect(uniformCalls(stub, "uniform4f", "u_rect")[2]).toEqual([2, 0, 4, 2]);
     expect(uniformCalls(stub, "uniform1f", "u_opacity")[2]).toEqual([1]);
   });
