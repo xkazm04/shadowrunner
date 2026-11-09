@@ -1,5 +1,5 @@
 // The recorded shows of the whole cast (replay plane): one fictional show per seeded character, a
-// cast voice for each, `recorded.json` equal to the WAVs on disk, and the engine endpoint answering
+// cast voice for each, `recorded.json` equal to the voice clips on disk, and the engine endpoint answering
 // each character from its own show. No network, no paid API.
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
@@ -45,6 +45,7 @@ describe("the cast's recorded shows", () => {
         expect(beat.reply.line.length).toBeLessThanOrEqual(MAX_LINE_CHARS);
         expect(EMOTIONS).toContain(beat.reply.emotion);
         expect(beat.wav.startsWith(`${show.id}/`)).toBe(true);
+        expect(beat.wav).toMatch(/\.m4a$/); // perfection-pass 10.3: voices ship as AAC
         expect(seen.get(beat.reply.line)).toBeUndefined();
         seen.set(beat.reply.line, show.id);
       }
@@ -52,8 +53,11 @@ describe("the cast's recorded shows", () => {
     }
   });
 
-  it("lists in recorded.json exactly the WAVs on disk, each belonging to a beat", () => {
-    const onDisk = dirs("assets/replay/shows").flatMap((d) => readdirSync(new URL(`assets/replay/shows/${d}/`, ROOT)).filter((f) => f.endsWith(".wav")).map((f) => `${d}/${f}`));
+  it("lists in recorded.json exactly the voice clips (.m4a) on disk, each belonging to a beat", () => {
+    const files = dirs("assets/replay/shows").flatMap((d) => readdirSync(new URL(`assets/replay/shows/${d}/`, ROOT)).map((f) => `${d}/${f}`));
+    const onDisk = files.filter((f) => f.endsWith(".m4a"));
+    // A WAV stays only as a test's PCM source beside its clip (speech.test.ts reads b00.wav); it is never served.
+    for (const wav of files.filter((f) => f.endsWith(".wav"))) expect(onDisk).toContain(wav.replace(/\.wav$/, ".m4a"));
     const listed = JSON.parse(readFileSync(new URL("assets/replay/shows/recorded.json", ROOT), "utf8")) as { recorded: string[] };
     expect([...listed.recorded].sort()).toEqual(onDisk.sort());
     const beats = new Set(replayBank().shows.flatMap((s) => s.beats.map((b) => b.wav)));

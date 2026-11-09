@@ -13,11 +13,11 @@
     {"id":"a08","user":"RookAndRot","text":"is this a real auction","ts":19500,"fictional":true}
   ],
   "beats": [
-    {"at":0,"reply":{"line":"Ladies, gentlemen, and things beneath the floorboards, Lot Ninety is open! Small souls, smaller reserves, and a gavel that has never once been wrong. Let the bidding begin!","emotion":"theatrical","gesture":"flare"},"wav":"lot-ninety-night/b00.wav"},
-    {"at":9000,"replyTo":"a02","reply":{"line":"Tonight's lot is your attention, in good condition, lightly haunted. I have five gravel, do I hear six? Six at the back, the hand in the white glove says six!","emotion":"delighted","gesture":"nod","answeredId":"a02"},"wav":"lot-ninety-night/b01.wav"},
-    {"at":18000,"replyTo":"a03","reply":{"line":"The poll is a paddle and chat is the floor! Two options, one gavel. Vote with your whole chest and the winning option goes SOLD, to the highest enthusiasm.","emotion":"amused","gesture":"lean_in","answeredId":"a03"},"wav":"lot-ninety-night/b02.wav"},
-    {"at":27000,"replyTo":"a05","reply":{"line":"A left sock! A single, worn, left sock, no reserve. I will take it. Sold, to the sock, for one confession and a favourable shipping address. Next lot!","emotion":"delighted","gesture":"tilt","answeredId":"a05"},"wav":"lot-ninety-night/b03.wav"},
-    {"at":36000,"reply":{"line":"Going once, going twice, going to the quiet one in the corner who has not typed a word. Sold, to the lurker, for the price of saying hello.","emotion":"amused","gesture":"lean_in"},"wav":"lot-ninety-night/b04.wav"},
-    {"at":45000,"reply":{"line":"The gavel does not take refunds. It takes bids, it takes bows, and every so often it takes a very small soul. Do I hear a bid? I hear a bid!","emotion":"theatrical","gesture":"flare"},"wav":"lot-ninety-night/b05.wav"}
+    {"at":0,"reply":{"line":"Ladies, gentlemen, and things beneath the floorboards, Lot Ninety is open! Small souls, smaller reserves, and a gavel that has never once been wrong. Let the bidding begin!","emotion":"theatrical","gesture":"flare"},"wav":"lot-ninety-night/b00.m4a"},
+    {"at":9000,"replyTo":"a02","reply":{"line":"Tonight's lot is your attention, in good condition, lightly haunted. I have five gravel, do I hear six? Six at the back, the hand in the white glove says six!","emotion":"delighted","gesture":"nod","answeredId":"a02"},"wav":"lot-ninety-night/b01.m4a"},
+    {"at":18000,"replyTo":"a03","reply":{"line":"The poll is a paddle and chat is the floor! Two options, one gavel. Vote with your whole chest and the winning option goes SOLD, to the highest enthusiasm.","emotion":"amused","gesture":"lean_in","answeredId":"a03"},"wav":"lot-ninety-night/b02.m4a"},
+    {"at":27000,"replyTo":"a05","reply":{"line":"A left sock! A single, worn, left sock, no reserve. I will take it. Sold, to the sock, for one confession and a favourable shipping address. Next lot!","emotion":"delighted","gesture":"tilt","answeredId":"a05"},"wav":"lot-ninety-night/b03.m4a"},
+    {"at":36000,"reply":{"line":"Going once, going twice, going to the quiet one in the corner who has not typed a word. Sold, to the lurker, for the price of saying hello.","emotion":"amused","gesture":"lean_in"},"wav":"lot-ninety-night/b04.m4a"},
+    {"at":45000,"reply":{"line":"The gavel does not take refunds. It takes bids, it takes bows, and every so often it takes a very small soul. Do I hear a bid? I hear a bid!","emotion":"theatrical","gesture":"flare"},"wav":"lot-ninety-night/b05.m4a"}
   ]
 }

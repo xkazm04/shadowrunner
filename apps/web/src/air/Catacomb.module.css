@@ -1,6 +1,6 @@
 /* The catacomb set (costume 8.1, ported from r2/air-b.html). Role tokens only. Three live values
-   arrive as CSS variables written through refs (useStageLights): --back on the stage (the tunnel
-   backlight, his speech level), and --flame, --glow, --refl on each candle (candleLevels). The
+   arrive as CSS variables written through refs (useStageLights): --back on the tunnel and the bloom
+   (the backlight, his speech level; `data-back`), --heat on the stage, and --flame, --glow, --refl on each candle (candleLevels). The
    flames are screen-blended over the candles painted into the plate, so the overlays stay faint
    fills (the lit ON AIR box is still the brightest fill; air.tokens.test.ts). Dead line: the
    candles gutter to embers, the tunnel goes out, the bulb tries every 5 s like the health poll. */
@@ -64,6 +64,8 @@
   opacity: calc(0.55 + var(--back, 0) * 0.45);
   transform: translate(-50%, -50%) scale(calc(0.9 + var(--back, 0) * 0.25));
   transition: opacity 1s ease-out;
+  /* --back moves it every frame he speaks: its own layer, so a frame never repaints it (task 11). */
+  will-change: transform, opacity;
 }
 
 /* A wall candle: a point on the plate, scaled by its distance down the corridor. */
@@ -227,6 +229,7 @@
   pointer-events: none;
   transform: translate(-50%, -50%) scale(calc(0.92 + var(--back, 0) * 0.16));
   transition: opacity 1.5s ease-out;
+  will-change: transform, opacity;
 }
 
 /* His shadow pooled on the floor under him. */

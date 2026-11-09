@@ -10,9 +10,13 @@
 // The voice map is read from the source the live plane uses (packages/engine/src/voices.ts), and
 // like api/_lib/tts.ts the script sends the line alone: a style prefix gets read aloud.
 // A reply that is already WAV (mime audio/wav) is kept as is; raw PCM (audio/L16) gets a header.
+// Since perfection-pass 10.3 the show files name `.m4a` clips: the WAV is encoded to AAC by
+// scripts/voice-m4a.mjs (ffmpeg on PATH or $FFMPEG) before it is written; a beat naming `.wav`
+// still gets the WAV. The summary's seconds count only WAVs.
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { toM4a } from "./voice-m4a.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const API = "https://generativelanguage.googleapis.com/v1beta";
@@ -135,7 +139,8 @@ for (const beat of pending) {
   const started = Date.now();
   try {
     const { bytes, isWav, rate, mime } = await speak(model, beat.reply.line);
-    writeFileSync(out, isWav ? bytes : wav(bytes, rate));
+    const clip = isWav ? bytes : wav(bytes, rate);
+    writeFileSync(out, out.endsWith(".m4a") ? toM4a(clip, beat.wav) : clip);
     const seconds = (bytes.length - (isWav ? 44 : 0)) / 2 / rate;
     console.log(`  ${beat.wav}  ${seconds.toFixed(1)} s  ${rate} Hz  ${mime}  ${Date.now() - started} ms`);
   } catch (err) {
@@ -153,8 +158,8 @@ for (const beat of show.beats) {
   present += 1;
   const size = statSync(path).size;
   total += size;
-  seconds += Math.max(0, size - 44) / 2 / 24_000;
+  if (path.endsWith(".wav")) seconds += Math.max(0, size - 44) / 2 / 24_000;
 }
-console.log(`render-show: ${present}/${show.beats.length} WAVs, ${(total / 1024 / 1024).toFixed(2)} MB, ~${seconds.toFixed(0)} s, ${failures} failed`);
+console.log(`render-show: ${present}/${show.beats.length} clips,${(total / 1024 / 1024).toFixed(2)} MB, ~${seconds.toFixed(0)} s, ${failures} failed`);
 if (total > SIZE_BUDGET) console.log("render-show: OVER the 15 MB budget - do not commit; re-render at a lower rate");
 process.exit(failures > 0 ? 1 : 0);

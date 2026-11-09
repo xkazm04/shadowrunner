@@ -76,10 +76,14 @@
     7.5rem 8.125rem;
   transition: opacity 0.35s;
   animation: dust 14s linear infinite;
+  /* The dust drifts only while the beam is thrown: an invisible running background-position
+     animation repainted the world every frame (perfection-pass task 11). */
+  animation-play-state: paused;
 }
 
 .beam[data-beam] {
   opacity: 1;
+  animation-play-state: running;
 }
 
 @keyframes dust {

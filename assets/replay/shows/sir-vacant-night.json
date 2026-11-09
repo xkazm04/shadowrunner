@@ -13,11 +13,11 @@
     {"id":"a08","user":"RookAndRot","text":"new here","ts":19500,"fictional":true}
   ],
   "beats": [
-    {"at":0,"reply":{"line":"Hail, and well met. Sir Vacant, of an order dissolved, keeping watch over the one promise nobody checked on. Speak your vow. The wax is warm, and I am listening.","emotion":"grim","gesture":"nod"},"wav":"sir-vacant-night/b00.wav"},
-    {"at":9000,"replyTo":"a02","reply":{"line":"Goals, in wax. Each one chat made, hung upon my chest and read aloud on the hour. The weight is considerable. I have grown to rely on it.","emotion":"grim","gesture":"tilt","answeredId":"a02"},"wav":"sir-vacant-night/b01.wav"},
-    {"at":18000,"replyTo":"a03","reply":{"line":"Water. A modest vow, nobly made. I shall set it in wax, between the stream goal and the unfinished novel. May it be kept, and may the visor widen.","emotion":"delighted","gesture":"nod","answeredId":"a03"},"wav":"sir-vacant-night/b02.wav"},
-    {"at":27000,"replyTo":"a04","reply":{"line":"I have checked. It is neither kept nor broken: it is simply waiting, as vows do. The wax has not cracked. That is, I am told, a good sign.","emotion":"neutral","gesture":"lean_in","answeredId":"a04"},"wav":"sir-vacant-night/b03.wav"},
-    {"at":36000,"reply":{"line":"Is anyone in here? A fair question. There is a draught, a sense of duty, and a promise. It is more than most armour holds.","emotion":"amused","gesture":"tilt"},"wav":"sir-vacant-night/b04.wav"},
-    {"at":45000,"reply":{"line":"It is the hour. I will read the vows: nine are kept, four are pending, and one has been forgotten entirely. You know who you are. The visor notes it.","emotion":"suspicious","gesture":"glare"},"wav":"sir-vacant-night/b05.wav"}
+    {"at":0,"reply":{"line":"Hail, and well met. Sir Vacant, of an order dissolved, keeping watch over the one promise nobody checked on. Speak your vow. The wax is warm, and I am listening.","emotion":"grim","gesture":"nod"},"wav":"sir-vacant-night/b00.m4a"},
+    {"at":9000,"replyTo":"a02","reply":{"line":"Goals, in wax. Each one chat made, hung upon my chest and read aloud on the hour. The weight is considerable. I have grown to rely on it.","emotion":"grim","gesture":"tilt","answeredId":"a02"},"wav":"sir-vacant-night/b01.m4a"},
+    {"at":18000,"replyTo":"a03","reply":{"line":"Water. A modest vow, nobly made. I shall set it in wax, between the stream goal and the unfinished novel. May it be kept, and may the visor widen.","emotion":"delighted","gesture":"nod","answeredId":"a03"},"wav":"sir-vacant-night/b02.m4a"},
+    {"at":27000,"replyTo":"a04","reply":{"line":"I have checked. It is neither kept nor broken: it is simply waiting, as vows do. The wax has not cracked. That is, I am told, a good sign.","emotion":"neutral","gesture":"lean_in","answeredId":"a04"},"wav":"sir-vacant-night/b03.m4a"},
+    {"at":36000,"reply":{"line":"Is anyone in here? A fair question. There is a draught, a sense of duty, and a promise. It is more than most armour holds.","emotion":"amused","gesture":"tilt"},"wav":"sir-vacant-night/b04.m4a"},
+    {"at":45000,"reply":{"line":"It is the hour. I will read the vows: nine are kept, four are pending, and one has been forgotten entirely. You know who you are. The visor notes it.","emotion":"suspicious","gesture":"glare"},"wav":"sir-vacant-night/b05.m4a"}
   ]
 }

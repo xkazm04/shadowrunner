@@ -1,13 +1,18 @@
 /* The cellar (Cellar.tsx), ported from the prototype's room and light layers. World lengths. The
    prototype's literal colours are roles: the dark is surface-0, the face's spill signal-ok (the
    tube's teal), the torch and its flame ember over text-strong. The torch's place comes from
-   `--mx` / `--my` on the landing root (percent of the world, LandingPage.tsx); its radius breathes
-   with `--flicker` (fx/flicker.ts, motion only). */
+   `--mx` / `--my` on the cellar and the flame (percent of the world, LandingPage.tsx).
+   Paint cost (perfection-pass task 11): the light layers are painted once and moved by the
+   compositor. The dark and the torch are oversized layers (300% of the world, the light at their
+   centre) that the torch's place translates; the flicker (fx/flicker.ts, motion only) animates
+   their scale (the torch's radius) and the spill light's opacity. Changing a gradient's stops or
+   centre instead re-rasterised the whole world 30 times a second. Without motion the layers rest
+   at the flicker's 0.83, painted here: scale 1, the spill at 22%. */
 
 .cellar {
   position: absolute;
   inset: 0;
-  --tr: calc(20.625rem * (0.9 + 0.12 * var(--flicker, 0.83)));
+  --tr: calc(20.625rem * (0.9 + 0.12 * 0.83));
 }
 
 .room {
@@ -24,31 +29,51 @@
   object-position: 50% 40%;
 }
 
-/* The face's cold spill on the wall: it goes with the lantern (daemon.ts position 0). */
+/* The face's cold spill on the wall: it goes with the lantern (daemon.ts position 0). Its light
+   is 22% x the flicker: the gradient painted at the flicker's peak (1.03), its opacity f / 1.03
+   (1 / 1.03 at rest, the flicker of 1 the spill always rested at). */
 .spill {
   position: absolute;
   inset: 0;
   pointer-events: none;
   mix-blend-mode: screen;
+  transition: opacity var(--fade) var(--delay);
+}
+
+.spillLight {
+  position: absolute;
+  inset: 0;
   background-image: radial-gradient(
     30% 42% at 50% 40%,
-    color-mix(in srgb, var(--sr-signal-ok) calc(22% * var(--flicker, 1)), transparent),
+    color-mix(in srgb, var(--sr-signal-ok) calc(22% * 1.03), transparent),
     transparent 70%
   );
-  transition: opacity var(--fade) var(--delay);
+  opacity: calc(1 / 1.03);
+  will-change: opacity;
 }
 
 .cellar[data-spill="off"] .spill {
   opacity: 0;
 }
 
-/* The room exists only where a light reaches it. */
-.dark {
+/* The room exists only where a light reaches it. The two torch layers are 300% of the world with
+   the light at their centre, so a translate puts it at (--mx, --my) and a scale breathes its
+   radius; either way they still cover the world (half of 300% x the smallest scale, 0.974). */
+.dark,
+.torch {
   position: absolute;
-  inset: 0;
+  inset-block-start: -100%;
+  inset-inline-start: -100%;
+  inline-size: 300%;
+  block-size: 300%;
   pointer-events: none;
+  translate: calc((var(--mx, 50%) - 50%) / 3) calc((var(--my, 62%) - 50%) / 3);
+  will-change: translate, scale;
+}
+
+.dark {
   background-image: radial-gradient(
-    circle var(--tr) at var(--mx, 50%) var(--my, 62%),
+    circle var(--tr) at 50% 50%,
     transparent 0%,
     color-mix(in srgb, var(--sr-surface-0) 35%, transparent) 42%,
     color-mix(in srgb, var(--sr-surface-0) 86%, transparent) 78%,
@@ -57,12 +82,9 @@
 }
 
 .torch {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
   mix-blend-mode: soft-light;
   background-image: radial-gradient(
-    circle calc(var(--tr) * 0.8) at var(--mx, 50%) var(--my, 62%),
+    circle calc(var(--tr) * 0.8) at 50% 50%,
     color-mix(in srgb, var(--sr-ember) 55%, transparent),
     transparent 70%
   );

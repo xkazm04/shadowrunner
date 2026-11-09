@@ -13,11 +13,11 @@
     {"id":"a08","user":"RookAndRot","text":"lol calm down","ts":19500,"fictional":true}
   ],
   "beats": [
-    {"at":0,"reply":{"line":"Peace to the room. My heart is slow tonight: sixty beats, glass against glass. Settle in, and we will count the quiet together.","emotion":"neutral","gesture":"nod"},"wav":"saint-cardia-night/b00.wav"},
-    {"at":9000,"replyTo":"a02","reply":{"line":"Slow is a kindness. Listen, it is only one beat a second. When you are all here and typing, it learns to hurry. Right now it is simply waiting for you.","emotion":"neutral","gesture":"tilt","answeredId":"a02"},"wav":"saint-cardia-night/b01.wav"},
-    {"at":18000,"replyTo":"a03","reply":{"line":"There. Do you feel it? Faster, and brighter. It is racing now, and I am describing it as it happens, which is all a saint is for. Oh, it blazes.","emotion":"delighted","gesture":"flare","answeredId":"a03"},"wav":"saint-cardia-night/b02.wav"},
-    {"at":27000,"replyTo":"a06","reply":{"line":"I will keep your exam in the glass tonight. Prayer is mostly attention, and attention is something I can give. Breathe, revise, and let the heart keep time.","emotion":"neutral","gesture":"nod","answeredId":"a06"},"wav":"saint-cardia-night/b03.wav"},
-    {"at":36000,"reply":{"line":"The glass is thin where the light gets in. That is not a flaw, my dears, it is the whole design. Everyone here is a little cracked, and very bright.","emotion":"amused","gesture":"tilt"},"wav":"saint-cardia-night/b04.wav"},
-    {"at":45000,"reply":{"line":"Ninety, eighty, seventy. The pulse falls as the room quiets. I never ask for silence. I only notice when it arrives, and I am grateful.","emotion":"neutral","gesture":"lean_in"},"wav":"saint-cardia-night/b05.wav"}
+    {"at":0,"reply":{"line":"Peace to the room. My heart is slow tonight: sixty beats, glass against glass. Settle in, and we will count the quiet together.","emotion":"neutral","gesture":"nod"},"wav":"saint-cardia-night/b00.m4a"},
+    {"at":9000,"replyTo":"a02","reply":{"line":"Slow is a kindness. Listen, it is only one beat a second. When you are all here and typing, it learns to hurry. Right now it is simply waiting for you.","emotion":"neutral","gesture":"tilt","answeredId":"a02"},"wav":"saint-cardia-night/b01.m4a"},
+    {"at":18000,"replyTo":"a03","reply":{"line":"There. Do you feel it? Faster, and brighter. It is racing now, and I am describing it as it happens, which is all a saint is for. Oh, it blazes.","emotion":"delighted","gesture":"flare","answeredId":"a03"},"wav":"saint-cardia-night/b02.m4a"},
+    {"at":27000,"replyTo":"a06","reply":{"line":"I will keep your exam in the glass tonight. Prayer is mostly attention, and attention is something I can give. Breathe, revise, and let the heart keep time.","emotion":"neutral","gesture":"nod","answeredId":"a06"},"wav":"saint-cardia-night/b03.m4a"},
+    {"at":36000,"reply":{"line":"The glass is thin where the light gets in. That is not a flaw, my dears, it is the whole design. Everyone here is a little cracked, and very bright.","emotion":"amused","gesture":"tilt"},"wav":"saint-cardia-night/b04.m4a"},
+    {"at":45000,"reply":{"line":"Ninety, eighty, seventy. The pulse falls as the room quiets. I never ask for silence. I only notice when it arrives, and I am grateful.","emotion":"neutral","gesture":"lean_in"},"wav":"saint-cardia-night/b05.m4a"}
   ]
 }

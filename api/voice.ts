@@ -1,7 +1,8 @@
 // POST /api/voice { text, voice, characterId? } -> audio/wav (voice-and-air requirement 3). Vercel Node function.
 // - replay plane (default, or `x-sr-plane: replay`): a 303 redirect to the static recording of the
 //   character's show line with that text, or of its recorded fallback phrase, under /replay/shows/
-//   (the deploy copies assets/replay/** to static /replay/**); no file read, no network call, no
+//   (the deploy copies assets/replay/** to static /replay/**; the clips are AAC `.m4a`, audio/mp4,
+//   which every browser decodes, as named by the show file); no file read, no network call, no
 //   quota. A line nobody recorded in that voice answers 404 `not_recorded` (caption only);
 // - live plane: `checkAndCharge(ip, "voice", usd)` first, then one Gemini TTS call.
 // `voice` must be one of VOICES and `text` at most 300 characters, else `bad_input`.
@@ -36,7 +37,7 @@ export function recordingUrl(wav: string): string {
 }
 
 /**
- * The WAV for `text` on replay (the engine's `findRecording`): the speaking character's own recorded
+ * The recording for `text` on replay (the engine's `findRecording`): the speaking character's own recorded
  * line, else its recorded generic line; a forged character gets any line recorded in its voice. A
  * voice nobody recorded in has no clip: 404 `not_recorded`, and the stage shows a caption.
  */
@@ -64,7 +65,7 @@ export async function handleVoice(request: Request, deps: VoiceDeps): Promise<Re
     if (body === undefined) throw new ApiError("bad_input", "Send { text, voice } with a known voice and at most 300 characters.");
 
     if (planeFromRequest(request, deps.env) === "replay") {
-      // 303: the client's fetch follows with a GET and receives the static WAV itself.
+      // 303: the client's fetch follows with a GET and receives the static clip itself (.m4a).
       const { wav, fallback } = recordedWav(body);
       return new Response(null, {
         status: 303,

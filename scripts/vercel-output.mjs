@@ -66,12 +66,13 @@ if (entries.length === 0) {
 rmSync(OUT, { recursive: true, force: true });
 mkdirSync(OUT, { recursive: true });
 cpSync(STATIC, join(OUT, "static"), { recursive: true });
-// Recorded replay files, served as is: /replay/forge/<slug>/*, /replay/shows/<show>/*.wav.
+// Recorded replay files, served as is: /replay/forge/<slug>/*, /replay/shows/<show>/*.m4a.
 if (existsSync(join(OUT, "static", "replay"))) {
   console.error("vercel-output: apps/web/dist already has a replay/ folder; it would collide with assets/replay");
   process.exit(1);
 }
-cpSync(REPLAY, join(OUT, "static", "replay"), { recursive: true });
+// The voices ship as .m4a (scripts/voice-m4a.mjs); a WAV left beside one is a test's PCM source, never served.
+cpSync(REPLAY, join(OUT, "static", "replay"), { recursive: true, filter: (src) => !src.endsWith(".wav") });
 const config = outputConfig(entries.map(fileOf));
 for (const entry of entries) {
   await bundle(entry, join(OUT, "functions", `${routeOf(entry)}.func`));

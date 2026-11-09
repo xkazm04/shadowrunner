@@ -63,25 +63,39 @@ function bySpecificity(a, b) {
   return a.localeCompare(b);
 }
 
+/** Vite's content-hashed files (/assets/*): a new build writes new names, so a name never changes content. */
+export const IMMUTABLE = "public, max-age=31536000, immutable";
+/** Unhashed static files (/packs, /replay, /embed): the same URL can change on a deploy, so revalidate. */
+export const REVALIDATE = "public, max-age=3600, stale-while-revalidate=86400";
+/** A missing static file is never cached: the next deploy may add it. */
+const MISSING = { "Cache-Control": "no-store" };
+
 /**
  * The route table. Order matters:
- * 0. the embed script and the packs carry `Access-Control-Allow-Origin: *` (avatar-reach: other
- *    sites load `<sr-avatar>` and its pack cross-origin), then routing continues;
+ * 0. cache headers (perfection-pass requirement 10.4): hashed /assets/* immutable for a year,
+ *    /packs, /replay and /embed files for an hour and then revalidated; the embed script and the
+ *    packs also carry `Access-Control-Allow-Origin: *` (avatar-reach: other sites load
+ *    `<sr-avatar>` and its pack cross-origin); routing continues after each;
  * 1. `filesystem`: static files (the app, /replay/**) and functions by their exact name win;
  * 2. dynamic function rewrites, the most specific first;
- * 3. an unknown /api/* or a missing /replay/*, /packs/* or /embed/<file> is a 404 (/embed itself is a page) (never the SPA's HTML);
+ * 3. an unknown /api/* or a missing /assets/*, /replay/*, /packs/* or /embed/<file> is a 404,
+ *    uncached (/embed itself is a page) (never the SPA's HTML, which would otherwise be served
+ *    for a stale chunk name with the immutable header);
  * 4. every other path is the SPA's index.html (the client router owns it).
  */
 export function routesFor(names) {
   const dynamic = names.filter(isDynamic).sort(bySpecificity);
   return [
+    { src: "^/assets/.+$", headers: { "Cache-Control": IMMUTABLE }, continue: true },
+    { src: "^/(?:packs|replay|embed)/.+$", headers: { "Cache-Control": REVALIDATE }, continue: true },
     { src: "^/(?:embed|packs)/.+$", headers: { "Access-Control-Allow-Origin": "*" }, continue: true },
     { handle: "filesystem" },
     ...dynamic.map(dynamicRoute),
     { src: "^/api(?:/.*)?$", status: 404 },
-    { src: "^/replay(?:/.*)?$", status: 404 },
-    { src: "^/packs(?:/.*)?$", status: 404 },
-    { src: "^/embed/.+$", status: 404 },
+    { src: "^/assets(?:/.*)?$", status: 404, headers: MISSING },
+    { src: "^/replay(?:/.*)?$", status: 404, headers: MISSING },
+    { src: "^/packs(?:/.*)?$", status: 404, headers: MISSING },
+    { src: "^/embed/.+$", status: 404, headers: MISSING },
     { src: "^/(.*)$", dest: "/index.html" },
   ];
 }
