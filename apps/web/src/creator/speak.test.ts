@@ -2,11 +2,11 @@ import { describe, expect, it } from "vitest";
 import { lineAt, linesOf, loadLines } from "./speak";
 
 describe("speak a line", () => {
-  it("offers the committed show's standalone lines, each with a WAV", async () => {
+  it("offers the committed show's standalone lines, each with its recorded clip", async () => {
     const lines = await loadLines();
     expect(lines.length).toBeGreaterThan(0);
     for (const line of lines) {
-      expect(line.url).toMatch(/\.wav$/);
+      expect(line.url).toMatch(/\.m4a$/);
       expect(line.reply.line.length).toBeGreaterThan(0);
     }
   });

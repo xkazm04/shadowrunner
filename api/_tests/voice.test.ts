@@ -228,19 +228,33 @@ describe("POST /api/voice on live", () => {
   });
 });
 
-describe("recorded show WAVs (assets/replay/shows/malakor-night/)", () => {
-  it("exist for every line as 16-bit mono 24 kHz WAV within the 15 MB budget", async () => {
+/** The first offset of a four-character box type in an MP4, or -1. */
+function boxAt(bytes: Uint8Array, type: string): number {
+  return Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength).indexOf(type, 0, "latin1");
+}
+
+describe("recorded show voices (assets/replay/shows/malakor-night/)", () => {
+  it("exist for every line as mono 24 kHz AAC in MP4 (.m4a, scripts/voice-m4a.mjs) within a 5 MB budget", async () => {
     let total = 0;
     for (const beat of replayShow().beats) {
-      const wav = await readRecording(beat.wav);
-      const view = new DataView(wav.buffer, wav.byteOffset, wav.byteLength);
-      expect(isWav(wav)).toBe(true);
-      expect([view.getUint16(22, true), view.getUint32(24, true), view.getUint16(34, true)]).toEqual([1, 24_000, 16]);
-      expect(view.getUint32(40, true)).toBe(wav.length - WAV_HEADER_BYTES);
-      expect(wav.length).toBeGreaterThan(24_000 * 2); // more than a second of audio
-      total += wav.length;
+      expect(beat.wav).toMatch(/\.m4a$/);
+      const clip = await readRecording(beat.wav);
+      const view = new DataView(clip.buffer, clip.byteOffset, clip.byteLength);
+      expect(String.fromCharCode(...clip.subarray(4, 8))).toBe("ftyp");
+      expect(isWav(clip)).toBe(false);
+      // The index comes first (faststart), so playback starts before the whole clip arrives.
+      expect(boxAt(clip, "moov")).toBeLessThan(boxAt(clip, "mdat"));
+      // The AAC sample entry: channel count at +20 and the 16.16 sample rate at +28 from its type.
+      const mp4a = boxAt(clip, "mp4a");
+      expect(mp4a).toBeGreaterThan(0);
+      expect(boxAt(clip, "esds")).toBeGreaterThan(mp4a);
+      expect([view.getUint16(mp4a + 20), view.getUint32(mp4a + 28) >>> 16]).toEqual([1, 24_000]);
+      // Movie header (version 0): timescale at +16, duration at +20 from its type.
+      const mvhd = boxAt(clip, "mvhd");
+      expect(view.getUint32(mvhd + 20) / view.getUint32(mvhd + 16)).toBeGreaterThan(1); // more than a second of audio
+      total += clip.length;
     }
-    expect(total).toBeLessThanOrEqual(15 * 1024 * 1024);
+    expect(total).toBeLessThanOrEqual(5 * 1024 * 1024);
   });
 
   it("are named by paths the redirect accepts", () => {

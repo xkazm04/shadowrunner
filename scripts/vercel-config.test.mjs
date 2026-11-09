@@ -2,7 +2,7 @@
 // `resolve` below is a small model of Vercel's legacy route walk for this table: the filesystem
 // phase first (static files and functions by exact name), then the routes in order.
 import { describe, expect, it } from "vitest";
-import { CRON_SCHEDULE, dynamicRoute, functionName, outputConfig } from "./vercel-config.mjs";
+import { CRON_SCHEDULE, dynamicRoute, functionName, IMMUTABLE, outputConfig, REVALIDATE } from "./vercel-config.mjs";
 
 const FILES = [
   "api/cron/forge-gc.ts",
@@ -15,7 +15,15 @@ const FILES = [
   "api/health.ts",
   "api/voice.ts",
 ];
-const STATIC_FILES = new Set(["/index.html", "/assets/app.js", "/replay/shows/malakor-night/b00.wav", "/replay/forge/malakor/head.png"]);
+const STATIC_FILES = new Set([
+  "/index.html",
+  "/assets/app.js",
+  "/replay/shows/malakor-night/b00.m4a",
+  "/replay/forge/malakor/head.png",
+  "/packs/moth-widow.srpack",
+  "/packs/index.json",
+  "/embed/sr-avatar.js",
+]);
 
 function resolve(config, path, files = FILES) {
   const functions = new Set(files.map((f) => `/${functionName(f)}`));
@@ -38,6 +46,17 @@ function resolve(config, path, files = FILES) {
     return target(dest);
   }
   return { status: 404 };
+}
+
+/** The response headers Vercel would set for `path`: every matching header route, then the 404 route's own (later wins). */
+function headersOf(config, path) {
+  const out = {};
+  const decided = resolve(config, path);
+  for (const route of config.routes) {
+    if (route.headers === undefined || !new RegExp(route.src).test(path)) continue;
+    if (route.continue === true || (route.status !== undefined && route.status === decided.status)) Object.assign(out, route.headers);
+  }
+  return out;
 }
 
 describe("vercel-output config.json", () => {
@@ -68,7 +87,7 @@ describe("vercel-output config.json", () => {
     expect(resolve(config, "/api/engine/reply")).toEqual({ fn: "/api/engine/reply" });
     expect(resolve(config, "/api/voice")).toEqual({ fn: "/api/voice" });
     expect(resolve(config, "/api/cron/forge-gc")).toEqual({ fn: "/api/cron/forge-gc" });
-    expect(resolve(config, "/replay/shows/malakor-night/b00.wav")).toEqual({ file: "/replay/shows/malakor-night/b00.wav" });
+    expect(resolve(config, "/replay/shows/malakor-night/b00.m4a")).toEqual({ file: "/replay/shows/malakor-night/b00.m4a" });
     expect(resolve(config, "/replay/forge/malakor/head.png")).toEqual({ file: "/replay/forge/malakor/head.png" });
   });
 
@@ -76,9 +95,10 @@ describe("vercel-output config.json", () => {
     expect(resolve(config, "/api/nope")).toEqual({ status: 404 });
     expect(resolve(config, "/api/forge/a/b")).toEqual({ status: 404 });
     expect(resolve(config, "/api")).toEqual({ status: 404 });
-    expect(resolve(config, "/replay/shows/missing.wav")).toEqual({ status: 404 });
+    expect(resolve(config, "/replay/shows/missing.m4a")).toEqual({ status: 404 });
     expect(resolve(config, "/packs/missing.srpack")).toEqual({ status: 404 });
     expect(resolve(config, "/embed/missing.js")).toEqual({ status: 404 });
+    expect(resolve(config, "/assets/stale-chunk-0ld.js")).toEqual({ status: 404 });
     expect(resolve(config, "/embed")).toEqual({ file: "/index.html" });
     expect(resolve(config, "/")).toEqual({ file: "/index.html" });
     expect(resolve(config, "/creator/forge")).toEqual({ file: "/index.html" });
@@ -101,10 +121,23 @@ describe("vercel-output config.json", () => {
   });
 
   it("lets other sites fetch the embed script and the packs (CORS), before any routing decision", () => {
-    const [first] = config.routes;
-    expect(first).toEqual({ src: "^/(?:embed|packs)/.+$", headers: { "Access-Control-Allow-Origin": "*" }, continue: true });
-    for (const path of ["/embed/sr-avatar.js", "/packs/moth-widow.srpack", "/packs/index.json"]) expect(new RegExp(first.src).test(path)).toBe(true);
-    for (const path of ["/embed", "/", "/api/voice", "/replay/forge/malakor/head.png"]) expect(new RegExp(first.src).test(path)).toBe(false);
+    const cors = config.routes.find((r) => r.headers?.["Access-Control-Allow-Origin"] !== undefined);
+    expect(cors).toEqual({ src: "^/(?:embed|packs)/.+$", headers: { "Access-Control-Allow-Origin": "*" }, continue: true });
+    for (const path of ["/embed/sr-avatar.js", "/packs/moth-widow.srpack", "/packs/index.json"]) expect(headersOf(config, path)["Access-Control-Allow-Origin"]).toBe("*");
+    for (const path of ["/embed", "/", "/api/voice", "/replay/forge/malakor/head.png"]) expect(headersOf(config, path)).not.toHaveProperty("Access-Control-Allow-Origin");
+  });
+
+  it("caches hashed assets for a year, revalidates packs, replay and embed files, and never caches a miss", () => {
+    expect(IMMUTABLE).toBe("public, max-age=31536000, immutable");
+    expect(REVALIDATE).toBe("public, max-age=3600, stale-while-revalidate=86400");
+    expect(headersOf(config, "/assets/app.js")).toEqual({ "Cache-Control": IMMUTABLE });
+    for (const path of ["/replay/shows/malakor-night/b00.m4a", "/replay/forge/malakor/head.png"]) expect(headersOf(config, path)).toEqual({ "Cache-Control": REVALIDATE });
+    for (const path of ["/packs/moth-widow.srpack", "/embed/sr-avatar.js"]) expect(headersOf(config, path)).toEqual({ "Cache-Control": REVALIDATE, "Access-Control-Allow-Origin": "*" });
+    for (const path of ["/assets/stale-chunk-0ld.js", "/replay/shows/missing.m4a", "/packs/missing.srpack", "/embed/missing.js"]) {
+      expect(headersOf(config, path)["Cache-Control"], path).toBe("no-store");
+    }
+    // Pages and functions keep Vercel's defaults (HTML revalidates on every load; functions set their own).
+    for (const path of ["/", "/embed", "/creator/forge", "/api/voice", "/api/nope"]) expect(headersOf(config, path), path).toEqual({});
   });
 
   it("refuses two files that answer the same path", () => {

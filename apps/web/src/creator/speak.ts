@@ -17,9 +17,10 @@ export interface SpokenLine {
 }
 
 const SHOWS = import.meta.glob<unknown>("../../../../assets/replay/shows/*.json", { import: "default" });
-const WAVS = import.meta.glob<string>("../../../../assets/replay/shows/*/*.wav", { eager: true, query: "?url", import: "default" });
+// The clips are AAC `.m4a` since perfection-pass 10.3 (scripts/voice-m4a.mjs); a beat names its own file.
+const WAVS = import.meta.glob<string>("../../../../assets/replay/shows/*/*.m4a", { eager: true, query: "?url", import: "default" });
 
-/** `<show>/<file>.wav` (as a beat names it) -> bundled URL. */
+/** `<show>/<file>.m4a` (as a beat names it) -> bundled URL. */
 function wavUrl(wav: string): string | undefined {
   for (const [path, url] of Object.entries(WAVS)) if (path.endsWith(`/shows/${wav}`)) return url;
   return undefined;

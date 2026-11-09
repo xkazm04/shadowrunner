@@ -11,7 +11,7 @@ describe("replayLines", () => {
     expect(borrowedFrom).toBeUndefined();
     expect(lines.length).toBeGreaterThan(0);
     for (const line of lines) {
-      expect(line.url).toMatch(/malakor-night\/b\d+\.wav$/);
+      expect(line.url).toMatch(/malakor-night\/b\d+\.m4a$/); // AAC clips since perfection-pass 10.3
       expect(line.text.length).toBeGreaterThan(0);
     }
     const show = castShows().find((s) => s.characterId === "malakor");

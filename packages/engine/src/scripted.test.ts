@@ -76,7 +76,7 @@ describe("malakor-night.json", () => {
   it("names one WAV per beat under malakor-night/, and has generic beats for visitors", () => {
     const wavs = SHOW.beats.map((b) => b.wav);
     expect(new Set(wavs).size).toBe(wavs.length);
-    for (const wav of wavs) expect(wav).toMatch(/^malakor-night\/[a-z0-9-]+\.wav$/);
+    for (const wav of wavs) expect(wav).toMatch(/^malakor-night\/[a-z0-9-]+\.m4a$/); // AAC clips since perfection-pass 10.3
     expect(SHOW.beats.filter((b) => b.replyTo === undefined).length).toBeGreaterThanOrEqual(4);
   });
 

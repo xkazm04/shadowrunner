@@ -13,11 +13,11 @@
     {"id":"a08","user":"RookAndRot","text":"ok but what did the lord forbid","ts":19500,"fictional":true}
   ],
   "beats": [
-    {"at":0,"reply":{"line":"Good evening. The Redactor, Clerk of the Ninth Dark Department of Permitted Speech. Everything said tonight is approved, provisionally, until I have read it.","emotion":"smug","gesture":"nod"},"wav":"the-redactor-night/b00.wav"},
-    {"at":9000,"replyTo":"a02","reply":{"line":"I am hiding nothing. I am withholding it, on the Lord's behalf, which is a different form and takes eleven days to process.","emotion":"irritated","gesture":"tilt","answeredId":"a02"},"wav":"the-redactor-night/b01.wav"},
-    {"at":18000,"replyTo":"a03","reply":{"line":"Forbidden. Certainly not. If I were to say it, which I will not, the bar would come down across my mouth, and I would mumble. Mmf. Like that. Thank you.","emotion":"irritated","gesture":"recoil","answeredId":"a03"},"wav":"the-redactor-night/b02.wav"},
-    {"at":27000,"replyTo":"a05","reply":{"line":"The Lord's name is, as it happens, under review. I am able to confirm that it exists, that it has a great many letters, and that I am not saying it. Sorry.","emotion":"grim","gesture":"lean_in","answeredId":"a05"},"wav":"the-redactor-night/b03.wav"},
-    {"at":36000,"reply":{"line":"Please note that this stream has been reviewed in part. The remainder has been reviewed in black. Feedback may be submitted to a drawer I will not open.","emotion":"bored","gesture":"nod"},"wav":"the-redactor-night/b04.wav"},
-    {"at":45000,"reply":{"line":"The bar slides up, and I am permitted a sigh. It is not much, but it is mine. Back down it goes. Next question, and do try to ask the safe one.","emotion":"bored","gesture":"glare"},"wav":"the-redactor-night/b05.wav"}
+    {"at":0,"reply":{"line":"Good evening. The Redactor, Clerk of the Ninth Dark Department of Permitted Speech. Everything said tonight is approved, provisionally, until I have read it.","emotion":"smug","gesture":"nod"},"wav":"the-redactor-night/b00.m4a"},
+    {"at":9000,"replyTo":"a02","reply":{"line":"I am hiding nothing. I am withholding it, on the Lord's behalf, which is a different form and takes eleven days to process.","emotion":"irritated","gesture":"tilt","answeredId":"a02"},"wav":"the-redactor-night/b01.m4a"},
+    {"at":18000,"replyTo":"a03","reply":{"line":"Forbidden. Certainly not. If I were to say it, which I will not, the bar would come down across my mouth, and I would mumble. Mmf. Like that. Thank you.","emotion":"irritated","gesture":"recoil","answeredId":"a03"},"wav":"the-redactor-night/b02.m4a"},
+    {"at":27000,"replyTo":"a05","reply":{"line":"The Lord's name is, as it happens, under review. I am able to confirm that it exists, that it has a great many letters, and that I am not saying it. Sorry.","emotion":"grim","gesture":"lean_in","answeredId":"a05"},"wav":"the-redactor-night/b03.m4a"},
+    {"at":36000,"reply":{"line":"Please note that this stream has been reviewed in part. The remainder has been reviewed in black. Feedback may be submitted to a drawer I will not open.","emotion":"bored","gesture":"nod"},"wav":"the-redactor-night/b04.m4a"},
+    {"at":45000,"reply":{"line":"The bar slides up, and I am permitted a sigh. It is not much, but it is mine. Back down it goes. Next question, and do try to ask the safe one.","emotion":"bored","gesture":"glare"},"wav":"the-redactor-night/b05.m4a"}
   ]
 }

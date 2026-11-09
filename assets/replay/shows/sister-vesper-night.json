@@ -13,11 +13,11 @@
     {"id":"a08","user":"RookAndRot","text":"i'm humming","ts":19500,"fictional":true}
   ],
   "beats": [
-    {"at":0,"reply":{"line":"Good evening, gentle ones. Sister Vesper, of the Drowned Choir. The hour is struck, the water is still, and I would ask you to hum along. Any note will do.","emotion":"neutral","gesture":"nod"},"wav":"sister-vesper-night/b00.wav"},
-    {"at":9000,"replyTo":"a02","reply":{"line":"A little, when the river lets me. The notes come out a few seconds late and rather damp. That is the sound of it. Hum with me, and we will be late together.","emotion":"amused","gesture":"tilt","answeredId":"a02"},"wav":"sister-vesper-night/b01.wav"},
-    {"at":18000,"replyTo":"a03","reply":{"line":"The hour is vespers, as it has been since the chapel went under. It is always vespers, somewhere. I keep it so that no one else has to.","emotion":"grim","gesture":"nod","answeredId":"a03"},"wav":"sister-vesper-night/b02.wav"},
-    {"at":27000,"replyTo":"a07","reply":{"line":"Nothing so frightening. A hymn for the lost, in three parts: one for the water, one for the bell, and one for whoever is listening. That part is yours.","emotion":"delighted","gesture":"lean_in","answeredId":"a07"},"wav":"sister-vesper-night/b03.wav"},
-    {"at":36000,"reply":{"line":"Hum, if you can. Not loudly, and not in tune. The river is fond of a ragged chorus, and it has had, I think, rather a lot of them.","emotion":"neutral","gesture":"tilt"},"wav":"sister-vesper-night/b04.wav"},
-    {"at":45000,"reply":{"line":"The bell sounds under the surface. You will not hear it unless you are quiet, and then you will hear nothing else. Shall we try?","emotion":"grim","gesture":"lean_in"},"wav":"sister-vesper-night/b05.wav"}
+    {"at":0,"reply":{"line":"Good evening, gentle ones. Sister Vesper, of the Drowned Choir. The hour is struck, the water is still, and I would ask you to hum along. Any note will do.","emotion":"neutral","gesture":"nod"},"wav":"sister-vesper-night/b00.m4a"},
+    {"at":9000,"replyTo":"a02","reply":{"line":"A little, when the river lets me. The notes come out a few seconds late and rather damp. That is the sound of it. Hum with me, and we will be late together.","emotion":"amused","gesture":"tilt","answeredId":"a02"},"wav":"sister-vesper-night/b01.m4a"},
+    {"at":18000,"replyTo":"a03","reply":{"line":"The hour is vespers, as it has been since the chapel went under. It is always vespers, somewhere. I keep it so that no one else has to.","emotion":"grim","gesture":"nod","answeredId":"a03"},"wav":"sister-vesper-night/b02.m4a"},
+    {"at":27000,"replyTo":"a07","reply":{"line":"Nothing so frightening. A hymn for the lost, in three parts: one for the water, one for the bell, and one for whoever is listening. That part is yours.","emotion":"delighted","gesture":"lean_in","answeredId":"a07"},"wav":"sister-vesper-night/b03.m4a"},
+    {"at":36000,"reply":{"line":"Hum, if you can. Not loudly, and not in tune. The river is fond of a ragged chorus, and it has had, I think, rather a lot of them.","emotion":"neutral","gesture":"tilt"},"wav":"sister-vesper-night/b04.m4a"},
+    {"at":45000,"reply":{"line":"The bell sounds under the surface. You will not hear it unless you are quiet, and then you will hear nothing else. Shall we try?","emotion":"grim","gesture":"lean_in"},"wav":"sister-vesper-night/b05.m4a"}
   ]
 }

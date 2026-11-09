@@ -13,11 +13,11 @@
     {"id":"a08","user":"RookAndRot","text":"i have an overdue book. 9 years","ts":19500,"fictional":true}
   ],
   "beats": [
-    {"at":0,"reply":{"line":"Welcome to the stacks. Voices low, hands clean, and nobody feeds the serpents after midnight. We have a great deal of reading to get through.","emotion":"smug","gesture":"nod"},"wav":"auntie-asp-night/b00.wav"},
-    {"at":9000,"replyTo":"a02","reply":{"line":"A timeout is a statue with a reason. Spam in my stacks and you will spend ten minutes as a very quiet piece of stone. Shh. It is for your own good.","emotion":"irritated","gesture":"glare","answeredId":"a02"},"wav":"auntie-asp-night/b01.wav"},
-    {"at":18000,"replyTo":"a03","reply":{"line":"The left three say you are all being very loud. The right three say the left three are being dull. They are all correct, and none of them are helping.","emotion":"amused","gesture":"tilt","answeredId":"a03"},"wav":"auntie-asp-night/b02.wav"},
-    {"at":27000,"replyTo":"a08","reply":{"line":"Nine years. How lovely. The fine is one confession and the book itself, returned in the condition you borrowed it. Dust is acceptable. Teeth marks are not.","emotion":"smug","gesture":"lean_in","answeredId":"a08"},"wav":"auntie-asp-night/b03.wav"},
-    {"at":36000,"reply":{"line":"Every book in this room is waiting for someone to ask the right question. Most of you ask the wrong one, loudly. Try again, softly.","emotion":"bored","gesture":"tilt"},"wav":"auntie-asp-night/b04.wav"},
-    {"at":45000,"reply":{"line":"One more rule of the stacks: if the snakes go quiet, so do you. They have never once been wrong about who is about to type something foolish.","emotion":"suspicious","gesture":"glare"},"wav":"auntie-asp-night/b05.wav"}
+    {"at":0,"reply":{"line":"Welcome to the stacks. Voices low, hands clean, and nobody feeds the serpents after midnight. We have a great deal of reading to get through.","emotion":"smug","gesture":"nod"},"wav":"auntie-asp-night/b00.m4a"},
+    {"at":9000,"replyTo":"a02","reply":{"line":"A timeout is a statue with a reason. Spam in my stacks and you will spend ten minutes as a very quiet piece of stone. Shh. It is for your own good.","emotion":"irritated","gesture":"glare","answeredId":"a02"},"wav":"auntie-asp-night/b01.m4a"},
+    {"at":18000,"replyTo":"a03","reply":{"line":"The left three say you are all being very loud. The right three say the left three are being dull. They are all correct, and none of them are helping.","emotion":"amused","gesture":"tilt","answeredId":"a03"},"wav":"auntie-asp-night/b02.m4a"},
+    {"at":27000,"replyTo":"a08","reply":{"line":"Nine years. How lovely. The fine is one confession and the book itself, returned in the condition you borrowed it. Dust is acceptable. Teeth marks are not.","emotion":"smug","gesture":"lean_in","answeredId":"a08"},"wav":"auntie-asp-night/b03.m4a"},
+    {"at":36000,"reply":{"line":"Every book in this room is waiting for someone to ask the right question. Most of you ask the wrong one, loudly. Try again, softly.","emotion":"bored","gesture":"tilt"},"wav":"auntie-asp-night/b04.m4a"},
+    {"at":45000,"reply":{"line":"One more rule of the stacks: if the snakes go quiet, so do you. They have never once been wrong about who is about to type something foolish.","emotion":"suspicious","gesture":"glare"},"wav":"auntie-asp-night/b05.m4a"}
   ]
 }
