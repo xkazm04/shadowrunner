@@ -44,14 +44,17 @@
 //   profile (`resolveFace`: motion.tilt scales the mood's head tilt and pitch, motion.gesture the
 //   gesture peaks, expression.strength the face weights) and the breathing idle. At the default
 //   profile, on a rig without irises or a face profile, every pose is exactly as before.
-import { breathAt, breathes, cellOf, faceOf, irisOffset, snapCell, squintOf, strengthen, type SocketBox } from "./eyes.js";
+// - Secondary motion (perfection-pass V1, spring.ts): `Drive.spring` adds each loose part's swing and
+//   move to its float in the carry (posePlan.ts), after follow and before parallax; absent or `still`: none.
+import { breathAt, breathes, cellOf, faceOf, irisOffset, layerIndex, snapCell, squintOf, strengthen, type SocketBox } from "./eyes.js";
 import type { ResolvedFace } from "./face.js";
 import type { EmotionDrive } from "./look.js";
 import { browPoses, facesOf, moodOf, shapeOf, type BrowPose } from "./mood.js";
-import type { ActCue } from "./act.js";
+import { actMotionAt, type ActCue } from "./act.js";
 import { motionAt, NO_MOTION, ownBlinkAt } from "./motion.js";
 import { carriesOf, motionsOf, posePlan, type PosePlan, type World } from "./posePlan.js";
 import { IDENTITY, about, apply, compose, type Sim } from "./sim.js";
+import { springsOf, springStrength, type SpringChannels } from "./spring.js";
 import type { Emotion, ExpressionFamily, Gesture, Layer, LayerKind, Look, Rig } from "./types.js";
 
 // The face-control pose helpers are public through this module (index.ts exports it).
@@ -119,6 +122,8 @@ export interface Drive {
   gaze?: { x: number; y: number };
   /** A signature act in play (tiger L1, act.ts): that layer's own motion once. Omitted: none. */
   act?: ActCue;
+  /** Secondary motion (perfection-pass V1, spring.ts): the spring's lag per channel. Omitted (or `still`): none. */
+  spring?: SpringChannels;
 }
 
 /** What poseLayers needs beyond the rig, look and drive (face-control). */
@@ -159,14 +164,7 @@ interface Peak {
   glowTint: number;
 }
 const REST: Peak = { pitchDeg: 0, tiltDeg: 0, scale: 0, lift: 0, eyeTint: 0, glowTint: 0 };
-const PEAKS: Record<Gesture, Partial<Peak>> = {
-  nod: { pitchDeg: 6 },
-  tilt: { tiltDeg: 5 },
-  lean_in: { scale: 0.04 },
-  recoil: { scale: -0.04, lift: -0.01 },
-  glare: { eyeTint: 0.6 },
-  flare: { glowTint: 1 },
-};
+const PEAKS: Record<Gesture, Partial<Peak>> = { nod: { pitchDeg: 6 }, tilt: { tiltDeg: 5 }, lean_in: { scale: 0.04 }, recoil: { scale: -0.04, lift: -0.01 }, glare: { eyeTint: 0.6 }, flare: { glowTint: 1 } };
 /** Kinds that give light unless the layer says otherwise (`Layer.emissive`). */
 export const EMISSIVE_KINDS: ReadonlySet<LayerKind> = new Set(["eye", "iris", "crown", "accessory"]);
 
@@ -270,7 +268,7 @@ function breathOf(layer: Layer, frame: Frame, local: Sim): Sim {
  * scaled or inherited) its own parallax and, for a jaw, the drop along the rotated down axis.
  */
 function finalOf(layer: Layer, gesture: Sim, frame: Frame): Sim {
-  const depth = layer.depth ?? DEFAULT_DEPTH[layer.kind];
+  const depth = depthOf(layer);
   const drop = layer.kind === "jaw" ? frame.jawPx * (layer.drop ?? JAW_DROP) : 0;
   return {
     rot: gesture.rot,
@@ -282,6 +280,19 @@ function finalOf(layer: Layer, gesture: Sim, frame: Frame): Sim {
 }
 
 const BREATHING: ReadonlySet<LayerKind> = new Set(["head", "body"]);
+const depthOf = (layer: Layer): number => layer.depth ?? DEFAULT_DEPTH[layer.kind];
+
+/** The spring channels' target this frame (perfection-pass V1, spring.ts): what the head group and a playing act do. */
+export function springTargetOf(rig: Rig, look: Look, drive: Drive, options: Pick<PoseOptions, "face"> = {}): SpringChannels {
+  const frame = frameOf(rig, look, drive, options.face ?? faceOf(rig, look));
+  const { tiltDeg, scale, lift } = frame.gesture;
+  const target: SpringChannels = { yaw: frame.perDepthX / (YAW_SHIFT * rig.width), pitch: frame.perDepthY / (PITCH_SHIFT * rig.height), roll: ((tiltDeg + frame.mood.headTilt) * Math.PI) / 180, scale, lift, actDx: 0, actDy: 0, actRot: 0 };
+  const layer = drive.act === undefined ? undefined : layerIndex(rig).byName.get(drive.act.layer);
+  if (layer === undefined || drive.still === true) return target;
+  const idle = motionAt(layer.motion, drive.t);
+  const played = actMotionAt(layer, drive.t, false, drive.act, rig.height);
+  return { ...target, actDx: (played.dx - idle.dx) / rig.height, actDy: (played.dy - idle.dy) / rig.height, actRot: played.rotation - idle.rotation, actLayer: layer.name };
+}
 
 /**
  * Gesture world transforms for every layer into `plan.worlds` (per slot, posePlan.ts), composed down
@@ -326,7 +337,9 @@ export function poseLayers(rig: Rig, look: Look, drive: Drive, options: PoseOpti
   const plan = posePlan(rig);
   worldsOf(rig, look, frame, plan);
   motionsOf(rig, drive, plan);
-  carriesOf(rig, plan);
+  const strength = drive.spring === undefined || drive.still === true ? 0 : springStrength(rig, look);
+  const sprung = strength > 0 && drive.spring !== undefined && springsOf(rig, drive.spring, strength, YAW_SHIFT * rig.width, PITCH_SHIFT * rig.height, plan, depthOf);
+  carriesOf(rig, plan, sprung);
   const hidden: readonly string[] = look.hidden ?? [];
   const shown = (layer: Layer): boolean => layer.visible !== false && !hidden.includes(layer.name);
   const still = drive.still === true;

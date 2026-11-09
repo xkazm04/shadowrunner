@@ -192,6 +192,14 @@ export interface Rig {
   mouth?: RigMouth;
   /** The character's face profile (face-control): gaze, motion, expression strength. Omitted: defaults. */
   face?: RigFace;
+  /** Secondary motion (perfection-pass V1, spring.ts). Omitted: defaults. */
+  motion?: RigMotion;
+}
+
+/** Secondary motion strength (perfection-pass V1); `Look.motion` wins over `Rig.motion`. */
+export interface RigMotion {
+  /** How strongly loose parts lag and settle, in [0, 2]; 0 disables, omitted means 1. */
+  spring?: number;
 }
 
 /**
@@ -295,4 +303,6 @@ export interface Look {
   shape?: Record<string, PartShape>;
   /** The viewer's face profile (face-control), over `Rig.face` field by field. */
   face?: RigFace;
+  /** The viewer's secondary motion strength (perfection-pass V1), over `Rig.motion`. */
+  motion?: RigMotion;
 }

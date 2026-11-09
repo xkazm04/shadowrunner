@@ -21,6 +21,9 @@
 //   ramp frame moves the offset no more than a full-motion frame can (drift slope x dt + 1 deg).
 //   Saccade jumps wait while `motion` is below 1 (their schedule and draws still run, so the rng
 //   stays in step with full motion); a jump on a ramp frame could exceed that bound.
+// - Secondary motion (perfection-pass V1): `spring` holds one damped spring per @sr/rig spring
+//   channel. Its target depends on the posed frame (mood, act, face profile), known only after the
+//   step, so the frame body advances it with `stepSpring` once the drive is final (step.ts).
 import type { Gesture } from "@sr/rig";
 import type { LookAtPoint } from "./lookAt.js";
 import { seedRng, uniform } from "./rng.js";
@@ -102,7 +105,32 @@ export interface DriverState {
   motion?: number;
   /** The eyes (face-control): present only on a rig with irises, see `DriverInputs.face`. */
   eyes?: EyeState;
+  /**
+   * Secondary motion (perfection-pass V1): the channel springs, advanced by `stepSpring` (step.ts)
+   * after the frame's drive is known; `step` carries it across. Absent: at rest (no lag).
+   */
+  spring?: SpringState;
 }
+
+/** The channel springs (perfection-pass V1, @sr/rig spring.ts), per channel in SPRING_KEYS order. */
+export interface SpringState {
+  /** The lag, spring minus target (what `Drive.spring` carries). */
+  lag: readonly number[];
+  /** The spring's own velocity, channel units per second. */
+  vel: readonly number[];
+  /** The target at the last step. */
+  target: readonly number[];
+  /** The layer the act channels follow, kept while they settle after its act. */
+  actLayer?: string;
+}
+
+/** The springs' natural frequency, Hz, and damping ratio (under-damped: one overshoot, then settle). */
+export const SPRING_HZ = 2.2;
+export const SPRING_ZETA = 0.45;
+/** Per channel (SPRING_KEYS order), the largest lag: a jump in the target (a new rig, a cut) cannot fling a part. */
+export const SPRING_LAG_MAX: readonly number[] = [0.5, 0.5, 0.1, 0.05, 0.02, 0.05, 0.05, 0.3];
+/** A lag and relative speed below this (channel units, per second times the angular frequency) is rest: exactly 0. */
+export const SPRING_REST = 1e-6;
 
 /** Blink start-to-start gap, seconds (req 3.2). */
 export const BLINK_GAP_MIN_S = 2;

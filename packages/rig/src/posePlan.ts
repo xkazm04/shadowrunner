@@ -49,6 +49,8 @@ export interface PosePlan {
   visiting: Uint8Array;
   /** Scratch, per layer index: this frame's motion offset (read only; may be shared NO_MOTION). */
   motions: MotionOffset[];
+  /** Scratch, per slot `s` at `3s`: the spring's dx, dy (canvas px) and rotation (spring.ts); zeroed every call. */
+  springs: Float64Array;
 }
 
 const plans = new WeakMap<readonly Layer[], PosePlan>();
@@ -69,9 +71,10 @@ export function posePlan(rig: Pick<Rig, "layers">): PosePlan {
       .map((layer, index) => ({ layer, index, eye: eyeOf(layer, byName) }))
       .sort((a, b) => a.layer.z - b.layer.z || a.index - b.index);
     const n = layers.length;
-    plan = { slot, parent, order, worlds: new Array<World | undefined>(n), carries: new Array<Sim | undefined>(n), visiting: new Uint8Array(n), motions: [] };
+    plan = { slot, parent, order, worlds: new Array<World | undefined>(n), carries: new Array<Sim | undefined>(n), visiting: new Uint8Array(n), motions: [], springs: new Float64Array(3 * n) };
     plans.set(layers, plan);
   }
+  plan.springs.fill(0);
   plan.worlds.fill(undefined);
   plan.carries.fill(undefined);
   plan.visiting.fill(0);
@@ -98,10 +101,12 @@ export function motionsOf(rig: Pick<Rig, "layers" | "height">, drive: Pick<Drive
  * move). It is composed after the gesture transform and before the layer's own parallax and jaw
  * drop (a turn about the anchor commutes with a move, so the layer's own float is as if applied
  * last), so a follower turns rigidly with its parent and its parallax stays a pure shift. Needs
- * `plan.worlds` and `plan.motions` filled.
+ * `plan.worlds` and `plan.motions` filled. With `sprung` (perfection-pass V1), the slot's spring
+ * offset (`plan.springs`, spring.ts) adds to its float: the same turn about the posed anchor and
+ * move, so followers inherit a swing as they inherit a float.
  */
-export function carriesOf(rig: Pick<Rig, "layers">, plan: PosePlan): void {
-  const { slot, parent: parents, worlds, carries, visiting, motions } = plan;
+export function carriesOf(rig: Pick<Rig, "layers">, plan: PosePlan, sprung = false): void {
+  const { slot, parent: parents, worlds, carries, visiting, motions, springs } = plan;
   const resolve = (s: number): Sim => {
     const known = carries[s];
     const layer = rig.layers[s];
@@ -111,11 +116,15 @@ export function carriesOf(rig: Pick<Rig, "layers">, plan: PosePlan): void {
     const p = parents[s] ?? -1;
     const inherited = p < 0 || visiting[p] === 1 ? IDENTITY : resolve(p);
     const motion = motions[s] ?? NO_MOTION;
+    // Without a spring the sums are not taken, so the floats stay bit for bit as before.
+    const dx = sprung ? motion.dx + (springs[3 * s] ?? 0) : motion.dx;
+    const dy = sprung ? motion.dy + (springs[3 * s + 1] ?? 0) : motion.dy;
+    const rotation = sprung ? motion.rotation + (springs[3 * s + 2] ?? 0) : motion.rotation;
     let carry = inherited;
-    if (motion.rotation !== 0 || motion.dx !== 0 || motion.dy !== 0) {
+    if (rotation !== 0 || dx !== 0 || dy !== 0) {
       const posed = compose(inherited, worlds[s]?.sim ?? IDENTITY);
       const q = apply(posed, layer.anchor[0], layer.anchor[1]);
-      carry = compose(turnAbout(q[0], q[1], motion.rotation, motion.dx, motion.dy), inherited);
+      carry = compose(turnAbout(q[0], q[1], rotation, dx, dy), inherited);
     }
     visiting[s] = 0;
     carries[s] = carry;

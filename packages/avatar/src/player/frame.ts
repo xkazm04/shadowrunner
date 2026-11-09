@@ -27,10 +27,14 @@
 // - Signature acts (tiger L1): `act` names a layer on the frame its act starts; the body holds it at
 //   the driver's t and hands it to pose.ts as `Drive.act` until it has surely ended (ACT_S_MAX).
 //   pose.ts plays it (or, under reduced motion, its static twin). A `drive` override passes through.
-import { ACT_S_MAX, applyLook, faceOf, hasIris, MOOD_FADE_S, poseLayers, type ActCue, type Drive, type Emotion, type Gesture, type LayerPose, type Look, type Rig } from "@sr/rig";
+// - Secondary motion (perfection-pass V1): once the drive is final (mood, act), the driver's channel
+//   springs step toward `springTargetOf` and their lag goes out as `Drive.spring` (the canvas2D
+//   fallback draws the same poses, so it swings too).
+import { ACT_S_MAX, applyLook, faceOf, hasIris, MOOD_FADE_S, poseLayers, springStrength, springTargetOf, type ActCue, type Drive, type Emotion, type Gesture, type LayerPose, type Look, type Rig } from "@sr/rig";
 import type { SurfaceFactory } from "../canvas2d/recolour.js";
 import type { LookAtPoint } from "../driver/lookAt.js";
-import { initialState, type DriverFace, type Gaze } from "../driver/state.js";
+import { initialState, type DriverFace, type DriverState, type Gaze, type SpringState } from "../driver/state.js";
+import { springLag, stepSpring } from "../driver/step.js";
 import type { AssetLoader } from "../render/assets.js";
 import { createRigInspector, withoutDeadPatches, type RigInspector } from "../render/inspect.js";
 import type { RigAssets } from "../render/types.js";
@@ -108,6 +112,14 @@ export interface FrameOutput {
   t: number;
 }
 
+/** `state` with `spring` (or without the key when undefined). */
+function withSpring(state: DriverState, spring: SpringState | undefined): DriverState {
+  const next: DriverState = { ...state };
+  if (spring === undefined) delete next.spring;
+  else next.spring = spring;
+  return next;
+}
+
 /** The rig with its dead patches dropped, recomputed only when the rig or the dead set changes. */
 function trimmer(): (rig: Rig, dead: ReadonlySet<string>) => Rig {
   let last: { rig: Rig; dead: ReadonlySet<string>; trimmed: Rig } | undefined;
@@ -146,6 +158,7 @@ export function createFrameBody(seed: number, options: FrameBodyOptions = {}): (
         ? undefined
         : stepMouth({ emotion: p.look.emotion, level: p.level, reducedMotion: p.reducedMotion, dt: p.dt, emotionStrength, ...(p.mouth === undefined ? {} : { input: p.mouth }) });
     const jawLevel = mode === "warp" && p.mouth === undefined ? p.level : (mouth?.level ?? p.level);
+    const before = state.t;
     const next = advanceFrame(state, {
       dt: p.dt,
       level: jawLevel,
@@ -161,11 +174,19 @@ export function createFrameBody(seed: number, options: FrameBodyOptions = {}): (
     if (p.act !== undefined) act = { layer: p.act, startedAt: state.t };
     if (act !== undefined && !(state.t - act.startedAt < ACT_S_MAX)) act = undefined;
     const moved = p.drive !== undefined || mood === undefined ? next.drive : { ...next.drive, mood };
-    const drive = p.drive !== undefined || act === undefined ? moved : { ...moved, act };
+    const acted = p.drive !== undefined || act === undefined ? moved : { ...moved, act };
     const inspected = inspect(p.assets);
     const rig = inspected === undefined ? p.rig : trim(p.rig, inspected.deadLayers(p.rig));
     const sockets = irises ? inspected?.sockets(p.rig) : undefined;
-    const poses = poseLayers(dress(rig, p.look), p.look, drive, { face, ...(sockets === undefined ? {} : { sockets }) });
+    const dressed = dress(rig, p.look);
+    // Secondary motion (perfection-pass V1): the springs follow this frame's head and act; off under
+    // reduced motion, at strength 0, and for a `drive` override (screenshots stay exact).
+    const springing = p.drive === undefined && !p.reducedMotion && springStrength(dressed, p.look) > 0;
+    const spring = stepSpring(state.spring, state.t - before, springing ? springTargetOf(dressed, p.look, acted, { face }) : undefined);
+    if (spring !== state.spring) state = withSpring(state, spring);
+    const lag = springLag(spring);
+    const drive = lag === undefined ? acted : { ...acted, spring: lag };
+    const poses = poseLayers(dressed, p.look, drive, { face, ...(sockets === undefined ? {} : { sockets }) });
     dimShown = easeDim(dimShown, p.dim ?? 0, p.dt, p.reducedMotion);
     const clock: FrameClock = {
       t: p.drive?.t ?? state.t,

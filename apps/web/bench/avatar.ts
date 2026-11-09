@@ -10,8 +10,8 @@
 // phase, `--js-flags=--min-semi-space-size=64`) for the bytes allocated per frame; the page's own
 // `performance.memory` is too coarse for it.
 import "@sr/theme/halloween.css";
-import { advanceFrame, AvatarCanvas, createCanvas2dRenderer, createRenderer, initialState, type Renderer, type RigAssets } from "@sr/avatar";
-import { defaultLook, EMOTION_TABLE, importLegacyLayers, poseLayers, type Drive, type Emotion, type Look, type Rig } from "@sr/rig";
+import { advanceFrame, AvatarCanvas, createCanvas2dRenderer, createRenderer, initialState, springLag, stepSpring, type Renderer, type RigAssets, type SpringState } from "@sr/avatar";
+import { defaultLook, EMOTION_TABLE, importLegacyLayers, poseLayers, springTargetOf, type Drive, type Emotion, type Look, type Rig } from "@sr/rig";
 import { createElement } from "react";
 import { createRoot } from "react-dom/client";
 import layersJson from "../../../assets/characters/malakor/rig/layers.json";
@@ -56,17 +56,21 @@ function measure(frames: number, body: (i: number) => void): number {
 /** ?loop=n: driver + pose, draw of fixed poses, and the whole frame, each n frames after a warm-up. */
 function loopPhases(renderer: Renderer, rig: Rig, look: Look, frames: number): LoopPhases {
   let state = initialState(1);
+  let spring: SpringState | undefined;
   const dt = 1 / 60;
-  const posed = (): ReturnType<typeof poseLayers> => {
+  // The drive as the frame body makes it (perfection-pass V1): the springs stepped toward this frame's target.
+  const driven = (): Drive => {
     const next = advanceFrame(state, { dt, level: 0, gaze: "host", reducedMotion: false });
+    spring = stepSpring(spring, next.state.t - state.t, springTargetOf(rig, look, next.drive));
     state = next.state;
-    return poseLayers(rig, look, next.drive);
+    const lag = springLag(spring);
+    return lag === undefined ? next.drive : { ...next.drive, spring: lag };
   };
+  const posed = (): ReturnType<typeof poseLayers> => poseLayers(rig, look, driven());
   const fixed = posed();
   const whole = (): void => {
-    const next = advanceFrame(state, { dt, level: 0, gaze: "host", reducedMotion: false });
-    state = next.state;
-    renderer.draw(poseLayers(rig, look, next.drive), look, { t: next.drive.t, reducedMotion: false });
+    const drive = driven();
+    renderer.draw(poseLayers(rig, look, drive), look, { t: drive.t, reducedMotion: false });
   };
   for (let i = 0; i < 300; i += 1) whole();
   return {
