@@ -76,9 +76,23 @@ describe("AnthropicEngine request", () => {
     expect(call?.body.model).toBe(DEFAULT_ENGINE_MODEL);
     expect(call?.body.max_tokens).toBe(300);
     expect(call?.body.output_config).toMatchObject({ format: { type: "json_schema", schema: REPLY_SCHEMA } });
-    expect(call?.body.system).toBe(personaPrompt(PERSONA));
-    expect(String(call?.body.system)).toContain(PERSONA.bible);
+    expect(call?.body.system).toEqual([{ type: "text", text: personaPrompt(PERSONA), cache_control: { type: "ephemeral" } }]);
+    expect(personaPrompt(PERSONA)).toContain(PERSONA.bible);
     expect(engine.kind).toBe("anthropic");
+  });
+
+  it("caches the persona prefix: the system block is byte-identical across beats and chats, the volatile turn comes after it", async () => {
+    const { fetch, calls } = fakeFetch();
+    const engine = new AnthropicEngine({ apiKey: KEY, fetch, env: {} });
+    await engine.reply(req([{ id: "c0", user: "wisp", text: "hail", ts: 1 }], "c0"));
+    await engine.reply({ ...req([{ id: "c1", user: "moth", text: "who goes", ts: 2 }], "c1"), beat: 4 });
+    const [a, b] = calls;
+    // Exactly one breakpoint, on the last (only) system block; nothing volatile before it.
+    expect(JSON.stringify(a?.body.system)).toBe(JSON.stringify(b?.body.system));
+    expect(JSON.stringify(a?.body.system).match(/cache_control/g)).toHaveLength(1);
+    expect(JSON.stringify(a?.body.system)).not.toContain("hail");
+    expect(JSON.stringify(a?.body.messages)).toContain("hail");
+    expect(Object.keys(a?.body ?? {}).indexOf("system")).toBeLessThan(Object.keys(a?.body ?? {}).indexOf("messages"));
   });
 
   it("takes the model from SR_ENGINE_MODEL, defaulting to claude-haiku-5-5", async () => {

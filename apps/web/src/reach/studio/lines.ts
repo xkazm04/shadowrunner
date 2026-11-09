@@ -12,6 +12,7 @@
 //   the clip is still played only in the voice it was rendered with (engine cast.ts). A voice
 //   nobody recorded in has no list, and the page says so.
 import { castSlug, castVoice, MAX_VOICE_CHARS, showOf, type ShowScript, type VoiceId } from "@sr/engine";
+import type { Emotion, Gesture } from "@sr/rig";
 import { castShows } from "../../air/cast";
 import { requestVoice } from "../../air/show";
 import type { Fetcher } from "../../app/plane";
@@ -22,8 +23,11 @@ export const MAX_LINE_CHARS = MAX_VOICE_CHARS;
 
 export interface StudioLine {
   text: string;
-  /** The bundled WAV. */
+  /** The bundled clip (its format is whatever the show ships; decoded by `decodeAudioData`). */
   url: string;
+  /** The mood and gesture the show recorded with the line (perfection-pass task 6: the default). */
+  emotion?: Emotion;
+  gesture?: Gesture;
 }
 
 export interface ReplayLines {
@@ -41,7 +45,12 @@ export interface Speaker {
 type UrlOf = (wav: string) => string | undefined;
 
 function recorded(show: ShowScript, urlOf: UrlOf | undefined): StudioLine[] {
-  return (urlOf === undefined ? linesOf(show) : linesOf(show, urlOf)).map((line) => ({ text: line.reply.line, url: line.url }));
+  return (urlOf === undefined ? linesOf(show) : linesOf(show, urlOf)).map(({ reply, url }) => ({
+    text: reply.line,
+    url,
+    emotion: reply.emotion,
+    ...(reply.gesture === undefined ? {} : { gesture: reply.gesture }),
+  }));
 }
 
 /** The recorded lines `who` can say on the replay plane (see the header for the borrowing rule). */

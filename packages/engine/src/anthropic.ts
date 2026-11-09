@@ -32,7 +32,13 @@ export function engineModel(env: EngineEnv): string {
   return env.SR_ENGINE_MODEL?.trim() || DEFAULT_ENGINE_MODEL;
 }
 
-/** The Messages API body for one request. Exposed so tests can pin its shape. */
+/**
+ * The Messages API body for one request. Exposed so tests can pin its shape.
+ * perfection-pass 5: the system prompt (bible + rules, stable for a character) is one text block
+ * with a `cache_control` breakpoint, so every beat after the first reads it from the prompt cache;
+ * everything that changes per beat (chat, picked id, beat number) is in the user turn after it. A
+ * prefix under the model's cacheable minimum (512 tokens on Haiku 5.5) is simply not cached.
+ */
 export function buildMessagesBody(req: EngineRequest, model: string): Record<string, unknown> {
   return {
     model,
@@ -40,7 +46,7 @@ export function buildMessagesBody(req: EngineRequest, model: string): Record<str
     // A one-line chat reply needs no reasoning; thinking off keeps all 300 tokens for the answer.
     thinking: { type: "disabled" },
     output_config: { effort: "low", format: { type: "json_schema", schema: REPLY_SCHEMA } },
-    system: personaPrompt(req.persona),
+    system: [{ type: "text", text: personaPrompt(req.persona), cache_control: { type: "ephemeral" } }],
     messages: [{ role: "user", content: turnPrompt(req) }],
   };
 }

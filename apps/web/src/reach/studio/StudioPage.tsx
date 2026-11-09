@@ -1,30 +1,54 @@
-// /studio (spec avatar-reach, design "Studio", requirements 4.1-4.4): pick a character, see it
-// live on a background colour, give it a line (typed on live, recorded on replay), Preview it with
-// lip-sync and Record it into a WebM to download.
+// /studio (spec avatar-reach, design "Studio", requirements 4.1-4.4; perfection-pass task 6,
+// requirements 6.1-6.4): pick a character, see it live on a background, give it a script (typed
+// lines on live, recorded ones on replay, each with a mood and a gesture), Preview it with
+// lip-sync and Record it into one WebM, at the stage's size or a preset, to download.
 //
 // Decisions the spec leaves open:
 // - The AudioContext is created on the first Preview or Record click (browsers want a gesture)
 //   and lives as long as the page.
-// - The last decoded line is kept, so Record after Preview does not ask the voice again (a live
-//   line costs a TTS call).
+// - Decoded lines are cached (clips.ts), so Record after Preview does not ask the voice again (a
+//   live line costs a TTS call).
 // - The first cast pack is picked when the page opens with nothing picked, so a first visit has a
 //   character on screen with no keys.
-import { createAvatarPlayer, type AvatarPlayer } from "@sr/avatar/core";
+// - The script starts as one line (replay: the first recorded line, with its recorded mood and
+//   gesture; live: an empty box) and is reset when the character changes.
+// - A take is one mixed buffer with its cues and per-line mouth tracks (take.ts); Preview runs its
+//   director beside the on-screen player, Record steps it per frame (recorder.ts). Afterwards the
+//   player is put back in the look's own mood.
+// - A preset size records from a second player (takeStage.ts); "as shown" from the on-screen one.
+// - The finished take states its size and length, and carries its measured figures (frames, the
+//   longest frame gap, the A/V drift by the last line) as data attributes for the e2e test.
+import { createAvatarPlayer, isReducedMotion, type AvatarPlayer } from "@sr/avatar/core";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from "react";
 import { apiFetch, type Plane } from "../../app/plane";
 import { loadPlayable, type Playable, type PlayableSource } from "../playable";
+import { aspectOf, type AspectId } from "./aspect";
 import { FALLBACK_BACKGROUND, readSwatches } from "./background";
-import { LinePanel } from "./LinePanel";
-import { liveAudio, recordedAudio, replayLines, type LineAudio } from "./lines";
-import { canRecord, pickMimeType, playLine, RecordError, recordLine, RECORD_FAILED, type Playback, type RecorderClass } from "./recorder";
+import { decodeScript, type ClipCache } from "./clips";
+import { frameLoop } from "./lipsync";
+import { liveAudio, recordedAudio, replayLines } from "./lines";
+import { OutputPanel } from "./OutputPanel";
+import { canRecord, pickMimeType, playLine, RecordError, recordLine, RECORD_FAILED, TRANSPARENT, type Playback, type RecorderClass, type TakeStats } from "./recorder";
+import { DEFAULT_PAUSE_MS, MAX_TAKE_S, recordedRow, scriptOf, scriptReady, typedRow, type ScriptLine, type ScriptRow } from "./script";
+import { ScriptPanel } from "./ScriptPanel";
 import { SourcePicker } from "./SourcePicker";
 import styles from "./Studio.module.css";
+import { buildTake, directTake, type BuiltTake } from "./take";
+import { takeStage } from "./takeStage";
+
+export { NO_AUDIO } from "./clips";
 
 type Load = { kind: "none" } | { kind: "loading" } | { kind: "ready"; playable: Playable } | { kind: "error"; error: string };
 type Work = { kind: "idle" } | { kind: "voicing" } | { kind: "playing" } | { kind: "recording"; progress: number } | { kind: "error"; error: string };
+interface Recorded {
+  url: string;
+  name: string;
+  width: number;
+  height: number;
+  stats: TakeStats;
+}
 
 export const NO_RECORDER = "This browser cannot record video (it lacks MediaRecorder or canvas capture). Preview still works; try a current Chrome, Edge or Firefox to record.";
-export const NO_AUDIO = "This line's audio could not be played.";
 
 /** "Arch-Lich Malakor" -> "arch-lich-malakor" (the download's name). */
 export function fileSlug(name: string): string {
@@ -36,23 +60,31 @@ export function fileSlug(name: string): string {
   );
 }
 
+const REDUCED_QUERY = "(prefers-reduced-motion: reduce)";
+const FRAMES = { request: (cb: FrameRequestCallback) => window.requestAnimationFrame(cb), cancel: (h: number) => window.cancelAnimationFrame(h) };
+
 const recordSentence = (err: unknown): string => (err instanceof RecordError ? err.message : RECORD_FAILED);
+
+/** The A/V drift by the last line (TakeStats.offsetsMs: last minus first), ms. */
+export const driftMs = (stats: TakeStats): number => (stats.offsetsMs.at(-1) ?? 0) - (stats.offsetsMs[0] ?? 0);
 
 export default function StudioPage({ plane }: { plane: Plane }): ReactElement {
   const [sourceKey, setSourceKey] = useState<string | undefined>(undefined);
   const [load, setLoad] = useState<Load>({ kind: "none" });
   const swatches = useMemo(() => readSwatches(), []);
-  const [background, setBackground] = useState(() => swatches[0]?.hex ?? FALLBACK_BACKGROUND);
-  const [text, setText] = useState("");
-  const [picked, setPicked] = useState(0);
+  const [colour, setColour] = useState(() => swatches[0]?.hex ?? FALLBACK_BACKGROUND);
+  const [background, setBackground] = useState(colour);
+  const [aspect, setAspect] = useState<AspectId>("shown");
+  const [rows, setRows] = useState<ScriptRow[]>([]);
+  const [pauseMs, setPauseMs] = useState(DEFAULT_PAUSE_MS);
   const [work, setWork] = useState<Work>({ kind: "idle" });
-  const [take, setTake] = useState<{ url: string; name: string } | undefined>(undefined);
+  const [take, setTake] = useState<Recorded | undefined>(undefined);
   const recordable = useMemo(() => canRecord(), []);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const playerRef = useRef<AvatarPlayer | undefined>(undefined);
   const contextRef = useRef<AudioContext | undefined>(undefined);
-  const cacheRef = useRef<{ key: string; buffer: AudioBuffer } | undefined>(undefined);
+  const clips = useRef<ClipCache>(new Map());
   const playbackRef = useRef<Playback | undefined>(undefined);
   const recordAbort = useRef<AbortController | undefined>(undefined);
   const takes = useRef(0);
@@ -62,13 +94,18 @@ export default function StudioPage({ plane }: { plane: Plane }): ReactElement {
   const replay = useMemo(() => (playable === undefined ? { lines: [] } : replayLines(playable)), [playable]);
   const busy = work.kind === "voicing" || work.kind === "playing" || work.kind === "recording";
 
+  // A new character (or plane) starts a new one-line script.
+  useEffect(() => {
+    const first = replay.lines[0];
+    setRows(playable === undefined ? [] : plane === "live" ? [typedRow()] : first === undefined ? [] : [recordedRow(first)]);
+  }, [playable, plane, replay]);
+
   const pick = useCallback((key: string, source: PlayableSource) => {
     loadAbort.current?.abort();
     const abort = new AbortController();
     loadAbort.current = abort;
     setSourceKey(key);
     setLoad({ kind: "loading" });
-    setPicked(0);
     setWork({ kind: "idle" });
     void loadPlayable(source, { signal: abort.signal }).then((result) => {
       if (abort.signal.aborted) return;
@@ -107,76 +144,89 @@ export default function StudioPage({ plane }: { plane: Plane }): ReactElement {
   );
   useEffect(() => () => (take === undefined ? undefined : URL.revokeObjectURL(take.url)), [take]);
 
-  /** The decoded line now chosen (typed or recorded), or the sentence that says why not. */
-  const lineBuffer = async (who: Playable): Promise<{ ok: true; buffer: AudioBuffer; context: AudioContext } | { ok: false; error: string }> => {
+  const reduced = (): boolean => isReducedMotion(window.matchMedia?.(REDUCED_QUERY).matches ?? false, canvasRef.current?.closest("[data-motion]")?.getAttribute("data-motion"));
+
+  /** The script as one take (decoded, mixed, cued), or the sentence that says why not. */
+  const prepare = async (who: Playable): Promise<{ ok: true; context: AudioContext; take: BuiltTake<AudioBuffer> } | { ok: false; error: string }> => {
     const context = (contextRef.current ??= new AudioContext());
     if (context.state === "suspended") await context.resume().catch(() => undefined);
-    const line = replay.lines[picked];
-    const key = plane === "live" ? `live|${who.voice}|${text.trim()}` : `replay|${line?.url ?? ""}`;
-    const cached = cacheRef.current;
-    if (cached?.key === key) return { ok: true, buffer: cached.buffer, context };
-    let audio: LineAudio;
-    if (plane === "live") audio = await liveAudio(apiFetch, text, who);
-    else if (line === undefined) return { ok: false, error: "Pick a recorded line first." };
-    else audio = await recordedAudio((url, init) => fetch(url, init), line);
-    if (!audio.ok) return audio;
-    try {
-      const buffer = await context.decodeAudioData(audio.bytes);
-      cacheRef.current = { key, buffer };
-      return { ok: true, buffer, context };
-    } catch {
-      return { ok: false, error: NO_AUDIO };
-    }
+    const script = scriptOf(rows);
+    const result = await decodeScript(script, clips.current, {
+      context,
+      keyOf: (line: ScriptLine) => (line.url === undefined ? `live|${who.voice}|${line.text.trim()}` : `replay|${line.url}`),
+      fetchLine: (line: ScriptLine) =>
+        line.url === undefined ? liveAudio(apiFetch, line.text, who) : recordedAudio((url, init) => fetch(url, init), { text: line.text, url: line.url }),
+    });
+    if (!result.ok) return result;
+    const built = buildTake(context, script, result.decoded, { pauseMs, lookEmotion: who.look.emotion, maxS: MAX_TAKE_S });
+    return built.ok ? { ok: true, context, take: built.take } : built;
   };
 
   const preview = async () => {
     const player = playerRef.current;
     if (playable === undefined || player === undefined || busy) return;
     setWork({ kind: "voicing" });
-    const line = await lineBuffer(playable);
-    if (!line.ok) return setWork({ kind: "error", error: line.error });
-    const playback = playLine(line.context, line.buffer, player);
+    const ready = await prepare(playable);
+    if (!ready.ok) return setWork({ kind: "error", error: ready.error });
+    const { context, take: built } = ready;
+    const playback = playLine(context, built.mix, player);
     playbackRef.current = playback;
+    const stopLoop = frameLoop(player, directTake(player, built.cues, built.mouths, reduced, playback.clock), FRAMES);
     setWork({ kind: "playing" });
     await playback.ended;
+    stopLoop();
+    player.setLook(playable.look);
     if (playbackRef.current === playback) playbackRef.current = undefined;
     setWork({ kind: "idle" });
   };
 
   const record = async () => {
-    const player = playerRef.current;
+    const screen = playerRef.current;
     const canvas = canvasRef.current;
     const Recorder: RecorderClass | undefined = typeof MediaRecorder === "function" ? MediaRecorder : undefined;
-    if (playable === undefined || player === undefined || canvas === null || Recorder === undefined || busy) return;
+    if (playable === undefined || screen === undefined || canvas === null || Recorder === undefined || busy) return;
     const mimeType = pickMimeType((type) => Recorder.isTypeSupported(type));
     if (mimeType === undefined) return setWork({ kind: "error", error: NO_RECORDER });
     setWork({ kind: "voicing" });
-    const line = await lineBuffer(playable);
-    if (!line.ok) return setWork({ kind: "error", error: line.error });
+    const ready = await prepare(playable);
+    if (!ready.ok) return setWork({ kind: "error", error: ready.error });
+    const { context, take: built } = ready;
+    const size = aspectOf(aspect).size;
+    const stage = size === undefined ? undefined : takeStage(screen, { rig: playable.rig, look: playable.look, assets: playable.assets, reducedMotion: reduced() }, size, document.createElement("canvas"));
+    if (size !== undefined && stage === undefined) return setWork({ kind: "error", error: "This browser could not draw the video frame." });
+    const player = stage?.player ?? screen;
+    const target = document.createElement("canvas");
     const abort = new AbortController();
     recordAbort.current = abort;
     setWork({ kind: "recording", progress: 0 });
     try {
-      const blob = await recordLine({
-        context: line.context,
-        buffer: line.buffer,
+      const { blob, stats } = await recordLine({
+        context,
+        buffer: built.mix,
         player,
-        source: canvas,
-        target: document.createElement("canvas"),
+        direct: (clock) => directTake(player, built.cues, built.mouths, reduced, clock),
+        marks: built.plan.startsS,
+        source: stage?.source ?? canvas,
+        target,
+        ...(size === undefined ? {} : { size }),
+        ...(stage === undefined ? {} : { place: stage.place }),
         background,
         Recorder,
         mimeType,
-        frames: { request: (cb) => window.requestAnimationFrame(cb), cancel: (h) => window.cancelAnimationFrame(h) },
+        frames: FRAMES,
         wait: (ms) => new Promise<void>((resolve) => window.setTimeout(resolve, ms)),
         onProgress: (progress) => setWork({ kind: "recording", progress }),
         signal: abort.signal,
       });
       if (abort.signal.aborted) return;
       takes.current += 1;
-      setTake({ url: URL.createObjectURL(blob), name: `${fileSlug(playable.name)}-${takes.current}.webm` });
+      setTake({ url: URL.createObjectURL(blob), name: `${fileSlug(playable.name)}-${takes.current}.webm`, width: target.width, height: target.height, stats });
       setWork({ kind: "idle" });
     } catch (err) {
       if (!abort.signal.aborted) setWork({ kind: "error", error: recordSentence(err) });
+    } finally {
+      stage?.dispose();
+      screen.setLook(playable.look);
     }
   };
 
@@ -186,36 +236,32 @@ export default function StudioPage({ plane }: { plane: Plane }): ReactElement {
     setWork({ kind: "idle" });
   };
 
+  const pickBackground = (value: string) => {
+    setBackground(value);
+    if (value !== TRANSPARENT) setColour(value);
+  };
+
   const name = playable?.name ?? "The character";
-  const ready = playable !== undefined && (plane === "live" ? text.trim().length > 0 : replay.lines.length > 0);
+  const ready = playable !== undefined && scriptReady(rows);
 
   return (
     <section data-page="studio" data-plane={plane} aria-label="Studio" className={styles.studio}>
       <div className={styles.controls}>
         <SourcePicker current={sourceKey} onPick={pick} busy={busy} />
-        <fieldset className={styles.group} disabled={busy}>
-          <legend className={styles.legend}>Background</legend>
-          <div className={styles.swatches}>
-            {swatches.map((swatch) => (
-              <button
-                key={swatch.role}
-                type="button"
-                className={styles.swatch}
-                style={{ background: swatch.hex }}
-                aria-label={swatch.label}
-                aria-pressed={background === swatch.hex}
-                onClick={() => setBackground(swatch.hex)}
-              />
-            ))}
-            <label className={styles.colour}>
-              <span>Any colour</span>
-              <input type="color" value={background} onChange={(e) => setBackground(e.target.value)} />
-            </label>
-          </div>
-        </fieldset>
         {playable === undefined ? null : (
-          <LinePanel plane={plane} name={name} text={text} onText={setText} replay={replay} picked={picked} onPick={setPicked} busy={busy} />
+          <ScriptPanel
+            plane={plane}
+            name={name}
+            lookEmotion={playable.look.emotion}
+            replay={replay}
+            rows={rows}
+            onRows={setRows}
+            pauseMs={pauseMs}
+            onPause={setPauseMs}
+            busy={busy}
+          />
         )}
+        <OutputPanel swatches={swatches} background={background} onBackground={pickBackground} colour={colour} aspect={aspect} onAspect={setAspect} busy={busy} />
         <div className={styles.actions}>
           <button type="button" className={styles.button} disabled={!ready || busy} onClick={() => void preview()}>
             Preview
@@ -249,15 +295,26 @@ export default function StudioPage({ plane }: { plane: Plane }): ReactElement {
             </p>
           ) : null}
           {take === undefined ? null : (
-            <p>
+            <p
+              data-studio="take"
+              data-width={take.width}
+              data-height={take.height}
+              data-frames={take.stats.frames}
+              data-wall-ms={Math.round(take.stats.wallMs)}
+              data-max-gap-ms={Math.round(take.stats.maxGapMs)}
+              data-drift-ms={driftMs(take.stats).toFixed(1)}
+            >
               <a className={styles.download} href={take.url} download={take.name}>
                 Download {take.name}
-              </a>
+              </a>{" "}
+              <span className={styles.hint}>
+                {take.width} × {take.height}, {(take.stats.wallMs / 1000).toFixed(1)} s
+              </span>
             </p>
           )}
         </div>
       </div>
-      <div className={styles.stage} style={{ background }} data-studio="stage">
+      <div className={`${styles.stage} ${background === TRANSPARENT ? styles.checker : ""}`} style={background === TRANSPARENT ? undefined : { background }} data-studio="stage">
         {load.kind === "ready" ? null : (
           <p className={styles.stageNote}>
             {load.kind === "loading" ? "Loading the character…" : load.kind === "error" ? load.error : "Pick a character."}

@@ -11,9 +11,12 @@
 // - A click on the glass that lifts nothing is a pick (character-control "Glass pick"): its point
 //   goes to `onPick` in rig px, and the page draws the picked region's `outline`. A crown piece or
 //   an accessory is still lifted by a click, as before the Look tab.
+// - A spoken line (`audio`) also brings its mouth track (perfection-pass task 4, useClipMouth): a
+//   drawn or warp mouth takes its shapes, other rigs the loudness jaw from `audio`.
 import { AvatarCanvas, type Gaze, type RigAssets } from "@sr/avatar";
 import type { Gesture, Look, Palette, Rig } from "@sr/rig";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useClipMouth } from "../../air/mouthTrack";
 import { boxOf, fromGlass, layerAt, lightPins, type Pin, type Point } from "./pins";
 import { lamp, Ring } from "./Ring";
 import { LIGHT_LABELS, ringOf, swatchName } from "./swatches";
@@ -72,6 +75,8 @@ const holeAround = (b: { left: number; top: number; width: number; height: numbe
 
 export function Glass({ rig, look, assets, gesture, act, audio, gaze, highlight, onPalette, onLift, onPick, outline, chip, children }: GlassProps) {
   const pins = useMemo(() => lightPins(rig), [rig]);
+  // The spoken line's mouth track (perfection-pass task 4; useSpeaker starts it with the words).
+  const mouth = useClipMouth(audio);
   const [open, setOpen] = useState<keyof Palette | undefined>(undefined);
   const [flash, setFlash] = useState<{ n: number; hex: string } | undefined>(undefined);
   const glass = useRef<HTMLDivElement>(null);
@@ -120,6 +125,7 @@ export function Glass({ rig, look, assets, gesture, act, audio, gaze, highlight,
               {...(gesture === undefined ? {} : { gesture })}
               {...(act === undefined ? {} : { act })}
               {...(audio === undefined ? {} : { audio })}
+              {...(mouth === undefined ? {} : { mouth })}
               {...(gaze === undefined ? {} : { gaze })}
             />
           </div>

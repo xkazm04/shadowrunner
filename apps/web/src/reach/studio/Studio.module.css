@@ -118,7 +118,81 @@
 .actions {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: var(--sr-space-2);
+}
+
+/* The script (ScriptPanel.tsx): numbered rows, each a line, its mood and gesture, and its moves. */
+.script {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sr-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--sr-space-1) var(--sr-space-2);
+  padding-block-end: var(--sr-space-2);
+  border-block-end: 0.0625rem solid var(--sr-line);
+}
+
+.rowNumber {
+  grid-row: span 2;
+  color: var(--sr-text-muted);
+  font-family: var(--sr-font-display);
+}
+
+.rowControls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--sr-space-2);
+}
+
+.rowButtons {
+  display: flex;
+  gap: var(--sr-space-1);
+  margin-inline-start: auto;
+}
+
+.small {
+  font: inherit;
+  font-size: var(--sr-size-text-sm);
+  min-inline-size: 2rem;
+  padding: var(--sr-space-1) var(--sr-space-2);
+  color: var(--sr-text-strong);
+  background: var(--sr-surface-2);
+  border: 0.0625rem solid var(--sr-line);
+  border-radius: var(--sr-radius-1);
+  cursor: pointer;
+}
+
+.small:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.small:focus-visible,
+.swatch:focus-visible {
+  outline: 0.125rem solid var(--sr-accent);
+  outline-offset: 0.125rem;
+}
+
+.aspects {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sr-space-1);
+}
+
+/* "Transparent": the swatch and the stage show a checkerboard of two surface roles. */
+.checker {
+  background-color: var(--sr-surface-1);
+  background-image: repeating-conic-gradient(var(--sr-surface-1) 0 25%, var(--sr-surface-2) 0 50%);
+  background-size: 1rem 1rem;
 }
 
 .button {

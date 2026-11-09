@@ -7,9 +7,17 @@
 // Decisions the spec leaves open:
 // - While recording, the player's own loop is stopped and each frame is stepped with
 //   `renderFrame(dt)` and copied at once, so a WebGL canvas is read before its buffer is cleared.
-//   The loop restarts when the recording ends, however it ends.
-// - The video is the player canvas's pixel size, rounded down to even numbers (codecs want them).
-// - Progress is the time recorded over the line's duration plus the 0.5 s tail.
+//   The loop restarts when the recording ends, however it ends. A director (perfection-pass tasks
+//   4 and 6: moods, gestures, the mouth track) sets each frame's face just before `renderFrame`.
+// - The video is the player canvas's pixel size, or a preset size (task 6, aspect.ts) with the
+//   source drawn at `place`, rounded down to even numbers (codecs want them). "transparent"
+//   clears the frame instead of filling it: Chromium's VP8/VP9 MediaRecorder keeps the alpha
+//   (checked on pixels by the e2e studio test).
+// - Pacing is real time: one frame per animation frame, stepped by the wall-clock gap, the audio
+//   played live; captureStream(30) samples at most 30 frames a second. A frame that renders late
+//   is a dropped frame in the video (TakeStats.maxGapMs), never a slower take, so sound and
+//   picture stay on one timeline and the encode takes the take's own length.
+// - Progress is the time recorded over the take's duration plus the 0.5 s tail.
 // - Browser APIs come in through small structural types, so the pipeline is tested with fakes.
 import type { AvatarPlayer } from "@sr/avatar/core";
 import { blobWithDuration } from "./webmDuration";
@@ -67,6 +75,8 @@ export function canRecord(win: RecordWindow | undefined = typeof window === "und
 /** The audio graph a line needs (an AudioContext in the browser). */
 export interface LineContext {
   readonly destination: AudioNode;
+  /** The audio clock, seconds (an AudioContext's; a fake may leave it out: the wall clock stands in). */
+  readonly currentTime?: number;
   createBufferSource(): AudioBufferSourceNode;
   createMediaStreamDestination(): MediaStreamAudioDestinationNode;
 }
@@ -77,6 +87,8 @@ export interface Playback {
   /** Resolves when the line has played out (or was stopped). */
   ended: Promise<void>;
   stop(): void;
+  /** Seconds since the line started, on the audio clock (lip-sync, lipsync.ts). */
+  clock(): number;
 }
 
 /** Plays `buffer` to the speakers (and `also`, when given) with the player's mouth on it. */
@@ -87,6 +99,8 @@ export function playLine(context: LineContext, buffer: AudioBuffer, player: LipS
   if (also !== undefined) source.connect(also);
   player.attachAudio(source);
   let stopped = false;
+  const audioStart = context.currentTime;
+  const wallStart = performance.now();
   const ended = new Promise<void>((resolve) => {
     source.onended = () => {
       if (!stopped) player.attachAudio(undefined);
@@ -97,6 +111,7 @@ export function playLine(context: LineContext, buffer: AudioBuffer, player: LipS
   source.start();
   return {
     ended,
+    clock: () => (audioStart === undefined || context.currentTime === undefined ? (performance.now() - wallStart) / 1000 : context.currentTime - audioStart),
     stop() {
       if (stopped) return;
       try {
@@ -111,7 +126,7 @@ export function playLine(context: LineContext, buffer: AudioBuffer, player: LipS
 export interface CaptureCanvas {
   width: number;
   height: number;
-  getContext(kind: "2d"): Pick<CanvasRenderingContext2D, "fillStyle" | "fillRect" | "drawImage"> | null;
+  getContext(kind: "2d"): Pick<CanvasRenderingContext2D, "fillStyle" | "fillRect" | "clearRect" | "drawImage"> | null;
   captureStream(fps?: number): MediaStream;
 }
 
@@ -120,15 +135,24 @@ export interface Frames {
   cancel(handle: number): void;
 }
 
+/** What steers the face each recorded frame, on the take's audio clock (take.ts `directTake`). */
+export type Director = (clock: () => number) => { frame(dt: number): void; clear(): void };
+
 export interface RecordJob {
   context: LineContext;
   buffer: AudioBuffer;
-  player: Pick<AvatarPlayer, "attachAudio" | "renderFrame" | "start" | "stop">;
+  player: Pick<AvatarPlayer, "attachAudio" | "renderFrame" | "start" | "stop" | "setMouthShapes" | "mouthMode">;
+  /** Moods, gestures and the mouth for the take; called once, when the audio starts. */
+  direct?: Director;
   /** The player's canvas (transparent). */
   source: CanvasImageSource & { width: number; height: number };
   /** The canvas the video is drawn into. */
   target: CaptureCanvas;
-  /** A CSS colour under the character. */
+  /** The video's size (rounded down to even); default the source's. */
+  size?: { width: number; height: number };
+  /** Where the source is drawn in the video (aspect.ts `placeRig`); default the whole frame. */
+  place?: { x: number; y: number; width: number; height: number };
+  /** A CSS colour under the character, or TRANSPARENT (the frame is cleared, alpha kept). */
   background: string;
   Recorder: RecorderClass;
   mimeType: string;
@@ -136,27 +160,54 @@ export interface RecordJob {
   wait(ms: number): void | Promise<void>;
   onProgress?: (fraction: number) => void;
   signal?: AbortSignal;
+  /** Times on the take's clock, seconds (each line's start), at which the A/V offset is sampled. */
+  marks?: readonly number[];
+}
+
+export const TRANSPARENT = "transparent";
+
+export interface TakeStats {
+  /** Frames drawn into the video canvas. */
+  frames: number;
+  /** The take's wall-clock length, ms. */
+  wallMs: number;
+  /** The longest gap between two drawn frames, ms (a dropped frame shows here). */
+  maxGapMs: number;
+  /**
+   * Per mark: the video's wall clock minus the audio clock, ms, at the first frame on or after
+   * the mark. The last minus the first is how far the picture drifted from the sound by then.
+   */
+  offsetsMs: number[];
+}
+
+export interface Take {
+  blob: Blob;
+  stats: TakeStats;
 }
 
 export class RecordError extends Error {}
 
 const even = (n: number): number => Math.max(2, Math.floor(n / 2) * 2);
 
-/** Records one line as a WebM Blob. Rejects with a RecordError whose message is a sentence. */
-export function recordLine(job: RecordJob): Promise<Blob> {
+/** Records one take (a line, or a script mixed into one buffer) as a WebM. Rejects with a RecordError whose message is a sentence. */
+export function recordLine(job: RecordJob): Promise<Take> {
   const { player, target, source } = job;
-  target.width = even(source.width);
-  target.height = even(source.height);
+  target.width = even(job.size?.width ?? source.width);
+  target.height = even(job.size?.height ?? source.height);
   const g = target.getContext("2d");
   if (g === null) return Promise.reject(new RecordError(NO_CANVAS));
+  const place = job.place ?? { x: 0, y: 0, width: target.width, height: target.height };
 
   const draw = (): void => {
-    g.fillStyle = job.background;
-    g.fillRect(0, 0, target.width, target.height);
-    g.drawImage(source, 0, 0, target.width, target.height);
+    if (job.background === TRANSPARENT) g.clearRect(0, 0, target.width, target.height);
+    else {
+      g.fillStyle = job.background;
+      g.fillRect(0, 0, target.width, target.height);
+    }
+    g.drawImage(source, place.x, place.y, place.width, place.height);
   };
 
-  return new Promise<Blob>((resolve, reject) => {
+  return new Promise<Take>((resolve, reject) => {
     let video: MediaStream;
     let recorder: MediaRecorderLike;
     let audio: MediaStreamAudioDestinationNode;
@@ -173,7 +224,13 @@ export function recordLine(job: RecordJob): Promise<Blob> {
     const total = job.buffer.duration + TAIL_S;
     let handle: number | undefined;
     let playback: Playback | undefined;
+    let shaper: ReturnType<Director> | undefined;
     let settled = false;
+    let frameCount = 0;
+    let maxGapMs = 0;
+    let playStart: number | undefined;
+    const marks = job.marks ?? [];
+    const offsetsMs: number[] = [];
     let failed = false;
     // The take's wall-clock length, written into the WebM (MediaRecorder leaves it out; webmDuration.ts).
     let startedAt: number | undefined;
@@ -183,6 +240,7 @@ export function recordLine(job: RecordJob): Promise<Blob> {
       if (handle !== undefined) job.frames.cancel(handle);
       handle = undefined;
       playback?.stop();
+      shaper?.clear();
       player.attachAudio(undefined);
       for (const track of video.getTracks()) track.stop();
       job.signal?.removeEventListener("abort", abort);
@@ -207,7 +265,10 @@ export function recordLine(job: RecordJob): Promise<Blob> {
       if (failed || chunks.length === 0) reject(new RecordError(RECORD_FAILED));
       else {
         const blob = new Blob(chunks, { type: "video/webm" });
-        resolve(startedAt === undefined || stoppedAt === undefined ? blob : blobWithDuration(blob, stoppedAt - startedAt));
+        const wallMs = startedAt === undefined || stoppedAt === undefined ? 0 : stoppedAt - startedAt;
+        void (wallMs > 0 ? blobWithDuration(blob, wallMs) : Promise.resolve(blob)).then((timed) =>
+          resolve({ blob: timed, stats: { frames: frameCount, wallMs, maxGapMs, offsetsMs } }),
+        );
       }
     }
 
@@ -226,17 +287,29 @@ export function recordLine(job: RecordJob): Promise<Blob> {
     const tick = (now: number): void => {
       if (settled) return;
       const dt = last === undefined ? 0 : Math.max(0, (now - last) / 1000);
+      if (last !== undefined) maxGapMs = Math.max(maxGapMs, now - last);
       last = now;
       elapsed += dt;
+      shaper?.frame(dt);
       player.renderFrame(dt);
       draw();
+      frameCount += 1;
+      sample();
       job.onProgress?.(Math.min(1, elapsed / total));
       handle = job.frames.request(tick);
+    };
+    // The A/V offset at each mark (TakeStats.offsetsMs): wall time since the audio started minus the audio clock.
+    const sample = (): void => {
+      if (playback === undefined || playStart === undefined || offsetsMs.length >= marks.length) return;
+      const audioS = playback.clock();
+      if (audioS >= (marks[offsetsMs.length] ?? Infinity)) offsetsMs.push(performance.now() - playStart - audioS * 1000);
     };
     try {
       recorder.start(1000);
       startedAt = performance.now();
       playback = playLine(job.context, job.buffer, player, audio);
+      playStart = performance.now();
+      if (job.direct !== undefined) shaper = job.direct(playback.clock);
     } catch {
       fail();
       return;

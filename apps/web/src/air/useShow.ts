@@ -5,6 +5,7 @@
 import type { Persona, ShowScript } from "@sr/engine";
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 import { apiFetch, fetchHealth, type Fetcher } from "../app/plane";
+import { trackForClip } from "./mouthTrack";
 import type { LocalScript } from "./sheetShow";
 import { createShow, type PlayResult, type Show, type ShowSnapshot, type VoicePlayer } from "./show";
 
@@ -19,12 +20,15 @@ export async function lineHealthy(fetch: Fetcher): Promise<boolean> {
 
 /**
  * Plays URLs on one <audio> element. `ensureRunning` is the Web Audio context check
- * (useLoudness): a context that cannot run means the browser has not allowed sound yet.
+ * (useLoudness): a context that cannot run means the browser has not allowed sound yet. Each line's
+ * mouth track is started with its text as the line starts (`analyse`, mouthTrack.ts), so the
+ * stage's reader (useClipMouth) finds it made with the words.
  */
-export function createElementPlayer(audio: HTMLAudioElement, ensureRunning: () => Promise<boolean>): VoicePlayer {
+export function createElementPlayer(audio: HTMLAudioElement, ensureRunning: () => Promise<boolean>, analyse: (url: string, text?: string) => unknown = trackForClip): VoicePlayer {
   let finish: ((result: PlayResult) => void) | undefined;
   return {
-    async play(url) {
+    async play(url, text) {
+      analyse(url, text);
       finish?.("error");
       if (!(await ensureRunning())) return "blocked";
       return new Promise<PlayResult>((resolve) => {
@@ -61,6 +65,8 @@ export interface UseShowOptions {
   fetch?: Fetcher;
   /** C4: a sheet show on replay runs in the browser (sheetShow.ts). */
   local?: LocalScript;
+  /** perfection-pass 5.4: fetch the next beat while a line plays (the live plane only). */
+  prefetch?: boolean;
 }
 
 export interface UseShow {
@@ -72,11 +78,11 @@ export interface UseShow {
   soundOn(): void;
 }
 
-const IDLE: ShowSnapshot = { status: "booting", chat: [], sound: "on", beat: 0 };
+const IDLE: ShowSnapshot = { status: "booting", chat: [], sound: "on", beat: 0, pending: undefined };
 const idleShow: Pick<Show, "subscribe" | "snapshot"> = { subscribe: () => () => undefined, snapshot: () => IDLE };
 
 /** The show starts once the stage's <audio> element exists; the face may still be loading. */
-export function useShow({ show, persona, self, audio, ensureRunning, fetch = apiFetch, local }: UseShowOptions): UseShow {
+export function useShow({ show, persona, self, audio, ensureRunning, fetch = apiFetch, local, prefetch = false }: UseShowOptions): UseShow {
   const controller = useMemo(() => {
     if (audio === null) return undefined;
     return createShow({
@@ -91,8 +97,11 @@ export function useShow({ show, persona, self, audio, ensureRunning, fetch = api
       objectUrl: (blob) => URL.createObjectURL(blob),
       revokeUrl: (url) => URL.revokeObjectURL(url),
       ...(local === undefined ? {} : { local }),
+      // A sheet show on replay never prefetches (nothing to wait on); a prefetched clip's mouth track starts as it lands.
+      prefetch: prefetch && local === undefined,
+      analyse: trackForClip,
     });
-  }, [show, persona, self, fetch, audio, ensureRunning, local]);
+  }, [show, persona, self, fetch, audio, ensureRunning, local, prefetch]);
 
   useEffect(() => {
     if (controller === undefined) return undefined;

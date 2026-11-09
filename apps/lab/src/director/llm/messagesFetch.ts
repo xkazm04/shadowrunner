@@ -22,6 +22,13 @@ function messagesOf(value: unknown): LlmMessage[] {
   return out;
 }
 
+/** The system prompt: a string, or text blocks (the engine sends one cached block, perfection-pass 5) joined. */
+function systemOf(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (!Array.isArray(value)) return "";
+  return value.flatMap((b) => (isRecord(b) && b.type === "text" && typeof b.text === "string" ? [b.text] : [])).join("\n\n");
+}
+
 function schemaOf(body: Readonly<Record<string, unknown>>): Record<string, unknown> | undefined {
   const config = body.output_config;
   if (!isRecord(config) || !isRecord(config.format)) return undefined;
@@ -49,7 +56,7 @@ export function createMessagesFetch(
     let stop = "end_turn";
     try {
       for await (const chunk of transport.complete({
-        system: typeof body.system === "string" ? body.system : "",
+        system: systemOf(body.system),
         messages: messagesOf(body.messages),
         ...(schema === undefined ? {} : { schema }),
         ...(typeof body.model === "string" ? { model: body.model } : {}),

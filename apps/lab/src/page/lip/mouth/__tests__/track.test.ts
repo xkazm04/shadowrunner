@@ -1,11 +1,13 @@
-// The viseme scheduler on the audio clock (WP3 acceptance): a span's shape is dominant within one
+// The viseme scheduler (now @sr/avatar's mouth/track.ts) on the audio clock (WP3 acceptance): a span's shape is dominant within one
 // frame of its start, the blend is continuous, silence returns to rest within 100 ms.
 import { describe, expect, it } from "vitest";
 import { VISEMES, type Viseme } from "../../../../contract.js";
 import { blendParams, dominant, MOUTH_SHAPES, VISEME_SHAPE } from "../shapes.js";
-import { BLEND_MS, createVisemeTrack, spanWeight } from "../track.js";
+import { BLEND_MS, createVisemeTrack as createShapeTrack, spanWeight } from "@sr/avatar/core";
 
 const FRAME_MS = 1000 / 60;
+/** The scheduler as the lip arms build it (@sr/avatar's, with the Oculus-15 grouping). */
+const createVisemeTrack = () => createShapeTrack(VISEME_SHAPE);
 const sum = (w: Record<string, number>): number => Object.values(w).reduce((a, b) => a + b, 0);
 
 /** A line at audio time 1000 ms: aa 0-120, PP 120-200, ou 200-330, FF 330-345 (short), then silence. */

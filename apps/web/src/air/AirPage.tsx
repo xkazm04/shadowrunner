@@ -14,6 +14,13 @@
 // script runs in the browser (no engine or voice request) and the slate says SCRIPTED.
 // tiger L1: a line that says a part's cue word fires that part's signature act (useActCue.ts); a
 // recorded cast character's acts are compiled from its recorded brief at load time (castActs.ts).
+// perfection-pass 4: the face reads the stage's one analyser tap (`level`) and, while a line plays,
+// the line's mouth track (mouthTrack.ts); a rig without a drawn or warp mouth keeps the level jaw.
+// perfection-pass 5: never dead air. Between lines, once the wait is worth showing (show.ts
+// `pending`), the face listens toward the chat (gaze "chat", a head tilt while it reads) and takes
+// the reply's emotion the moment the reply lands; the reply's gesture stays with the spoken line
+// (a gesture is a beat of delivery, and the prop fires once per change). Film grain over the set
+// (Grain.tsx). On the live plane the next line is fetched while this one plays (show.ts).
 import { AvatarCanvas, type RigAssets } from "@sr/avatar";
 import { castSlug, MAX_CHAT_CHARS } from "@sr/engine";
 import { defaultLook, type Look, type Rig } from "@sr/rig";
@@ -25,11 +32,13 @@ import { Captions } from "./Captions";
 import { castActs } from "./castActs";
 import { CatacombFront, CatacombLights, CatacombPlate } from "./Catacomb";
 import { Chat } from "./Chat";
+import { Grain } from "./Grain";
 import { castBank, castFor } from "./cast";
 import { loadRigAssets, MALAKOR_NAME, malakorRig } from "./malakor";
 import { OnAirLamp, VoiceTally } from "./OnAirLamp";
 import { useOnAir, type OnAirState } from "./onAir";
 import { localScript } from "./sheetShow";
+import { useClipMouth } from "./mouthTrack";
 import { useLoudness } from "./useLoudness";
 import { useActCue } from "./useActCue";
 import { useShow } from "./useShow";
@@ -155,6 +164,8 @@ export function AirPage({ plane, badge, controls, strip }: AirPageProps) {
   const loaded = useFace(who);
   const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
   const loudness = useLoudness(audio);
+  // The line's mouth track (perfection-pass task 4): shapes for a drawn or warp mouth while it speaks.
+  const clipMouth = useClipMouth(audio);
   const speaker = typeof who === "object" ? who : undefined;
   const { id, name, voice, sheet } = speaker ?? {};
   const faceRig = typeof loaded === "object" ? loaded.rig : undefined;
@@ -174,8 +185,9 @@ export function AirPage({ plane, badge, controls, strip }: AirPageProps) {
     audio: who === "looking" ? null : audio,
     ensureRunning: loudness.ensureRunning,
     ...(local === undefined ? {} : { local }),
+    prefetch: plane === "live",
   });
-  const { status, caption, chat, sound } = snapshot;
+  const { status, caption, chat, sound, pending, upcoming, answering } = snapshot;
   const speaking = status === "speaking";
   const voiced = useVoiced(loudness.jawOpen, speaking && caption?.voiced === true);
   const onAir = status === "on_air" || status === "speaking";
@@ -195,14 +207,16 @@ export function AirPage({ plane, badge, controls, strip }: AirPageProps) {
     if (answeredNow !== undefined) setAnswered((prev) => (prev.has(answeredNow) ? prev : new Set(prev).add(answeredNow)));
   }, [answeredNow]);
 
-  const emotion = speaking && caption ? caption.reply.emotion : "neutral";
+  // Waiting on the next line: eyes to the chat; the reply's emotion as soon as it lands.
+  const thinking = !speaking && !dead && pending !== undefined;
+  const emotion = speaking && caption ? caption.reply.emotion : thinking ? (upcoming?.emotion ?? "neutral") : "neutral";
   const look = useMemo<Look | undefined>(() => {
     if (typeof loaded !== "object") return undefined;
     const base = loaded.look ?? defaultLook(loaded.rig);
     return { ...base, hidden: [...new Set([...base.hidden, ...STAGE_HIDDEN])].sort(), emotion };
   }, [loaded, emotion]);
   const title = typeof loaded === "object" && loaded.name !== undefined ? loaded.name : `Arch-Lich ${MALAKOR_NAME}`;
-  const gesture = speaking ? caption?.reply.gesture : undefined;
+  const gesture = speaking ? caption?.reply.gesture : thinking && pending === "reply" ? "tilt" : undefined;
   const actFire = useActCue(speaking ? caption : undefined, audio, acts);
 
   return (
@@ -226,7 +240,9 @@ export function AirPage({ plane, badge, controls, strip }: AirPageProps) {
               className={styles.face}
               // LINE DEAD: only the eyes stay lit (the renderer's eyes-only dim; instant under reduced motion).
               dim={dead ? 1 : 0}
-              {...(loudness.source === undefined ? {} : { audio: loudness.source })}
+              level={loudness.level}
+              {...(thinking ? { gaze: "chat" as const } : {})}
+              {...(speaking && clipMouth !== undefined ? { mouth: clipMouth } : {})}
               {...(gesture === undefined ? {} : { gesture })}
               {...(actFire === undefined ? {} : { act: actFire })}
             />
@@ -235,6 +251,7 @@ export function AirPage({ plane, badge, controls, strip }: AirPageProps) {
           )}
         </div>
         <CatacombFront />
+        <Grain />
         <header className={styles.top}>
           <div className={styles.slate}>
             <h1 className={styles.name}>{title}</h1>
@@ -252,7 +269,15 @@ export function AirPage({ plane, badge, controls, strip }: AirPageProps) {
             {controls}
           </div>
         </header>
-        <Captions caption={speaking ? caption : undefined} speaker={cast.self} dead={dead} audio={audio} />
+        <Captions
+          caption={speaking ? caption : undefined}
+          speaker={cast.self}
+          dead={dead}
+          audio={audio}
+          pending={thinking ? pending : undefined}
+          upcoming={upcoming}
+          asking={answering === undefined ? undefined : chat.find((m) => m.id === answering)}
+        />
         {sound === "blocked" && (
           <button type="button" className={styles.soundOn} onClick={soundOn}>
             Sound on
@@ -268,6 +293,7 @@ export function AirPage({ plane, badge, controls, strip }: AirPageProps) {
         velocity={lights.velocity}
         heat={dead ? 0 : lights.heat}
         {...(answeredNow === undefined ? {} : { answeredId: answeredNow })}
+        {...(answering === undefined ? {} : { pendingId: answering })}
       />
       <audio ref={setAudio} preload="auto" />
     </div>

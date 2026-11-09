@@ -1,7 +1,10 @@
 // "Speak a line" (creator requirement 1.4): the next recorded line (speak.ts) played through one
 // reusable <audio>, which is handed to <AvatarCanvas audio> so it drives the mouth. The element is
-// created on the first press only, so no AudioContext starts before a user gesture.
+// created on the first press only, so no AudioContext starts before a user gesture. Each line's
+// mouth track (perfection-pass task 4) is started here with its words; Glass shapes a drawn or
+// warp mouth from it, other rigs keep the loudness jaw.
 import { useCallback, useEffect, useRef, useState } from "react";
+import { trackForClip } from "../air/mouthTrack";
 import { lineAt, loadLines, type SpokenLine } from "./speak";
 export interface Speaker {
   /** The element to hand to <AvatarCanvas audio>; undefined until the first line. */
@@ -39,6 +42,8 @@ export function useSpeaker(onLine?: (line: SpokenLine) => void): Speaker {
       if (next === undefined) return;
       count.current += 1;
       const el = (element.current ??= new Audio());
+      // The line's mouth track, made with its words; Glass reads it for the element (useClipMouth).
+      void trackForClip(next.url, next.reply.line);
       el.src = next.url;
       el.onended = () => setLine(undefined);
       setAudio(el);
