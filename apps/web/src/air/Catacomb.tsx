@@ -2,7 +2,8 @@
 // a symmetrical corridor plate whose vanishing point sits behind Malakor's skull. The tunnel's
 // far light is his backlight (--back, bound to the speech level by useStageLights); the eight
 // candles painted into the plate carry live flames (--flame, --glow, --refl per candle, from
-// candleLevels). Pure presentation: every moving value is a CSS variable written through refs.
+// candleLevels). Pure presentation: every moving value is a CSS variable written through refs; the
+// layers that read --back carry `data-back`, so the loop writes it on them and not on the stage.
 import type { RefObject } from "react";
 import { CANDLE_COUNT } from "./candles";
 import styles from "./Catacomb.module.css";
@@ -20,7 +21,7 @@ export function CatacombPlate({ candles }: CatacombProps) {
     <div className={styles.plate} aria-hidden="true">
       <span className={styles.img} />
       <span className={styles.grade} />
-      <span className={styles.tunnel} />
+      <span className={styles.tunnel} data-back />
       {INDICES.map((i) => (
         <span
           key={i}
@@ -47,7 +48,7 @@ export function CatacombLights() {
       <span className={styles.bulb} aria-hidden="true">
         <span className={styles.glass} />
       </span>
-      <span className={styles.bloom} aria-hidden="true" />
+      <span className={styles.bloom} data-back aria-hidden="true" />
       <span className={styles.pool} aria-hidden="true" />
     </>
   );

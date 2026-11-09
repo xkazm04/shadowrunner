@@ -111,7 +111,8 @@ function focusVisible(el: HTMLElement): boolean {
 
 /**
  * The torch: aims the light at a client point. Writes `--mx` / `--my` (percent of the world) on
- * the root, `--lit` on every slide (torch.ts slideLight) and the face's look-at point (torch.ts
+ * the torch's own layers (`[data-torch]`: the cellar and the flame; on the root, every element
+ * of the landing restyled per pointer move, perfection-pass task 11), `--lit` on every slide (torch.ts slideLight) and the face's look-at point (torch.ts
  * gazeAt) into `lookAt`. Follows the pointer (one aim per frame at most) and keyboard focus, and
  * rests low in the middle of the room until the visitor moves it.
  */
@@ -125,8 +126,12 @@ function useTorch(root: RefObject<HTMLElement | null>, lookAt: { current: LookAt
       if (box.width <= 0 || box.height <= 0) return;
       const x = clientX ?? box.left + box.width * TORCH_REST.x;
       const y = clientY ?? box.top + box.height * TORCH_REST.y;
-      el.style.setProperty("--mx", `${(((x - box.left) / box.width) * 100).toFixed(2)}%`);
-      el.style.setProperty("--my", `${(((y - box.top) / box.height) * 100).toFixed(2)}%`);
+      const mx = `${(((x - box.left) / box.width) * 100).toFixed(2)}%`;
+      const my = `${(((y - box.top) / box.height) * 100).toFixed(2)}%`;
+      for (const torch of el.querySelectorAll<HTMLElement>("[data-torch]")) {
+        torch.style.setProperty("--mx", mx);
+        torch.style.setProperty("--my", my);
+      }
       // World px to client px.
       const scale = world.offsetWidth > 0 ? box.width / world.offsetWidth : 1;
       const face = el.querySelector("[data-apparition]")?.getBoundingClientRect();
