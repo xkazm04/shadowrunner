@@ -1,4 +1,4 @@
-// The lip driver body L1 and L2 share: visemes into the scheduler (track.ts), and the shape mix
+// The lip driver body L1 and L2 share: visemes into the scheduler (@sr/avatar's mouth/track.ts), and the shape mix
 // handed to the player (`setMouthShapes`): @sr/avatar draws the mouth itself (the rig owns the
 // mouth: on Rig.mouth, in the head's frame, with the character's emotion, which main.ts already
 // hands the player with `setEmotion`) and opens the jaw to match. The stage audio is NOT attached
@@ -17,15 +17,14 @@
 // Reduced motion (the twin, used when the viewer asks and the run does not force motion): no
 // per-viseme articulation; while a line plays the mouth eases (REDUCED_EASE_MS) to one soft, half
 // open speaking shape and back to rest after it; the player switches an emotion at once.
-import { blendParams, jawLevel, levelWeights, restWeights, type ShapeWeights } from "@sr/avatar/core";
-import type { LipArmId, LipDriver } from "../../../contract.js";
+import { blendParams, createVisemeTrack, JAW_LEAD_MS, jawLevel, levelWeights, REDUCED_EASE_MS, restWeights, type ShapeWeights, type VisemeTrack } from "@sr/avatar/core";
+import type { LipArmId, LipDriver, Viseme } from "../../../contract.js";
 import type { LipContext } from "../../types.js";
 import { mouthAnchor, type MouthAnchor } from "./anchor.js";
-import { createVisemeTrack, type VisemeTrack } from "./track.js";
+import { VISEME_SHAPE } from "./shapes.js";
 
-/** The jaw eases toward its target (the driver's attack); asking slightly early keeps it on time. */
-export const JAW_LEAD_MS = 30;
-export const REDUCED_EASE_MS = 150;
+// The jaw lead (30 ms) and the reduced-motion ease (150 ms) are @sr/avatar's, shared with the product's lip-sync.
+export { JAW_LEAD_MS, REDUCED_EASE_MS };
 
 export interface MouthFrame {
   nowMs: number;
@@ -42,7 +41,7 @@ export type MouthPainter = (g: CanvasRenderingContext2D, frame: MouthFrame) => v
 
 export interface MouthDriverHandle extends LipDriver {
   /** The scheduler (tests). */
-  readonly track: VisemeTrack;
+  readonly track: VisemeTrack<Viseme>;
 }
 
 export interface MouthDriverOptions {
@@ -57,7 +56,7 @@ export interface MouthDriverOptions {
 export function createMouthDriver(id: LipArmId, ctx: LipContext, options: MouthDriverOptions = {}): MouthDriverHandle {
   const { player, audio, reducedMotion } = ctx;
   player.attachAudio(undefined);
-  const track = createVisemeTrack();
+  const track = createVisemeTrack(VISEME_SHAPE);
   // A hand-made player without mouthMode (older fakes) is taken at its rig's word: a mouth draws.
   const mode = player.mouthMode?.() ?? (ctx.mouth === undefined ? undefined : "drawn");
   const drawsMouth = (mode === "drawn" || mode === "warp") && player.setMouthShapes !== undefined;

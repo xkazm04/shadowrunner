@@ -3,16 +3,19 @@
 // turns that into jawOpen (0..1, attack 30 ms, release 90 ms, design.md).
 //
 // Decisions the spec leaves open:
-// - The face's jaw is moved by <AvatarCanvas audio={source}> from @sr/avatar, whose driver taps
-//   the same node and owns the jaw curve (avatar-renderer task 7 adds the speech gain there). So
-//   this hook does not override the driver's Drive (that would freeze blinks and drift); it owns
-//   the graph, hands the avatar the source node, and gives the stage the same jawOpen reading for
-//   the VOICE tally on the lamp, so "the mouth moves" and "the tally is lit" come from one signal.
+// - The face's jaw is moved by @sr/avatar's driver, which owns the jaw curve (avatar-renderer task 7
+//   adds the speech gain there). So this hook does not override the driver's Drive (that would
+//   freeze blinks and drift); it owns the graph and its one analyser tap, hands the avatar that
+//   tap's speech level (<AvatarCanvas level>, perfection-pass 4.4: no second analyser), and gives
+//   the stage the jawOpen reading of the same tap for the VOICE tally on the lamp, so "the mouth
+//   moves" and "the tally is lit" come from one signal. A line with a mouth track (mouthTrack.ts)
+//   shapes the mouth from the track; the level still lights the tally and the stage.
 // - The element is wrapped once (createMediaElementSource is once per element) in one
-//   AudioContext, connected to the speakers. A context that is not running (no user gesture yet)
+//   AudioContext, connected to the speakers, and the context is closed a tick after unmount (a
+//   StrictMode remount within the tick keeps it). A context that is not running (no user gesture yet)
 //   is "blocked": the stage then shows captions only until the visitor turns the sound on.
 import { attachAudio, type AudioLevelTap } from "@sr/avatar";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
 /** Time to cover 95% of the way to a higher level, ms (design.md). */
 export const JAW_ATTACK_MS = 30;
@@ -61,8 +64,11 @@ export function createJawMeter(reader: LevelReader): { read(nowMs: number): numb
 }
 
 export interface Loudness {
-  /** The routed voice for <AvatarCanvas audio>; undefined until the element is wired. */
-  source?: AudioNode;
+  /**
+   * The voice's speech level now (0..1, @sr/avatar's `speechLevel` of the one analyser tap), for
+   * <AvatarCanvas level>; 0 before the graph exists.
+   */
+  level(): number;
   /** jawOpen now (0..1); 0 before the graph exists. */
   jawOpen(nowMs: number): number;
   /** Resumes the context; true when it runs (sound can play). */
@@ -79,6 +85,8 @@ export const RESUME_WAIT_MS = 300;
 interface Route {
   context: AudioContext;
   node: AudioNode;
+  /** A pending close (unmount); a remount of the same element within the tick cancels it. */
+  closing?: ReturnType<typeof setTimeout>;
 }
 
 /** One graph per element for the element's lifetime (StrictMode mounts effects twice). */
@@ -86,35 +94,59 @@ const routes = new WeakMap<HTMLMediaElement, Route>();
 
 function routeOf(element: HTMLMediaElement, makeContext: ContextFactory): Route | undefined {
   const known = routes.get(element);
-  if (known !== undefined) return known;
+  if (known !== undefined) {
+    clearTimeout(known.closing);
+    delete known.closing;
+    return known;
+  }
   const context = makeContext();
   if (context === undefined) return undefined;
-  const node = context.createMediaElementSource(element);
+  let node: AudioNode;
+  try {
+    node = context.createMediaElementSource(element);
+  } catch {
+    // Wrapped once already by a context now closed: no graph (the element cannot be re-wrapped).
+    void context.close().catch(() => undefined);
+    return undefined;
+  }
   node.connect(context.destination);
-  const route = { context, node };
+  const route: Route = { context, node };
   routes.set(element, route);
   return route;
 }
 
-/** Wires `element` into one AudioContext and meters it while mounted. */
+/** Closes the element's context a tick after unmount, unless it is mounted again first (StrictMode). */
+function release(element: HTMLMediaElement, route: Route): void {
+  clearTimeout(route.closing);
+  route.closing = setTimeout(() => {
+    routes.delete(element);
+    route.node.disconnect();
+    void route.context.close().catch(() => undefined);
+  }, 0);
+}
+
+/**
+ * Wires `element` into one AudioContext with one analyser tap while mounted (perfection-pass 4.4:
+ * the face reads `level`, the tally and the lights `jawOpen`, all from that tap); the context is
+ * closed on unmount.
+ */
 export function useLoudness(element: HTMLAudioElement | null, makeContext: ContextFactory = browserContext): Loudness {
-  const [source, setSource] = useState<AudioNode | undefined>(undefined);
-  const graph = useRef<{ context: AudioContext; meter: { read(nowMs: number): number } } | null>(null);
+  const graph = useRef<{ context: AudioContext; tap: LevelReader; meter: { read(nowMs: number): number } } | null>(null);
 
   useEffect(() => {
     if (element === null) return undefined;
     const route = routeOf(element, makeContext);
     if (route === undefined) return undefined;
     const tap = attachAudio(route.node);
-    graph.current = { context: route.context, meter: createJawMeter(tap) };
-    setSource(route.node);
+    graph.current = { context: route.context, tap, meter: createJawMeter(tap) };
     return () => {
       tap.detach();
       graph.current = null;
-      setSource(undefined);
+      release(element, route);
     };
   }, [element, makeContext]);
 
+  const level = useCallback(() => graph.current?.tap.level() ?? 0, []);
   const jawOpen = useCallback((nowMs: number) => graph.current?.meter.read(nowMs) ?? 0, []);
 
   const ensureRunning = useCallback(async () => {
@@ -127,5 +159,5 @@ export function useLoudness(element: HTMLAudioElement | null, makeContext: Conte
     return (context.state as AudioContextState) === "running";
   }, []);
 
-  return source === undefined ? { jawOpen, ensureRunning } : { source, jawOpen, ensureRunning };
+  return useMemo(() => ({ level, jawOpen, ensureRunning }), [level, jawOpen, ensureRunning]);
 }

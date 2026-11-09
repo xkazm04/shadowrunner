@@ -23,3 +23,8 @@ export * from "./mouth/state.js";
 export * from "./mouth/anchor.js";
 export * from "./mouth/colours.js";
 export * from "./mouth/paint.js";
+// Lip-sync (perfection-pass task 4): the viseme scheduler (moved from the Avatar Lab), the clip
+// analyser and its per-frame drive. The analyser's internals (features, model, aligner) stay private.
+export * from "./mouth/track.js";
+export { analyseSpeech, POSTERIOR_SPAN, QUIET_DB, SILENCE_DB, TEXT_SHARE, type AnalyseOptions, type MouthTrack } from "./speech/analyse.js";
+export * from "./speech/drive.js";

@@ -9,12 +9,16 @@
 //   line costs a TTS call).
 // - The first cast pack is picked when the page opens with nothing picked, so a first visit has a
 //   character on screen with no keys.
-import { createAvatarPlayer, type AvatarPlayer } from "@sr/avatar/core";
+// - Lip-sync (perfection-pass task 4): the decoded line is analysed once with its words and cached
+//   with it; Preview and Record shape a drawn or warp mouth from it (lipsync.ts), other rigs keep
+//   the loudness jaw.
+import { createAvatarPlayer, isReducedMotion, type AvatarPlayer, type MouthTrack } from "@sr/avatar/core";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from "react";
 import { apiFetch, type Plane } from "../../app/plane";
 import { loadPlayable, type Playable, type PlayableSource } from "../playable";
 import { FALLBACK_BACKGROUND, readSwatches } from "./background";
 import { LinePanel } from "./LinePanel";
+import { lipSync, trackOfLine, type LipTrack } from "./lipsync";
 import { liveAudio, recordedAudio, replayLines, type LineAudio } from "./lines";
 import { canRecord, pickMimeType, playLine, RecordError, recordLine, RECORD_FAILED, type Playback, type RecorderClass } from "./recorder";
 import { SourcePicker } from "./SourcePicker";
@@ -36,6 +40,9 @@ export function fileSlug(name: string): string {
   );
 }
 
+const REDUCED_QUERY = "(prefers-reduced-motion: reduce)";
+const FRAMES = { request: (cb: FrameRequestCallback) => window.requestAnimationFrame(cb), cancel: (h: number) => window.cancelAnimationFrame(h) };
+
 const recordSentence = (err: unknown): string => (err instanceof RecordError ? err.message : RECORD_FAILED);
 
 export default function StudioPage({ plane }: { plane: Plane }): ReactElement {
@@ -52,7 +59,7 @@ export default function StudioPage({ plane }: { plane: Plane }): ReactElement {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const playerRef = useRef<AvatarPlayer | undefined>(undefined);
   const contextRef = useRef<AudioContext | undefined>(undefined);
-  const cacheRef = useRef<{ key: string; buffer: AudioBuffer } | undefined>(undefined);
+  const cacheRef = useRef<{ key: string; buffer: AudioBuffer; track: MouthTrack | undefined } | undefined>(undefined);
   const playbackRef = useRef<Playback | undefined>(undefined);
   const recordAbort = useRef<AbortController | undefined>(undefined);
   const takes = useRef(0);
@@ -108,13 +115,13 @@ export default function StudioPage({ plane }: { plane: Plane }): ReactElement {
   useEffect(() => () => (take === undefined ? undefined : URL.revokeObjectURL(take.url)), [take]);
 
   /** The decoded line now chosen (typed or recorded), or the sentence that says why not. */
-  const lineBuffer = async (who: Playable): Promise<{ ok: true; buffer: AudioBuffer; context: AudioContext } | { ok: false; error: string }> => {
+  const lineBuffer = async (who: Playable): Promise<{ ok: true; buffer: AudioBuffer; context: AudioContext; track: MouthTrack | undefined } | { ok: false; error: string }> => {
     const context = (contextRef.current ??= new AudioContext());
     if (context.state === "suspended") await context.resume().catch(() => undefined);
     const line = replay.lines[picked];
     const key = plane === "live" ? `live|${who.voice}|${text.trim()}` : `replay|${line?.url ?? ""}`;
     const cached = cacheRef.current;
-    if (cached?.key === key) return { ok: true, buffer: cached.buffer, context };
+    if (cached?.key === key) return { ok: true, buffer: cached.buffer, context, track: cached.track };
     let audio: LineAudio;
     if (plane === "live") audio = await liveAudio(apiFetch, text, who);
     else if (line === undefined) return { ok: false, error: "Pick a recorded line first." };
@@ -122,8 +129,10 @@ export default function StudioPage({ plane }: { plane: Plane }): ReactElement {
     if (!audio.ok) return audio;
     try {
       const buffer = await context.decodeAudioData(audio.bytes);
-      cacheRef.current = { key, buffer };
-      return { ok: true, buffer, context };
+      // The line's mouth track with its words (perfection-pass task 4); undefined keeps the loudness jaw.
+      const track = trackOfLine(buffer, plane === "live" ? text.trim() : (line?.text ?? ""));
+      cacheRef.current = { key, buffer, track };
+      return { ok: true, buffer, context, track };
     } catch {
       return { ok: false, error: NO_AUDIO };
     }
@@ -137,8 +146,11 @@ export default function StudioPage({ plane }: { plane: Plane }): ReactElement {
     if (!line.ok) return setWork({ kind: "error", error: line.error });
     const playback = playLine(line.context, line.buffer, player);
     playbackRef.current = playback;
+    const lips = lipOf(line.track);
+    const stopLips = lips === undefined ? undefined : lipSync(player, lips, playback.clock, FRAMES);
     setWork({ kind: "playing" });
     await playback.ended;
+    stopLips?.();
     if (playbackRef.current === playback) playbackRef.current = undefined;
     setWork({ kind: "idle" });
   };
@@ -166,10 +178,11 @@ export default function StudioPage({ plane }: { plane: Plane }): ReactElement {
         background,
         Recorder,
         mimeType,
-        frames: { request: (cb) => window.requestAnimationFrame(cb), cancel: (h) => window.cancelAnimationFrame(h) },
+        frames: FRAMES,
         wait: (ms) => new Promise<void>((resolve) => window.setTimeout(resolve, ms)),
         onProgress: (progress) => setWork({ kind: "recording", progress }),
         signal: abort.signal,
+        ...(lipOf(line.track) === undefined ? {} : { mouth: lipOf(line.track) }),
       });
       if (abort.signal.aborted) return;
       takes.current += 1;
@@ -179,6 +192,12 @@ export default function StudioPage({ plane }: { plane: Plane }): ReactElement {
       if (!abort.signal.aborted) setWork({ kind: "error", error: recordSentence(err) });
     }
   };
+
+  /** The line's track with the player's reduced-motion reading (lipsync.ts). */
+  const lipOf = (track: MouthTrack | undefined): LipTrack | undefined =>
+    track === undefined
+      ? undefined
+      : { track, reducedMotion: () => isReducedMotion(window.matchMedia?.(REDUCED_QUERY).matches ?? false, canvasRef.current?.closest("[data-motion]")?.getAttribute("data-motion")) };
 
   const stop = () => {
     playbackRef.current?.stop();

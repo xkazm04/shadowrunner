@@ -225,6 +225,27 @@ describe("recordLine", () => {
     expect(t.player.attachAudio).toHaveBeenLastCalledWith(undefined);
   });
 
+  it("with a mouth track, sets each frame's shapes just before its renderFrame, and clears them at the end", async () => {
+    const order: string[] = [];
+    const player = {
+      ...fakePlayer(),
+      renderFrame: vi.fn(() => order.push("render")),
+      setMouthShapes: vi.fn((shapes: unknown) => order.push(shapes === undefined ? "shapes off" : "shapes")),
+      mouthMode: () => "warp" as const,
+    };
+    const track = { durationS: 2, at: () => ({ rest: 0, openWide: 1, openMid: 0, round: 0, closed: 0, teeth: 0, tongue: 0, narrow: 0 }) };
+    const t = job({ player, mouth: { track, reducedMotion: () => false } });
+    const result = recordLine(t.full);
+    order.length = 0;
+    t.clock.step(0);
+    t.clock.step(33);
+    expect(order).toEqual(["shapes", "render", "shapes", "render"]);
+    t.graph.sources[0]?.onended?.();
+    await flush();
+    await result;
+    expect(order.at(-1)).toBe("shapes off");
+  });
+
   it("rejects with a sentence when aborted, and restarts the player", async () => {
     const abort = new AbortController();
     const t = job({ signal: abort.signal });

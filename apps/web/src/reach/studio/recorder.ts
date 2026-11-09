@@ -7,11 +7,13 @@
 // Decisions the spec leaves open:
 // - While recording, the player's own loop is stopped and each frame is stepped with
 //   `renderFrame(dt)` and copied at once, so a WebGL canvas is read before its buffer is cleared.
-//   The loop restarts when the recording ends, however it ends.
+//   The loop restarts when the recording ends, however it ends. With a mouth track (perfection-pass
+//   task 4) each frame's shapes are set just before its `renderFrame` (lipsync.ts).
 // - The video is the player canvas's pixel size, rounded down to even numbers (codecs want them).
 // - Progress is the time recorded over the line's duration plus the 0.5 s tail.
 // - Browser APIs come in through small structural types, so the pipeline is tested with fakes.
 import type { AvatarPlayer } from "@sr/avatar/core";
+import { trackShaper, type LipTrack } from "./lipsync";
 import { blobWithDuration } from "./webmDuration";
 
 /** MediaRecorder types in order of preference (design "Studio"). */
@@ -67,6 +69,8 @@ export function canRecord(win: RecordWindow | undefined = typeof window === "und
 /** The audio graph a line needs (an AudioContext in the browser). */
 export interface LineContext {
   readonly destination: AudioNode;
+  /** The audio clock, seconds (an AudioContext's; a fake may leave it out: the wall clock stands in). */
+  readonly currentTime?: number;
   createBufferSource(): AudioBufferSourceNode;
   createMediaStreamDestination(): MediaStreamAudioDestinationNode;
 }
@@ -77,6 +81,8 @@ export interface Playback {
   /** Resolves when the line has played out (or was stopped). */
   ended: Promise<void>;
   stop(): void;
+  /** Seconds since the line started, on the audio clock (lip-sync, lipsync.ts). */
+  clock(): number;
 }
 
 /** Plays `buffer` to the speakers (and `also`, when given) with the player's mouth on it. */
@@ -87,6 +93,8 @@ export function playLine(context: LineContext, buffer: AudioBuffer, player: LipS
   if (also !== undefined) source.connect(also);
   player.attachAudio(source);
   let stopped = false;
+  const audioStart = context.currentTime;
+  const wallStart = performance.now();
   const ended = new Promise<void>((resolve) => {
     source.onended = () => {
       if (!stopped) player.attachAudio(undefined);
@@ -97,6 +105,7 @@ export function playLine(context: LineContext, buffer: AudioBuffer, player: LipS
   source.start();
   return {
     ended,
+    clock: () => (audioStart === undefined || context.currentTime === undefined ? (performance.now() - wallStart) / 1000 : context.currentTime - audioStart),
     stop() {
       if (stopped) return;
       try {
@@ -123,7 +132,9 @@ export interface Frames {
 export interface RecordJob {
   context: LineContext;
   buffer: AudioBuffer;
-  player: Pick<AvatarPlayer, "attachAudio" | "renderFrame" | "start" | "stop">;
+  player: Pick<AvatarPlayer, "attachAudio" | "renderFrame" | "start" | "stop" | "setMouthShapes" | "mouthMode">;
+  /** The line's mouth track (lipsync.ts): shapes a drawn or warp mouth each recorded frame. */
+  mouth?: LipTrack;
   /** The player's canvas (transparent). */
   source: CanvasImageSource & { width: number; height: number };
   /** The canvas the video is drawn into. */
@@ -173,6 +184,7 @@ export function recordLine(job: RecordJob): Promise<Blob> {
     const total = job.buffer.duration + TAIL_S;
     let handle: number | undefined;
     let playback: Playback | undefined;
+    let shaper: ReturnType<typeof trackShaper> | undefined;
     let settled = false;
     let failed = false;
     // The take's wall-clock length, written into the WebM (MediaRecorder leaves it out; webmDuration.ts).
@@ -183,6 +195,7 @@ export function recordLine(job: RecordJob): Promise<Blob> {
       if (handle !== undefined) job.frames.cancel(handle);
       handle = undefined;
       playback?.stop();
+      shaper?.clear();
       player.attachAudio(undefined);
       for (const track of video.getTracks()) track.stop();
       job.signal?.removeEventListener("abort", abort);
@@ -228,6 +241,7 @@ export function recordLine(job: RecordJob): Promise<Blob> {
       const dt = last === undefined ? 0 : Math.max(0, (now - last) / 1000);
       last = now;
       elapsed += dt;
+      shaper?.frame(dt);
       player.renderFrame(dt);
       draw();
       job.onProgress?.(Math.min(1, elapsed / total));
@@ -237,6 +251,7 @@ export function recordLine(job: RecordJob): Promise<Blob> {
       recorder.start(1000);
       startedAt = performance.now();
       playback = playLine(job.context, job.buffer, player, audio);
+      if (job.mouth !== undefined) shaper = trackShaper(player, job.mouth, playback.clock);
     } catch {
       fail();
       return;

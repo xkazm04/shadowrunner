@@ -5,6 +5,7 @@
 import type { Persona, ShowScript } from "@sr/engine";
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 import { apiFetch, fetchHealth, type Fetcher } from "../app/plane";
+import { trackForClip } from "./mouthTrack";
 import type { LocalScript } from "./sheetShow";
 import { createShow, type PlayResult, type Show, type ShowSnapshot, type VoicePlayer } from "./show";
 
@@ -19,12 +20,15 @@ export async function lineHealthy(fetch: Fetcher): Promise<boolean> {
 
 /**
  * Plays URLs on one <audio> element. `ensureRunning` is the Web Audio context check
- * (useLoudness): a context that cannot run means the browser has not allowed sound yet.
+ * (useLoudness): a context that cannot run means the browser has not allowed sound yet. Each line's
+ * mouth track is started with its text as the line starts (`analyse`, mouthTrack.ts), so the
+ * stage's reader (useClipMouth) finds it made with the words.
  */
-export function createElementPlayer(audio: HTMLAudioElement, ensureRunning: () => Promise<boolean>): VoicePlayer {
+export function createElementPlayer(audio: HTMLAudioElement, ensureRunning: () => Promise<boolean>, analyse: (url: string, text?: string) => unknown = trackForClip): VoicePlayer {
   let finish: ((result: PlayResult) => void) | undefined;
   return {
-    async play(url) {
+    async play(url, text) {
+      analyse(url, text);
       finish?.("error");
       if (!(await ensureRunning())) return "blocked";
       return new Promise<PlayResult>((resolve) => {

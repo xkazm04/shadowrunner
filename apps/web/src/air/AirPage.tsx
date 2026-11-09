@@ -14,6 +14,8 @@
 // script runs in the browser (no engine or voice request) and the slate says SCRIPTED.
 // tiger L1: a line that says a part's cue word fires that part's signature act (useActCue.ts); a
 // recorded cast character's acts are compiled from its recorded brief at load time (castActs.ts).
+// perfection-pass 4: the face reads the stage's one analyser tap (`level`) and, while a line plays,
+// the line's mouth track (mouthTrack.ts); a rig without a drawn or warp mouth keeps the level jaw.
 import { AvatarCanvas, type RigAssets } from "@sr/avatar";
 import { castSlug, MAX_CHAT_CHARS } from "@sr/engine";
 import { defaultLook, type Look, type Rig } from "@sr/rig";
@@ -30,6 +32,7 @@ import { loadRigAssets, MALAKOR_NAME, malakorRig } from "./malakor";
 import { OnAirLamp, VoiceTally } from "./OnAirLamp";
 import { useOnAir, type OnAirState } from "./onAir";
 import { localScript } from "./sheetShow";
+import { useClipMouth } from "./mouthTrack";
 import { useLoudness } from "./useLoudness";
 import { useActCue } from "./useActCue";
 import { useShow } from "./useShow";
@@ -155,6 +158,8 @@ export function AirPage({ plane, badge, controls, strip }: AirPageProps) {
   const loaded = useFace(who);
   const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
   const loudness = useLoudness(audio);
+  // The line's mouth track (perfection-pass task 4): shapes for a drawn or warp mouth while it speaks.
+  const clipMouth = useClipMouth(audio);
   const speaker = typeof who === "object" ? who : undefined;
   const { id, name, voice, sheet } = speaker ?? {};
   const faceRig = typeof loaded === "object" ? loaded.rig : undefined;
@@ -226,7 +231,8 @@ export function AirPage({ plane, badge, controls, strip }: AirPageProps) {
               className={styles.face}
               // LINE DEAD: only the eyes stay lit (the renderer's eyes-only dim; instant under reduced motion).
               dim={dead ? 1 : 0}
-              {...(loudness.source === undefined ? {} : { audio: loudness.source })}
+              level={loudness.level}
+              {...(speaking && clipMouth !== undefined ? { mouth: clipMouth } : {})}
               {...(gesture === undefined ? {} : { gesture })}
               {...(actFire === undefined ? {} : { act: actFire })}
             />

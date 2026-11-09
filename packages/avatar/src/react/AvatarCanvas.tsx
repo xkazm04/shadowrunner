@@ -22,6 +22,8 @@
 //   in the frame clock; both renderers apply it per layer (render/frame.ts `dimGain`).
 // - `loadAsset` (character-control): region maps and face patches missing from `assets` are
 //   loaded through it on first need (render/assets.ts); read once, at mount.
+// - Lip-sync (perfection-pass task 4): `mouth` (a clip's track and clock) reaches the frame body as
+//   its `mouth` input each frame (speech/drive.ts); `level` (a page's own reading) wins over the tap.
 // - The frame body (driver step, mood fade, dressed rig, dim) is player/frame.ts, shared with the
 //   React-free player (spec avatar-reach); `moodFader` is re-exported from here as before.
 import type { Drive, Gesture, Look, Rig } from "@sr/rig";
@@ -30,9 +32,11 @@ import { attachAudio, type AudioLevelTap } from "../audio/level.js";
 import type { LookAtPoint } from "../driver/lookAt.js";
 import type { Gaze } from "../driver/state.js";
 import { createRenderer } from "../gl/renderer.js";
+import type { MouthShapesInput } from "../mouth/state.js";
 import { createFrameBody } from "../player/frame.js";
 import type { AssetLoader } from "../render/assets.js";
 import type { RigAssets } from "../render/types.js";
+import { createTrackMouth, type ClipMouth } from "../speech/drive.js";
 import { isReducedMotion } from "./loop.js";
 
 export { moodFader } from "../player/frame.js";
@@ -49,6 +53,9 @@ export function resolveLookAt(lookAt: LookAtPoint | LookAtRef | undefined): Look
   return lookAt;
 }
 
+/** The frame body's `mouth` key for a track frame's input (none: the level drive). */
+const mouthInput = (mouth: MouthShapesInput | undefined): { mouth?: MouthShapesInput } => (mouth === undefined ? {} : { mouth });
+
 export interface AvatarCanvasProps {
   rig: Rig;
   look: Look;
@@ -57,6 +64,17 @@ export interface AvatarCanvasProps {
   /** Overrides the driver (tests, screenshots). */
   drive?: Drive;
   audio?: AudioNode | HTMLMediaElement;
+  /**
+   * The speech level 0..1, read every frame; wins over `audio` (perfection-pass 4.4: a page that
+   * already taps its voice, the stage, hands its reading here instead of a second analyser).
+   */
+  level?: () => number;
+  /**
+   * A clip's mouth track on the clip's clock (perfection-pass task 4): while set, a rig whose
+   * `mouthMode` is "drawn" or "warp" shapes its mouth (and opens its jaw) from the track; other
+   * rigs keep the level drive. Under reduced motion one soft speaking shape (speech/drive.ts).
+   */
+  mouth?: ClipMouth | undefined;
   /** Default "host". */
   gaze?: Gaze;
   /** A change triggers playback. */
@@ -121,6 +139,7 @@ export function AvatarCanvas(props: AvatarCanvasProps): ReactElement {
 
     const media = typeof win.matchMedia === "function" ? win.matchMedia(REDUCED_QUERY) : undefined;
     const body = createFrameBody(first.seed ?? 1, first.loadAsset === undefined ? {} : { loadAsset: first.loadAsset });
+    const trackMouth = createTrackMouth();
     let lastNow: number | undefined;
     let raf = 0;
     let alive = true;
@@ -144,7 +163,7 @@ export function AvatarCanvas(props: AvatarCanvasProps): ReactElement {
         rig: p.rig,
         look: p.look,
         dt,
-        level: tapRef.current?.level() ?? 0,
+        level: p.level?.() ?? tapRef.current?.level() ?? 0,
         gaze: p.gaze ?? "host",
         reducedMotion,
         ...(gesture === undefined ? {} : { gesture }),
@@ -152,6 +171,7 @@ export function AvatarCanvas(props: AvatarCanvasProps): ReactElement {
         ...(lookAt === undefined ? {} : { lookAt }),
         ...(p.drive === undefined ? {} : { drive: p.drive }),
         ...(p.dim === undefined ? {} : { dim: p.dim }),
+        ...mouthInput(trackMouth({ mouth: p.mouth, reducedMotion, dt })),
         assets: p.assets,
       });
       renderer.draw(out.poses, p.look, out.clock);

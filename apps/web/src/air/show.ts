@@ -67,8 +67,8 @@ export interface ShowSnapshot {
 export type PlayResult = "ended" | "blocked" | "error";
 
 export interface VoicePlayer {
-  /** Plays a WAV URL; resolves when it ends or could not play. */
-  play(url: string): Promise<PlayResult>;
+  /** Plays a WAV URL; resolves when it ends or could not play. `text` is the line it speaks (lip-sync). */
+  play(url: string, text?: string): Promise<PlayResult>;
   stop(): void;
 }
 
@@ -323,7 +323,7 @@ export function createShow(deps: ShowDeps): Show {
     set({ caption: caption(snap.sound === "on") });
     apply({ kind: "line", speaking: true });
     const startedAt = deps.now();
-    const result = snap.sound === "on" ? await player.play(url) : "blocked";
+    const result = snap.sound === "on" ? await player.play(url, reply.line) : "blocked";
     if (!live(gen)) return;
     if (result === "ended") {
       apply({ kind: "line", speaking: false });
