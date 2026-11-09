@@ -4,8 +4,11 @@
 // A brief started on the replay forge plays the cast member's recorded job when there is one.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BRIEF_URL, createHttpBriefClient, createReplayBriefClient, loadRecordedBriefs, readBriefResponse } from "./briefClient";
+import { parseReplayBatchId } from "@sr/forge/cast";
+import { createReplayCastClient } from "./castClient";
 import { ForgeError } from "./forgeClient";
 import { createReplayForgeClient, parseReplayJobId } from "./forgeClient.replay";
+import { loadReplayJobs } from "./replayJobs";
 import { testBriefs, testJob } from "./testFixtures";
 
 const [CARDIA, TALLY] = testBriefs();
@@ -59,9 +62,45 @@ describe("replay brief client", () => {
     expect(briefs).toHaveLength(8);
     const client = createReplayBriefClient();
     expect((await client.brief("A SPOOKY census guy  that counts everyone in chat")).brief.name).toBe("The Tallyman");
-    const other = await client.brief("something nobody recorded");
-    expect(other).toEqual({ brief: briefs[0], plane: "replay" });
+    const near = await client.brief("a fish priest from the deep");
+    expect(near).toEqual({ brief: briefs.find((b) => b.name === "Vicar of the Lure"), plane: "replay", match: { name: "Vicar of the Lure", how: "words", matched: ["fish", "deep"] } });
+    expect((await client.brief("a vampire accountant")).match).toEqual({ name: "Reveille, the Alarm of the Ninth", how: "none", matched: [] });
     await expect(client.brief("  ")).rejects.toMatchObject({ code: "bad_input" });
+    expect(fetches).toBe(0);
+  });
+
+  it("the http client keeps a replay answer's match note and drops a malformed one", async () => {
+    const note = { name: "The Tallyman", how: "words", matched: ["census"] };
+    expect(await createHttpBriefClient(reply(200, { brief: TALLY, plane: "replay", match: note })).brief("census")).toEqual({ brief: TALLY, plane: "replay", match: note });
+    expect(readBriefResponse({ brief: TALLY, plane: "replay", match: { name: "x", how: "guess", matched: [] } })).toEqual({ brief: TALLY, plane: "replay" });
+    expect(readBriefResponse({ brief: TALLY, plane: "live", match: note })).toEqual({ brief: TALLY, plane: "live" });
+  });
+});
+
+// perfection-pass task 8 (requirement 8.2): over the committed recordings, the brief a request gets
+// and the character the replay forge (direct, and the casting's first draft) then walks agree.
+describe("replay: the brief shown is the character forged", () => {
+  it.each([
+    "a ghost butler with white gloves",
+    "a skeleton knight in rusty armour",
+    "a snake lady who hates noise",
+    "a fish priest from the deep",
+    "a clock that rings when I go live",
+    "a saint made of porcelain",
+    "an angry censor with a black bar",
+    "a many-eyed accountant counting viewers",
+    "a vampire accountant",
+    "a moth woman with a veil",
+  ])("%s", async (request) => {
+    const { brief } = await createReplayBriefClient().brief(request);
+    const jobs = await loadReplayJobs();
+    const started = await createReplayForgeClient({ jobs: async () => jobs }).start({ mode: "brief", brief });
+    const job = jobs.find((j) => j.slug === parseReplayJobId(started.jobId)?.slug);
+    expect(job?.name).toBe(brief.name);
+    expect(job?.prompt).toBe(brief.one_line_request);
+    const batch = parseReplayBatchId((await createReplayCastClient({ jobs: async () => jobs }).draft(brief)).batchId);
+    expect(batch?.primary).toBe(true);
+    expect(batch?.slugs[0]).toBe(job?.slug);
     expect(fetches).toBe(0);
   });
 });

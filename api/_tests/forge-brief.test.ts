@@ -2,7 +2,7 @@
 // /api/forge {mode: "brief"}. No test reaches the network: global fetch is stubbed to throw, the
 // live brief call goes through an injected fake, and replay is proven to make zero fetches.
 import { readFileSync } from "node:fs";
-import { BRIEF_PROMPT, BRIEF_SCHEMA, portraitPromptFromBrief, type BriefResponse, type CharacterBrief, type ForgeJob } from "@sr/forge";
+import { BRIEF_PROMPT, BRIEF_SCHEMA, portraitPromptFromBrief, recordedBriefMatch, type BriefResponse, type CastMatchNote, type CharacterBrief, type ForgeJob } from "@sr/forge";
 import { DEFAULT_ENGINE_MODEL, type FetchLike } from "@sr/engine";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { defaultBriefDeps, handleBriefPost, type BriefDeps } from "../_lib/forge-brief.js";
@@ -92,9 +92,20 @@ describe("POST /api/forge/brief, replay plane", () => {
     expect(charges).toEqual([]);
   });
 
-  it("answers any other request with the first cast brief", async () => {
-    const res = await handleBriefPost(post({ request: "a vampire accountant" }), deps({}, noFetch).deps);
-    expect(((await res.json()) as BriefResponse).brief.name).toBe("Auntie Asp, Keeper of the Stone Stacks");
+  // perfection-pass task 8: the shared matcher; the browser's replay twin pins the same answers (briefClient.test.ts).
+  it("answers any other request with the nearest cast brief and a note naming what matched, or that nothing did", async () => {
+    const ask = async (request: string) => (await (await handleBriefPost(post({ request }), deps({}, noFetch).deps)).json()) as BriefResponse & { match?: CastMatchNote };
+    const near = await ask("a fish priest from the deep");
+    expect(near.brief.name).toBe("Vicar of the Lure");
+    expect(near.match).toEqual({ name: "Vicar of the Lure", how: "words", matched: ["fish", "deep"] });
+    const none = await ask("a vampire accountant");
+    expect(none.match).toEqual({ name: "Reveille, the Alarm of the Ninth", how: "none", matched: [] });
+    expect(none.brief.name).toBe("Reveille, the Alarm of the Ninth");
+    expect((await ask(TALLY)).match?.how).toBe("exact");
+    const briefs = deps({}, noFetch).deps.recorded();
+    for (const request of ["a ghost butler with white gloves", "hollow knight", "a medusa", "an owl"]) {
+      expect((await ask(request)).match).toEqual(recordedBriefMatch(request, briefs)?.match);
+    }
     expect(fetches).toBe(0);
   });
 

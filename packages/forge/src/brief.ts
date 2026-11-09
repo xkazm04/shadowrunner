@@ -5,10 +5,14 @@
 // (assets/characters/cast/<slug>/brief.json) as CharacterBriefs for the replay plane.
 // Pure and browser-safe: the creator imports it as "@sr/forge/brief" to check the streamer's edits.
 // Error messages name the path and the rule, never the offending value.
+import { recordedBriefMatch } from "./briefMatch.js";
 import { PART_NAME_PATTERN, PART_ROLES, RESERVED_PART_NAMES } from "./parts.js";
 import { HOUSE_STYLE } from "./prompts.js";
 import type { PartRole } from "./types.js";
 import type { BriefPart, CharacterBrief } from "./wire.js";
+
+// The replay matcher rides the "@sr/forge/brief" subpath, so the browser and the API share it.
+export * from "./briefMatch.js";
 
 /** The roles a brief part may take (the creator's role picker). */
 export const BRIEF_ROLES: readonly PartRole[] = PART_ROLES;
@@ -297,10 +301,12 @@ export function partsPromptFromBrief(brief: CharacterBrief): string {
 /** Case- and space-insensitive key for matching a request to a recorded brief. */
 export const requestKey = (text: string): string => text.trim().toLowerCase().replace(/\s+/g, " ");
 
-/** The recorded brief whose one_line_request matches `request`, else the first one (replay plane). */
+/**
+ * The recorded brief for `request` on the replay plane (perfection-pass task 8): its exact
+ * one_line_request, else the nearest by `matchCastBrief`, else a pick spread by the request's hash.
+ */
 export function recordedBriefFor(request: string, briefs: readonly CharacterBrief[]): CharacterBrief | undefined {
-  const key = requestKey(request);
-  return briefs.find((b) => requestKey(b.one_line_request) === key) ?? briefs[0];
+  return recordedBriefMatch(request, briefs)?.brief;
 }
 
 /** Contest `parts[].kind` -> PartRole (an `eye` kind keeps a left/right name's side). */

@@ -5,10 +5,12 @@
 // expression edits are phrased in it; empty means human eyes, the field omitted),
 // and change each planned part's role and motion or drop a part; "Draw it" starts the portrait from this brief
 // (blocked while the edits break a rule, with the rule named), "Ask again" re-briefs from the words.
-// A recorded brief carries the RECORDED tag. The accent swatch is the brief's own colour data.
+// A recorded brief carries the RECORDED tag and (perfection-pass task 8) one line saying which
+// recording was chosen for the words and what matched, or that nothing did; the line is the
+// answer's, so renaming the character on the card does not rewrite it. The accent swatch is the brief's own colour data.
 // tiger L1: a part whose motion words name an event shows its signature act, read-only, under it.
 import { actFromWords } from "@sr/forge/acts";
-import { BRIEF_MAX_EXAMPLE_LINES, BRIEF_ROLES, parseBrief, type BriefError } from "@sr/forge/brief";
+import { BRIEF_MAX_EXAMPLE_LINES, BRIEF_ROLES, castMatchLine, parseBrief, type BriefError, type CastMatchNote } from "@sr/forge/brief";
 import type { BriefPart, CharacterBrief } from "@sr/forge/wire";
 import { useEffect, useId, useRef, type CSSProperties } from "react";
 import marks from "./Marks.module.css";
@@ -24,6 +26,8 @@ function ActNote({ part }: { part: BriefPart }) {
 export interface BriefCardProps {
   brief: CharacterBrief;
   recorded: boolean;
+  /** Replay: which recording was chosen for the words and why (perfection-pass task 8). */
+  chosen?: CastMatchNote;
   /** The first rule the edited brief breaks; "Draw it" waits until it is fixed. */
   problem?: string;
   busy: boolean;
@@ -69,7 +73,7 @@ export function withEyes(brief: CharacterBrief, eyes: string): CharacterBrief {
   return eyes.trim() === "" ? rest : { ...rest, face: { eyes } };
 }
 
-export function BriefCard({ brief, recorded, problem, busy, onEdit, onDraw, onAgain }: BriefCardProps) {
+export function BriefCard({ brief, recorded, chosen, problem, busy, onEdit, onDraw, onAgain }: BriefCardProps) {
   const nameId = useId();
   const hookId = useId();
   const eyesId = useId();
@@ -98,6 +102,12 @@ export function BriefCard({ brief, recorded, problem, busy, onEdit, onDraw, onAg
         <span className={styles.arch}>{brief.archetype}</span>
         {recorded && <span className={styles.tag}>RECORDED</span>}
       </div>
+      {recorded && chosen !== undefined && (
+        <p className={styles.chosen} data-chosen={chosen.how}>
+          {castMatchLine(chosen)}
+          {chosen.how !== "exact" && <small>The forge replays this character&apos;s recording; it does not draw your words.</small>}
+        </p>
+      )}
       <fieldset className={marks.fields} disabled={busy}>
         <label className={marks.lbl} htmlFor={nameId}>
           NAME
@@ -207,6 +217,7 @@ export function Handshake({ state, busy, onEdit, onDraw, onAgain }: HandshakePro
     <BriefCard
       brief={state.brief}
       recorded={state.plane === "replay"}
+      {...(state.match === undefined ? {} : { chosen: state.match })}
       {...(problem === undefined ? {} : { problem })}
       busy={busy}
       onEdit={onEdit}

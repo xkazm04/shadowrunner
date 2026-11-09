@@ -102,10 +102,28 @@ describe("the handshake", () => {
     expect(sent).toHaveLength(0); // nothing is drawn before approval
   });
 
-  it("any other words get the first recorded brief", async () => {
+  // perfection-pass task 8: other words get the nearest recording, and the card says which and why.
+  it("other words get the nearest recorded brief, the card naming the recording and the words that chose it", async () => {
+    await open();
+    await briefFor("a glass heart in a porcelain shrine");
+    expect(nameInput()?.value).toBe("Saint Cardia of the Glass Heart");
+    const chosen = card()?.querySelector('[data-chosen="words"]');
+    expect(chosen?.textContent).toContain("Recorded: Saint Cardia of the Glass Heart, chosen for 'glass', 'heart', 'porcelain', 'shrine'.");
+    expect(chosen?.textContent).toContain("it does not draw your words");
+    await type(nameInput() as HTMLInputElement, "Renamed");
+    expect(card()?.querySelector("[data-chosen]")?.textContent).toContain("Recorded: Saint Cardia of the Glass Heart"); // the answer's, not the edit's
+  });
+
+  it("words that match nothing still get a recording, and the card says nothing matched", async () => {
     await open();
     await briefFor("a vampire accountant with a ledger");
-    expect(nameInput()?.value).toBe("Saint Cardia of the Glass Heart");
+    expect(card()?.querySelector('[data-chosen="none"]')?.textContent).toContain("Nothing in your words matched a recorded character");
+  });
+
+  it("the exact recorded words say so", async () => {
+    await open();
+    await briefFor(TALLY);
+    expect(card()?.querySelector('[data-chosen="exact"]')?.textContent).toBe("Recorded: The Tallyman, recorded from these exact words.");
   });
 
   it("an edit that breaks a rule blocks Draw it and names the rule; a valid edit is what is drawn", async () => {
@@ -137,7 +155,7 @@ describe("the handshake", () => {
 
   it("dropping parts below six blocks Draw it", async () => {
     await open();
-    await briefFor("a vampire accountant with a ledger");
+    await briefFor("a porcelain saint");
     for (const part of ["crown", "heart"]) await click(button(`Drop ${part}`));
     expect(button("Draw it").disabled).toBe(true);
     expect(q('[role="status"]')?.textContent).toBe("The parts must list 6 to 24 parts.");
@@ -236,5 +254,6 @@ describe("the handshake", () => {
     await flush();
     expect(card()?.getAttribute("data-brief")).toBe("live");
     expect(card()?.textContent).not.toContain("RECORDED");
+    expect(card()?.querySelector("[data-chosen]")).toBeNull();
   });
 });

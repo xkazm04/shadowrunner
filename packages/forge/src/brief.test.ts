@@ -236,13 +236,13 @@ describe("recorded contest briefs", () => {
     expect(cutAtSentence("abcdefghijkl", 5)).toBe("abcde");
   });
 
-  it("a request matches its recorded brief ignoring case and spacing, else the first brief", () => {
+  it("a request matches its recorded brief ignoring case and spacing, else the nearest (briefMatch.test.ts)", () => {
     const briefs = SLUGS.flatMap((slug) => {
       const r = briefFromRecorded(castRaw(slug));
       return r.ok ? [r.value] : [];
     });
     expect(recordedBriefFor("  A Spooky   census guy that counts everyone in CHAT ", briefs)?.name).toBe("The Tallyman");
-    expect(recordedBriefFor("a vampire accountant", briefs)).toBe(briefs[0]);
+    expect(recordedBriefFor("a fish priest from the deep", briefs)?.name).toBe("Vicar of the Lure");
     expect(recordedBriefFor("x", [])).toBeUndefined();
   });
 });

@@ -335,6 +335,7 @@ export function RitePage({ client: given, briefer: givenBriefer, caster, casting
               draft={draft}
               onDraft={setDraft}
               busy={busy}
+              recorded={recorded}
               {...(describeFailure === undefined ? {} : { refusal: describeFailure })}
               {...(recorded ? { onTryRealFace: tryRealFace } : {})}
               onNext={() => {

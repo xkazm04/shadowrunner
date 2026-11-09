@@ -52,6 +52,8 @@ export interface DescribeProps {
   draft: ForgeDraft;
   onDraft: (draft: ForgeDraft) => void;
   busy: boolean;
+  /** Replay plane: a drawing is not read, a recorded job plays (picked by the drawing's hash); the chip says so. */
+  recorded?: boolean;
   /** A failure that is about the description (likeness, content, input). */
   refusal?: { code: ForgeErrorCode; message: string };
   /** Replay only: forge the recorded refusal of a real face. */
@@ -67,7 +69,7 @@ export interface DescribeProps {
   brief?: ReactNode;
 }
 
-export function Describe({ draft, onDraft, busy, refusal, onTryRealFace, onNext, blocked, onBrief, briefBlocked, brief }: DescribeProps) {
+export function Describe({ draft, onDraft, busy, recorded, refusal, onTryRealFace, onNext, blocked, onBrief, briefBlocked, brief }: DescribeProps) {
   const promptId = useId();
   const fileId = useId();
   const [reading, setReading] = useState(false);
@@ -123,6 +125,7 @@ export function Describe({ draft, onDraft, busy, refusal, onTryRealFace, onNext,
                 {draft.image.name}
                 <small>
                   {draft.image.width} × {draft.image.height} · press to remove
+                  {recorded === true && " · replay forges a recorded character, not this drawing"}
                 </small>
               </button>
             )}

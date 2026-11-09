@@ -1,7 +1,9 @@
 // POST /api/forge/brief (cast-forge requirement 4.1, 4.3): a vague request -> a CharacterBrief.
 // - replay plane (default, or `x-sr-plane: replay`): the recorded contest brief whose
-//   one_line_request matches the request (case- and space-insensitive), else the first cast brief;
-//   `plane: "replay"` so the creator labels it RECORDED. No key, no quota, no fetch.
+//   one_line_request matches the request (case- and space-insensitive), else the nearest by
+//   `recordedBriefMatch` (perfection-pass task 8, the matcher the browser's replay shares), with
+//   `match` naming the character and the words that chose it; `plane: "replay"` so the creator
+//   labels it RECORDED. No key, no quota, no fetch.
 // - live plane: `checkAndCharge(ip, "forge", COST_USD.brief)`, then one Messages API call through
 //   the engine's client (`SR_BRIEF_MODEL`, default the engine's model) with the exact BRIEF_PROMPT.
 //   The answer is checked by `parseBriefJson`; an invalid answer is asked once more, then `upstream`.
@@ -12,8 +14,9 @@ import {
   briefFromRecorded,
   parseBriefJson,
   parseBriefRequest,
-  recordedBriefFor,
+  recordedBriefMatch,
   type BriefResponse,
+  type CastMatchNote,
   type CharacterBrief,
 } from "@sr/forge";
 import { COST_USD } from "./costs.js";
@@ -82,11 +85,11 @@ export async function handleBriefPost(req: Request, deps: BriefDeps): Promise<Re
     const parsed = parseBriefRequest(text);
     if (!parsed.ok) throw new ApiError("bad_input", parsed.errors.message);
     const { request } = parsed.value;
-    let answer: BriefResponse;
+    let answer: BriefResponse & { match?: CastMatchNote };
     if (planeFromRequest(req, deps.env) === "replay") {
-      const brief = recordedBriefFor(request, deps.recorded());
-      if (brief === undefined) throw new ApiError("upstream", "No recorded briefs are available.");
-      answer = { brief, plane: "replay" };
+      const recorded = recordedBriefMatch(request, deps.recorded());
+      if (recorded === undefined) throw new ApiError("upstream", "No recorded briefs are available.");
+      answer = { brief: recorded.brief, plane: "replay", match: recorded.match };
     } else {
       const apiKey = deps.env.ANTHROPIC_API_KEY?.trim();
       if (!apiKey) throw new ApiError("upstream", "The brief writer is offline.");

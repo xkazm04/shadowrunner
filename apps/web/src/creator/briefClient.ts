@@ -2,26 +2,34 @@
 // Wire types come from `@sr/forge/wire`; the brief is checked with `parseBrief` from the pure,
 // browser-safe `@sr/forge/brief` before the card shows it. On the replay plane the brief is read in
 // the browser from the eight recorded contest briefs (assets/characters/cast/<slug>/brief.json),
-// like the replay forge, with no request to /api: the matching one_line_request, else the first.
-import { briefFromRecorded, parseBrief, recordedBriefFor } from "@sr/forge/brief";
+// like the replay forge, with no request to /api: the exact one_line_request, else the nearest by
+// `recordedBriefMatch` (perfection-pass task 8, the same matcher the API's replay uses), with the
+// note the card shows ("Recorded: <name>, chosen for ..."). The forge then walks the job recorded
+// from that brief's one_line_request, so the brief shown and the character forged agree.
+import { briefFromRecorded, parseBrief, readCastMatchNote, recordedBriefMatch, type CastMatchNote } from "@sr/forge/brief";
 import type { BriefResponse, CharacterBrief } from "@sr/forge/wire";
 import { apiFetch, type Fetcher, type Plane } from "../app/plane";
 import { errorFromBody, ForgeError } from "./forgeClient";
 
+/** A brief answer; a replay answer carries why that recording was chosen (`match`). */
+export type BriefAnswer = BriefResponse & { match?: CastMatchNote };
+
 export interface BriefClient {
   /** POST /api/forge/brief */
-  brief(request: string): Promise<BriefResponse>;
+  brief(request: string): Promise<BriefAnswer>;
 }
 
 export const BRIEF_URL = "/api/forge/brief";
 
-/** A checked BriefResponse, or undefined when the value is not one. */
-export function readBriefResponse(value: unknown): BriefResponse | undefined {
+/** A checked BriefAnswer, or undefined when the value is not one (a malformed `match` is dropped). */
+export function readBriefResponse(value: unknown): BriefAnswer | undefined {
   if (typeof value !== "object" || value === null || !("brief" in value) || !("plane" in value)) return undefined;
   const plane = value.plane;
   if (plane !== "replay" && plane !== "live") return undefined;
   const brief = parseBrief(value.brief);
-  return brief.ok ? { brief: brief.value, plane } : undefined;
+  if (!brief.ok) return undefined;
+  const match = plane === "replay" && "match" in value ? readCastMatchNote(value.match) : undefined;
+  return match === undefined ? { brief: brief.value, plane } : { brief: brief.value, plane, match };
 }
 
 /** The live client, through `apiFetch` (so `?plane=replay` adds `x-sr-plane: replay`). */
@@ -61,14 +69,14 @@ export function loadRecordedBriefs(): Promise<CharacterBrief[]> {
   return loaded;
 }
 
-/** The in-browser replay twin: zero requests, the recorded brief for the request. */
+/** The in-browser replay twin: zero requests, the recorded brief nearest the request and why. */
 export function createReplayBriefClient(briefs: () => Promise<readonly CharacterBrief[]> = loadRecordedBriefs): BriefClient {
   return {
     async brief(request) {
       if (request.trim() === "") throw new ForgeError("bad_input", "Describe the character.");
-      const brief = recordedBriefFor(request, await briefs());
-      if (brief === undefined) throw new ForgeError("upstream", "No recorded briefs are available.");
-      return { brief, plane: "replay" };
+      const answer = recordedBriefMatch(request, await briefs());
+      if (answer === undefined) throw new ForgeError("upstream", "No recorded briefs are available.");
+      return { brief: answer.brief, plane: "replay", match: answer.match };
     },
   };
 }

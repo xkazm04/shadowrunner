@@ -61,6 +61,24 @@
   letter-spacing: 0.14em;
 }
 
+/* perfection-pass task 8: why this recording was shown, in the RECORDED tag's warn colour. */
+.chosen {
+  margin: var(--sr-space-1) 0 0;
+  padding-inline-start: var(--sr-space-2);
+  border-inline-start: thin solid var(--sr-signal-warn);
+  color: var(--sr-text-strong);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.chosen small {
+  display: block;
+  color: var(--sr-text-muted);
+  font-size: inherit;
+}
+
 .input,
 .role,
 .motion,
