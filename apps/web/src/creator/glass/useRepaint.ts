@@ -8,10 +8,12 @@
 // - Accept saves `acceptRepaint(record, candidate, blobs, look)` through the library's `add` (the
 //   look on screen, so an unsaved look edit is kept); Decline and Cancel make no call at all.
 // - The record's window (`repaintWindow`) gates the whole thing: no source, no Repaint.
+// - perfection-pass task 9: the record, look and `add` are read through a ref, so the Repaint
+//   object (and the FACES card memoised on it) stays the same while the look changes on a drag.
 import type { RigAssets } from "@sr/avatar";
 import type { ExpressionFamily, Look, Rig } from "@sr/rig";
 import type { RepaintCandidate } from "@sr/forge/wire";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { acceptRepaint, candidateFiles } from "../forge/repaint";
 import { repaintFace, repaintKey, RepaintError } from "../forge/repaintClient";
 import { rigAssetsOf, urlsToBlobs } from "../library/assets";
@@ -48,6 +50,10 @@ export function useRepaint(record: CharacterRecord, look: Look, add: (record: Ch
   const [state, setState] = useState<RepaintState>({ step: "idle" });
   const { repaint = repaintFace, fetchBlobs = urlsToBlobs, decode = rigAssetsOf } = deps;
   const live = useRef(true);
+  const latest = useRef({ record, look, add });
+  useEffect(() => {
+    latest.current = { record, look, add };
+  });
   useEffect(() => {
     live.current = true;
     return () => {
@@ -58,12 +64,13 @@ export function useRepaint(record: CharacterRecord, look: Look, add: (record: Ch
     if (live.current) setState(next);
   }, []);
 
-  const open = useCallback((family: ExpressionFamily) => setState({ step: "asking", family, eyes: record.source?.eyes ?? "", subtle: false }), [record.source?.eyes]);
+  const open = useCallback((family: ExpressionFamily) => setState({ step: "asking", family, eyes: latest.current.record.source?.eyes ?? "", subtle: false }), []);
   const setEyes = useCallback((eyes: string) => setState((s) => (s.step === "asking" ? { ...s, eyes } : s)), []);
   const setSubtle = useCallback((subtle: boolean) => setState((s) => (s.step === "asking" ? { ...s, subtle } : s)), []);
   const cancel = useCallback(() => setState({ step: "idle" }), []);
 
   const paint = useCallback(() => {
+    const { record } = latest.current;
     const source = record.source;
     if (state.step !== "asking" || source === undefined) return;
     const { family, eyes, subtle } = state;
@@ -89,17 +96,18 @@ export function useRepaint(record: CharacterRecord, look: Look, add: (record: Ch
         set({ step: "failed", family, message: err instanceof Error ? err.message : "The repaint failed.", expired });
       }
     })();
-  }, [state, record, repaint, fetchBlobs, decode, set]);
+  }, [state, repaint, fetchBlobs, decode, set]);
 
   const show = useCallback((which: "current" | "candidate") => setState((s) => (s.step === "candidate" ? { ...s, shown: which } : s)), []);
   const decline = useCallback(() => setState({ step: "idle" }), []);
   const accept = useCallback(async () => {
     if (state.step !== "candidate") return;
+    const { record, look, add } = latest.current;
     const next = acceptRepaint(record, state.candidate, state.blobs, look);
     if (next === undefined) return set({ step: "failed", family: state.family, message: "The new face could not be kept.", expired: false });
     await add(next);
     set({ step: "idle" });
-  }, [state, record, look, add, set]);
+  }, [state, set]);
 
-  return { state, open, setEyes, setSubtle, cancel, paint, show, accept, decline };
+  return useMemo(() => ({ state, open, setEyes, setSubtle, cancel, paint, show, accept, decline }), [state, open, setEyes, setSubtle, cancel, paint, show, accept, decline]);
 }

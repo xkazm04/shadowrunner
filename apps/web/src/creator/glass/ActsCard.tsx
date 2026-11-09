@@ -4,7 +4,7 @@
 // motion the face plays the act's static twin). Shown only when the character has an act.
 import { castSlug } from "@sr/engine";
 import type { Rig } from "@sr/rig";
-import { useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { stageActs, withActs, type StageAct } from "../../air/acts";
 import { castActs } from "../../air/castActs";
 import type { ActFire } from "../../air/useActCue";
@@ -25,7 +25,8 @@ export function useRehearse(): [ActFire | undefined, (layer: string) => void] {
 /** `hand_r` -> `hand r`. */
 const partName = (layer: string): string => layer.replace(/_/g, " ");
 
-export function ActsCard({ rig, onRehearse }: { rig: Rig; onRehearse: (layer: string) => void }) {
+/** Memoised (perfection-pass task 9): it reads the rig only. */
+export const ActsCard = memo(function ActsCard({ rig, onRehearse }: { rig: Rig; onRehearse: (layer: string) => void }) {
   const acts: StageAct[] = useMemo(() => stageActs(rig), [rig]);
   if (acts.length === 0) return null;
   return (
@@ -45,4 +46,4 @@ export function ActsCard({ rig, onRehearse }: { rig: Rig; onRehearse: (layer: st
       </ul>
     </section>
   );
-}
+});

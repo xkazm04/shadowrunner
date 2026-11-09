@@ -5,7 +5,7 @@
 // shows every character at once (it wraps rather than scrolls).
 // Avatar packs (spec avatar-pack): an Export key on every card but Malakor's, and "Import pack" in
 // the header (or a pack dropped anywhere on the region).
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { ExportSheet } from "./ExportSheet";
 import { ImportButton, usePackImport } from "./ImportPack";
 import type {
@@ -14,7 +14,7 @@ import type {
   RemoveResult,
 } from "./libraryStore";
 import { canExport } from "./packing";
-import { thumbnailOf } from "./thumbnail";
+import { thumbUrl } from "./thumbnail";
 import styles from "./Library.module.css";
 
 /** A gallery character not in the library yet: a tile in the strip that adopts it on a press. */
@@ -43,19 +43,16 @@ export interface LibraryProps {
   variant?: "reel" | "bar";
 }
 
+/**
+ * The record's stored still (perfection-pass task 9: made once by useLibrary, kept on the record),
+ * or its initial until there is one. A still a little behind the look is shown until the new one
+ * is made; a rename keeps the same Blob, so nothing is made or decoded again.
+ */
 function Thumb({ record }: { record: CharacterRecord }) {
-  const [url, setUrl] = useState<string | undefined>(undefined);
-  useEffect(() => {
-    let live = true;
-    void thumbnailOf(
-      `${record.id}@${record.createdAt}`,
-      record.rig,
-      record.assets,
-    ).then((u) => live && setUrl(u));
-    return () => {
-      live = false;
-    };
-  }, [record]);
+  const url =
+    record.thumb === undefined
+      ? undefined
+      : thumbUrl(record.id, record.thumb.blob);
   return url === undefined ? (
     <span className={styles.initial} aria-hidden="true">
       {record.rig.name.replace(/^(the|arch-lich)\s+/i, "").charAt(0)}

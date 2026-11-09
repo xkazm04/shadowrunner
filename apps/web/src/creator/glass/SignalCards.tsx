@@ -4,10 +4,11 @@
 // records the character first (`sr.onAir`, character-control), so the stage shows it.
 // "Export pack" (spec avatar-pack) opens the Export sheet for any character but the seeded Malakor.
 // C4: a forged character's sheet (archetype, hook, example lines) is shown under VOICE, read-only.
+// perfection-pass task 9: every card here is memoised; none reads the look, so a drag skips them.
 import { VOICE_IDS, VOICES, type VoiceId } from "@sr/engine";
 import type { CharacterSheet } from "@sr/pack";
 import type { Gesture } from "@sr/rig";
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { PAGES } from "../../app/pages";
 import { handleLinkClick } from "../../app/router";
 import { writeOnAir } from "../../air/onAir";
@@ -18,7 +19,7 @@ import { GESTURES, gestureLabel } from "./gestures";
 import anatomy from "./Anatomy.module.css";
 import styles from "./Signal.module.css";
 
-export function GestureCard({ onGesture }: { onGesture: (gesture: Gesture) => void }) {
+export const GestureCard = memo(function GestureCard({ onGesture }: { onGesture: (gesture: Gesture) => void }) {
   return (
     <section className={styles.card} aria-labelledby="gesture-title">
       <h2 id="gesture-title" className={styles.cardTitle}>
@@ -33,7 +34,7 @@ export function GestureCard({ onGesture }: { onGesture: (gesture: Gesture) => vo
       </div>
     </section>
   );
-}
+});
 
 const reduced = (): boolean => typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -62,7 +63,7 @@ export interface VoiceCardProps {
   line?: string;
 }
 
-export function VoiceCard({ voice, onVoice, onSpeak, speaking, line }: VoiceCardProps) {
+export const VoiceCard = memo(function VoiceCard({ voice, onVoice, onSpeak, speaking, line }: VoiceCardProps) {
   const typed = useTyped(line);
   const [, description] = VOICES[voice].label.split(":");
   return (
@@ -92,10 +93,10 @@ export function VoiceCard({ voice, onVoice, onSpeak, speaking, line }: VoiceCard
       </p>
     </section>
   );
-}
+});
 
 /** C4: who a forged character is on air, from the brief the streamer approved (read-only). */
-export function SheetCard({ sheet }: { sheet: CharacterSheet }) {
+export const SheetCard = memo(function SheetCard({ sheet }: { sheet: CharacterSheet }) {
   return (
     <section className={styles.card} aria-labelledby="sheet-title" data-sheet="">
       <h2 id="sheet-title" className={styles.cardTitle}>
@@ -111,12 +112,12 @@ export function SheetCard({ sheet }: { sheet: CharacterSheet }) {
       )}
     </section>
   );
-}
+});
 
 const onAir = PAGES.find((p) => p.id === "landing");
 const characters = PAGES.find((p) => p.id === "characters");
 
-export function ChannelActions({ recordId, record }: { recordId?: string; record?: CharacterRecord }) {
+export const ChannelActions = memo(function ChannelActions({ recordId, record }: { recordId?: string; record?: CharacterRecord }) {
   const [exporting, setExporting] = useState(false);
   return (
     <nav className={styles.actions} aria-label="Channels from the forge">
@@ -146,4 +147,4 @@ export function ChannelActions({ recordId, record }: { recordId?: string; record
       {exporting && record !== undefined && <ExportSheet record={record} onClose={() => setExporting(false)} />}
     </nav>
   );
-}
+});

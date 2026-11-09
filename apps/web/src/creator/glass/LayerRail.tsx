@@ -3,8 +3,9 @@
 // face or puts it back (Look.hidden). Hover or focus on a row outlines that layer on the glass.
 // The rows slide in one after another when a character comes onto the glass. With `onSelect`
 // (character-control) a row's name is a button that selects the part for the Shape card.
+// perfection-pass task 9: memoised (it reads `look.hidden` only), so a slider drag skips it.
 import { isEmissive, type Layer, type LayerKind } from "@sr/rig";
-import { useEffect, useState, type CSSProperties } from "react";
+import { memo, useEffect, useState, type CSSProperties } from "react";
 import styles from "./Anatomy.module.css";
 import look from "./Look.module.css";
 
@@ -52,7 +53,7 @@ export interface LayerRailProps {
   onSelect?: (layer: string) => void;
 }
 
-export function LayerRail({ layers, thumbs, hidden, onToggle, onHighlight, selected, onSelect }: LayerRailProps) {
+export const LayerRail = memo(function LayerRail({ layers, thumbs, hidden, onToggle, onHighlight, selected, onSelect }: LayerRailProps) {
   const off = new Set(hidden);
   const rows = [...layers].sort((a, b) => b.z - a.z);
   return (
@@ -111,4 +112,4 @@ export function LayerRail({ layers, thumbs, hidden, onToggle, onHighlight, selec
       </ol>
     </aside>
   );
-}
+});

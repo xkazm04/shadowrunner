@@ -14,9 +14,11 @@
 //   key per family (RepaintPanel, useRepaint): one paid edit of that face within the job's 24 h,
 //   shown beside the current face and kept only on Accept. After the 24 h the keys are disabled
 //   and say so; a recorded, replay or imported character has none.
+// - perfection-pass task 9: the card reads only the look's retired faces (`retired`), and is
+//   memoised on it, so a face slider drag (which keeps that map's identity) skips it.
 import type { FaceGate } from "@sr/forge/faceGate";
-import { EXPRESSION_FAMILIES, isRetired, resolveFace, type Emotion, type ExpressionFamily, type Look, type Rig } from "@sr/rig";
-import { useCallback, useEffect, useState } from "react";
+import { EXPRESSION_FAMILIES, isRetired, resolveFace, type Emotion, type ExpressionFamily, type Look, type RetiredFaces, type Rig } from "@sr/rig";
+import { memo, useCallback, useEffect, useState } from "react";
 import signal from "./Signal.module.css";
 import lookCss from "./Look.module.css";
 import styles from "./Face.module.css";
@@ -73,7 +75,8 @@ const NOTE: Record<FamilyState, string> = {
 
 export interface FaceFamiliesProps {
   rig: Pick<Rig, "layers" | "face">;
-  look: Look;
+  /** The look's retired faces (`look.face.expression.faces`). */
+  retired: RetiredFaces | undefined;
   onRetire: (family: ExpressionFamily, retired: boolean) => void;
   preview: ExpressionFamily | undefined;
   onShow: (family: ExpressionFamily) => void;
@@ -85,9 +88,9 @@ export interface FaceFamiliesProps {
   repaint?: Repaint;
 }
 
-export function FaceFamilies({ rig, look, onRetire, preview, onShow, reduced, gate, windowState = "none", repaint }: FaceFamiliesProps) {
+export const FaceFamilies = memo(function FaceFamilies({ rig, retired: faces, onRetire, preview, onShow, reduced, gate, windowState = "none", repaint }: FaceFamiliesProps) {
   const repainting = repaint !== undefined && repaint.state.step !== "idle" && repaint.state.step !== "asking";
-  const states = familyStates(rig, look);
+  const states = familyStates(rig, faces === undefined ? {} : { face: { expression: { faces } } });
   const why = (f: ExpressionFamily) => (states[f] === "none" ? gate?.[f] : undefined);
   const unpainted = EXPRESSION_FAMILIES.filter((f) => states[f] === "none" && why(f) === undefined);
   const retired = EXPRESSION_FAMILIES.filter((f) => states[f] === "retired").length;
@@ -162,4 +165,4 @@ export function FaceFamilies({ rig, look, onRetire, preview, onShow, reduced, ga
       </p>
     </section>
   );
-}
+});

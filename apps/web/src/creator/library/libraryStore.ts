@@ -17,11 +17,14 @@
 // - perfection-pass task 7: `rename` and `duplicate` follow library/variant.ts. A rename rewrites
 //   only rig.name; a duplicate reads the stored record (through `readRecord`, so a damaged one is
 //   not copied) and writes the variant in the same readwrite transaction that chose its free id.
+// - perfection-pass task 9: a record may keep the strip's still (`thumb`, library/thumbKey.ts);
+//   `saveThumb` writes it only while the stored record still has that key's id, createdAt and look.
 import { VOICE_IDS, type VoiceId } from "@sr/engine";
 import { readFaceGate, type FaceGate } from "@sr/forge/faceGate";
 import { readSheet, type CharacterSheet } from "@sr/pack";
 import { defaultLook, readLook, validateRig, type Look, type Rig } from "@sr/rig";
 import { extraFiles } from "./assets";
+import { readThumb, thumbKey, type Thumb } from "./thumbKey";
 import { renamed, variantOf } from "./variant";
 
 export const DB_NAME = "sr-library";
@@ -62,6 +65,8 @@ export interface CharacterRecord {
    * and imported characters.
    */
   source?: CharacterSource;
+  /** perfection-pass task 9: the strip's still and its key (thumbKey). A library note only: packs do not carry it. */
+  thumb?: Thumb;
 }
 
 export interface CharacterSource {
@@ -99,6 +104,8 @@ export interface LibraryStore {
   saveLook(id: string, look: Look): Promise<boolean>;
   /** Updates only `voice`; false when there is no such record. */
   saveVoice(id: string, voice: VoiceId): Promise<boolean>;
+  /** Updates only `thumb`; false when there is no readable record whose thumbKey is `thumb.key`. */
+  saveThumb(id: string, thumb: Thumb): Promise<boolean>;
   /** Refused for a seeded record. */
   remove(id: string): Promise<RemoveResult>;
   /** Sets rig.name (library/variant.ts `renamed`). */
@@ -167,6 +174,8 @@ export function readRecord(value: unknown): LibraryEntry {
   // S2: a malformed source is dropped (the Face tab then offers no repaint).
   const source = readSource(value.source);
   if (source !== undefined) record.source = source;
+  const thumb = readThumb(value.thumb);
+  if (thumb !== undefined) record.thumb = thumb;
   return { kind: "ok", record };
 }
 
@@ -176,13 +185,22 @@ const byCreated = (a: LibraryEntry, b: LibraryEntry): number => {
   return at.localeCompare(bt);
 };
 
+type Patched = "look" | "voice" | "thumb";
+
+/** Whether `value` may be written to `field` of `row`: a thumb only over the record it was made from. */
+function fits(row: Fields, field: Patched, value: unknown): boolean {
+  if (field !== "thumb") return true;
+  const entry = readRecord(row);
+  return entry.kind === "ok" && readThumb(value)?.key === thumbKey(entry.record);
+}
+
 /** The in-memory twin (private mode, no IndexedDB). */
 export function memoryLibrary(): LibraryStore {
   const rows = new Map<string, unknown>();
   let ledger: unknown;
-  const patch = (id: string, field: "look" | "voice", value: unknown): boolean => {
+  const patch = (id: string, field: Patched, value: unknown): boolean => {
     const row = rows.get(id);
-    if (!isRecord(row)) return false;
+    if (!isRecord(row) || !fits(row, field, value)) return false;
     rows.set(id, { ...row, [field]: value });
     return true;
   };
@@ -195,6 +213,7 @@ export function memoryLibrary(): LibraryStore {
     },
     saveLook: async (id, look) => patch(id, "look", look),
     saveVoice: async (id, voice) => patch(id, "voice", voice),
+    saveThumb: async (id, thumb) => patch(id, "thumb", thumb),
     rename: async (id, name) => {
       const row = rows.get(id);
       if (row === undefined) return "missing";
@@ -256,12 +275,12 @@ function openDb(factory: IDBFactory): Promise<IDBDatabase> {
 
 /** The IndexedDB library over an open database. */
 export function idbLibrary(db: IDBDatabase): LibraryStore {
-  const patch = async (id: string, field: "look" | "voice", value: unknown): Promise<boolean> => {
+  const patch = async (id: string, field: Patched, value: unknown): Promise<boolean> => {
     const tx = db.transaction(STORE, "readwrite");
     const store = tx.objectStore(STORE);
     const finished = done(tx);
     const row: unknown = await request(store.get(id));
-    if (!isRecord(row)) {
+    if (!isRecord(row) || !fits(row, field, value)) {
       await finished;
       return false;
     }
@@ -286,6 +305,7 @@ export function idbLibrary(db: IDBDatabase): LibraryStore {
     },
     saveLook: (id, look) => patch(id, "look", look),
     saveVoice: (id, voice) => patch(id, "voice", voice),
+    saveThumb: (id, thumb) => patch(id, "thumb", thumb),
     async rename(id, name) {
       const tx = db.transaction(STORE, "readwrite");
       const store = tx.objectStore(STORE);

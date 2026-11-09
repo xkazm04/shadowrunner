@@ -138,11 +138,11 @@ describe("lookReducer face (face-control)", () => {
     expect("face" in lookReducer(base, { type: "face", field: "motion.breath", value: 0.3, rig })).toBe(false);
   });
 
-  it("other actions keep look.face (a copy); faceReset and reset delete it", () => {
+  it("other actions keep look.face (the same object: structural sharing, perfection-pass task 9); faceReset and reset delete it", () => {
     const tuned = lookReducer(base, { type: "face", field: "mouth.emotion", value: 1.4, rig });
     const moody = lookReducer(tuned, { type: "emotion", emotion: "grim" });
     expect(moody.face).toEqual({ mouth: { emotion: 1.4 } });
-    expect(moody.face).not.toBe(tuned.face);
+    expect(moody.face).toBe(tuned.face);
     expect("face" in lookReducer(moody, { type: "faceReset" })).toBe(false);
     expect(lookReducer(base, { type: "faceReset" })).toBe(base);
     expect("face" in lookReducer(moody, { type: "reset", rig })).toBe(false);
@@ -176,5 +176,45 @@ describe("lookReducer retire (retire-a-face)", () => {
     expect("face" in lookReducer(two, { type: "reset", rig })).toBe(false);
     expect(lookReducer(base, { type: "retire", family: "gloom", retired: false })).toBe(base);
     expect("face" in lookReducer(one, { type: "retire", family: "showman", retired: false })).toBe(false);
+  });
+});
+
+describe("lookReducer structural sharing (perfection-pass task 9)", () => {
+  const rig = testRig();
+  const start = (): Look => {
+    let look = defaultLook(rig);
+    for (const action of [
+      { type: "palette", key: "eye", value: "#102030" },
+      { type: "toggle", layer: "crown" },
+      { type: "region", key: "head:skin", value: "#405060" },
+      { type: "shape", layer: "head", value: { size: 1.2 } },
+      { type: "face", field: "gaze.range", value: 0.3, rig },
+      { type: "retire", family: "joy", retired: true },
+    ] satisfies LookAction[])
+      look = lookReducer(look, action);
+    return look;
+  };
+  const parts = ["palette", "hidden", "regions", "shape", "face"] as const;
+  const changes: [LookAction, (typeof parts)[number]][] = [
+    [{ type: "palette", key: "glow", value: "#ffffff" }, "palette"],
+    [{ type: "toggle", layer: "monocle" }, "hidden"],
+    [{ type: "region", key: "head:skin", value: "#000000" }, "regions"],
+    [{ type: "shape", layer: "head", value: { size: 1.3 } }, "shape"],
+    [{ type: "face", field: "gaze.range", value: 0.4, rig }, "face"],
+  ];
+
+  it.each(changes)("%o replaces only look.%s; every other part is the same object", (action, changed) => {
+    const before = start();
+    const after = lookReducer(before, action);
+    for (const part of parts) {
+      if (part === changed) expect(after[part]).not.toBe(before[part]);
+      else expect(after[part]).toBe(before[part]);
+    }
+  });
+
+  it("a face slider keeps the retired faces map, so FACES can skip it", () => {
+    const before = start();
+    const after = lookReducer(before, { type: "face", field: "motion.drift", value: 1.5, rig });
+    expect(after.face?.expression?.faces).toBe(before.face?.expression?.faces);
   });
 });

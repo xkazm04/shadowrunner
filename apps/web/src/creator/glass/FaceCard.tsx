@@ -5,7 +5,9 @@
 // A change writes Look.face (lookReducer "face"); "Reset to character default" deletes it.
 // "Look around" cycles the glass's gaze (useLookAround) so the range can be seen; it is off and
 // disabled under reduced motion.
+// perfection-pass task 9: memoised on `look.face` alone, so a colour or shape drag skips it.
 import { FACE_LIMITS, faceValue, resolveFace, type FaceField, type Look, type Rig } from "@sr/rig";
+import { memo } from "react";
 import signal from "./Signal.module.css";
 import lookCss from "./Look.module.css";
 import styles from "./Face.module.css";
@@ -69,7 +71,8 @@ const inputId = (field: FaceField): string => `face-${field.replace(/\./g, "-")}
 
 export interface FaceCardProps {
   rig: Pick<Rig, "face">;
-  look: Look;
+  /** The look's face profile. */
+  face: Look["face"];
   onFace: (field: FaceField, value: number) => void;
   onReset: () => void;
   /** The glass's gaze cycles through chat, content and host. */
@@ -79,7 +82,8 @@ export interface FaceCardProps {
   reduced: boolean;
 }
 
-export function FaceCard({ rig, look, onFace, onReset, lookAround, onLookAround, reduced }: FaceCardProps) {
+export const FaceCard = memo(function FaceCard({ rig, face: own, onFace, onReset, lookAround, onLookAround, reduced }: FaceCardProps) {
+  const look = own === undefined ? {} : { face: own };
   const face = resolveFace(rig, look);
   const changed = look.face === undefined ? 0 : FACE_GROUPS.flatMap((g) => g.rows).filter((r) => faceValue(look.face, r.field) !== undefined).length;
   return (
@@ -145,4 +149,4 @@ export function FaceCard({ rig, look, onFace, onReset, lookAround, onLookAround,
       </div>
     </>
   );
-}
+});

@@ -10,6 +10,7 @@
 //   unlike him, it may be renamed and deleted.
 import type { Rig } from "@sr/rig";
 import type { CharacterRecord } from "./libraryStore";
+import { thumbIsCurrent, thumbKey } from "./thumbKey";
 
 export const NAME_MAX = 60;
 
@@ -44,6 +45,9 @@ export function variantOf(record: CharacterRecord, taken: ReadonlySet<string>, n
   delete next.seeded;
   delete next.house;
   if (isHouseArt(record)) next.house = true;
+  // perfection-pass task 9: the same art and look draw the same still, kept under the copy's key.
+  delete next.thumb;
+  if (record.thumb !== undefined && thumbIsCurrent(record)) next.thumb = { blob: record.thumb.blob, key: thumbKey(next) };
   return next;
 }
 

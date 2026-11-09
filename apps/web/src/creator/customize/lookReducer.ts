@@ -63,21 +63,17 @@ export function normalizeHex(value: string): string | undefined {
   return m?.[1] === undefined ? undefined : `#${m[1].toLowerCase()}`;
 }
 
-const copy = (look: Look): Look => {
-  const out: Look = { palette: { ...look.palette }, hidden: [...look.hidden], emotion: look.emotion };
-  if (look.gesture !== undefined) out.gesture = look.gesture;
-  if (look.regions !== undefined) out.regions = { ...look.regions };
-  if (look.shape !== undefined) out.shape = Object.fromEntries(Object.entries(look.shape).map(([k, v]) => [k, { ...v }]));
-  if (look.face !== undefined) out.face = structuredClone(look.face);
-  return out;
-};
+// perfection-pass task 9: structural sharing. A new look shares every part it did not change with
+// the old one (the same palette, hidden, regions, shape and face objects), so the editor's cards,
+// memoised on the parts they read, skip a change to another part. Nothing mutates a look.
+const copy = (look: Look): Look => ({ ...look });
 
-/** `look` with `regions` / `shape` set to the maps given, each left out when it is empty. */
+/** `look` with `regions` / `shape` set to the maps given (by reference), each left out when it is empty. */
 function withMaps(look: Look, regions: Look["regions"], shape: Look["shape"]): Look {
   const next = copy(look);
   delete next.regions;
   delete next.shape;
-  if (regions !== undefined && Object.keys(regions).length > 0) next.regions = { ...regions };
+  if (regions !== undefined && Object.keys(regions).length > 0) next.regions = regions;
   if (shape !== undefined && Object.keys(shape).length > 0) next.shape = shape;
   return next;
 }
@@ -101,9 +97,7 @@ export function lookReducer(look: Look, action: LookAction): Look {
     case "palette": {
       const value = normalizeHex(action.value);
       if (value === undefined) return look;
-      const next = copy(look);
-      next.palette[action.key] = value;
-      return next;
+      return { ...look, palette: { ...look.palette, [action.key]: value } };
     }
     case "toggle": {
       const next = copy(look);

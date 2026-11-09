@@ -17,9 +17,13 @@
 // a "before" tag; the name is renamed in place and Duplicate makes a variant (NameField); a pending
 // save is written on a switch, unmount and pagehide (useLookSave). A repaint Accept is a record
 // change, not a look edit: it keeps the look on screen and leaves the history as it is.
+// perfection-pass task 9: every card is memoised and handed only the part of the look it reads
+// (the reducer shares unchanged parts), and every callback here is stable (the library and the
+// look are read through refs), so a slider drag re-renders the glass, the dragged card and nothing
+// else (Anatomy.renders.dom.test.tsx).
 import type { VoiceId } from "@sr/engine";
-import { regionKey, resolveFace, resolveGesture, type Emotion, type Gesture } from "@sr/rig";
-import { useCallback, useState, type CSSProperties, type ReactNode } from "react";
+import { regionKey, resolveFace, resolveGesture, type Emotion, type ExpressionFamily, type FaceField, type Gesture, type Palette, type PartShape } from "@sr/rig";
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { CharacterRecord } from "../library/libraryStore";
 import { useArtRig, useRigAssets, type Library } from "../library/useLibrary";
 import { useSpeaker } from "../useSpeaker";
@@ -109,13 +113,19 @@ export function Anatomy({ record, library, cast, badge, readPixels = decodePixel
 
   // Keep the look: written shortly after the last change, and at once on a switch or pagehide.
   const flush = useLookSave(record.id, look, library.saveLook);
-  const onRename = async (name: string): Promise<void> => {
-    if ((await library.rename(record.id, name)) !== "renamed") throw new Error("not renamed");
-  };
-  const onDuplicate = async (): Promise<void> => {
+  // The library object and the look change on every save and step; callbacks read them here.
+  const latest = useRef({ library, look });
+  useEffect(() => {
+    latest.current = { library, look };
+  });
+  const id = record.id;
+  const onRename = useCallback(async (name: string): Promise<void> => {
+    if ((await latest.current.library.rename(id, name)) !== "renamed") throw new Error("not renamed");
+  }, [id]);
+  const onDuplicate = useCallback(async (): Promise<void> => {
     await flush();
-    await library.duplicate(record.id);
-  };
+    await latest.current.library.duplicate(id);
+  }, [flush, id]);
 
   const onGesture = useCallback(
     (g: Gesture) => {
@@ -125,19 +135,29 @@ export function Anatomy({ record, library, cast, badge, readPixels = decodePixel
     [fireGesture],
   );
 
-  const onEmotion = (emotion: Emotion): void => {
+  const onEmotion = useCallback((emotion: Emotion): void => {
     dispatch({ type: "emotion", emotion });
-    const g = resolveGesture({ ...look, emotion });
+    const g = resolveGesture({ ...latest.current.look, emotion });
     if (g !== undefined) onGesture(g);
-  };
+  }, [dispatch, onGesture]);
 
-  const onVoice = (voice: VoiceId): void => void library.saveVoice(record.id, voice);
-  const toggle = (layer: string): void => dispatch({ type: "toggle", layer });
-  const select = (layer: string, slot?: string): void => {
+  const onVoice = useCallback((voice: VoiceId): void => void latest.current.library.saveVoice(id, voice), [id]);
+  const toggle = useCallback((layer: string): void => dispatch({ type: "toggle", layer }), [dispatch]);
+  const select = useCallback((layer: string, slot?: string): void => {
     setPart(layer);
     setRegion(slot === undefined ? undefined : regionKey(layer, slot));
     setTab("look");
-  };
+  }, []);
+  const selectPart = useCallback((layer: string): void => select(layer), [select]);
+  const rig = record.rig;
+  const onPalette = useCallback((key: keyof Palette, value: string) => dispatch({ type: "palette", key, value }), [dispatch]);
+  const onRegion = useCallback((key: string, value: string | null) => dispatch({ type: "region", key, value }), [dispatch]);
+  const onShape = useCallback((layer: string, value: Partial<PartShape>) => dispatch({ type: "shape", layer, value }), [dispatch]);
+  const onShapeReset = useCallback((layer: string) => dispatch({ type: "shapeReset", layer }), [dispatch]);
+  const onShapeResetAll = useCallback(() => dispatch({ type: "shapeResetAll" }), [dispatch]);
+  const onFace = useCallback((field: FaceField, value: number) => dispatch({ type: "face", field, value, rig }), [dispatch, rig]);
+  const onFaceReset = useCallback(() => dispatch({ type: "faceReset" }), [dispatch]);
+  const onRetire = useCallback((family: ExpressionFamily, retired: boolean) => dispatch({ type: "retire", family, retired }), [dispatch]);
   const onPick = (point: [number, number]): void => {
     void glassPick.pick(point).then((hit) => {
       if (hit !== undefined) select(hit.layer, hit.slot);
@@ -167,7 +187,7 @@ export function Anatomy({ record, library, cast, badge, readPixels = decodePixel
         onToggle={toggle}
         onHighlight={setHighlight}
         {...(part === undefined ? {} : { selected: part })}
-        onSelect={(layer) => select(layer)}
+        onSelect={selectPart}
       />
       <section className={styles.centre} aria-label={`The glass: ${record.rig.name}`}>
         <div className={styles.glassBox}>
@@ -180,7 +200,7 @@ export function Anatomy({ record, library, cast, badge, readPixels = decodePixel
             {...(speaker.audio === undefined ? {} : { audio: speaker.audio })}
             {...(gaze === undefined ? {} : { gaze })}
             {...(highlight === undefined ? {} : { highlight })}
-            onPalette={(key, value) => dispatch({ type: "palette", key, value })}
+            onPalette={onPalette}
             onLift={toggle}
             onPick={onPick}
             {...(glassPick.outline === undefined ? {} : { outline: glassPick.outline })}
@@ -237,36 +257,23 @@ export function Anatomy({ record, library, cast, badge, readPixels = decodePixel
             look: (
               <>
                 <PaletteCard
-                  rig={record.rig}
-                  look={look}
-                  onPalette={(key, value) => dispatch({ type: "palette", key, value })}
-                  onRegion={(key, value) => dispatch({ type: "region", key, value })}
+                  rig={rig}
+                  palette={look.palette}
+                  regions={look.regions}
+                  onPalette={onPalette}
+                  onRegion={onRegion}
                   {...(region === undefined ? {} : { selected: region })}
                 />
-                <ShapeCard
-                  look={look}
-                  {...(part === undefined ? {} : { part })}
-                  onShape={(layer, value) => dispatch({ type: "shape", layer, value })}
-                  onReset={(layer) => dispatch({ type: "shapeReset", layer })}
-                  onResetAll={() => dispatch({ type: "shapeResetAll" })}
-                />
+                <ShapeCard shape={look.shape} {...(part === undefined ? {} : { part })} onShape={onShape} onReset={onShapeReset} onResetAll={onShapeResetAll} />
               </>
             ),
             face: (
               <>
-                <FaceCard
-                  rig={record.rig}
-                  look={look}
-                  onFace={(field, value) => dispatch({ type: "face", field, value, rig: record.rig })}
-                  onReset={() => dispatch({ type: "faceReset" })}
-                  lookAround={around}
-                  onLookAround={setAround}
-                  reduced={reduced}
-                />
+                <FaceCard rig={rig} face={look.face} onFace={onFace} onReset={onFaceReset} lookAround={around} onLookAround={setAround} reduced={reduced} />
                 <FaceFamilies
-                  rig={record.rig}
-                  look={look}
-                  onRetire={(family, retired) => dispatch({ type: "retire", family, retired })}
+                  rig={rig}
+                  retired={look.face?.expression?.faces}
+                  onRetire={onRetire}
                   preview={preview}
                   onShow={show}
                   reduced={reduced}

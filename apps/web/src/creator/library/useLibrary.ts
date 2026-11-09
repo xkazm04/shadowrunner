@@ -5,14 +5,22 @@
 // character and decodes its layer images for the stage.
 // perfection-pass task 7: `rename` (rig.name; refused for the house character) and `duplicate` (a
 // variant under a new id, made active), both through the store (library/variant.ts).
+// perfection-pass task 9: every record keeps its strip still (`thumb`, library/thumbnail.ts). Any
+// record listed without a current one is queued (thumbQueue: soon when it has none, in an idle
+// callback after a look save), and the still is written with `saveThumb` and patched in place. A
+// record `add` stores (forged, adopted, imported, repainted) drops the still it came with, since
+// its images may be new. The actions are stable functions (the library object still changes with
+// its entries), so hooks that depend on one do not run again on every library render.
 import type { RigAssets } from "@sr/avatar";
 import type { VoiceId } from "@sr/engine";
 import type { Look, Rig } from "@sr/rig";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { rigAssetsOf } from "./assets";
 import { openLibrary, type CharacterRecord, type LibraryEntry, type LibraryStore, type RemoveResult, type RenameResult } from "./libraryStore";
 import { loadCast, memberFor } from "../gallery/entries";
 import { seedCast, type CastSeed } from "./seed";
+import { thumbQueue, type ThumbQueue } from "./thumbnail";
+import { thumbKey, type Thumb } from "./thumbKey";
 import { cleanName, sameArt } from "./variant";
 
 const ACTIVE_KEY = "sr-creator-active";
@@ -66,6 +74,8 @@ export interface UseLibraryOptions {
   cast?: () => Promise<readonly CastMember[]>;
   /** The character a deep link asks for (`/creator?character=<slug>`): a cast slug or a record id. */
   want?: string;
+  /** Makes a record's strip still. Default: library/thumbnail.ts renderThumb. */
+  makeThumb?: (record: CharacterRecord) => Promise<Thumb | undefined>;
 }
 
 /** The `character` parameter of a query string, when present. */
@@ -74,12 +84,32 @@ export function wantedCharacter(search: string): string | undefined {
   return value === undefined || value === "" ? undefined : value;
 }
 
-export function useLibrary({ open = () => openLibrary(), cast = loadCast, want }: UseLibraryOptions = {}): Library {
+export function useLibrary({ open = () => openLibrary(), cast = loadCast, want, makeThumb }: UseLibraryOptions = {}): Library {
   const store = useRef<LibraryStore | undefined>(undefined);
   const [status, setStatus] = useState<Library["status"]>("loading");
   const [persistent, setPersistent] = useState(true);
   const [entries, setEntries] = useState<LibraryEntry[]>([]);
   const [activeId, setActiveId] = useState<string | undefined>(undefined);
+  const active = useRef(activeId);
+  active.current = activeId;
+
+  // Strip stills: made off the input path, written to the store, patched in only over the same look.
+  const thumbs = useRef<ThumbQueue | undefined>(undefined);
+  useEffect(() => {
+    const queue = thumbQueue(
+      async (id, thumb) => {
+        if (store.current === undefined || !(await store.current.saveThumb(id, thumb))) return;
+        setEntries((list) => list.map((e) => (e.kind === "ok" && e.record.id === id && thumbKey(e.record) === thumb.key ? { kind: "ok", record: { ...e.record, thumb } } : e)));
+      },
+      makeThumb === undefined ? {} : { make: makeThumb },
+    );
+    thumbs.current = queue;
+    return () => queue.stop();
+    // Made once per mount, as the store is.
+  }, []);
+  useEffect(() => {
+    for (const e of entries) if (e.kind === "ok") thumbs.current?.want(e.record);
+  }, [entries]);
 
   useEffect(() => {
     let live = true;
@@ -137,16 +167,12 @@ export function useLibrary({ open = () => openLibrary(), cast = loadCast, want }
     setEntries((list) => list.map((e) => (e.kind === "ok" && e.record.id === id ? { kind: "ok", record: { ...e.record, ...patch } } : e)));
   }, []);
 
-  const active = okRecords(entries).find((r) => r.id === activeId);
-
-  return {
-    status,
-    persistent,
-    entries,
-    ...(active === undefined ? {} : { active }),
+  const actions = useMemo((): Omit<Library, "status" | "persistent" | "entries" | "active"> => ({
     select,
     add: async (record) => {
-      await store.current?.put(record);
+      const fresh = { ...record };
+      delete fresh.thumb;
+      await store.current?.put(fresh);
       await refresh();
       select(record.id);
     },
@@ -155,7 +181,7 @@ export function useLibrary({ open = () => openLibrary(), cast = loadCast, want }
       if (result === "deleted") {
         const list = (await store.current?.list()) ?? [];
         setEntries(list);
-        if (id === activeId) {
+        if (id === active.current) {
           const next = okRecords(list)[0]?.id;
           if (next !== undefined) select(next);
         }
@@ -186,7 +212,10 @@ export function useLibrary({ open = () => openLibrary(), cast = loadCast, want }
       select(made);
       return made;
     },
-  };
+  }), [refresh, select, patchLocal]);
+
+  const record = okRecords(entries).find((r) => r.id === activeId);
+  return { status, persistent, entries, ...(record === undefined ? {} : { active: record }), ...actions };
 }
 
 /**

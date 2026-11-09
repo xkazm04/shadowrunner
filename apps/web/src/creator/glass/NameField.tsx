@@ -7,7 +7,7 @@
 //   Duplicate is, and his variant may be renamed.
 // - Duplicate writes the pending look first (the caller's onDuplicate), then makes the variant
 //   active, so the variant carries what is on the glass.
-import { useRef, useState, type KeyboardEvent } from "react";
+import { memo, useRef, useState, type KeyboardEvent } from "react";
 import { cleanName, NAME_MAX } from "../library/variant";
 import styles from "./History.module.css";
 
@@ -19,7 +19,8 @@ export interface NameFieldProps {
   onDuplicate: () => Promise<unknown>;
 }
 
-export function NameField({ name, fixed, onRename, onDuplicate }: NameFieldProps) {
+/** Memoised (perfection-pass task 9): a look change leaves the name as it was. */
+export const NameField = memo(function NameField({ name, fixed, onRename, onDuplicate }: NameFieldProps) {
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | undefined>(undefined);
@@ -94,4 +95,4 @@ export function NameField({ name, fixed, onRename, onDuplicate }: NameFieldProps
       )}
     </span>
   );
-}
+});

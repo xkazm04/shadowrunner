@@ -2,7 +2,7 @@
 // The knob is a slider (arrow keys, Home, End; a press turns it one step), each emotion a button;
 // either writes Look.emotion. Arrow keys are kept from the shell, which steps channels on them.
 import type { Emotion } from "@sr/rig";
-import type { KeyboardEvent } from "react";
+import { memo, type KeyboardEvent } from "react";
 import styles from "./Signal.module.css";
 
 export const EMOTIONS: readonly Emotion[] = ["neutral", "amused", "smug", "irritated", "furious", "delighted", "bored", "suspicious", "grim", "theatrical"];
@@ -16,7 +16,8 @@ function placeOf(i: number): { x: number; y: number } {
   return { x: Math.sin(a) * 7.4, y: -Math.cos(a) * 5.3 };
 }
 
-export function MoodDial({ value, onChange }: { value: Emotion; onChange: (emotion: Emotion) => void }) {
+/** Memoised (perfection-pass task 9): it reads `look.emotion` only. */
+export const MoodDial = memo(function MoodDial({ value, onChange }: { value: Emotion; onChange: (emotion: Emotion) => void }) {
   const at = Math.max(0, EMOTIONS.indexOf(value));
   const step = (i: number): void => {
     const next = EMOTIONS[(i + EMOTIONS.length) % EMOTIONS.length];
@@ -72,4 +73,4 @@ export function MoodDial({ value, onChange }: { value: Emotion; onChange: (emoti
       </div>
     </section>
   );
-}
+});

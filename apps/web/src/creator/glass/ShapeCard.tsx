@@ -1,7 +1,9 @@
 // The Look tab's Shape card (character-control "Creator UI", requirement 3.2): the selected part's
 // six reshape values (Look.shape) as labelled range inputs with read-outs, within SHAPE_LIMITS,
 // with "Reset part" and "Reset all". A part is selected from the Layer stack or by a glass pick.
+// perfection-pass task 9: memoised on `look.shape` alone, so a colour or face drag skips it.
 import { IDENTITY_SHAPE, SHAPE_LIMITS, type Look, type PartShape } from "@sr/rig";
+import { memo } from "react";
 import signal from "./Signal.module.css";
 import styles from "./Look.module.css";
 
@@ -27,7 +29,7 @@ export const SHAPE_ROWS: readonly ShapeRow[] = [
 ];
 
 export interface ShapeCardProps {
-  look: Look;
+  shape: Look["shape"];
   /** The selected layer's name. */
   part?: string;
   onShape: (layer: string, value: Partial<PartShape>) => void;
@@ -35,10 +37,10 @@ export interface ShapeCardProps {
   onResetAll: () => void;
 }
 
-export function ShapeCard({ look, part, onShape, onReset, onResetAll }: ShapeCardProps) {
-  const shape = part === undefined ? undefined : look.shape?.[part];
+export const ShapeCard = memo(function ShapeCard({ shape: shapes, part, onShape, onReset, onResetAll }: ShapeCardProps) {
+  const shape = part === undefined ? undefined : shapes?.[part];
   const value = shape ?? IDENTITY_SHAPE;
-  const any = look.shape !== undefined && Object.keys(look.shape).length > 0;
+  const any = shapes !== undefined && Object.keys(shapes).length > 0;
   return (
     <section className={signal.card} aria-labelledby="shape-title" data-card="shape">
       <h2 id="shape-title" className={signal.cardTitle}>
@@ -84,4 +86,4 @@ export function ShapeCard({ look, part, onShape, onReset, onResetAll }: ShapeCar
       </div>
     </section>
   );
-}
+});

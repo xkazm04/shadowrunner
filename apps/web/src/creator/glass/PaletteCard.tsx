@@ -7,8 +7,10 @@
 // - One ring is open at a time, under the chip row; Esc or a press outside closes it.
 // - The region the glass picked is marked (`aria-current`) but its ring is not opened, so a pick
 //   never takes the focus from the glass.
+// - perfection-pass task 9: memoised on the look's palette and regions alone (not the whole look),
+//   so a shape or face drag skips it.
 import { regionKey, type Layer, type Look, type Palette, type Rig } from "@sr/rig";
-import { useEffect, useState, type ReactNode } from "react";
+import { memo, useEffect, useState, type ReactNode } from "react";
 import { lamp, Ring } from "./Ring";
 import { LIGHT_LABELS, regionRing, ringOf, swatchName } from "./swatches";
 import signal from "./Signal.module.css";
@@ -28,7 +30,10 @@ export function hasMouthLight(rig: Rig): boolean {
 
 export interface PaletteCardProps {
   rig: Rig;
-  look: Look;
+  /** The look's lights. */
+  palette: Palette;
+  /** The look's region colours. */
+  regions: Look["regions"];
   onPalette: (key: keyof Palette, hex: string) => void;
   /** A null value resets the region to its paint. */
   onRegion: (key: string, hex: string | null) => void;
@@ -62,7 +67,8 @@ function Chip({ id, label, hex, disabled, current, onOpen }: { id: string; label
   );
 }
 
-export function PaletteCard({ rig, look, onPalette, onRegion, selected }: PaletteCardProps) {
+export const PaletteCard = memo(function PaletteCard({ rig, palette, regions, onPalette, onRegion, selected }: PaletteCardProps) {
+  const look = { palette, regions };
   const [open, setOpen] = useState<Open | undefined>(undefined);
   const mouth = hasMouthLight(rig);
   const parts = rig.layers.filter((l): l is Layer & { regions: NonNullable<Layer["regions"]> } => l.regions !== undefined);
@@ -157,4 +163,4 @@ export function PaletteCard({ rig, look, onPalette, onRegion, selected }: Palett
       {open?.id.startsWith("region:") === true && ring(open)}
     </section>
   );
-}
+});

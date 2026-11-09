@@ -5,7 +5,7 @@
 //   aria-pressed, disabled while there is nothing to compare (the look is the one opened).
 // - The "before" tag on the glass is BeforeTag; under reduced motion it appears without a fade, and
 //   the glass swaps looks without a crossfade in every mode (the renderer draws one look).
-import { useEffect, type KeyboardEvent } from "react";
+import { memo, useEffect, type KeyboardEvent } from "react";
 import styles from "./History.module.css";
 
 export interface HistoryBarProps {
@@ -21,7 +21,8 @@ export interface HistoryBarProps {
 
 const HOLD_KEYS = new Set([" ", "Enter"]);
 
-export function HistoryBar({ canUndo, canRedo, onUndo, onRedo, canCompare, comparing, onCompare }: HistoryBarProps) {
+/** Memoised (perfection-pass task 9): a drag past its first step leaves every prop as it was. */
+export const HistoryBar = memo(function HistoryBar({ canUndo, canRedo, onUndo, onRedo, canCompare, comparing, onCompare }: HistoryBarProps) {
   // Nothing to compare any more (an undo back to the start) lets go.
   useEffect(() => {
     if (!canCompare && comparing) onCompare(false);
@@ -79,7 +80,7 @@ export function HistoryBar({ canUndo, canRedo, onUndo, onRedo, canCompare, compa
       </button>
     </span>
   );
-}
+});
 
 /** On the glass while Compare is held. */
 export function BeforeTag() {
