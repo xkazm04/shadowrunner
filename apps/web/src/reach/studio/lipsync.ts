@@ -68,11 +68,19 @@ export function trackShaper(player: LipPlayer, lip: LipTrack, clock: () => numbe
 /** Preview: shapes the player's mouth every animation frame, ahead of its own draw. Returns the stop. */
 export function lipSync(player: LipPlayer & Pick<AvatarPlayer, "start" | "stop">, lip: LipTrack, clock: () => number, frames: Frames): () => void {
   if (!shapesMouth(player)) return () => undefined;
-  const shaper = trackShaper(player, lip, clock);
+  return frameLoop(player, trackShaper(player, lip, clock), frames);
+}
+
+/**
+ * Runs `step.frame(dt)` every animation frame ahead of the player's own draw (the order trick in
+ * the header), until the returned stop, which also calls `step.clear()`. The studio's Preview of a
+ * script (perfection-pass task 6) runs its director through it.
+ */
+export function frameLoop(player: Pick<AvatarPlayer, "start" | "stop">, step: { frame(dt: number): void; clear(): void }, frames: Frames): () => void {
   let last: number | undefined;
   let handle: number | undefined;
   const tick = (now: number): void => {
-    shaper.frame(last === undefined ? 0 : Math.max(0, (now - last) / 1000));
+    step.frame(last === undefined ? 0 : Math.max(0, (now - last) / 1000));
     last = now;
     handle = frames.request(tick);
   };
@@ -82,6 +90,6 @@ export function lipSync(player: LipPlayer & Pick<AvatarPlayer, "start" | "stop">
   return () => {
     if (handle !== undefined) frames.cancel(handle);
     handle = undefined;
-    shaper.clear();
+    step.clear();
   };
 }

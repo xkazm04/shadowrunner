@@ -67,9 +67,9 @@ test("studio: a borrowed recorded line, recorded into a WebM with video and audi
   await expect.poll(() => cast.locator("option").count(), { timeout: 30_000 }).toBeGreaterThan(1);
   await cast.selectOption({ label: "The Tallyman" });
   await expect(page.locator('[data-studio="borrowed"]')).toBeVisible({ timeout: 15_000 });
-  const lines = page.locator('input[name="studio-line"]');
-  await expect.poll(() => lines.count()).toBeGreaterThan(0);
-  await lines.first().check();
+  // The script starts as one recorded line (perfection-pass task 6; the multi-line, preset and
+  // transparent takes are studio.e2e.spec.ts).
+  await expect(page.locator('[aria-label="Script"] li')).toHaveCount(1);
 
   await page.locator('[data-studio="record"]').click();
   const link = page.locator("a[download]");

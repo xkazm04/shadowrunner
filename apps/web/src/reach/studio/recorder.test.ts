@@ -1,6 +1,7 @@
 // Studio recorder (spec avatar-reach, design "Testing", studio row): canRecord branches, the type
 // preference, and the record pipeline with a fake MediaRecorder, audio graph and canvas.
 import { describe, expect, it, vi } from "vitest";
+import { trackShaper } from "./lipsync";
 import {
   canRecord,
   FPS,
@@ -10,6 +11,7 @@ import {
   RECORD_FAILED,
   RECORD_TYPES,
   recordLine,
+  TRANSPARENT,
   type CaptureCanvas,
   type LineContext,
   type MediaRecorderLike,
@@ -115,7 +117,8 @@ function fakeCanvas(log: string[], context = true) {
   const g = {
     fillStyle: "",
     fillRect: () => log.push(`fill ${g.fillStyle}`),
-    drawImage: () => log.push("draw"),
+    clearRect: (...args: number[]) => log.push(`clear ${args.join(",")}`),
+    drawImage: (_source: unknown, ...args: number[]) => log.push(args.length === 0 ? "draw" : `draw ${args.join(",")}`),
   };
   const target = {
     width: 0,
@@ -204,7 +207,7 @@ describe("recordLine", () => {
     expect(t.canvas.tracks).toContain(t.graph.audioTrack);
     expect(t.rec.made[0]?.options).toEqual({ mimeType: "video/webm;codecs=vp9,opus" });
     expect(t.player.stop).toHaveBeenCalled();
-    expect(t.log.slice(0, 3)).toEqual(["fill #102030", "draw", "start"]);
+    expect(t.log.slice(0, 3)).toEqual(["fill #102030", "draw 0,0,640,480", "start"]);
     expect(t.graph.sources[0]?.connected).toEqual([t.graph.context.destination, t.graph.destination]);
 
     t.clock.step(0);
@@ -214,11 +217,13 @@ describe("recordLine", () => {
 
     t.graph.sources[0]?.onended?.();
     await flush();
-    const blob = await result;
+    const { blob, stats } = await result;
     expect(t.waits).toEqual([500]);
     expect(t.progress.at(-1)).toBe(1);
     expect(blob.type).toBe("video/webm");
     expect(await blob.text()).toBe("frames");
+    expect(stats.frames).toBe(2);
+    expect(stats.maxGapMs).toBe(1250);
     expect(t.log.at(-1)).toBe("stop");
     expect(t.canvas.videoTrack.stop).toHaveBeenCalled();
     expect(t.player.start).toHaveBeenCalled();
@@ -234,7 +239,7 @@ describe("recordLine", () => {
       mouthMode: () => "warp" as const,
     };
     const track = { durationS: 2, at: () => ({ rest: 0, openWide: 1, openMid: 0, round: 0, closed: 0, teeth: 0, tongue: 0, narrow: 0 }) };
-    const t = job({ player, mouth: { track, reducedMotion: () => false } });
+    const t = job({ player, direct: (clock) => trackShaper(player, { track, reducedMotion: () => false }, clock) });
     const result = recordLine(t.full);
     order.length = 0;
     t.clock.step(0);
@@ -244,6 +249,35 @@ describe("recordLine", () => {
     await flush();
     await result;
     expect(order.at(-1)).toBe("shapes off");
+  });
+
+  it("records at a preset size whatever the source's, draws the source at its place, and clears for transparent", async () => {
+    const t = job({ size: { width: 1080, height: 1921 }, place: { x: 0, y: 841, width: 1080, height: 1080 }, background: TRANSPARENT });
+    const result = recordLine(t.full);
+    expect([t.canvas.target.width, t.canvas.target.height]).toEqual([1080, 1920]);
+    expect(t.log.slice(0, 2)).toEqual(["clear 0,0,1080,1920", "draw 0,841,1080,1080"]);
+    expect(t.log.some((entry) => entry.startsWith("fill"))).toBe(false);
+    t.graph.sources[0]?.onended?.();
+    await flush();
+    await result;
+  });
+
+  it("samples the A/V offset at each mark on the take's clock", async () => {
+    let audio = 0;
+    const graph = fakeGraph();
+    const context = Object.defineProperty(Object.create(graph.context) as object, "currentTime", { get: () => audio }) as LineContext;
+    const t = job({ context, marks: [0, 1] });
+    const now = vi.spyOn(performance, "now").mockReturnValue(1000);
+    const result = recordLine(t.full);
+    t.clock.step(0); // audio 0, wall 0: offset 0
+    audio = 1;
+    now.mockReturnValue(2010); // wall 1.01 s, audio 1 s: 10 ms behind
+    t.clock.step(1010);
+    now.mockRestore();
+    graph.sources[0]?.onended?.();
+    await flush();
+    const { stats } = await result;
+    expect(stats.offsetsMs).toEqual([0, 10]);
   });
 
   it("rejects with a sentence when aborted, and restarts the player", async () => {

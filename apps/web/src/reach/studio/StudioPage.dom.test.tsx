@@ -89,19 +89,65 @@ afterEach(async () => {
 });
 
 describe("StudioPage", () => {
-  it("puts the first cast pack on stage and lists its recorded lines on replay", async () => {
+  it("puts the first cast pack on stage with a one-line script of a recorded line on replay", async () => {
     recorderGlobals();
     const c = await open("replay");
     expect(probe.loads).toEqual([{ pack: "/packs/the-tallyman.srpack" }]);
     expect(probe.players).toBe(1);
-    const lines = c.querySelectorAll('[aria-label="Recorded lines"] li');
-    expect(lines.length).toBeGreaterThan(0);
+    const rows = c.querySelectorAll('[aria-label="Script"] li');
+    expect(rows.length).toBe(1);
+    const clip = c.querySelector<HTMLSelectElement>('select[data-script="clip"]');
+    expect(clip?.options.length).toBeGreaterThan(1);
+    // Malakor's first standalone line was recorded "theatrical" with a "flare".
+    expect(c.querySelector<HTMLSelectElement>('select[aria-label="Line 1 mood"]')?.value).toBe("theatrical");
+    expect(c.querySelector<HTMLSelectElement>('select[aria-label="Line 1 gesture"]')?.value).toBe("flare");
     expect(c.querySelector('[data-studio="borrowed"]')?.textContent).toContain("Malakor");
     expect(c.querySelector("textarea")).toBeNull();
     const preview = [...c.querySelectorAll("button")].find((b) => b.textContent === "Preview");
     expect(preview?.disabled).toBe(false);
     expect(c.querySelector('[data-studio="record"]')).not.toBeNull();
     expect(c.querySelector('[data-studio="no-recorder"]')).toBeNull();
+  });
+
+  it("edits the script: add up to eight, override a mood, move with the focus kept, remove", async () => {
+    const c = await open("replay");
+    const button = (name: string) => c.querySelector<HTMLButtonElement>(`button[aria-label="${name}"]`);
+    const add = c.querySelector<HTMLButtonElement>('button[data-script="add"]');
+    for (let i = 0; i < 9; i += 1) await act(async () => add?.click());
+    expect(c.querySelectorAll('[aria-label="Script"] li').length).toBe(8);
+    expect(add?.disabled).toBe(true);
+    expect(c.textContent).toContain("Up to 8 lines and 120 s a take");
+    const clips = [...c.querySelectorAll<HTMLSelectElement>('select[data-script="clip"]')].map((s) => s.value);
+    expect(new Set(clips).size).toBe(8);
+
+    const mood = c.querySelector<HTMLSelectElement>('select[aria-label="Line 2 mood"]');
+    await act(async () => {
+      if (mood !== null) mood.value = "furious";
+      mood?.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(c.querySelector<HTMLSelectElement>('select[aria-label="Line 2 mood"]')?.value).toBe("furious");
+
+    await act(async () => button("Move line 2 up")?.click());
+    expect(c.querySelector<HTMLSelectElement>('select[aria-label="Line 1 mood"]')?.value).toBe("furious");
+    expect([...c.querySelectorAll<HTMLSelectElement>('select[data-script="clip"]')].map((s) => s.value).slice(0, 2)).toEqual([clips[1], clips[0]]);
+    // At the top "up" is disabled, so the focus goes to the line's "down".
+    expect(document.activeElement?.getAttribute("aria-label")).toBe("Move line 1 down");
+    expect(button("Move line 1 up")?.disabled).toBe(true);
+
+    await act(async () => button("Remove line 1")?.click());
+    expect(c.querySelectorAll('[aria-label="Script"] li').length).toBe(7);
+    expect(c.querySelector<HTMLSelectElement>('select[data-script="clip"]')?.value).toBe(clips[0]);
+  });
+
+  it("offers the video sizes (as shown first) and a transparent background with its note", async () => {
+    const c = await open("replay");
+    const sizes = [...c.querySelectorAll<HTMLInputElement>('input[name="studio-aspect"]')];
+    expect(sizes.map((s) => s.value)).toEqual(["shown", "square", "portrait", "landscape"]);
+    expect(sizes[0]?.checked).toBe(true);
+    expect(c.querySelector('[data-studio="alpha-note"]')).toBeNull();
+    await act(async () => c.querySelector<HTMLButtonElement>('[data-studio="transparent"]')?.click());
+    expect(c.querySelector('[data-studio="alpha-note"]')?.textContent).toContain("Safari");
+    expect(c.querySelector<HTMLElement>('[data-studio="stage"]')?.style.background).toBe("");
   });
 
   it("says so when the character has no recorded lines", async () => {
