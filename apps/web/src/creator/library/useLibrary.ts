@@ -3,14 +3,17 @@
 // the background, the strip filling as each arrives; an on-demand member, a cast-forge character,
 // only when a deep link asks for it), lists the entries, tracks the active
 // character and decodes its layer images for the stage.
+// perfection-pass task 7: `rename` (rig.name; refused for the house character) and `duplicate` (a
+// variant under a new id, made active), both through the store (library/variant.ts).
 import type { RigAssets } from "@sr/avatar";
 import type { VoiceId } from "@sr/engine";
-import type { Look } from "@sr/rig";
+import type { Look, Rig } from "@sr/rig";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { rigAssetsOf } from "./assets";
-import { openLibrary, type CharacterRecord, type LibraryEntry, type LibraryStore, type RemoveResult } from "./libraryStore";
+import { openLibrary, type CharacterRecord, type LibraryEntry, type LibraryStore, type RemoveResult, type RenameResult } from "./libraryStore";
 import { loadCast, memberFor } from "../gallery/entries";
 import { seedCast, type CastSeed } from "./seed";
+import { cleanName, sameArt } from "./variant";
 
 const ACTIVE_KEY = "sr-creator-active";
 
@@ -42,6 +45,10 @@ export interface Library {
   remove(id: string): Promise<RemoveResult>;
   saveLook(id: string, look: Look): Promise<void>;
   saveVoice(id: string, voice: VoiceId): Promise<void>;
+  /** Sets the character's name (rig.name). */
+  rename(id: string, name: string): Promise<RenameResult>;
+  /** Stores a variant of the character and makes it active; its new id. Rejects when there is no readable record. */
+  duplicate(id: string): Promise<string>;
 }
 
 const okRecords = (entries: readonly LibraryEntry[]): CharacterRecord[] => entries.flatMap((e) => (e.kind === "ok" ? [e.record] : []));
@@ -163,13 +170,40 @@ export function useLibrary({ open = () => openLibrary(), cast = loadCast, want }
       patchLocal(id, { voice });
       await store.current?.saveVoice(id, voice);
     },
+    rename: async (id, name) => {
+      const result = (await store.current?.rename(id, name)) ?? "missing";
+      // Patched in place (images and look keep their identity), so the stage does not decode again.
+      const kept = cleanName(name);
+      if (result === "renamed" && kept !== undefined) {
+        setEntries((list) => list.map((e) => (e.kind === "ok" && e.record.id === id ? { kind: "ok", record: { ...e.record, rig: { ...e.record.rig, name: kept } } } : e)));
+      }
+      return result;
+    },
+    duplicate: async (id) => {
+      const made = await store.current?.duplicate(id);
+      if (made === undefined) throw new Error("There is no character to duplicate.");
+      await refresh();
+      select(made);
+      return made;
+    },
   };
+}
+
+/**
+ * `rig`, but the same object as before while only its name changed (a rename), so nothing that
+ * keys on the rig (decoding, the renderer's setRig) runs again for a new name.
+ */
+export function useArtRig<R extends Rig | undefined>(rig: R): R {
+  const [held, setHeld] = useState<R>(rig);
+  const keep = held !== rig && held !== undefined && rig !== undefined && sameArt(held, rig);
+  if (held !== rig && !keep) setHeld(rig);
+  return keep ? held : rig;
 }
 
 /** The active record's layer images, decoded for the renderer; undefined while decoding or on failure. */
 export function useRigAssets(record: CharacterRecord | undefined): { assets?: RigAssets; failed: boolean } {
   const [state, setState] = useState<{ id?: string; assets?: RigAssets; failed: boolean }>({ failed: false });
-  const rig = record?.rig;
+  const rig = useArtRig(record?.rig);
   const blobs = record?.assets;
   useEffect(() => {
     if (rig === undefined || blobs === undefined) return undefined;

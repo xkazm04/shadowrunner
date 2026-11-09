@@ -40,6 +40,8 @@ const library = (): Library => ({
   remove: async () => "refused",
   saveLook: async () => undefined,
   saveVoice: async () => undefined,
+  rename: async () => "renamed",
+  duplicate: async () => "copy",
 });
 
 let view: Mounted | undefined;

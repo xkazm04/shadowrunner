@@ -74,6 +74,8 @@ function library(): Library & { saved: unknown[] } {
       saved.push(look);
     },
     saveVoice: async () => undefined,
+    rename: async () => "renamed",
+    duplicate: async () => "copy",
   };
 }
 

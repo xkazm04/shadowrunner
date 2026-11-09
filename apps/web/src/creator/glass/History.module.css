@@ -1,0 +1,127 @@
+/* The look's history and the name under the glass (perfection-pass task 7): small keys in the
+   status line beside Reset look, the name as a quiet button that becomes a field, and the "before"
+   tag pinned to the glass while Compare is held (the amber accent, as the RECORDED badge's frame). */
+
+.bar,
+.name {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sr-space-2);
+}
+
+.step,
+.compare {
+  padding: 0 var(--sr-space-2);
+  border: thin solid var(--sr-line);
+  border-radius: var(--sr-radius-1);
+  background-color: var(--sr-surface-2);
+  color: var(--sr-text-strong);
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text-sm);
+  line-height: 1.6;
+  cursor: pointer;
+}
+
+.step:hover:not(:disabled),
+.compare:hover:not(:disabled) {
+  border-color: var(--sr-accent);
+}
+
+.step:disabled,
+.compare:disabled {
+  border-style: dashed;
+  background-color: transparent;
+  color: var(--sr-text-muted);
+  cursor: default;
+}
+
+/* Held: lit like a pressed key, and no text selection or touch callout while the finger is down. */
+.compare {
+  touch-action: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.compare[aria-pressed="true"] {
+  border-color: var(--sr-face-glow);
+  background-color: var(--sr-face-glow);
+  color: var(--sr-paper-ink);
+  font-weight: 700;
+}
+
+.rename {
+  padding: 0;
+  border: 0;
+  border-block-end: thin dashed transparent;
+  background-color: transparent;
+  color: var(--sr-text-strong);
+  font: inherit;
+  font-weight: 700;
+  cursor: text;
+}
+
+.rename:hover {
+  border-block-end-color: var(--sr-accent);
+}
+
+.field {
+  inline-size: 16rem;
+  max-inline-size: 60vw;
+  padding: 0 var(--sr-space-1);
+  border: thin solid var(--sr-accent);
+  border-radius: var(--sr-radius-1);
+  background-color: var(--sr-surface-0);
+  color: var(--sr-text-strong);
+  font: inherit;
+  font-weight: 700;
+}
+
+.note {
+  color: var(--sr-text);
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text-sm);
+}
+
+.before {
+  position: absolute;
+  inset-block-start: var(--sr-space-2);
+  inset-inline-start: var(--sr-space-2);
+  z-index: 3;
+  padding: 0 var(--sr-space-2);
+  border: thin solid var(--sr-accent);
+  border-radius: var(--sr-radius-1);
+  background-color: var(--sr-surface-0);
+  color: var(--sr-text-strong);
+  font-family: var(--sr-font-type);
+  font-size: var(--sr-size-text-sm);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  pointer-events: none;
+  animation: before-in 0.12s ease-out both;
+}
+
+@keyframes before-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.step:focus-visible,
+.compare:focus-visible,
+.rename:focus-visible,
+.field:focus-visible {
+  outline: 0.1875rem solid var(--sr-accent);
+  outline-offset: 0.125rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .before {
+    animation: none;
+  }
+}
+
+:global([data-motion="reduced"]) .before {
+  animation: none;
+}

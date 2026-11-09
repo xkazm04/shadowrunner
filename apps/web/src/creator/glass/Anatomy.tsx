@@ -12,20 +12,26 @@
 // tiger L1: under GESTURE, SIGNATURE ACTS (ActsCard) rehearses each act on the glass.
 // forge-creator S2: FACES can repaint one face of a live-forged character (useRepaint); while a
 // candidate is on screen the glass shows that family on the current or the candidate face.
+// perfection-pass task 7: the look carries its history (useLookHistory: Undo / Redo, the keys, a
+// drag as one step, Reset look undoable); Compare, held, puts the look as opened on the glass with
+// a "before" tag; the name is renamed in place and Duplicate makes a variant (NameField); a pending
+// save is written on a switch, unmount and pagehide (useLookSave). A repaint Accept is a record
+// change, not a look edit: it keeps the look on screen and leaves the history as it is.
 import type { VoiceId } from "@sr/engine";
-import { regionKey, resolveFace, resolveGesture, type Emotion, type Gesture, type Look } from "@sr/rig";
-import { useCallback, useEffect, useReducer, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { lookReducer } from "../customize/lookReducer";
+import { regionKey, resolveFace, resolveGesture, type Emotion, type Gesture } from "@sr/rig";
+import { useCallback, useState, type CSSProperties, type ReactNode } from "react";
 import type { CharacterRecord } from "../library/libraryStore";
-import { useRigAssets, type Library } from "../library/useLibrary";
+import { useArtRig, useRigAssets, type Library } from "../library/useLibrary";
 import { useSpeaker } from "../useSpeaker";
 import { ActsCard, useActedRig, useRehearse } from "./ActsCard";
 import { FaceCard } from "./FaceCard";
 import { FAMILY_EMOTION, FaceFamilies, useFacePreview } from "./FaceFamilies";
 import { Glass } from "./Glass";
 import { gestureLabel, useGesturePulse } from "./gestures";
+import { BeforeTag, HistoryBar } from "./HistoryBar";
 import { LayerRail, useBlobUrls } from "./LayerRail";
 import { MoodDial } from "./MoodDial";
+import { NameField } from "./NameField";
 import { PaletteCard } from "./PaletteCard";
 import { decodePixels, type PixelReader } from "./pixels";
 import { ShapeCard } from "./ShapeCard";
@@ -33,13 +39,14 @@ import { ChannelActions, GestureCard, SheetCard, VoiceCard } from "./SignalCards
 import { SignalTabs, type SignalTab } from "./SignalTabs";
 import { reducedMotion, usePick } from "./usePick";
 import { useLookAround } from "./useLookAround";
+import { useLookHistory } from "./useLookHistory";
+import { SAVE_DELAY_MS, useLookSave } from "./useLookSave";
 import { useRepaint } from "./useRepaint";
 import { repaintWindow } from "../forge/repaint";
 import styles from "./Anatomy.module.css";
 import signal from "./Signal.module.css";
 
-/** How long after the last change a look is written to the library. */
-export const SAVE_DELAY_MS = 400;
+export { SAVE_DELAY_MS };
 
 export interface AnatomyProps {
   record: CharacterRecord;
@@ -67,14 +74,17 @@ function liftChip(record: CharacterRecord, hidden: readonly string[]): string | 
 }
 
 export function Anatomy({ record, library, cast, badge, readPixels = decodePixels }: AnatomyProps) {
-  const [look, dispatch] = useReducer(lookReducer, record.look);
+  const history = useLookHistory(record);
+  const { look, dispatch } = history;
+  const [comparing, setComparing] = useState(false);
+  const art = useArtRig(record.rig);
   const [tab, setTab] = useState<SignalTab>("mood");
   const [part, setPart] = useState<string | undefined>(undefined);
   const [region, setRegion] = useState<string | undefined>(undefined);
   const glassPick = usePick(record, look, readPixels);
   const [gesture, fireGesture] = useGesturePulse();
   const [lastGesture, setLastGesture] = useState<string | undefined>(undefined);
-  const actedRig = useActedRig(record.id, record.rig);
+  const actedRig = useActedRig(record.id, art);
   const [act, rehearse] = useRehearse();
   const [highlight, setHighlight] = useState<string | undefined>(undefined);
   const [around, setAround] = useState(false);
@@ -88,25 +98,24 @@ export function Anatomy({ record, library, cast, badge, readPixels = decodePixel
   const compare = repaint.state.step === "candidate" ? repaint.state : undefined;
   const onCandidate = compare !== undefined && compare.shown === "candidate" && compare.preview.assets !== undefined ? compare.preview : undefined;
   const glassFamily = compare?.family ?? preview;
-  const glassLook = glassFamily === undefined ? look : { ...look, emotion: FAMILY_EMOTION[glassFamily] };
-  const glassRig = onCandidate?.rig ?? actedRig;
-  const glassAssets = onCandidate?.assets ?? assets;
+  // Compare, held, wins over a family shown or a candidate: the character as opened, nothing else.
+  const glassLook = comparing ? history.opened : glassFamily === undefined ? look : { ...look, emotion: FAMILY_EMOTION[glassFamily] };
+  const glassRig = comparing ? actedRig : (onCandidate?.rig ?? actedRig);
+  const glassAssets = comparing ? assets : (onCandidate?.assets ?? assets);
   const thumbs = useBlobUrls(record.assets);
   const speaker = useSpeaker((line) => {
     if (line.reply.gesture !== undefined) fireGesture(line.reply.gesture);
   });
 
-  // Keep the look: written shortly after the last change, only when it differs from the stored one.
-  const stored = useRef<Look>(record.look);
-  const saveLook = library.saveLook;
-  useEffect(() => {
-    if (look === stored.current) return undefined;
-    const timer = setTimeout(() => {
-      stored.current = look;
-      void saveLook(record.id, look);
-    }, SAVE_DELAY_MS);
-    return () => clearTimeout(timer);
-  }, [look, record.id, saveLook]);
+  // Keep the look: written shortly after the last change, and at once on a switch or pagehide.
+  const flush = useLookSave(record.id, look, library.saveLook);
+  const onRename = async (name: string): Promise<void> => {
+    if ((await library.rename(record.id, name)) !== "renamed") throw new Error("not renamed");
+  };
+  const onDuplicate = async (): Promise<void> => {
+    await flush();
+    await library.duplicate(record.id);
+  };
 
   const onGesture = useCallback(
     (g: Gesture) => {
@@ -179,12 +188,22 @@ export function Anatomy({ record, library, cast, badge, readPixels = decodePixel
           >
             {assets === undefined ? <p>{failed ? "This character's images could not be read." : "Lighting the face…"}</p> : undefined}
           </Glass>
+          {comparing && <BeforeTag />}
         </div>
         <div className={styles.status}>
           <span>
-            <b>{record.rig.name}</b> · live rig, {shown} {shown === 1 ? "layer" : "layers"} {badge}
+            <NameField name={record.rig.name} fixed={record.seeded === true} onRename={onRename} onDuplicate={onDuplicate} /> · live rig, {shown} {shown === 1 ? "layer" : "layers"} {badge}
           </span>
           <span className={styles.statusEnd}>
+            <HistoryBar
+              canUndo={history.canUndo}
+              canRedo={history.canRedo}
+              onUndo={history.undo}
+              onRedo={history.redo}
+              canCompare={look !== history.opened}
+              comparing={comparing}
+              onCompare={setComparing}
+            />
             <button type="button" className={styles.reset} disabled={!changed} onClick={() => dispatch({ type: "reset", rig: record.rig })}>
               Reset look
             </button>

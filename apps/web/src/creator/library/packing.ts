@@ -3,10 +3,11 @@
 // replacing anything, and the sentence a failed import shows.
 import { packErrorSentence, type AvatarPack, type PackError, type PackInput, type PackLicence } from "@sr/pack";
 import { DEFAULT_VOICE, isVoiceId, type CharacterRecord } from "./libraryStore";
+import { freeId, isHouseArt } from "./variant";
 
-/** Every character but the seeded house character (Malakor, pre-existing art) may leave. */
+/** Every character but the seeded house character (Malakor, pre-existing art) and his variants may leave. */
 export function canExport(record: CharacterRecord): boolean {
-  return record.seeded !== true;
+  return !isHouseArt(record);
 }
 
 /** The pack input for a record: its rig, images, look, voice and character sheet as saved now. */
@@ -22,12 +23,6 @@ export function packInputOf(record: CharacterRecord, { licence, author }: { lice
     createdAt: record.createdAt,
     ...(record.sheet === undefined ? {} : { sheet: record.sheet }),
   };
-}
-
-/** The first free id: `id`, else `id-2`, `id-3`, ... */
-function freeId(id: string, taken: ReadonlySet<string>): string {
-  if (!taken.has(id)) return id;
-  for (let n = 2; ; n += 1) if (!taken.has(`${id}-${n}`)) return `${id}-${n}`;
 }
 
 /** A new library record for a pack: a copy (`<id>-2`, name + " (copy)") when its id is taken; never seeded. */

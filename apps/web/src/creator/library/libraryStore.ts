@@ -14,11 +14,15 @@
 // - The cast seed (creator task 9) keeps a ledger of the character ids it has ever placed, in a
 //   second object store `meta` (database version 2), so a preset the user deleted is not put back
 //   and a new recorded job still joins an old library once.
+// - perfection-pass task 7: `rename` and `duplicate` follow library/variant.ts. A rename rewrites
+//   only rig.name; a duplicate reads the stored record (through `readRecord`, so a damaged one is
+//   not copied) and writes the variant in the same readwrite transaction that chose its free id.
 import { VOICE_IDS, type VoiceId } from "@sr/engine";
 import { readFaceGate, type FaceGate } from "@sr/forge/faceGate";
 import { readSheet, type CharacterSheet } from "@sr/pack";
 import { defaultLook, readLook, validateRig, type Look, type Rig } from "@sr/rig";
 import { extraFiles } from "./assets";
+import { renamed, variantOf } from "./variant";
 
 export const DB_NAME = "sr-library";
 export const STORE = "characters";
@@ -41,6 +45,8 @@ export interface CharacterRecord {
   createdAt: string;
   /** Malakor; cannot be deleted. */
   seeded?: true;
+  /** A variant of Malakor (library/variant.ts): his art, so never exported; may be renamed and deleted. */
+  house?: true;
   /** Who a forged character is on air: its approved brief (C4). Omitted when it has none. */
   sheet?: CharacterSheet;
   /**
@@ -78,6 +84,8 @@ export type LibraryEntry =
   | { kind: "damaged"; id: string; name?: string; reason: string };
 
 export type RemoveResult = "deleted" | "refused" | "missing";
+/** "refused": the house character, or an empty name. */
+export type RenameResult = "renamed" | "refused" | "missing";
 
 export interface LibraryStore {
   /** False on the in-memory twin: nothing is kept after the tab closes. */
@@ -93,6 +101,10 @@ export interface LibraryStore {
   saveVoice(id: string, voice: VoiceId): Promise<boolean>;
   /** Refused for a seeded record. */
   remove(id: string): Promise<RemoveResult>;
+  /** Sets rig.name (library/variant.ts `renamed`). */
+  rename(id: string, name: string): Promise<RenameResult>;
+  /** Stores a variant of the record (library/variant.ts `variantOf`); its new id, or undefined when there is no readable record. */
+  duplicate(id: string, now?: Date): Promise<string | undefined>;
   /** The ids the cast seed has placed so far; undefined when it never ran (a new or pre-cast library). */
   seededIds(): Promise<string[] | undefined>;
   /** Replaces the cast seed's ledger. */
@@ -145,6 +157,7 @@ export function readRecord(value: unknown): LibraryEntry {
     createdAt: typeof value.createdAt === "string" ? value.createdAt : new Date(0).toISOString(),
   };
   if (value.seeded === true) record.seeded = true;
+  else if (value.house === true) record.house = true;
   // A sheet that does not read is dropped (the stage then treats the character as before C4).
   const sheet = value.sheet === undefined ? undefined : readSheet(value.sheet);
   if (sheet !== undefined) record.sheet = sheet;
@@ -182,6 +195,22 @@ export function memoryLibrary(): LibraryStore {
     },
     saveLook: async (id, look) => patch(id, "look", look),
     saveVoice: async (id, voice) => patch(id, "voice", voice),
+    rename: async (id, name) => {
+      const row = rows.get(id);
+      if (row === undefined) return "missing";
+      const entry = readRecord(row);
+      const next = entry.kind === "ok" ? renamed(entry.record, name) : undefined;
+      if (next === undefined || !isRecord(row) || !isRecord(row.rig)) return "refused";
+      rows.set(id, { ...row, rig: { ...row.rig, name: next.rig.name } });
+      return "renamed";
+    },
+    duplicate: async (id, now) => {
+      const entry = rows.has(id) ? readRecord(rows.get(id)) : undefined;
+      if (entry?.kind !== "ok") return undefined;
+      const copy = variantOf(entry.record, new Set(rows.keys()), now);
+      rows.set(copy.id, { ...copy });
+      return copy.id;
+    },
     remove: async (id) => {
       const row = rows.get(id);
       if (row === undefined) return "missing";
@@ -257,6 +286,36 @@ export function idbLibrary(db: IDBDatabase): LibraryStore {
     },
     saveLook: (id, look) => patch(id, "look", look),
     saveVoice: (id, voice) => patch(id, "voice", voice),
+    async rename(id, name) {
+      const tx = db.transaction(STORE, "readwrite");
+      const store = tx.objectStore(STORE);
+      const finished = done(tx);
+      const row: unknown = await request(store.get(id));
+      let result: RenameResult = "renamed";
+      const entry = row === undefined ? undefined : readRecord(row);
+      const next = entry?.kind === "ok" ? renamed(entry.record, name) : undefined;
+      if (row === undefined) result = "missing";
+      else if (next === undefined || !isRecord(row) || !isRecord(row.rig)) result = "refused";
+      else store.put({ ...row, rig: { ...row.rig, name: next.rig.name } });
+      await finished;
+      return result;
+    },
+    async duplicate(id, now) {
+      const tx = db.transaction(STORE, "readwrite");
+      const store = tx.objectStore(STORE);
+      const finished = done(tx);
+      const row: unknown = await request(store.get(id));
+      const entry = row === undefined ? undefined : readRecord(row);
+      let made: string | undefined;
+      if (entry?.kind === "ok") {
+        const keys = await request(store.getAllKeys());
+        const copy = variantOf(entry.record, new Set(keys.map(String)), now);
+        store.put(copy);
+        made = copy.id;
+      }
+      await finished;
+      return made;
+    },
     async remove(id) {
       const tx = db.transaction(STORE, "readwrite");
       const store = tx.objectStore(STORE);

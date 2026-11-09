@@ -179,6 +179,8 @@
 
 /* Sized as a container, so the square glass takes the largest square that fits. */
 .glassBox {
+  /* The anchor of the "before" tag while Compare is held (History.module.css). */
+  position: relative;
   display: grid;
   flex: 1 1 auto;
   place-items: center;

@@ -94,3 +94,33 @@ describe("useLibrary and the cast", () => {
     expect(wantedCharacter("")).toBeUndefined();
   });
 });
+
+describe("useLibrary rename and duplicate (perfection-pass task 7)", () => {
+  const active = (lib: Library | undefined): CharacterRecord | undefined => lib?.active;
+
+  it("rename patches the name in place: the images keep their identity, so the stage does not decode again", async () => {
+    view = await mount(<Probe store={memoryLibrary()} />);
+    await settle();
+    await act(async () => void (await seen?.select("replay-understudy")));
+    const before = active(seen);
+    await act(async () => void (await seen?.rename("replay-understudy", " The  Stand-in ")));
+    expect(active(seen)?.rig.name).toBe("The Stand-in");
+    expect(active(seen)?.assets).toBe(before?.assets);
+    expect(active(seen)?.rig.layers).toBe(before?.rig.layers);
+    expect(await seen?.rename("malakor", "Bob")).toBe("refused");
+  });
+
+  it("duplicate stores a variant and puts it on the stage; Malakor's variant cannot be exported", async () => {
+    view = await mount(<Probe store={memoryLibrary()} />);
+    await settle();
+    let made: string | undefined;
+    await act(async () => {
+      made = await seen?.duplicate("malakor");
+    });
+    expect(made).toBe("malakor-2");
+    expect(active(seen)?.id).toBe("malakor-2");
+    expect(active(seen)?.rig.name).toBe("malakor (variant)");
+    expect(active(seen)?.house).toBe(true);
+    await expect(seen?.duplicate("nobody")).rejects.toThrow();
+  });
+});

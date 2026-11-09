@@ -69,6 +69,8 @@ function library(): Library & { added: CharacterRecord[] } {
     remove: async () => "refused",
     saveLook: async () => undefined,
     saveVoice: async () => undefined,
+    rename: async () => "renamed",
+    duplicate: async () => "copy",
   };
 }
 
