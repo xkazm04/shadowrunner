@@ -30,7 +30,10 @@
 // - Secondary motion (perfection-pass V1): once the drive is final (mood, act), the driver's channel
 //   springs step toward `springTargetOf` and their lag goes out as `Drive.spring` (the canvas2D
 //   fallback draws the same poses, so it swings too).
-import { ACT_S_MAX, applyLook, faceOf, hasIris, MOOD_FADE_S, poseLayers, springStrength, springTargetOf, type ActCue, type Drive, type Emotion, type Gesture, type LayerPose, type Look, type Rig } from "@sr/rig";
+// - Depth turn (perfection-pass V2): while the turn's strength (rig/look `turn`) is above 0 and the
+//   head is turned, the clock carries the pose's yaw and pitch (`springTargetOf`'s, -1..1) as `turn`;
+//   facing front, or with both strengths 0, the clock has no `turn` key and the frame draws as before.
+import { ACT_S_MAX, applyLook, faceOf, hasIris, MOOD_FADE_S, poseLayers, springStrength, springTargetOf, turnStrength, type ActCue, type Drive, type Emotion, type Gesture, type LayerPose, type Look, type Rig } from "@sr/rig";
 import type { SurfaceFactory } from "../canvas2d/recolour.js";
 import type { LookAtPoint } from "../driver/lookAt.js";
 import { initialState, type DriverFace, type DriverState, type Gaze, type SpringState } from "../driver/state.js";
@@ -182,7 +185,11 @@ export function createFrameBody(seed: number, options: FrameBodyOptions = {}): (
     // Secondary motion (perfection-pass V1): the springs follow this frame's head and act; off under
     // reduced motion, at strength 0, and for a `drive` override (screenshots stay exact).
     const springing = p.drive === undefined && !p.reducedMotion && springStrength(dressed, p.look) > 0;
-    const spring = stepSpring(state.spring, state.t - before, springing ? springTargetOf(dressed, p.look, acted, { face }) : undefined);
+    // Depth turn (perfection-pass V2): the head's own turn goes to the renderer in the clock.
+    const strength = turnStrength(dressed, p.look);
+    const turning = strength.warp > 0 || strength.light > 0;
+    const target = springing || turning ? springTargetOf(dressed, p.look, acted, { face }) : undefined;
+    const spring = stepSpring(state.spring, state.t - before, springing ? target : undefined);
     if (spring !== state.spring) state = withSpring(state, spring);
     const lag = springLag(spring);
     const drive = lag === undefined ? acted : { ...acted, spring: lag };
@@ -194,6 +201,7 @@ export function createFrameBody(seed: number, options: FrameBodyOptions = {}): (
       ...(dimShown > 0 ? { dim: dimShown } : {}),
       ...(mouth?.pose === undefined ? {} : { mouth: mouth.pose }),
       ...(drive.mood === undefined ? {} : { mood: drive.mood }),
+      ...(target === undefined || !turning || (target.yaw === 0 && target.pitch === 0) ? {} : { turn: { yaw: target.yaw, pitch: target.pitch } }),
     };
     return { poses, clock, t: state.t };
   };

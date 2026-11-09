@@ -25,6 +25,8 @@
 //   whose field moves nothing (neutral rest) draws exactly as before.
 // - The look's light follows the frame clock's `mood` (face-control): while an emotion crossfades,
 //   the frame's light is `lookLight` for that mix; settled, the light `setLook` computed.
+// - Depth turn (perfection-pass V2, gl/turn.ts): the clock's `turn` with the rig/look strengths
+//   bends the head's layers and moves the light across the face; one TurnFrame, filled per frame.
 import { defaultLook, type Layer, type LayerPose, type Look, type Rig } from "@sr/rig";
 import { createCanvas2dRenderer } from "../canvas2d/renderer.js";
 import { createAssetCache, type AssetLoader } from "../render/assets.js";
@@ -38,6 +40,7 @@ import { beginScene, createGlowTargets, deleteGlowTargets, glowGain, glowLit, ru
 import { deleteLayers, drawLayers, emitsGlow, gainOf, uploadLayers, type LayerTexture } from "./layers.js";
 import { createGlMouth } from "./mouth.js";
 import { createPrograms, deletePrograms } from "./programs.js";
+import { createTurnFrame, planTurn, tintTurn } from "./turn.js";
 import { planWarp } from "./warp.js";
 import { createTextureStore, type TextureStore } from "./textures.js";
 
@@ -68,6 +71,7 @@ export function createGlRenderer(gl: WebGL2RenderingContext, canvas: CanvasHost,
   let uploads = 0;
   let drawCalls = 0;
   let disposed = false;
+  const turn = createTurnFrame();
 
   const setRig = (next: Rig, nextAssets: RigAssets): void => {
     deleteLayers(gl, textures);
@@ -82,11 +86,13 @@ export function createGlRenderer(gl: WebGL2RenderingContext, canvas: CanvasHost,
     const look = lastLook ?? defaultLook(next);
     settled = lookLight(next, look);
     recolours = rigRecolours(next, look);
+    tintTurn(turn, look);
   };
   const setLook = (look: Look): void => {
     lastLook = look;
     settled = lookLight(currentRig, look);
     recolours = rigRecolours(currentRig, look);
+    tintTurn(turn, look);
   };
   setRig(rig, assets);
 
@@ -108,15 +114,16 @@ export function createGlRenderer(gl: WebGL2RenderingContext, canvas: CanvasHost,
           ? undefined
           : {
               index: mouth.host.index,
-              draw: (): number => {
+              draw: (strip: number): number => {
                 const { layer, pose } = mouth.frame;
                 const gain = gainOf(layer, pose, light, recolours.get(layer.name));
                 const dimmed = dimGain(layer, clock?.dim);
-                return mouthGl.draw(mouthArt, mouth.anchor, mouthPose, colours, [gain[0] * dimmed, gain[1] * dimmed, gain[2] * dimmed]);
+                return mouthGl.draw(mouthArt, mouth.anchor, mouthPose, colours, [gain[0] * dimmed, gain[1] * dimmed, gain[2] * dimmed], strip);
               },
             };
       const warp = mouth === undefined && currentRig.mouth !== undefined ? planWarp(currentRig, layers, poses, view, light.browY, mouthPose, () => mouthArt.colours(currentRig, currentAssets, look)?.lip) : undefined;
-      if (store !== undefined) drawCalls += drawLayers(gl, programs, textures, poses, view, { light, recolours, store, ...(clock?.dim === undefined ? {} : { dim: clock.dim }) }, after, warp);
+      planTurn(turn, currentRig, look, clock?.turn);
+      if (store !== undefined) drawCalls += drawLayers(gl, programs, textures, poses, view, { light, recolours, store, ...(clock?.dim === undefined ? {} : { dim: clock.dim }), turn }, after, warp);
       const gain = glowGain(clock);
       drawCalls += runGlow(gl, programs, targets, light.glow, gain, glowLit(emitsGlow(textures, poses), light.glow, gain));
     },

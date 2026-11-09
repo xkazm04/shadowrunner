@@ -20,8 +20,11 @@ export { MOUTH_BOX };
 export const MOUTH_TEXTURE_MAX = 1024;
 
 export interface GlMouth {
-  /** Draws the mouth quad (the base program and quad VAO bound); returns the draw calls (0 or 1). */
-  draw(art: MouthArt, anchor: MouthAnchor, pose: MouthPose, colours: MouthColours, gain: Rgb): number;
+  /**
+   * Draws the mouth quad (the base program and a unit VAO bound: the quad, or the turn grid when the
+   * head is bent, perfection-pass V2; `strip` is its vertex count, default 4); returns the draw calls (0 or 1).
+   */
+  draw(art: MouthArt, anchor: MouthAnchor, pose: MouthPose, colours: MouthColours, gain: Rgb, strip?: number): number;
   /** Times the texture was (re)uploaded (tests, info). */
   uploads(): number;
   dispose(): void;
@@ -58,7 +61,7 @@ export function createGlMouth(gl: WebGL2RenderingContext, programs: Programs, su
   };
 
   return {
-    draw(art, anchor, pose, colours, gain) {
+    draw(art, anchor, pose, colours, gain, strip = 4) {
       const { cx, lineY, width, cell } = anchor.geometry;
       const m = anchor.affine;
       const nearest = cell !== undefined;
@@ -134,7 +137,7 @@ export function createGlMouth(gl: WebGL2RenderingContext, programs: Programs, su
       gl.uniform2f(u.u_texel, 1 / w, 1 / h);
       gl.uniform1f(u.u_opacity, 1);
       gl.uniform3f(u.u_rim, 0, 0, 0);
-      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, strip);
       return 1;
     },
     uploads: () => uploads,

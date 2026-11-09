@@ -8,6 +8,9 @@
 // Float32Array (MATRIX, filled by render/frame.ts `layerMat3`), gains and rims are scalars, and a
 // pose's quads are drawn as they are found (drawPoseQuads) instead of collected into a list. A
 // later change keeps that: no array or object literal per pose or per quad on this path.
+// Perfection-pass V2 (gl/turn.ts): while the frame's turn is active, a layer on the head is drawn
+// as the shared vertex grid with its bend (u_turnK) and, unless it is an eye, iris or emissive, the
+// turn's light; every other quad, and every quad of a frame without a turn, is drawn as before.
 import { EMISSIVE_KINDS as RIG_EMISSIVE_KINDS, isEmissive, type ExpressionFamily, type Layer, type LayerKind, type LayerPose, type Rig } from "@sr/rig";
 import { dimGain, layerMat3, type LookLight, type Rgb, type View } from "../render/frame.js";
 import { keepsArtColour, mapRect, needsMap, type LayerRecolour } from "../render/recolour.js";
@@ -15,6 +18,7 @@ import type { RigAssets } from "../render/types.js";
 import { clearIrisUnits, irisClipOf, setIrisClip } from "./iris.js";
 import type { Programs } from "./programs.js";
 import { uploadImage, type GlTexture, type TextureStore } from "./textures.js";
+import { bindStrip, litByTurn, setTurnFrame, setTurnLayer, type TurnFrame } from "./turn.js";
 import { setWarp, setWarpDraw, type WarpLayer, type WarpPlan } from "./warp.js";
 
 /**
@@ -76,6 +80,8 @@ export interface LayerLighting {
   store: TextureStore;
   /** Eyes-only dim 0..1 (frame.ts `dimGain`); absent = 0. */
   dim?: number;
+  /** The frame's depth turn (gl/turn.ts `planTurn`); absent or inactive = none. */
+  turn?: TurnFrame;
 }
 
 const LIGHT_MODE = { all: 1, saturated: 2 } as const;
@@ -120,8 +126,11 @@ function warpLayerAt(warp: WarpPlan | undefined, index: number): WarpLayer | und
   return undefined;
 }
 
-/** One quad's per-draw uniforms and the draw. `mapR` set = a patch or lid on a mapped layer (u_mapRect). */
-function drawQuad(gl: WebGL2RenderingContext, u: Programs["base"]["u"], texture: GlTexture, rect: readonly number[], mapR: readonly number[] | undefined, opacity: number, rimR: number, rimG: number, rimB: number): void {
+/**
+ * One quad's per-draw uniforms and the draw. `mapR` set = a patch or lid on a mapped layer (u_mapRect).
+ * `strip`: the bound VAO's vertex count (4, or the turn grid's).
+ */
+function drawQuad(gl: WebGL2RenderingContext, u: Programs["base"]["u"], texture: GlTexture, rect: readonly number[], mapR: readonly number[] | undefined, opacity: number, rimR: number, rimG: number, rimB: number, strip: number): void {
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, texture.texture);
   gl.uniform4f(u.u_rect, rect[0] ?? 0, rect[1] ?? 0, rect[2] ?? 0, rect[3] ?? 0);
@@ -129,7 +138,7 @@ function drawQuad(gl: WebGL2RenderingContext, u: Programs["base"]["u"], texture:
   gl.uniform1f(u.u_opacity, opacity);
   gl.uniform3f(u.u_rim, rimR, rimG, rimB);
   if (mapR !== undefined) gl.uniform4f(u.u_mapRect, mapR[0] ?? 0, mapR[1] ?? 0, mapR[2] ?? 1, mapR[3] ?? 1);
-  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, strip);
 }
 
 /** The ready face patch of `face` on `layer` (uploading it on first need), or undefined. */
@@ -143,7 +152,7 @@ function readyPatch(layer: Layer, face: { family: ExpressionFamily; weight: numb
  * closed lid; returns the draw count. Patches are found first (their replace weights set the
  * base's opacity), then drawn in order; no quad list is built (perfection-pass P1).
  */
-function drawPoseQuads(gl: WebGL2RenderingContext, u: Programs["base"]["u"], programs: Programs, entry: LayerTexture, pose: LayerPose, store: TextureStore, mapped: boolean, rimR: number, rimG: number, rimB: number, warped: WarpLayer | undefined): number {
+function drawPoseQuads(gl: WebGL2RenderingContext, u: Programs["base"]["u"], programs: Programs, entry: LayerTexture, pose: LayerPose, store: TextureStore, mapped: boolean, rimR: number, rimG: number, rimB: number, warped: WarpLayer | undefined, strip: number): number {
   const { layer } = entry;
   const opacity = Math.min(1, Math.max(0, pose.opacity));
   const faces = pose.faces;
@@ -163,7 +172,7 @@ function drawPoseQuads(gl: WebGL2RenderingContext, u: Programs["base"]["u"], pro
   const base = opacity * Math.max(0, 1 - replaced);
   if (!(ready > 0 && base <= 0)) {
     if (warped !== undefined) setWarpDraw(gl, programs.warp.u, warped, layer.bbox);
-    drawQuad(gl, u, entry, layer.bbox, undefined, base, rimR, rimG, rimB);
+    drawQuad(gl, u, entry, layer.bbox, undefined, base, rimR, rimG, rimB, strip);
     draws += 1;
   }
   if (faces !== undefined && ready > 0) {
@@ -173,16 +182,22 @@ function drawPoseQuads(gl: WebGL2RenderingContext, u: Programs["base"]["u"], pro
       const texture = face === undefined ? undefined : readyPatch(layer, face, store);
       if (face === undefined || patch === undefined || texture === undefined) continue;
       if (warped !== undefined) setWarpDraw(gl, programs.warp.u, warped, patch.bbox);
-      drawQuad(gl, u, texture, patch.bbox, mapped ? mapRect(layer.bbox, patch.bbox) : undefined, opacity * Math.min(1, face.weight), 0, 0, 0);
+      drawQuad(gl, u, texture, patch.bbox, mapped ? mapRect(layer.bbox, patch.bbox) : undefined, opacity * Math.min(1, face.weight), 0, 0, 0, strip);
       draws += 1;
     }
   }
   if (shut !== undefined) {
     if (warped !== undefined) setWarpDraw(gl, programs.warp.u, warped, layer.bbox);
-    drawQuad(gl, u, shut, layer.bbox, mapped ? FULL_RECT : undefined, opacity * Math.min(1, pose.closed ?? 0), 0, 0, 0);
+    drawQuad(gl, u, shut, layer.bbox, mapped ? FULL_RECT : undefined, opacity * Math.min(1, pose.closed ?? 0), 0, 0, 0, strip);
     draws += 1;
   }
   return draws;
+}
+
+/** The drawn mouth (base program bound): on the head, bent and lit with it. */
+function drawAfter(gl: WebGL2RenderingContext, programs: Programs, after: { draw: (strip: number) => number }, turn: TurnFrame | undefined, bends: boolean): number {
+  setTurnLayer(gl, programs.base.u, turn, bends, turn !== undefined && turn.light > 0);
+  return after.draw(bindStrip(gl, programs, bends));
 }
 
 /**
@@ -194,6 +209,8 @@ function drawPoseQuads(gl: WebGL2RenderingContext, u: Programs["base"]["u"], pro
  * gl/mouth.ts) right after the pose at `after.index`, with the base program still bound. `warp`
  * (the art mouth, gl/warp.ts) draws the head and the jaw and their patches with the warp program;
  * every other quad, and every quad of a frame without it, draws with the base program as before.
+ * `lighting.turn` (perfection-pass V2) bends and relights the head's layers; `after.draw` gets the
+ * vertex count of the VAO bound for it (the drawn mouth sits on the head and bends with it).
  */
 export function drawLayers(
   gl: WebGL2RenderingContext,
@@ -202,21 +219,24 @@ export function drawLayers(
   poses: readonly LayerPose[],
   view: View,
   lighting: LayerLighting,
-  after?: { index: number; draw: () => number },
+  after?: { index: number; draw: (strip: number) => number },
   warp?: WarpPlan,
 ): number {
   const { light, recolours, store, dim } = lighting;
+  const turn = lighting.turn?.active === true ? lighting.turn : undefined;
   const { base } = programs;
   gl.useProgram(base.program);
-  gl.bindVertexArray(programs.quad.vao);
+  bindStrip(gl, programs, false, true);
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
   const shared = (u: Programs["base"]["u"]): void => {
     gl.uniform1i(u.u_tex, 0);
     gl.uniform1i(u.u_map, 1);
     gl.uniform2f(u.u_res, view.width, view.height);
+    if (turn !== undefined) setTurnFrame(gl, u, turn);
   };
   shared(base.u);
+  const bends = turn !== undefined && (turn.shiftX !== 0 || turn.shiftY !== 0);
   let warpReady = false;
   let irisReady = false;
   let byName: Map<string, Layer> | undefined;
@@ -229,7 +249,7 @@ export function drawLayers(
     if (layer.kind === "iris") byName ??= new Map([...textures.values()].map((t) => [t.layer.name, t.layer]));
     const clip = byName === undefined || layer.kind !== "iris" ? "plain" : irisClipOf(layer, pose, byName, poses, store);
     if (clip === undefined) {
-      if (after?.index === index) draws += after.draw();
+      if (after?.index === index) draws += drawAfter(gl, programs, after, turn, bends);
       continue;
     }
     const warped = warpLayerAt(warp, index);
@@ -255,9 +275,13 @@ export function drawLayers(
     const map = plan !== undefined && needsMap(plan) && layer.regions !== undefined ? store.get(layer.regions.map, "map") : undefined;
     setRecolour(gl, u, plan, map);
     const rimK = rimOn * dimmed;
-    draws += drawPoseQuads(gl, u, programs, entry, pose, store, map !== undefined, light.rim[0] * rimK, light.rim[1] * rimK, light.rim[2] * rimK, warped);
+    const member = turn !== undefined && turn.members.has(layer.name);
+    const bend = member && bends;
+    setTurnLayer(gl, u, turn, bend, member && (turn?.light ?? 0) > 0 && litByTurn(layer, isEmissive(layer)));
+    if (bend && masked !== undefined) gl.uniform4f(programs.iris.u.u_turnEye, masked.eye.bbox[0], masked.eye.bbox[1], masked.eye.bbox[2], masked.eye.bbox[3]);
+    draws += drawPoseQuads(gl, u, programs, entry, pose, store, map !== undefined, light.rim[0] * rimK, light.rim[1] * rimK, light.rim[2] * rimK, warped, bindStrip(gl, programs, bend));
     if (warped !== undefined || masked !== undefined) gl.useProgram(base.program);
-    if (after?.index === index) draws += after.draw();
+    if (after?.index === index) draws += drawAfter(gl, programs, after, turn, bends);
   }
   if (irisReady) clearIrisUnits(gl);
   gl.activeTexture(gl.TEXTURE1);

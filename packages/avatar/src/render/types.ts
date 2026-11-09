@@ -36,6 +36,13 @@ export interface FrameClock {
    * (eyeGain, brow shift) fades with the pose. Absent = settled.
    */
   mood?: Drive["mood"];
+  /**
+   * The head's turn this frame (perfection-pass V2): yaw and pitch as shares of rig-core's
+   * YAW_LIMIT_DEG and PITCH_LIMIT_DEG, -1..1, as the pose turned it (gesture and mood included).
+   * Absent or zero = facing front: the WebGL renderer bends and relights nothing (gl/turn.ts).
+   * The canvas2D fallback ignores it and keeps the rigid pan.
+   */
+  turn?: { yaw: number; pitch: number };
 }
 
 export interface Renderer {

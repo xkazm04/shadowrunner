@@ -194,12 +194,22 @@ export interface Rig {
   face?: RigFace;
   /** Secondary motion (perfection-pass V1, spring.ts). Omitted: defaults. */
   motion?: RigMotion;
+  /** Depth turn and lighting (perfection-pass V2, turn.ts). Omitted: defaults. */
+  turn?: RigTurn;
 }
 
 /** Secondary motion strength (perfection-pass V1); `Look.motion` wins over `Rig.motion`. */
 export interface RigMotion {
   /** How strongly loose parts lag and settle, in [0, 2]; 0 disables, omitted means 1. */
   spring?: number;
+}
+
+/** Depth turn strengths (perfection-pass V2); `Look.turn` wins over `Rig.turn`, field by field. */
+export interface RigTurn {
+  /** How far a head turn curves the head's layers, in [0, 1]; 0 disables, omitted means 0.5. */
+  warp?: number;
+  /** How strongly a head turn moves the light across the face, in [0, 1]; 0 disables, omitted means 0.5. */
+  light?: number;
 }
 
 /**
@@ -305,4 +315,6 @@ export interface Look {
   face?: RigFace;
   /** The viewer's secondary motion strength (perfection-pass V1), over `Rig.motion`. */
   motion?: RigMotion;
+  /** The viewer's depth turn strengths (perfection-pass V2), over `Rig.turn`. */
+  turn?: RigTurn;
 }

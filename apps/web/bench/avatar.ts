@@ -59,25 +59,31 @@ function loopPhases(renderer: Renderer, rig: Rig, look: Look, frames: number): L
   let spring: SpringState | undefined;
   const dt = 1 / 60;
   // The drive as the frame body makes it (perfection-pass V1): the springs stepped toward this frame's target.
+  // Its yaw and pitch go to the renderer as the clock's turn, as the frame body hands them (V2).
+  const turn = { yaw: 0, pitch: 0 };
   const driven = (): Drive => {
     const next = advanceFrame(state, { dt, level: 0, gaze: "host", reducedMotion: false });
-    spring = stepSpring(spring, next.state.t - state.t, springTargetOf(rig, look, next.drive));
+    const target = springTargetOf(rig, look, next.drive);
+    turn.yaw = target.yaw;
+    turn.pitch = target.pitch;
+    spring = stepSpring(spring, next.state.t - state.t, target);
     state = next.state;
     const lag = springLag(spring);
     return lag === undefined ? next.drive : { ...next.drive, spring: lag };
   };
   const posed = (): ReturnType<typeof poseLayers> => poseLayers(rig, look, driven());
   const fixed = posed();
+  const fixedTurn = { ...turn };
   const whole = (): void => {
     const drive = driven();
-    renderer.draw(poseLayers(rig, look, drive), look, { t: drive.t, reducedMotion: false });
+    renderer.draw(poseLayers(rig, look, drive), look, { t: drive.t, reducedMotion: false, turn });
   };
   for (let i = 0; i < 300; i += 1) whole();
   return {
     mode: renderer.info().mode,
     frames,
     pose: () => measure(frames, () => void posed()),
-    draw: () => measure(frames, (i) => renderer.draw(fixed, look, { t: i / 60, reducedMotion: false })),
+    draw: () => measure(frames, (i) => renderer.draw(fixed, look, { t: i / 60, reducedMotion: false, turn: fixedTurn })),
     frame: () => measure(frames, whole),
   };
 }
