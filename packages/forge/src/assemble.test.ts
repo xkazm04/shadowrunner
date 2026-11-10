@@ -117,7 +117,8 @@ describe("assembleRig", () => {
       ["jaw", "head"],
       ["eye_l", "head"],
     ]);
-    for (const layer of layers) {
+    // Perfection-pass task 16: the body reaches up under the head (coverFix.ts, cover.test.ts), so its file is larger.
+    for (const layer of layers.filter((l) => l.name !== "torso")) {
       const image = decoded(files[`${layer.name}.png`]);
       expect([image.width, image.height]).toEqual([layer.image.width, layer.image.height]);
       // Same pixels, except where task 10 made a pixel over the painted background opaque.
@@ -197,9 +198,9 @@ describe("golden: Malakor portrait + m8 parts -> a valid rig (task 5)", () => {
             ],
             "bbox": [
               7,
-              453,
-              837,
-              445,
+              385,
+              838,
+              513,
             ],
             "follow": undefined,
             "kind": "body",
@@ -212,10 +213,10 @@ describe("golden: Malakor portrait + m8 parts -> a valid rig (task 5)", () => {
               551,
             ],
             "bbox": [
-              332,
-              152,
-              386,
-              491,
+              238,
+              6,
+              545,
+              637,
             ],
             "follow": undefined,
             "kind": "head",

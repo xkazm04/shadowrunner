@@ -1792,7 +1792,7 @@ exports[`poseLayers baseline: reveille > poses clamped as before character-contr
     ],
     "tint": 1,
     "x": 159.288,
-    "y": 742.216,
+    "y": 692.216,
   },
   {
     "name": "head",
@@ -1965,7 +1965,7 @@ exports[`poseLayers baseline: reveille > poses flare as before character-control
     ],
     "tint": 1,
     "x": 148.675636364,
-    "y": 733,
+    "y": 683,
   },
   {
     "name": "head",
@@ -2138,7 +2138,7 @@ exports[`poseLayers baseline: reveille > poses nod as before character-control 1
     ],
     "tint": 1,
     "x": 147,
-    "y": 742.216,
+    "y": 692.216,
   },
   {
     "name": "head",
@@ -2311,7 +2311,7 @@ exports[`poseLayers baseline: reveille > poses recoil as before character-contro
     ],
     "tint": 1,
     "x": 147,
-    "y": 733,
+    "y": 683,
   },
   {
     "name": "head",
@@ -2484,7 +2484,7 @@ exports[`poseLayers baseline: reveille > poses rest as before character-control 
     ],
     "tint": 1,
     "x": 147,
-    "y": 733,
+    "y": 683,
   },
   {
     "name": "head",
@@ -2657,7 +2657,7 @@ exports[`poseLayers baseline: reveille > poses still as before character-control
     ],
     "tint": 1,
     "x": 149.792727273,
-    "y": 736.84,
+    "y": 686.84,
   },
   {
     "name": "head",
@@ -2830,7 +2830,7 @@ exports[`poseLayers baseline: reveille > poses talking as before character-contr
     ],
     "tint": 1,
     "x": 152.026909091,
-    "y": 729.928,
+    "y": 679.928,
   },
   {
     "name": "head",
@@ -3003,7 +3003,7 @@ exports[`poseLayers baseline: reveille > poses tilt as before character-control 
     ],
     "tint": 1,
     "x": 143.648727273,
-    "y": 734.536,
+    "y": 684.536,
   },
   {
     "name": "head",

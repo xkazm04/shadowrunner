@@ -78,9 +78,9 @@
         "file": "torso.png",
         "bbox": [
           77,
-          571,
+          469,
           884,
-          451
+          555
         ],
         "anchor": [
           519.168,
@@ -93,22 +93,22 @@
             {
               "id": "r1",
               "name": "torso",
-              "hex": "#a6a39c"
+              "hex": "#241610"
             },
             {
               "id": "r2",
               "name": "torso 2",
-              "hex": "#210707"
+              "hex": "#a3a099"
             },
             {
               "id": "r3",
               "name": "torso 3",
-              "hex": "#360b0e"
+              "hex": "#3a0d11"
             },
             {
               "id": "r4",
               "name": "torso 4",
-              "hex": "#422b1b"
+              "hex": "#543b2b"
             }
           ]
         }
@@ -119,10 +119,10 @@
         "kind": "head",
         "file": "head.png",
         "bbox": [
-          278,
+          259,
           108,
-          468,
-          633
+          508,
+          680
         ],
         "anchor": [
           512,
@@ -135,22 +135,22 @@
             {
               "id": "r1",
               "name": "head",
-              "hex": "#382a22"
+              "hex": "#32241d"
             },
             {
               "id": "r2",
               "name": "head 2",
-              "hex": "#c9bfab"
+              "hex": "#c9c0ab"
             },
             {
               "id": "r3",
               "name": "head 3",
-              "hex": "#897d6f"
+              "hex": "#8d695c"
             },
             {
               "id": "r4",
               "name": "head 4",
-              "hex": "#947164"
+              "hex": "#897d6f"
             }
           ]
         },
