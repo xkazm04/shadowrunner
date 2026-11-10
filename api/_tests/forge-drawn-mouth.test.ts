@@ -2,7 +2,7 @@
 // keeps its mouth and `drawnMouth` is true, otherwise a lip). A v1 file's part is named for its role
 // (`asNamed`). The Announcer's skull grin and the Lantern Warden's carved grin carry `mouth: "art"`
 // (not a cavity value: gap/fill would repaint what the cut puts in their heads).
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { ART_MOUTH, asNamed, drawnMouth, parseParts } from "@sr/forge";
 import { describe, expect, it } from "vitest";
 
@@ -13,7 +13,12 @@ describe("drawnMouth on the recorded cast", () => {
     const list = (Array.isArray(json) ? json : (json as { parts: unknown[] }).parts) as { name: string; role?: string; cavity?: string; mouth?: string }[];
     return list.map((p) => ({ ...p, role: p.role ?? p.name }));
   };
-  const slugsIn = (dir: string) => readdirSync(new URL(`assets/characters/${dir}/`, ROOT), { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name);
+  // Only folders with a recording: since perfection-pass task 13 the five presets also have a cast
+  // folder holding only their after-recording brief (their parts are read under presets/).
+  const slugsIn = (dir: string) =>
+    readdirSync(new URL(`assets/characters/${dir}/`, ROOT), { withFileTypes: true })
+      .filter((d) => d.isDirectory() && existsSync(new URL(`assets/characters/${dir}/${d.name}/parts.json`, ROOT)))
+      .map((d) => d.name);
   // The table is a literal in the script (not importable: it runs on load); `art:` marks the art-kept mouths.
   const table = readFileSync(new URL("scripts/cast/mouth-backfill.mjs", ROOT), "utf8");
   const art = new Set([...table.matchAll(/^\s*"?([a-z-]+)"?: \{ art:/gm)].map((m) => m[1] as string));

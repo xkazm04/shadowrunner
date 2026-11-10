@@ -1,7 +1,8 @@
 // The brief client (cast-forge requirement 4.3): the creator's door to POST /api/forge/brief.
 // Wire types come from `@sr/forge/wire`; the brief is checked with `parseBrief` from the pure,
 // browser-safe `@sr/forge/brief` before the card shows it. On the replay plane the brief is read in
-// the browser from the eight recorded contest briefs (assets/characters/cast/<slug>/brief.json),
+// the browser from the committed cast briefs (assets/characters/cast/<slug>/brief.json: the eight
+// recorded contest briefs and, perfection-pass task 13, five written after the recording),
 // like the replay forge, with no request to /api: the exact one_line_request, else the nearest by
 // `recordedBriefMatch` (perfection-pass task 8, the same matcher the API's replay uses), with the
 // note the card shows ("Recorded: <name>, chosen for ..."). The forge then walks the job recorded

@@ -1,0 +1,64 @@
+{
+ "name": "The Lantern Warden",
+ "one_line_request": "A watchman whose head is a rotting carved gourd, mottled orange and moss-green, flecked with white mould. Two triangular eye holes burn with steady amber candlelight. The lower rind is cut as a separate hinged jaw with ragged carved teeth, lit from inside. A wide-brimmed, moth-eaten felt hat sits low. Shoulders in a damp oilcloth coat with a brass lantern hook at the collar.",
+ "authored": "after-recording",
+ "archetype": "Gourd-headed night watchman of the root cellar",
+ "persona_hook": "The night watchman of the root cellar. He counts the gourds every hour, and one is always missing.",
+ "world": "ninth-dark",
+ "accent_hex": "#ffb347",
+ "secondary_hex": "#6b7f3a",
+ "silhouette": "A wide drooping hat brim over a round carved gourd and a hanging jaw, on broad sloping oilcloth shoulders: a wide flat lid over a ball.",
+ "parts": [
+  {
+   "name": "hat",
+   "kind": "hat",
+   "what": "Wide-brimmed, moth-eaten felt hat sitting low",
+   "motion": "Sways a beat behind the head."
+  },
+  {
+   "name": "head",
+   "kind": "head",
+   "what": "Rotting carved gourd, a jack-o'-lantern pumpkin mottled orange and moss-green, flecked with white mould",
+   "motion": "Slow, heavy nods."
+  },
+  {
+   "name": "jaw",
+   "kind": "aperture_lower",
+   "what": "Separate hinged lower rind with ragged carved teeth, lit from inside",
+   "motion": "Drops open with speech, the candle showing through."
+  },
+  {
+   "name": "eye_r",
+   "kind": "eye",
+   "what": "Triangular carved eye hole burning with steady amber candlelight",
+   "motion": "Gutters like a flame instead of a blink."
+  },
+  {
+   "name": "eye_l",
+   "kind": "eye",
+   "what": "Triangular carved eye hole burning with steady amber candlelight",
+   "motion": "Gutters like a flame instead of a blink."
+  },
+  {
+   "name": "torso",
+   "kind": "body",
+   "what": "Damp oilcloth coat with a brass lantern hook at the collar",
+   "motion": "Slow breathing."
+  }
+ ],
+ "style": {
+  "name": "Dark oil painting",
+  "why": "Thick glazed oil paint and warm candlelight on black: the lit eye holes and the hinged rind carry the face, and the hat brim stands apart as its own shape.",
+  "prompt": "Original character portrait, head and shoulders bust, facing the camera, centred, symmetrical framing, theatrical horror, painterly realism, dramatic rim light, the face clearly separated from the body, the jaw and eyes clearly visible, near-black (#050505) empty background, no text, no logos, no frame, not a real person, no gore, 1:1. The character: A watchman whose head is a rotting carved gourd, mottled orange and moss-green, flecked with white mould. Two triangular eye holes burn with steady amber candlelight. The lower rind is cut as a separate hinged jaw with ragged carved teeth, lit from inside. A wide-brimmed, moth-eaten felt hat sits low. Shoulders in a damp oilcloth coat with a brass lantern hook at the collar."
+ },
+ "provenance": {
+  "tool": "Gemini 3 Pro Image (portrait and fill), Gemini 3.8 Flash (parts), through the forge pipeline",
+  "date": "2026-11-01",
+  "source": "forge run 2026-11-01 15:58 UTC, preset 1 of assets/characters/presets/PROMPTS.md; one_line_request is the job's recorded prompt and style.prompt its portraitPrompt",
+  "resized_to": [
+   1024,
+   1024
+  ],
+  "brief": "written 2026-11-10 after the recording (perfection-pass task 13, Claude Code, Opus 5.5) from the recorded portrait, the rig's layers and the preset notes; never a recorded brief"
+ }
+}

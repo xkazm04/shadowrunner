@@ -1,0 +1,64 @@
+{
+ "name": "The Understudy",
+ "one_line_request": "A theatre marionette loose of its strings: cracked ivory porcelain face, faded rose cheeks, glass eyes with a dim carmine glow. The jaw is a separate hinged wooden piece, two straight seams running down from the mouth corners. A small tarnished brass bell hangs on a ribbon across the brow. A deep crimson velvet theatre coat with gold piping and a white ruff.",
+ "authored": "after-recording",
+ "archetype": "Theatre marionette left in the wings, waiting for its cue",
+ "persona_hook": "A theatre marionette left in the wings for a century. It knows every line of every play and is waiting for its cue.",
+ "world": "ninth-dark",
+ "accent_hex": "#ff4a33",
+ "secondary_hex": "#c9a24a",
+ "silhouette": "A round bald porcelain head with a bell on its brow, over a high crimson collar and a white ruff: a ball on a stiff stand-up collar.",
+ "parts": [
+  {
+   "name": "accessory",
+   "kind": "accessory",
+   "what": "Dark ribbon across the brow with a small tarnished brass bell",
+   "motion": "Swings a little after every nod."
+  },
+  {
+   "name": "head",
+   "kind": "head",
+   "what": "Cracked ivory porcelain face with faded rose cheeks",
+   "motion": "Small jerky puppet tilts."
+  },
+  {
+   "name": "jaw",
+   "kind": "aperture_lower",
+   "what": "Separate hinged wooden jaw between two straight seams from the mouth corners",
+   "motion": "Drops straight down with speech, like a ventriloquist's doll."
+  },
+  {
+   "name": "eye_r",
+   "kind": "eye",
+   "what": "Glass eye with a dim carmine glow",
+   "motion": "Blinks with porcelain lids."
+  },
+  {
+   "name": "eye_l",
+   "kind": "eye",
+   "what": "Glass eye with a dim carmine glow",
+   "motion": "Blinks with porcelain lids."
+  },
+  {
+   "name": "torso",
+   "kind": "body",
+   "what": "Deep crimson velvet theatre coat with gold piping and a white ruff",
+   "motion": "Slow breathing."
+  }
+ ],
+ "style": {
+  "name": "Porcelain doll painting",
+  "why": "Smooth painted porcelain with fine cracks under soft stage light: the seams of the hinged jaw are drawn into the face, so it cuts and drops cleanly for lip-sync.",
+  "prompt": "Original character portrait, head and shoulders bust, facing the camera, centred, symmetrical framing, theatrical horror, painterly realism, dramatic rim light, the face clearly separated from the body, the jaw and eyes clearly visible, near-black (#050505) empty background, no text, no logos, no frame, not a real person, no gore, 1:1. The character: A theatre marionette loose of its strings: cracked ivory porcelain face, faded rose cheeks, glass eyes with a dim carmine glow. The jaw is a separate hinged wooden piece, two straight seams running down from the mouth corners. A small tarnished brass bell hangs on a ribbon across the brow. A deep crimson velvet theatre coat with gold piping and a white ruff."
+ },
+ "provenance": {
+  "tool": "Gemini 3 Pro Image (portrait and fill), Gemini 3.8 Flash (parts), through the forge pipeline",
+  "date": "2026-11-01",
+  "source": "forge run 2026-11-01 15:58 UTC, preset 3 of assets/characters/presets/PROMPTS.md; one_line_request is the job's recorded prompt and style.prompt its portraitPrompt",
+  "resized_to": [
+   1024,
+   1024
+  ],
+  "brief": "written 2026-11-10 after the recording (perfection-pass task 13, Claude Code, Opus 5.5) from the recorded portrait, the rig's layers and the preset notes; never a recorded brief"
+ }
+}

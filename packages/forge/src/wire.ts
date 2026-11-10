@@ -114,6 +114,12 @@ export interface CharacterBrief {
    * Omitted for human eyes. An object so a later line (the mouth) can join it compatibly.
    */
   face?: { eyes: string };
+  /**
+   * perfection-pass task 13: a committed cast brief written after its character was recorded (the
+   * five presets); its one_line_request is the forge job's recorded prompt, the rest was authored
+   * from the recording, never asked for. Omitted on recorded briefs and on every live brief.
+   */
+  authored?: "after-recording";
 }
 
 /** Body of `POST /api/forge/brief`. */

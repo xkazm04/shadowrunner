@@ -3,6 +3,9 @@
 // walks, chosen by that brief's one_line_request) follows the streamer's words instead of always
 // being the first cast member. One pure function, used by the browser's replay brief client and by
 // POST /api/forge/brief's replay branch, so both planes' replays answer alike.
+// perfection-pass task 13: the cast is the eight recorded briefs and five written after the
+// recording (`authored: "after-recording"`, the presets); those are scored alike, and the note and
+// the card line say the brief was written after. Malakor has no brief and is never a candidate.
 //
 // Decisions:
 // - The score is a bag of words over the fields every recorded brief has: name (4), one_line_request
@@ -169,22 +172,31 @@ export interface CastMatchNote {
   how: CastMatchHow;
   /** The request's words that chose it (empty unless `how` is "words" or "exact"). */
   matched: string[];
+  /** perfection-pass task 13: the brief was written after the recording (its forge job is recorded). */
+  authored?: "after-recording";
 }
 
-/** A checked CastMatchNote, or undefined when the value is not one. */
+/** A checked CastMatchNote, or undefined when the value is not one (an unknown `authored` is refused). */
 export function readCastMatchNote(value: unknown): CastMatchNote | undefined {
   if (typeof value !== "object" || value === null || !("name" in value) || !("how" in value) || !("matched" in value)) return undefined;
   const { name, how, matched } = value;
   if (typeof name !== "string" || (how !== "exact" && how !== "words" && how !== "none")) return undefined;
   if (!Array.isArray(matched) || !matched.every((w): w is string => typeof w === "string")) return undefined;
-  return { name, how, matched: [...matched] };
+  const authored = "authored" in value ? value.authored : undefined;
+  if (authored !== undefined && authored !== "after-recording") return undefined;
+  return authored === undefined ? { name, how, matched: [...matched] } : { name, how, matched: [...matched], authored };
 }
 
-/** The card's one honest line: a recording, which one, and what in the request chose it. */
+/**
+ * The card's one honest line: a recording, which one, and what in the request chose it. A brief
+ * written after the recording (task 13) says so: only its forge job was recorded from its words.
+ */
 export function castMatchLine(note: CastMatchNote): string {
-  if (note.how === "exact") return `Recorded: ${note.name}, recorded from these exact words.`;
-  if (note.how === "words" && note.matched.length > 0) return `Recorded: ${note.name}, chosen for ${note.matched.map((w) => `'${w}'`).join(", ")}.`;
-  return `Recorded: ${note.name}. Nothing in your words matched a recorded character, so this one is shown instead.`;
+  const after = note.authored === "after-recording";
+  const tail = after ? " Its brief was written after the recording, not asked for." : "";
+  if (note.how === "exact") return `Recorded: ${note.name}, ${after ? "forged" : "recorded"} from these exact words.${tail}`;
+  if (note.how === "words" && note.matched.length > 0) return `Recorded: ${note.name}, chosen for ${note.matched.map((w) => `'${w}'`).join(", ")}.${tail}`;
+  return `Recorded: ${note.name}. Nothing in your words matched a recorded character, so this one is shown instead.${tail}`;
 }
 
 /** A stable id for a brief that came without its folder slug: its name, kebab-cased. */
@@ -199,5 +211,7 @@ export function recordedBriefMatch<B extends CharacterBrief>(request: string, br
   const summaries = briefs.map((brief) => ({ ...brief, slug: castSlugOf(brief.name) }));
   const match = matchCastBrief(request, summaries);
   const brief = match === undefined ? undefined : briefs[summaries.findIndex((s) => s.slug === match.slug)];
-  return match === undefined || brief === undefined ? undefined : { brief, match: { name: brief.name, how: match.how, matched: match.matched } };
+  if (match === undefined || brief === undefined) return undefined;
+  const note: CastMatchNote = { name: brief.name, how: match.how, matched: match.matched };
+  return { brief, match: brief.authored === undefined ? note : { ...note, authored: brief.authored } };
 }
