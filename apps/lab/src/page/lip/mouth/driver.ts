@@ -10,6 +10,13 @@
 // same frame (and a painter pairs it with the player's alpha from that frame); the jaw is read
 // JAW_LEAD_MS ahead because it eases toward its target.
 //
+// The voice's clock (perfection-pass task 14): Kokoro's viseme timings run KOKORO_VISEME_LAG_MS
+// late against its own audio (scripts/lipfit/lag.ts: pooled over 101 sentences and 7 voices), so
+// read as given the arms drew every shape that much after it was heard. The scheduler is read that
+// much ahead of the audio clock instead; mouth/__tests__/lag.test.ts scores the drawn mouth against
+// real Kokoro clips' levels and holds the lag under one 60 Hz frame. Whether a line is playing at
+// all (speech level fallback, reduced-motion ease) stays on the audio clock itself.
+//
 // Shapes reach the player when it moves this rig's mouth itself: mouthMode "drawn" (the procedural
 // mouth) or "warp" (the art's own lips bent by the shader, the default for a measured mouth). A rig
 // without `mouth`, or marked render "still", moves only the jaw, through `setLevel`.
@@ -25,6 +32,9 @@ import { VISEME_SHAPE } from "./shapes.js";
 
 // The jaw lead (30 ms) and the reduced-motion ease (150 ms) are @sr/avatar's, shared with the product's lip-sync.
 export { JAW_LEAD_MS, REDUCED_EASE_MS };
+
+/** How late Kokoro's viseme timings run against its audio, ms (measured 57-58: scripts/lipfit/lag.ts). */
+export const KOKORO_VISEME_LAG_MS = 57;
 
 export interface MouthFrame {
   nowMs: number;
@@ -75,7 +85,7 @@ export function createMouthDriver(id: LipArmId, ctx: LipContext, options: MouthD
   const mixAt = (nowMs: number): ShapeWeights => {
     const speech = track.speech(nowMs);
     if (speech === "unmarked") return levelWeights(audio.level());
-    return track.weights(nowMs);
+    return track.weights(nowMs + KOKORO_VISEME_LAG_MS);
   };
 
   const reducedMix = (nowMs: number, dt: number): ShapeWeights => {

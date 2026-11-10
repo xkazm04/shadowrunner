@@ -2,9 +2,11 @@
 // the app, serves the production build with `vite preview` and compares screenshots with the
 // committed baselines in e2e/__screenshots__ at a 2% pixel tolerance. Not part of `pnpm test`
 // (vite.config.ts keeps e2e/ out of vitest). Refresh baselines with `pnpm test:visual:update`.
+// The preview port is SR_VISUAL_PORT (default 4319).
 import { defineConfig, devices } from "@playwright/test";
+import { portFrom } from "./playwright.port";
 
-const PORT = 4319;
+const PORT = portFrom(process.env, "SR_VISUAL_PORT", 4319);
 
 export default defineConfig({
   testDir: "e2e",

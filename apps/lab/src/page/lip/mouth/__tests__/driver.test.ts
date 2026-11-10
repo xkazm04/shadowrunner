@@ -96,7 +96,7 @@ describe("mouth driver", () => {
     expect(h.levels.at(-1)).toBeUndefined();
   });
 
-  it("reads the mix at the frame's time (drawn in the same frame) and the jaw JAW_LEAD_MS ahead", () => {
+  it("reads the mix for the frame's time (drawn in the same frame, Kokoro's lag taken out) and the jaw JAW_LEAD_MS ahead", () => {
     const h = harness();
     const d = createMouthDriver("L1", h.ctx);
     d.onViseme({ t: 0, kind: "viseme", id: "u", v: "PP", startMs: 0, endMs: 100 });
@@ -153,11 +153,12 @@ describe("mouth driver", () => {
     const seen: MouthFrame[] = [];
     const d = createMouthDriver("L2", h.ctx, { paint: (_g, f) => seen.push(f), drawn: (w) => ({ ...w, round: 0 }) });
     speak(d, "oh", 300, 0);
-    d.frame(130);
-    d.frame(150);
+    // The spans are read KOKORO_VISEME_LAG_MS ahead (lag.test.ts): 90 draws the span's middle.
+    d.frame(70);
+    d.frame(90);
     h.setPose({ params: SHAPE_PARAMS.round, alpha: 1, lips: 1 });
     const g = {} as CanvasRenderingContext2D;
-    for (const p of h.painters) p(g, 150);
+    for (const p of h.painters) p(g, 90);
     expect(seen).toHaveLength(1);
     expect(seen[0]?.weights).toBe(h.shapes.at(-1)?.shapes);
     expect(seen[0]?.weights.round).toBeCloseTo(1, 6);

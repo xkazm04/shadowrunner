@@ -1,6 +1,6 @@
 /* The catacomb set (costume 8.1, ported from r2/air-b.html). Role tokens only. Three live values
    arrive as CSS variables written through refs (useStageLights): --back on the tunnel and the bloom
-   (the backlight, his speech level; `data-back`), --heat on the stage, and --flame, --glow, --refl on each candle (candleLevels). The
+   (the backlight, his speech level; `data-back`), --heat on the plate image (`data-heat`), and --flame, --glow, --refl on each candle (candleLevels). The
    flames are screen-blended over the candles painted into the plate, so the overlays stay faint
    fills (the lit ON AIR box is still the brightest fill; air.tokens.test.ts). Dead line: the
    candles gutter to embers, the tunnel goes out, the bulb tries every 5 s like the health poll. */

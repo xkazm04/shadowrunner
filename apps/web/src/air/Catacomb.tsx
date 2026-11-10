@@ -3,7 +3,8 @@
 // far light is his backlight (--back, bound to the speech level by useStageLights); the eight
 // candles painted into the plate carry live flames (--flame, --glow, --refl per candle, from
 // candleLevels). Pure presentation: every moving value is a CSS variable written through refs; the
-// layers that read --back carry `data-back`, so the loop writes it on them and not on the stage.
+// layers that read --back carry `data-back` and the plate image that reads --heat `data-heat`, so the
+// loop writes them there and not on the stage.
 import type { RefObject } from "react";
 import { CANDLE_COUNT } from "./candles";
 import styles from "./Catacomb.module.css";
@@ -19,7 +20,7 @@ const INDICES = Array.from({ length: CANDLE_COUNT }, (_, i) => i);
 export function CatacombPlate({ candles }: CatacombProps) {
   return (
     <div className={styles.plate} aria-hidden="true">
-      <span className={styles.img} />
+      <span className={styles.img} data-heat />
       <span className={styles.grade} />
       <span className={styles.tunnel} data-back />
       {INDICES.map((i) => (

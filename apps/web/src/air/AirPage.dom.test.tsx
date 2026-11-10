@@ -84,6 +84,7 @@ describe("AirPage and the dead line", () => {
 describe("AirPage candles", () => {
   const candles = () => [...(m?.container.querySelectorAll<HTMLElement>("[data-candle]") ?? [])];
   const level = (el: HTMLElement | undefined, v: string) => Number(el?.style.getPropertyValue(v));
+  const heated = () => stage()?.querySelector<HTMLElement>("[data-heat]");
 
   it("lights eight candles from chat velocity when the theme haunts", async () => {
     document.documentElement.style.setProperty("--sr-haunt-flicker", "0.4");
@@ -100,7 +101,9 @@ describe("AirPage candles", () => {
       expect(v).toBeLessThanOrEqual(1);
       expect(v).toBeGreaterThanOrEqual(idle[i] ?? 1);
     });
-    expect(Number(stage()?.style.getPropertyValue("--heat"))).toBeGreaterThan(0);
+    // --heat lands on its one reader, the plate image, never on the stage (perfection-pass 14.1).
+    expect(Number(heated()?.style.getPropertyValue("--heat"))).toBeGreaterThan(0);
+    expect(stage()?.style.getPropertyValue("--heat")).toBe("");
   });
 
   it("stills the candles at their resting light when the theme does not haunt, however busy chat is", async () => {
@@ -108,7 +111,8 @@ describe("AirPage candles", () => {
     m = await mount(<AirPage plane="replay" />);
     await run(30_000);
     expect(stage()?.dataset.haunt).toBe("off");
-    expect(Number(stage()?.style.getPropertyValue("--heat"))).toBe(0);
+    expect(heated()?.style.getPropertyValue("--heat")).toBe("0");
+    expect(stage()?.style.getPropertyValue("--heat")).toBe("");
     const rest = candles().map((el) => el.style.getPropertyValue("--flame"));
     expect(new Set(rest).size).toBe(1);
     await run(5_000);
