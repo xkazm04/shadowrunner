@@ -204,6 +204,14 @@ hands it over with `setEmotion`). What the player does with the mix depends on t
 `nowMs` is drawn in the same frame, and L2's painter pairs that mix with the player's alpha from the
 same frame. The jaw mix is read 30 ms ahead (`JAW_LEAD_MS`), because the jaw eases toward its target.
 
+**On the voice's clock.** Kokoro's viseme timings run late against its own audio: 57-58 ms pooled
+over the 101-sentence fitting corpus (`scripts/lipfit/lag.ts`, per clip p10 39 / p90 94 ms). Read as
+given, the arms drew every shape that much after it was heard. The driver reads the scheduler
+`KOKORO_VISEME_LAG_MS` (57) ahead of the audio clock. Whether a line is playing at all (the level
+fallback, the reduced-motion ease) stays on the audio clock itself. `mouth/__tests__/lag.test.ts`
+drives the driver with seven real Kokoro clips (one per voice) and scores the drawn mouth against
+each clip's own levels: +2 ms, against +59 ms before. A clip's own lag still varies around the mean.
+
 **Scheduler** (`@sr/avatar` `mouth/track.ts`, shared with the product's lip-sync, and the lab's `mouth/shapes.ts`; the lab maps visemes with `createVisemeTrack(VISEME_SHAPE)`). The 15 Oculus visemes are grouped into eight
 shapes: rest (sil), closed (PP), teeth (FF), tongue (TH, DD, nn), openMid (kk, E), narrow (CH, SS, ih),
 round (RR, oh, ou), openWide (aa). A span waits until its utterance's audio start is known

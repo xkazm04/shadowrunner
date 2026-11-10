@@ -2,10 +2,12 @@
 // `pnpm test:e2e` builds the app, serves the production build with `vite preview` (replay plane:
 // no /api) and drives a headless Chromium with a fake microphone through the overlay, the studio's
 // recorder, the creator's export/import and a cross-origin page embedding <sr-avatar>.
-// Not part of `pnpm test` (vite.config.ts keeps e2e/ out of vitest).
+// Not part of `pnpm test` (vite.config.ts keeps e2e/ out of vitest). The preview port is
+// SR_E2E_PORT (default 4320), so two checkouts can run the suite side by side.
 import { defineConfig, devices } from "@playwright/test";
+import { portFrom } from "./playwright.port";
 
-const PORT = 4320;
+const PORT = portFrom(process.env, "SR_E2E_PORT", 4320);
 
 export default defineConfig({
   testDir: "e2e",

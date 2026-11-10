@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 // The stage-light loop's paint contract (perfection-pass task 11): --back is written on the layers
-// that read it (the tunnel and the bloom, `data-back`), never on the stage; nothing is rewritten
+// that read it (the tunnel and the bloom, `data-back`), never on the stage, and --heat on the plate
+// image (`data-heat`, task 14); nothing is rewritten
 // when its value has not changed; and the loop stops while the document is hidden and resumes when
 // it is shown. requestAnimationFrame is driven by hand.
 import { act, useRef } from "react";
@@ -72,6 +73,15 @@ describe("useStageLights paint contract", () => {
     expect(readers()).toHaveLength(2);
     for (const el of readers()) expect(Number(el.style.getPropertyValue("--back"))).toBeGreaterThan(0.3);
     expect(q("[data-stage]")?.style.getPropertyValue("--back")).toBe("");
+  });
+
+  it("writes --heat on the plate image, its one reader, not on the stage (task 14)", async () => {
+    m = await mount(<Stage speaking={false} jaw={0} />);
+    await frame();
+    const heated = [...(m.container.querySelectorAll<HTMLElement>("[data-heat]") ?? [])];
+    expect(heated).toHaveLength(1);
+    expect(heated[0]?.style.getPropertyValue("--heat")).toBe("0");
+    expect(q("[data-stage]")?.style.getPropertyValue("--heat")).toBe("");
   });
 
   it("does not rewrite a variable whose value has not changed", async () => {

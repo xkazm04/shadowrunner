@@ -2,7 +2,7 @@
 // CSS variables through refs, so no React render runs per frame.
 // - --back on the tunnel and the bloom: the backlight, eased toward his real speech level (the same
 //   jawOpen meter that moves the jaw and lights VOICE) while he speaks; out on the dead line.
-// - --heat on the stage (once a second at most) and --flame/--glow/--refl on each candle: candleLevels from the smoothed
+// - --heat on the plate image (once a second at most) and --flame/--glow/--refl on each candle: candleLevels from the smoothed
 //   chat velocity (sampled once a second) and the chatters' recent posts (flares).
 // - data-haunt on the stage: "off" when the theme's haunt tokens are zero (the baseline theme,
 //   the haunt toggle off); the candles then stand still at their resting light.
@@ -10,7 +10,8 @@
 // second, so nothing pulses frame to frame.
 // Paint cost (perfection-pass task 11): --back changes every frame he speaks, so it is written on
 // the layers that read it (`[data-back]` under the stage: the tunnel and the bloom), never on the
-// stage, whose every descendant would otherwise restyle each frame. Every variable is written only
+// stage, whose every descendant would otherwise restyle each frame. --heat likewise goes on its one
+// reader (`[data-heat]`, the plate image; task 14), not the stage. Every variable is written only
 // when its value changes. The loop stops while the document is hidden and picks up where it was
 // (the backlight eases from its last level; the velocity samples at once).
 import type { ChatMsg } from "@sr/engine";
@@ -58,10 +59,10 @@ function write(el: HTMLElement, name: string, value: string): void {
   if (el.style.getPropertyValue(name) !== value) el.style.setProperty(name, value);
 }
 
-/** The elements under the stage that read --back (Catacomb.tsx marks them `data-back`). */
-function backReaders(root: HTMLElement, known: HTMLElement[]): HTMLElement[] {
+/** The elements under the stage marked `attr` (Catacomb.tsx: `data-back`, `data-heat`), cached while they stay. */
+function readers(root: HTMLElement, attr: string, known: HTMLElement[]): HTMLElement[] {
   if (known.length > 0 && known.every((el) => el.isConnected && root.contains(el))) return known;
-  return [...root.querySelectorAll<HTMLElement>("[data-back]")];
+  return [...root.querySelectorAll<HTMLElement>(`[${attr}]`)];
 }
 
 export function useStageLights(opts: StageLightsOptions, haunts: () => boolean = themeHaunts): ChatHeat {
@@ -78,8 +79,8 @@ export function useStageLights(opts: StageLightsOptions, haunts: () => boolean =
     let haunt = true;
     let reduced = false;
     let back = 0;
-    let shownHeat = -1;
-    let readers: HTMLElement[] = [];
+    let backs: HTMLElement[] = [];
+    let heats: HTMLElement[] = [];
 
     const tick = (t: number) => {
       raf = 0;
@@ -101,13 +102,11 @@ export function useStageLights(opts: StageLightsOptions, haunts: () => boolean =
       if (root !== null) {
         const target = o.dead || !o.speaking ? 0 : reduced ? 0.6 : Math.min(1, 0.35 + o.jawOpen(t) * 0.9);
         back = reduced ? target : back + (target - back) * 0.06;
-        readers = backReaders(root, readers);
-        for (const el of readers) write(el, "--back", fixed(back));
-        const h = lit ? heatOf(rate) : 0;
-        if (h !== shownHeat) {
-          shownHeat = h;
-          root.style.setProperty("--heat", fixed(h));
-        }
+        backs = readers(root, "data-back", backs);
+        for (const el of backs) write(el, "--back", fixed(back));
+        heats = readers(root, "data-heat", heats);
+        const h = fixed(lit ? heatOf(rate) : 0);
+        for (const el of heats) write(el, "--heat", h);
       }
       if (sample || !reduced) {
         const posts: Post[] = lit ? chatters.slice(-FLARE_LOOKBACK).map((m) => ({ user: m.user, ts: m.ts })) : [];
