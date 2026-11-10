@@ -5,7 +5,9 @@
 // the edited brief; "Ask again" re-briefs; a failed brief keeps the words.
 // forge-creator L2: these cover the direct path (`casting={false}`); Cast.dom.test.tsx covers casting.
 import type { AvatarCanvasProps } from "@sr/avatar";
+import { briefFromRecorded } from "@sr/forge/brief";
 import type { BriefResponse, ForgeRequest } from "@sr/forge/wire";
+import mothWidow from "../../../../../assets/characters/cast/moth-widow/brief.json";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mount, type Mounted } from "../../app/testDom";
@@ -124,6 +126,20 @@ describe("the handshake", () => {
     await open();
     await briefFor(TALLY);
     expect(card()?.querySelector('[data-chosen="exact"]')?.textContent).toBe("Recorded: The Tallyman, recorded from these exact words.");
+  });
+
+  // perfection-pass task 13 (requirement 13.2): a brief written after the recording is never shown as the recorded request.
+  it("a brief written after the recording says so on the card, even for its job's exact words", async () => {
+    const written = briefFromRecorded(mothWidow);
+    if (!written.ok) throw new Error("moth-widow brief");
+    const briefer = createReplayBriefClient(async () => [...testBriefs(), written.value]);
+    await open(briefer);
+    await briefFor("a moth woman with a veil");
+    expect(card()?.querySelector('[data-chosen="words"]')?.textContent).toContain("Recorded: The Moth Widow, chosen for 'moth', 'woman'. Its brief was written after the recording, not asked for.");
+    await view.unmount();
+    await open(briefer);
+    await briefFor(written.value.one_line_request);
+    expect(card()?.querySelector('[data-chosen="exact"]')?.textContent).toBe("Recorded: The Moth Widow, forged from these exact words. Its brief was written after the recording, not asked for.");
   });
 
   it("an edit that breaks a rule blocks Draw it and names the rule; a valid edit is what is drawn", async () => {

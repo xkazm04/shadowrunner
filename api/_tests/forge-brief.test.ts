@@ -7,7 +7,7 @@ import { DEFAULT_ENGINE_MODEL, type FetchLike } from "@sr/engine";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { defaultBriefDeps, handleBriefPost, type BriefDeps } from "../_lib/forge-brief.js";
 import { handleForgePost, type ForgeDeps } from "../_lib/forge-api.js";
-import { bundledReplay, pickJob, type ReplayJob } from "../_lib/forge-replay.js";
+import { bundledJobs, bundledReplay, pickJob, type ReplayJob } from "../_lib/forge-replay.js";
 import type { GeminiClient } from "../_lib/gemini.js";
 import { MemoryJobStore } from "../_lib/jobstore.js";
 import { createQuota, MemoryQuotaStore, type QuotaKind } from "../_lib/quota.js";
@@ -99,11 +99,14 @@ describe("POST /api/forge/brief, replay plane", () => {
     expect(near.brief.name).toBe("Vicar of the Lure");
     expect(near.match).toEqual({ name: "Vicar of the Lure", how: "words", matched: ["fish", "deep"] });
     const none = await ask("a vampire accountant");
-    expect(none.match).toEqual({ name: "Reveille, the Alarm of the Ninth", how: "none", matched: [] });
-    expect(none.brief.name).toBe("Reveille, the Alarm of the Ninth");
+    // perfection-pass task 13: the hashed pick spreads over thirteen now (it was Reveille over eight).
+    expect(none.match).toEqual({ name: "Saint Cardia of the Glass Heart", how: "none", matched: [] });
+    expect(none.brief.name).toBe("Saint Cardia of the Glass Heart");
+    const moth = await ask("a moth woman with a veil");
+    expect(moth.match).toEqual({ name: "The Moth Widow", how: "words", matched: ["moth", "woman"], authored: "after-recording" });
     expect((await ask(TALLY)).match?.how).toBe("exact");
     const briefs = deps({}, noFetch).deps.recorded();
-    for (const request of ["a ghost butler with white gloves", "hollow knight", "a medusa", "an owl"]) {
+    for (const request of ["a ghost butler with white gloves", "hollow knight", "a medusa", "an owl", "a drowned nun with floating hair", "a hooded radio announcer"]) {
       expect((await ask(request)).match).toEqual(recordedBriefMatch(request, briefs)?.match);
     }
     expect(fetches).toBe(0);
@@ -224,5 +227,23 @@ describe("POST /api/forge {mode: brief}", () => {
     expect(fetches).toBe(0);
     const jobs = [{ slug: "a" }, { slug: "b", prompt: "AN IRON  diving helmet" }] as Pick<ReplayJob, "slug" | "prompt">[];
     expect(pickJob({ mode: "brief", brief: VALID }, jobs)?.slug).toBe("b");
+  });
+
+  // perfection-pass task 13: the five briefs written after the recording carry their job's recorded
+  // prompt as one_line_request, so the replay forge finds every cast brief's own job by it, as for
+  // the eight; Malakor has no brief, so no brief ever starts his job.
+  it("replay: every cast brief, recorded or written after, starts its own recorded job, never Malakor's", async () => {
+    const briefs = deps({}, noFetch).deps.recorded();
+    expect(briefs).toHaveLength(13);
+    expect(briefs.filter((b) => b.authored === "after-recording")).toHaveLength(5);
+    const jobs = bundledJobs();
+    for (const brief of briefs) {
+      const job = pickJob({ mode: "brief", brief }, jobs);
+      expect([brief.name, job?.name]).toEqual([brief.name, brief.name]);
+      expect(job?.slug).not.toBe("malakor");
+      const res = await bundledReplay.post(JSON.stringify({ mode: "brief", brief }), 5000);
+      expect(((await res.json()) as { jobId: string }).jobId).toMatch(new RegExp(`^replay_${job?.slug ?? "?"}_`));
+    }
+    expect(fetches).toBe(0);
   });
 });

@@ -348,8 +348,18 @@ export function cutAtSentence(text: string, max: number): string {
  * `portrait_prompt` is `style.prompt` cut at a sentence end to 900 characters (the drawn portrait
  * came from the full text; the framing rules it drops are in BRIEF_HOUSE_STYLE), and `world`,
  * `provenance` and `style.prompt` are dropped. A brief already in the new shape passes as is.
+ * `"authored": "after-recording"` (perfection-pass task 13) is kept, so the card can say so;
+ * parseBrief itself never keeps it, so a live answer cannot claim it.
  */
 export function briefFromRecorded(value: unknown): BriefResult {
+  const read = adaptRecorded(value);
+  if (!read.ok || !isRecord(value) || value.authored === undefined) return read;
+  // A misspelt mark must not pass a written brief off as a recorded one.
+  if (value.authored !== "after-recording") return { ok: false, errors: [{ path: "$.authored", message: 'must be "after-recording" when present' }] };
+  return { ok: true, value: { ...read.value, authored: "after-recording" } };
+}
+
+function adaptRecorded(value: unknown): BriefResult {
   if (!isRecord(value) || !isRecord(value.style) || !Array.isArray(value.parts)) return parseBrief(value);
   const style = value.style;
   const parts = value.parts.flatMap((p: unknown) => {

@@ -9,9 +9,19 @@
 // gallery press or a deep link), never seeded into every visitor's library in the background: eight
 // more rigs would more than double the art a first visit downloads (their layer images are 13.8 MB,
 // the five presets' 12.8 MB).
+//
+// perfection-pass task 13: the five presets now have a brief too, written after their recording
+// (`"authored": "after-recording"`), only so the replay brief matcher can choose them. They stay
+// presets here (seeded, noted from PROMPTS.md): a cast-forge character is a brief whose folder also
+// holds the named-parts recording (`parts.json`, of which only `version` is imported); the five's
+// folders hold only the brief. (Importing `authored` itself would fail the build on the eight,
+// which omit it.)
 
 const HOOKS = import.meta.glob<unknown>("../../../../../assets/characters/cast/*/brief.json", { eager: true, import: "persona_hook" });
 const STYLES = import.meta.glob<unknown>("../../../../../assets/characters/cast/*/brief.json", { eager: true, import: "style" });
+const RECORDED = new Set(
+  Object.keys(import.meta.glob<unknown>("../../../../../assets/characters/cast/*/parts.json", { eager: true, import: "version" })).map((path) => path.split("/").at(-2) ?? ""),
+);
 
 export interface CastBriefNote {
   /** The brief's persona hook. */
@@ -27,7 +37,7 @@ function readNotes(): ReadonlyMap<string, CastBriefNote> {
   const out = new Map<string, CastBriefNote>();
   for (const [path, hook] of Object.entries(HOOKS)) {
     const style = STYLES[path];
-    if (typeof hook !== "string" || hook.trim() === "" || !isRecord(style) || typeof style.name !== "string") continue;
+    if (!RECORDED.has(slugOf(path)) || typeof hook !== "string" || hook.trim() === "" || !isRecord(style) || typeof style.name !== "string") continue;
     out.set(slugOf(path), { hook: hook.trim(), style: style.name.trim() });
   }
   return out;

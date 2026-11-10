@@ -1,0 +1,70 @@
+{
+ "name": "Announcer of Dead Air",
+ "one_line_request": "A tall hooded announcer whose face is a void of soft darkness: only two round eyes of violet phosphor and a wide mouth of flickering static-white teeth on a separate lower jaw. A deep hood of heavy black felt, frayed at the edge. Above the hood floats a broken ring of rusted antenna rods crackling with violet sparks. A collar of old microphone mesh.",
+ "authored": "after-recording",
+ "archetype": "Hooded voice of the station between programmes",
+ "persona_hook": "It reads the station identification between programmes that were never scheduled. It speaks only in the third person, and only on the hour.",
+ "world": "ninth-dark",
+ "accent_hex": "#b48cff",
+ "secondary_hex": "#e8e8f0",
+ "silhouette": "A tall pointed hood around a dark void of a face, a broken ring floating above it and a round mesh collar below: a tall dark spire under a halo.",
+ "parts": [
+  {
+   "name": "accessory",
+   "kind": "crown",
+   "what": "Broken ring of rusted antenna rods crackling with violet sparks",
+   "motion": "Floats above the hood, bobbing and crackling."
+  },
+  {
+   "name": "hat",
+   "kind": "hat",
+   "what": "Deep hood of heavy black felt, frayed at the edge",
+   "motion": "Sways a beat behind the head."
+  },
+  {
+   "name": "head",
+   "kind": "head",
+   "what": "A face that is a void of soft darkness; only its light shows",
+   "motion": "Slow, level tilts."
+  },
+  {
+   "name": "eye_r",
+   "kind": "eye",
+   "what": "Round eye of violet phosphor",
+   "motion": "Flickers like a screen instead of a blink."
+  },
+  {
+   "name": "eye_l",
+   "kind": "eye",
+   "what": "Round eye of violet phosphor",
+   "motion": "Flickers like a screen instead of a blink."
+  },
+  {
+   "name": "jaw",
+   "kind": "aperture_lower",
+   "what": "Separate lower jaw of flickering static-white teeth",
+   "motion": "Drops open with speech, the teeth flickering."
+  },
+  {
+   "name": "torso",
+   "kind": "body",
+   "what": "Black felt cloak with a collar of old microphone mesh",
+   "motion": "Slow breathing."
+  }
+ ],
+ "style": {
+  "name": "Shadow render",
+  "why": "Close to a 3D render: matte felt and a face lost in shadow, with only the eyes, the teeth and the sparks lit, so the glow does the acting.",
+  "prompt": "Original character portrait, head and shoulders bust, facing the camera, centred, symmetrical framing, theatrical horror, painterly realism, dramatic rim light, the face clearly separated from the body, the jaw and eyes clearly visible, near-black (#050505) empty background, no text, no logos, no frame, not a real person, no gore, 1:1. The character: A tall hooded announcer whose face is a void of soft darkness: only two round eyes of violet phosphor and a wide mouth of flickering static-white teeth on a separate lower jaw. A deep hood of heavy black felt, frayed at the edge. Above the hood floats a broken ring of rusted antenna rods crackling with violet sparks. A collar of old microphone mesh."
+ },
+ "provenance": {
+  "tool": "Gemini 3 Pro Image (portrait and fill), Gemini 3.8 Flash (parts), through the forge pipeline",
+  "date": "2026-11-01",
+  "source": "forge run 2026-11-01 15:58 UTC, preset 5 of assets/characters/presets/PROMPTS.md; one_line_request is the job's recorded prompt and style.prompt its portraitPrompt",
+  "resized_to": [
+   1024,
+   1024
+  ],
+  "brief": "written 2026-11-10 after the recording (perfection-pass task 13, Claude Code, Opus 5.5) from the recorded portrait, the rig's layers and the preset notes; never a recorded brief"
+ }
+}

@@ -11,8 +11,12 @@ import { handleVoice } from "../voice.js";
 const ROOT = new URL("../../", import.meta.url);
 const dirs = (path: string): string[] => readdirSync(new URL(path, ROOT), { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name);
 
-/** Malakor, the eight cast-forge characters and the five presets: everything the library seeds. */
-const SEEDED = ["malakor", ...dirs("assets/characters/cast"), ...dirs("assets/characters/presets")].sort();
+/**
+ * Malakor, the eight cast-forge characters and the five presets: everything the library seeds. The
+ * presets also have a cast folder since perfection-pass task 13 (their after-recording brief), so
+ * the two listings overlap and are joined as a set.
+ */
+const SEEDED = [...new Set(["malakor", ...dirs("assets/characters/cast"), ...dirs("assets/characters/presets")])].sort();
 
 const request = (characterId: string, beat: number): EngineRequest => ({
   characterId,

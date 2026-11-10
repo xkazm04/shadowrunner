@@ -103,7 +103,10 @@ export async function handleBriefPost(req: Request, deps: BriefDeps): Promise<Re
   }
 }
 
-/** The committed contest briefs, adapted (`briefFromRecorded`), in slug order; bundled at build time. */
+/**
+ * The committed cast briefs, adapted (`briefFromRecorded`), in slug order; bundled at build time:
+ * the eight contest briefs and the five written after the recording (perfection-pass task 13).
+ */
 function bundledBriefs(): CharacterBrief[] {
   const files = import.meta.glob("../../assets/characters/cast/*/brief.json", { eager: true, import: "default" });
   const out: CharacterBrief[] = [];

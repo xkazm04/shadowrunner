@@ -1,0 +1,64 @@
+{
+ "name": "The Moth Widow",
+ "one_line_request": "A moth-woman of the night garden: a soft face of pale dusty fur, two large dark compound eyes with a moonlit gold sheen, a small closed mouth with a delicate lower jaw. Two tall feathered antennae rise from the brow like a crown. Folded speckled wings wrap her shoulders like a mourning cloak, dusted with silver scales. A string of tiny lunar pearls at the throat.",
+ "authored": "after-recording",
+ "archetype": "Moth-woman keeper of forgotten lamps, the confessor",
+ "persona_hook": "She keeps the lamps the cellar forgot. She collects small confessions the way other moths collect light: chat whispers one, and she keeps it in a jar beside the others.",
+ "world": "ninth-dark",
+ "accent_hex": "#e9c46a",
+ "secondary_hex": "#c9c3cf",
+ "silhouette": "Two tall feathered antennae rising above a small furred face, over a draped triangle of folded speckled wings: a tall narrow V on a cloak.",
+ "parts": [
+  {
+   "name": "head",
+   "kind": "head",
+   "what": "Soft moth face of pale dusty fur",
+   "motion": "Slow, curious tilts."
+  },
+  {
+   "name": "hair",
+   "kind": "crown",
+   "what": "Two tall feathered antennae rising from the brow like a crown",
+   "motion": "Sway slowly and trail every head turn."
+  },
+  {
+   "name": "jaw",
+   "kind": "aperture_lower",
+   "what": "Small closed mouth on a delicate lower jaw",
+   "motion": "Opens softly with speech."
+  },
+  {
+   "name": "eye_l",
+   "kind": "eye",
+   "what": "Large dark compound eye with a moonlit gold sheen",
+   "motion": "Blinks slowly, catching the light."
+  },
+  {
+   "name": "eye_r",
+   "kind": "eye",
+   "what": "Large dark compound eye with a moonlit gold sheen",
+   "motion": "Blinks slowly, catching the light."
+  },
+  {
+   "name": "torso",
+   "kind": "body",
+   "what": "Folded speckled wings wrapped like a mourning cloak, silver scales and a string of tiny lunar pearls",
+   "motion": "Slow breathing."
+  }
+ ],
+ "style": {
+  "name": "Moonlit painterly realism",
+  "why": "The forge's house style as drawn: soft fur and a silver rim light on near-black, with the antennae standing clear of the head so they cut as their own layer.",
+  "prompt": "Original character portrait, head and shoulders bust, facing the camera, centred, symmetrical framing, theatrical horror, painterly realism, dramatic rim light, the face clearly separated from the body, the jaw and eyes clearly visible, near-black (#050505) empty background, no text, no logos, no frame, not a real person, no gore, 1:1. The character: A moth-woman of the night garden: a soft face of pale dusty fur, two large dark compound eyes with a moonlit gold sheen, a small closed mouth with a delicate lower jaw. Two tall feathered antennae rise from the brow like a crown. Folded speckled wings wrap her shoulders like a mourning cloak, dusted with silver scales. A string of tiny lunar pearls at the throat."
+ },
+ "provenance": {
+  "tool": "Gemini 3 Pro Image (portrait and fill), Gemini 3.8 Flash (parts), through the forge pipeline",
+  "date": "2026-11-01",
+  "source": "forge run 2026-11-01 16:25 UTC, preset 4 of assets/characters/presets/PROMPTS.md; one_line_request is the job's recorded prompt and style.prompt its portraitPrompt",
+  "resized_to": [
+   1024,
+   1024
+  ],
+  "brief": "written 2026-11-10 after the recording (perfection-pass task 13, Claude Code, Opus 5.5) from the recorded portrait, the rig's layers and the preset notes; never a recorded brief"
+ }
+}

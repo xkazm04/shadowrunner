@@ -1,6 +1,6 @@
 // cast-forge task 10 (requirement 4.3): the brief client. The http client posts {request} to
 // /api/forge/brief and checks the answer with parseBrief; every failure is a ForgeError with a wire
-// code. The replay twin reads the eight recorded contest briefs in the browser and never fetches.
+// code. The replay twin reads the committed cast briefs in the browser and never fetches.
 // A brief started on the replay forge plays the cast member's recorded job when there is one.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BRIEF_URL, createHttpBriefClient, createReplayBriefClient, loadRecordedBriefs, readBriefResponse } from "./briefClient";
@@ -57,14 +57,18 @@ describe("http brief client", () => {
 });
 
 describe("replay brief client", () => {
-  it("reads the eight recorded briefs and answers a one-line request with its own, without a request", async () => {
+  it("reads the thirteen cast briefs and answers a one-line request with its own, without a request", async () => {
     const briefs = await loadRecordedBriefs();
-    expect(briefs).toHaveLength(8);
+    // The eight recorded, and (perfection-pass task 13) the five written after the recording; never Malakor.
+    expect(briefs).toHaveLength(13);
+    expect(briefs.filter((b) => b.authored === "after-recording").map((b) => b.name)).toEqual(["Announcer of Dead Air", "The Lantern Warden", "The Moth Widow", "Sister Vesper", "The Understudy"]);
+    expect(briefs.some((b) => /malakor/i.test(b.name))).toBe(false);
     const client = createReplayBriefClient();
     expect((await client.brief("A SPOOKY census guy  that counts everyone in chat")).brief.name).toBe("The Tallyman");
     const near = await client.brief("a fish priest from the deep");
     expect(near).toEqual({ brief: briefs.find((b) => b.name === "Vicar of the Lure"), plane: "replay", match: { name: "Vicar of the Lure", how: "words", matched: ["fish", "deep"] } });
-    expect((await client.brief("a vampire accountant")).match).toEqual({ name: "Reveille, the Alarm of the Ninth", how: "none", matched: [] });
+    expect((await client.brief("a vampire accountant")).match).toEqual({ name: "Saint Cardia of the Glass Heart", how: "none", matched: [] });
+    expect((await client.brief("a moth woman with a veil")).match).toEqual({ name: "The Moth Widow", how: "words", matched: ["moth", "woman"], authored: "after-recording" });
     await expect(client.brief("  ")).rejects.toMatchObject({ code: "bad_input" });
     expect(fetches).toBe(0);
   });
@@ -91,6 +95,11 @@ describe("replay: the brief shown is the character forged", () => {
     "a many-eyed accountant counting viewers",
     "a vampire accountant",
     "a moth woman with a veil",
+    // perfection-pass task 13: the five written after the recording, by their signature traits.
+    "a drowned nun with floating hair",
+    "a creepy puppet with a wooden jaw",
+    "a pumpkin head with a lantern and a hat",
+    "a hooded radio announcer",
   ])("%s", async (request) => {
     const { brief } = await createReplayBriefClient().brief(request);
     const jobs = await loadReplayJobs();

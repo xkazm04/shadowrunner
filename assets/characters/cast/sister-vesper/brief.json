@@ -1,0 +1,64 @@
+{
+ "name": "Sister Vesper",
+ "one_line_request": "A drowned choir sister, pale grey-blue skin smooth as river stone, eyes clouded milk-white with a faint cold blue glow. Long black hair floats upward and outward as if underwater, framing the face in slow strands. Her mouth is closed and solemn, the jaw clearly defined. A high collar of wet white lace over a dark habit. Tiny silver bubbles drift around her hair.",
+ "authored": "after-recording",
+ "archetype": "Drowned choir sister who still keeps the hours",
+ "persona_hook": "She sang in a chapel that the river took. She still keeps the hours, and asks chat to hum along.",
+ "world": "ninth-dark",
+ "accent_hex": "#b9cdf2",
+ "secondary_hex": "#d9dee6",
+ "silhouette": "A wide cloud of black hair floating out on both sides of a still, pale face, over a high white lace collar: a dark halo around a narrow upright figure.",
+ "parts": [
+  {
+   "name": "hair",
+   "kind": "hair",
+   "what": "Long black hair floating upward and outward as if underwater, tiny silver bubbles in it",
+   "motion": "Drifts in slow strands, as if underwater."
+  },
+  {
+   "name": "head",
+   "kind": "head",
+   "what": "Pale grey-blue face, smooth as river stone",
+   "motion": "Holds still, with slow solemn tilts."
+  },
+  {
+   "name": "jaw",
+   "kind": "aperture_lower",
+   "what": "Closed, solemn lower lip and chin",
+   "motion": "Opens with speech."
+  },
+  {
+   "name": "eye_r",
+   "kind": "eye",
+   "what": "Milk-white clouded eye with a faint cold blue glow",
+   "motion": "Blinks slowly."
+  },
+  {
+   "name": "eye_l",
+   "kind": "eye",
+   "what": "Milk-white clouded eye with a faint cold blue glow",
+   "motion": "Blinks slowly."
+  },
+  {
+   "name": "torso",
+   "kind": "body",
+   "what": "High collar of wet white lace over a dark habit",
+   "motion": "Slow breathing."
+  }
+ ],
+ "style": {
+  "name": "Loose oil sketch",
+  "why": "Broad wet brushstrokes in grey-blue, black and white: the face stays quiet while the floating hair is one large separate shape that drifts as its own layer.",
+  "prompt": "Original character portrait, head and shoulders bust, facing the camera, centred, symmetrical framing, theatrical horror, painterly realism, dramatic rim light, the face clearly separated from the body, the jaw and eyes clearly visible, near-black (#050505) empty background, no text, no logos, no frame, not a real person, no gore, 1:1. The character: A drowned choir sister, pale grey-blue skin smooth as river stone, eyes clouded milk-white with a faint cold blue glow. Long black hair floats upward and outward as if underwater, framing the face in slow strands. Her mouth is closed and solemn, the jaw clearly defined. A high collar of wet white lace over a dark habit. Tiny silver bubbles drift around her hair."
+ },
+ "provenance": {
+  "tool": "Gemini 3 Pro Image (portrait and fill), Gemini 3.8 Flash (parts), through the forge pipeline",
+  "date": "2026-11-01",
+  "source": "forge run 2026-11-01 16:25 UTC, preset 2 of assets/characters/presets/PROMPTS.md; one_line_request is the job's recorded prompt and style.prompt its portraitPrompt",
+  "resized_to": [
+   1024,
+   1024
+  ],
+  "brief": "written 2026-11-10 after the recording (perfection-pass task 13, Claude Code, Opus 5.5) from the recorded portrait, the rig's layers and the preset notes; never a recorded brief"
+ }
+}
