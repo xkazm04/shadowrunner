@@ -78,15 +78,30 @@
         "file": "torso.png",
         "bbox": [
           4,
-          549,
-          852,
-          473
+          489,
+          853,
+          535
         ],
         "anchor": [
           430.08,
           775.6800000000001
         ],
-        "depth": 0.3
+        "depth": 0.3,
+        "regions": {
+          "map": "torso.regions.png",
+          "slots": [
+            {
+              "id": "r1",
+              "name": "torso",
+              "hex": "#232217"
+            },
+            {
+              "id": "r2",
+              "name": "torso 2",
+              "hex": "#696f6b"
+            }
+          ]
+        }
       },
       {
         "name": "head",
@@ -94,10 +109,10 @@
         "kind": "head",
         "file": "head.png",
         "bbox": [
-          299,
-          256,
-          461,
-          437
+          240,
+          64,
+          617,
+          661
         ],
         "anchor": [
           526.336,
@@ -110,22 +125,22 @@
             {
               "id": "r1",
               "name": "head",
-              "hex": "#6e5418"
+              "hex": "#6b5318"
             },
             {
               "id": "r2",
               "name": "head 2",
-              "hex": "#160f06"
+              "hex": "#171107"
             },
             {
               "id": "r3",
               "name": "head 3",
-              "hex": "#642d09"
+              "hex": "#5e2a08"
             },
             {
               "id": "r4",
               "name": "head 4",
-              "hex": "#b1af9d"
+              "hex": "#a6a899"
             }
           ]
         },

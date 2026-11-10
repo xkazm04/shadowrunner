@@ -2,6 +2,7 @@
 // rig (Reveille, which has brow layers) at a spread of drive states, with a neutral look and none of
 // the character-control fields. The snapshot was written BEFORE moods, faces and reshape landed;
 // an untouched rig must pose exactly as it did (to 1e-9 canvas px / radians).
+// Perfection-pass task 16 grew Reveille's torso bbox 50 px up; its torso y moved by exactly that.
 import { describe, expect, it } from "vitest";
 import layersJson from "../../../../assets/characters/malakor/rig/layers.json";
 import specJson from "../../../../assets/characters/malakor/rig/m8.spec.json";

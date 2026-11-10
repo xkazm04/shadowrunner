@@ -7,6 +7,7 @@ import { dilateMask, rasterizeMask } from "./mask.js";
 import { artMouth, drawnMouth, measureLips, measureMouth } from "./mouthAnchor.js";
 import { measureMaw } from "./mouthMaw.js";
 import { type NamedLayer, backgroundOf } from "./background.js";
+import { keepEveryPiece } from "./coverFix.js";
 import { asNamed, cutOrderNamed, emissiveOf, followOf, headNameOf, motionOf, scaleMotion } from "./named.js";
 import { samplePalette, type PaletteWarning } from "./palette.js";
 import { MOTION_CANVAS, ROLE_KIND, toCanvas, v1View } from "./parts.js";
@@ -129,7 +130,8 @@ function anchorOf(kind: LayerKind, layer: NamedLayer, part: Pick<Part, "poly"> |
  * first head), unless a jaw part says the mouth is drawn open (`drawnMouth`: cavity "gap" or "fill",
  * a visor or a maw), when the art keeps its mouth; cast-face-pass: a jaw flagged `mouth: "art"` whose
  * maw measures cleanly (`measureMaw`) carries `mouth` with maw lips. The rig is passed through validateRig; its errors are returned
- * as they are.
+ * as they are. Last, `keepEveryPiece` (perfection-pass task 16) gives the head and body the foreground
+ * no layer holds and reaches the body under the head, and the background is painted under them.
  */
 export function assembleRig(parts: readonly Part[] | readonly NamedPart[], layers: readonly NamedLayer[], meta: AssembleMeta): Result<AssembledRig, RigError[]> {
   const { width, height } = meta.portrait;
@@ -206,7 +208,6 @@ export function assembleRig(parts: readonly Part[] | readonly NamedPart[], layer
 
   const files: Record<string, Uint8Array> = {};
   const background = `${BACKGROUND_LAYER}.png`;
-  files[background] = encodePng(painted.background);
   const rigLayers: Layer[] = [
     { name: BACKGROUND_LAYER, z: BACKGROUND_Z, kind: "static", file: background, bbox: [0, 0, width, height], anchor: [width / 2, height / 2], depth: DEFAULT_DEPTH.static },
   ];
@@ -218,7 +219,6 @@ export function assembleRig(parts: readonly Part[] | readonly NamedPart[], layer
     const follow = follows.get(layer.name);
     const motion = part === undefined ? undefined : motionOf(part);
     const emissive = part === undefined || !isV2 ? undefined : emissiveOf(part, kind);
-    files[file] = encodePng(layer.image);
     rigLayers.push({
       name: layer.name,
       z: BACKGROUND_Z + 1 + k,
@@ -253,5 +253,12 @@ export function assembleRig(parts: readonly Part[] | readonly NamedPart[], layer
   if (artMeasured !== undefined && maw !== undefined) mouth = { ...artMeasured, lips: maw };
   const rig: Rig = { version: RIG_VERSION, id: meta.id, name: meta.name, width, height, source: "forge", fictional: true, palette, layers: rigLayers, ...(mouth === undefined ? {} : { mouth }) };
   const checked = validateRig(rig);
-  return checked.ok ? { ok: true, value: { rig: checked.value, files, warnings } } : checked;
+  if (!checked.ok) return checked;
+  // perfection-pass task 16: every piece of the portrait lands in a layer, and the body reaches under the head.
+  const images = Object.fromEntries([[background, painted.background], ...order.map((l): [string, Rgba] => [`${l.name}.png`, l.image])]);
+  const kept = keepEveryPiece({ rig: checked.value, images, portrait: meta.portrait, background: painted.background, parts: named });
+  // Encoded once, after the stage: PNG encoding is most of what assembly costs.
+  files[background] = encodePng(kept.background);
+  for (const layer of order) files[`${layer.name}.png`] = encodePng(kept.images[`${layer.name}.png`] ?? layer.image);
+  return { ok: true, value: { rig: kept.rig, files, warnings } };
 }

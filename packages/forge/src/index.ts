@@ -40,3 +40,6 @@ export * from "./cast.js";
 export * from "./castJob.js";
 export * from "./faceGate.js";
 export * from "./faceRepaint.js";
+export * from "./cover.js";
+export * from "./coverCheck.js";
+export * from "./coverFix.js";

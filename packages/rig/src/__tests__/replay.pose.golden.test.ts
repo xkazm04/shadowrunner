@@ -2,6 +2,8 @@
 // mid-talk, mid-crossfade and still, with a look that carries no `face`. The digests were written
 // at aaa2b54, BEFORE `expression.faces` landed: a look without it must pose exactly as before
 // (to 1e-9 canvas px / radians, every face weight included).
+// Re-pinned by perfection-pass task 16, which grew 13 jobs' torso (and five jobs' head) bboxes: every
+// pose is the old one moved by exactly its layer's bbox move (checked once by script, task 16 report).
 import { describe, expect, it } from "vitest";
 import { EMOTION_TABLE } from "../look.js";
 import { poseLayers, type Drive, type LayerPose } from "../pose.js";
