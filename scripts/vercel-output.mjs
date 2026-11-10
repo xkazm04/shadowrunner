@@ -10,6 +10,7 @@ import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } fro
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "vite";
+import { servedElsewhere } from "./art-webp.mjs";
 import { functionName, outputConfig } from "./vercel-config.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -72,7 +73,9 @@ if (existsSync(join(OUT, "static", "replay"))) {
   process.exit(1);
 }
 // The voices ship as .m4a (scripts/voice-m4a.mjs); a WAV left beside one is a test's PCM source, never served.
-cpSync(REPLAY, join(OUT, "static", "replay"), { recursive: true, filter: (src) => !src.endsWith(".wav") });
+// A PNG with a .webp beside it (scripts/art-webp.mjs, perfection-pass task 12) is the WebP's
+// source, never requested (api/_lib/forge-replay.ts `servedFile`), so it is not deployed either.
+cpSync(REPLAY, join(OUT, "static", "replay"), { recursive: true, filter: (src) => !servedElsewhere(src) });
 const config = outputConfig(entries.map(fileOf));
 for (const entry of entries) {
   await bundle(entry, join(OUT, "functions", `${routeOf(entry)}.func`));

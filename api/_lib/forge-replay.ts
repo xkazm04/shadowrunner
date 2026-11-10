@@ -10,6 +10,10 @@
 // forge-creator C1: a recorded job whose rig carries expression patches gets one synthetic
 // `expressing` hold after its recorded steps (@sr/forge replayFaces): awake at once with the faces
 // stripped, the recorded faces arriving one family at a time, as a live job wakes after its eyes.
+// perfection-pass task 12: a cast job's art is served as the `.webp` beside each PNG
+// (scripts/art-webp.mjs; the PNGs stay as the pack builder's and the forge scripts' sources and are
+// not deployed), and the job's rig is handed out naming those files, as the browser's replay does
+// (apps/web/src/creator/replayJobs.ts `servedRig`). Malakor's job keeps its PNGs (house art).
 import { createHash } from "node:crypto";
 import {
   assetsWithFaces,
@@ -24,7 +28,7 @@ import {
   type ForgeStatus,
   type JobView,
 } from "@sr/forge";
-import { validateRig, type Rig } from "@sr/rig";
+import { validateRig, type Layer, type Rig } from "@sr/rig";
 import { errorBody } from "./errors.js";
 import type { ForgeReplay } from "./forge-api.js";
 
@@ -68,6 +72,29 @@ export function replayAssets(rig: Rig, base: string): Record<string, string> | u
   return assets;
 }
 
+/** Recorded jobs served as committed: Malakor's art is the pre-existing house art, never re-encoded. */
+export const HOUSE_SLUGS: ReadonlySet<string> = new Set(["malakor"]);
+
+/** The file a recorded job's file is served as: a cast job's `.png` as its `.webp` sibling. */
+export const servedFile = (slug: string, file: string): string => (HOUSE_SLUGS.has(slug) || !file.endsWith(".png") ? file : `${file.slice(0, -".png".length)}.webp`);
+
+/** `rig` with every image file it names (layers, region maps, faces, sockets, lids) passed through `serve`. */
+export function servedRig(rig: Rig, serve: (file: string) => string): Rig {
+  const layers = rig.layers.map((layer): Layer => {
+    const next: Layer = { ...layer, file: serve(layer.file) };
+    if (layer.regions !== undefined) next.regions = { ...layer.regions, map: serve(layer.regions.map) };
+    if (layer.socket !== undefined) next.socket = serve(layer.socket);
+    if (layer.closed !== undefined) next.closed = serve(layer.closed);
+    if (layer.variants !== undefined) {
+      next.variants = Object.fromEntries(
+        Object.entries(layer.variants).map(([family, patch]) => [family, { ...patch, file: serve(patch.file), ...(patch.socket === undefined ? {} : { socket: serve(patch.socket) }) }]),
+      );
+    }
+    return next;
+  });
+  return { ...rig, layers };
+}
+
 type Fields = Record<string, unknown>;
 const isRecord = (v: unknown): v is Fields => typeof v === "object" && v !== null && !Array.isArray(v);
 const isStatus = (v: unknown): v is ForgeStatus => typeof v === "string" && (STATUS_ORDER as readonly string[]).includes(v);
@@ -93,11 +120,15 @@ export function replayJobOf(value: unknown): ReplayJob | undefined {
   const order = steps.map((s) => STATUS_ORDER.indexOf(s.status));
   if (steps.at(-1)?.status !== "done" || order.some((r, i) => i > 0 && r <= (order[i - 1] ?? -1))) return undefined;
   const base = `${REPLAY_BASE}/${value.slug}/`;
-  const assets = replayAssets(rig.value, base);
-  if (assets === undefined) return undefined;
+  // The recorded names are checked; the served names (task 12) are what the view hands out.
+  const recorded = replayAssets(rig.value, base);
+  if (recorded === undefined) return undefined;
+  const slug = value.slug;
+  const served = servedRig(rig.value, (file) => servedFile(slug, file));
+  const assets = Object.fromEntries(Object.keys(recorded).map((file) => [servedFile(slug, file), base + servedFile(slug, file)]));
   const fill = value.fill === "edit" ? "edit" : "fallback";
   const prompt = typeof value.prompt === "string" ? { prompt: value.prompt } : {};
-  return { slug: value.slug, name: value.name, ...prompt, fill, steps: withFacesStep(steps, rig.value), portraitUrl: base + value.portrait, rig: rig.value, assets };
+  return { slug, name: value.name, ...prompt, fill, steps: withFacesStep(steps, served), portraitUrl: base + servedFile(slug, value.portrait), rig: served, assets };
 }
 
 /** The committed job manifests, bundled at build time (Vite glob import; vitest resolves it the same way). */

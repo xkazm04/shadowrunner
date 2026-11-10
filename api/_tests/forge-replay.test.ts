@@ -2,6 +2,8 @@
 // zero fetches, and the real endpoints honour `x-sr-plane: replay` with the bundled jobs.
 // Task 9: images are static files at /replay/forge/<slug>/<file> (vercel-output.mjs publishes
 // assets/replay/** there); the tests serve those URLs from disk to check every one resolves.
+// Task 12 (perfection-pass): a cast job is served as the WebP beside each PNG, and its view's rig
+// names those files; a PNG with a WebP beside it is not deployed, so it is not served here either.
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { decodeImage } from "@sr/forge";
@@ -10,7 +12,7 @@ import type { JobView } from "@sr/forge";
 import { validateRig } from "@sr/rig";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { defaultForgeDeps, handleForgeGet, handleForgePost } from "../_lib/forge-api.js";
-import { REPLAY_BASE, bundledReplay, createForgeReplay, pickIndex, replayAssets, replayJobId, replayJobOf, replayView, statusAt, type ReplayJob } from "../_lib/forge-replay.js";
+import { HOUSE_SLUGS, REPLAY_BASE, bundledReplay, createForgeReplay, pickIndex, replayAssets, replayJobId, replayJobOf, replayView, servedFile, statusAt, type ReplayJob } from "../_lib/forge-replay.js";
 
 const manifests = import.meta.glob("../../assets/replay/forge/*/job.json", { eager: true, import: "default" });
 // cast-forge task 2 adds the first cast member (scripts/cast-forge.mjs); the rest follow one task at a time.
@@ -20,7 +22,26 @@ const SLUGS = ["announcer-of-dead-air", "auntie-asp", "lantern-warden", "lot-nin
 function serveStatic(url: string): Uint8Array | undefined {
   if (!url.startsWith("/replay/") || url.includes("..")) return undefined;
   const path = join("assets", ...url.split("/").filter(Boolean));
+  if (path.endsWith(".png") && existsSync(path.replace(/\.png$/, ".webp"))) return undefined;
   return existsSync(path) ? new Uint8Array(readFileSync(path)) : undefined;
+}
+
+/** Width and height of a PNG (decoded) or a WebP (its VP8X / VP8L / VP8 header); false when unreadable. */
+function imageSize(bytes: Uint8Array): [number, number] | false {
+  const tag = (at: number, n: number) => String.fromCharCode(...bytes.subarray(at, at + n));
+  if (tag(0, 4) !== "RIFF" || tag(8, 4) !== "WEBP") {
+    const image = decodeImage(bytes);
+    return image.ok && [image.value.width, image.value.height];
+  }
+  const u24 = (at: number) => (bytes[at] ?? 0) | ((bytes[at + 1] ?? 0) << 8) | ((bytes[at + 2] ?? 0) << 16);
+  const chunk = tag(12, 4);
+  if (chunk === "VP8X") return [u24(24) + 1, u24(27) + 1];
+  if (chunk === "VP8L" && bytes[20] === 0x2f) {
+    const bits = (bytes[21] ?? 0) | ((bytes[22] ?? 0) << 8) | ((bytes[23] ?? 0) << 16) | ((bytes[24] ?? 0) << 24);
+    return [(bits & 0x3fff) + 1, ((bits >>> 14) & 0x3fff) + 1];
+  }
+  if (chunk === "VP8 ") return [((bytes[26] ?? 0) | ((bytes[27] ?? 0) << 8)) & 0x3fff, ((bytes[28] ?? 0) | ((bytes[29] ?? 0) << 8)) & 0x3fff];
+  return false;
 }
 const ORDER = ["queued", "portrait", "segmenting", "cutting", "filling", "done"];
 
@@ -73,17 +94,33 @@ describe("recorded jobs", () => {
       if (job === undefined) throw new Error("a committed job does not load");
       const view = replayView(job, replayJobId(job.slug, 0), "done");
       expect(JSON.stringify(view).length, job.slug).toBeLessThan(100 * 1024);
-      expect(view.portraitUrl).toBe(`${REPLAY_BASE}/${job.slug}/${(manifest as { portrait: string }).portrait}`);
+      expect(view.portraitUrl).toBe(`${REPLAY_BASE}/${job.slug}/${servedFile(job.slug, (manifest as { portrait: string }).portrait)}`);
       expect(serveStatic(view.portraitUrl ?? ""), `${job.slug} portrait`).toBeDefined();
+      for (const url of Object.values(view.assets ?? {})) expect(serveStatic(url), url).toBeDefined();
       for (const layer of job.rig.layers) {
         const url = view.assets?.[layer.file] ?? "";
         expect(url).toBe(`${REPLAY_BASE}/${job.slug}/${layer.file}`);
         const bytes = serveStatic(url);
         expect(bytes, url).toBeDefined();
-        const image = decodeImage(bytes ?? new Uint8Array());
-        expect(image.ok && [image.value.width, image.value.height], url).toEqual([layer.bbox[2], layer.bbox[3]]);
+        expect(imageSize(bytes ?? new Uint8Array()), url).toEqual([layer.bbox[2], layer.bbox[3]]);
       }
     }
+  });
+
+  it("serves a cast job's art as WebP and Malakor's house art as committed (task 12)", () => {
+    for (const manifest of Object.values(manifests)) {
+      const job = replayJobOf(manifest);
+      if (job === undefined) throw new Error("a committed job does not load");
+      const files = [job.portraitUrl, ...Object.keys(job.assets)];
+      const recorded = (manifest as { rig: { layers: { file: string }[] } }).rig.layers.map((l) => l.file);
+      if (HOUSE_SLUGS.has(job.slug)) {
+        expect(job.rig.layers.map((l) => l.file), job.slug).toEqual(recorded);
+      } else {
+        expect(files.filter((f) => f.endsWith(".png")), job.slug).toEqual([]);
+        expect(job.rig.layers.map((l) => l.file), job.slug).toEqual(recorded.map((f) => f.replace(/\.png$/, ".webp")));
+      }
+    }
+    expect([...HOUSE_SLUGS]).toEqual(["malakor"]);
   });
 });
 
