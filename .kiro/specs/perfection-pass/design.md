@@ -134,3 +134,18 @@ under `var/perfection/<task>/` (git-ignored) for the owner's board.
   the root ref instead of new refs.
 - A character duplicated from the house character (Malakor) carries `house: true` and is never
   exported or published as a pack.
+
+## Follow-up tasks 12-15 (2026-11-10)
+Built in parallel worktrees off `main`, one Opus builder each. Doc rows (kiro-log, provenance)
+are returned in reports and written by the Director.
+
+| Task | Scope |
+|---|---|
+| 12 WebP | a conversion script under `scripts/`, the derived `.webp` files under `assets/`, the creator's art loaders and globs, `api/_lib/forge-replay.ts`, landing/cast image references, `scripts/vercel-output.mjs` |
+| 13 Briefs | `assets/characters/cast/<slug>/brief.json` for the five (new folders hold only the brief), `packages/forge/src/brief*`, the client/server brief lists |
+| 14 Cleanup | `apps/web/src/air` stage-light files and the test that pins `--heat`, `scripts/lipfit/`, `apps/lab/src/page/lip`, the Playwright configs |
+| 15 Announcer | read-only bisect; a fix only in the Announcer's rig/look data or, if general, `packages/rig/src` |
+
+- Task 12 encoding: `-q 90` colour with lossless alpha (`-alpha_q 100 -exact` or the library
+  equivalent). Both files are kept; nothing is renamed.
+- Task 13 brief field: `"authored": "after-recording"` (omitted on the eight recorded briefs).

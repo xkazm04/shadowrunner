@@ -46,3 +46,15 @@ ownership"). Builder: Claude Opus, one per task; the Director reviews, gates and
 - [x] 11. Set paint cost, P3a (lane D)
   - As design "Task 11"; before/after trace.
   - _Requirements: 11.1-11.4_
+
+- [ ] 12. Served art as lossy WebP (follow-up)
+  - _Requirements: 12.1-12.4_
+
+- [ ] 13. Briefs for the unmatched cast (follow-up)
+  - _Requirements: 13.1-13.4_
+
+- [ ] 14. Cleanup (follow-up)
+  - _Requirements: 14.1-14.4_
+
+- [ ] 15. Announcer hood gap (follow-up)
+  - _Requirements: 15.1-15.2_

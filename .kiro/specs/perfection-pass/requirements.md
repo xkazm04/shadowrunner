@@ -123,3 +123,39 @@ the landing visual baseline (2 % tolerance) keep passing, or the builder reports
 3. Stage and landing rAF loops SHALL stop while the document is hidden.
 4. Before/after figures (a recorded performance trace or frame-time capture) in the report; a
    change that does not measure better is withdrawn.
+
+## Follow-up (owner decisions, 2026-11-10)
+The owner kept the V1/V2 defaults as merged and the reply joining the chat at line start, and
+asked for the four items below.
+
+## Requirement 12: Served art as lossy WebP (closes 10.2)
+1. Every character PNG the app serves SHALL also exist as a WebP encoded at quality 90 with
+   lossless alpha, and the app (creator loaders, replay API, landing, cast pages) SHALL request
+   the WebP. The PNGs stay as the sources the pack builder and forge scripts read.
+2. Each character SHALL pass its art geometry check on the WebP: alpha identical to the PNG,
+   and colour within a stated per-channel tolerance at the measured mouth, sockets and seams.
+3. Malakor's pre-existing art SHALL NOT be re-encoded (house art stays byte-identical).
+4. A fresh build SHALL be measured before and after (PNG/WebP totals, deploy static, first
+   load of `/`), and a provenance row SHALL describe the derived files.
+
+## Requirement 13: Briefs for the unmatched cast
+1. Moth Widow, Sister Vesper, Understudy, Lantern Warden and Announcer of Dead Air SHALL each
+   get a brief in the same schema as the eight recorded ones, written from that character's
+   recorded art and parts, so `matchCastBrief` can choose them.
+2. Each SHALL be marked as authored after the recording (a field in the brief and a provenance
+   row), never presented as the recorded request.
+3. Malakor SHALL get no brief and SHALL never be matched.
+4. A request naming each character's signature traits SHALL match that character (test).
+
+## Requirement 14: Cleanup
+1. `--heat` SHALL be written on the elements that read it, not the stage root.
+2. The lip-sync fitting scripts SHALL be committed (sources only, no corpora over 1 MB) and
+   runnable from a documented command.
+3. The lab's lip arms SHALL draw on the voice's clock (lag under one frame).
+4. The e2e port SHALL come from an environment variable with 4320 as the default.
+
+## Requirement 15: Announcer hood gap
+1. Announcer of Dead Air SHALL be rendered at the pre-pass commit `e6ba255` and at `main` in
+   the studio cutout and on the stage, and the report SHALL say which commit introduced the gap.
+2. If the pass introduced it, it SHALL be fixed through the Announcer's own rig or look settings
+   (or a general rule if the cause is general), with the before/after frames.
