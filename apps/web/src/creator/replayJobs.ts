@@ -8,9 +8,14 @@
 //   `steps` (status + holdMs, recorded by the forge lane) are the timings instead.
 // - The manifests are imported lazily (one small chunk per job) and the images as URLs, so the
 //   creator's own bundle carries no art; an image is fetched only when it is shown or adopted.
+// - Served art is WebP (perfection-pass task 12): a cast job's PNGs stay in the repo as the sources
+//   the pack builder and the forge scripts read, and only their `.webp` siblings
+//   (scripts/art-webp.mjs) are bundled. The job's rig is handed out naming the file it is served
+//   as, so a library record or an exported pack never carries WebP bytes under a `.png` name.
+//   Malakor's job keeps its PNGs (pre-existing house art, never re-encoded).
 import { withFacesStep } from "@sr/forge/replayFaces";
 import type { ForgeStatus } from "@sr/forge/wire";
-import { validateRig, type Rig } from "@sr/rig";
+import { validateRig, type Layer, type Rig } from "@sr/rig";
 import { rigFiles } from "./library/assets";
 
 export interface ReplayStep {
@@ -49,6 +54,30 @@ function liveOf(value: unknown): Partial<Record<ForgeStatus, number>> | undefine
   return Object.keys(out).length === 0 ? undefined : out;
 }
 
+/** `rig` with every image file it names (layers, region maps, faces, sockets, lids) passed through `serve`. */
+export function servedRig(rig: Rig, serve: (file: string) => string): Rig {
+  const layers = rig.layers.map((layer): Layer => {
+    const next: Layer = { ...layer, file: serve(layer.file) };
+    if (layer.regions !== undefined) next.regions = { ...layer.regions, map: serve(layer.regions.map) };
+    if (layer.socket !== undefined) next.socket = serve(layer.socket);
+    if (layer.closed !== undefined) next.closed = serve(layer.closed);
+    if (layer.variants !== undefined) {
+      next.variants = Object.fromEntries(
+        Object.entries(layer.variants).map(([family, patch]) => [family, { ...patch, file: serve(patch.file), ...(patch.socket === undefined ? {} : { socket: serve(patch.socket) }) }]),
+      );
+    }
+    return next;
+  });
+  return { ...rig, layers };
+}
+
+/** The name a job file is served as: itself when bundled, else its committed `.webp` sibling (task 12). */
+export function servedName(file: string, files: Readonly<Record<string, string>>): string {
+  if (files[file] !== undefined || !file.endsWith(".png")) return file;
+  const webp = `${file.slice(0, -".png".length)}.webp`;
+  return files[webp] === undefined ? file : webp;
+}
+
 const ORDER: readonly ForgeStatus[] = ["queued", "portrait", "segmenting", "cutting", "filling", "done"];
 const SLUG = /^[a-z0-9-]{1,48}$/;
 
@@ -75,18 +104,19 @@ export function replayJobOf(value: unknown, files: Readonly<Record<string, strin
   }
   const ranks = steps.map((s) => ORDER.indexOf(s.status));
   if (steps.at(-1)?.status !== "done" || ranks.some((r, i) => i > 0 && r <= (ranks[i - 1] ?? -1))) return undefined;
-  const portraitUrl = files[value.portrait];
+  const portraitUrl = files[servedName(value.portrait, files)];
   if (portraitUrl === undefined) return undefined;
+  const served = servedRig(rig.value, (file) => servedName(file, files));
   const assets: Record<string, string> = {};
-  const layerFiles = new Set(rig.value.layers.map((l) => l.file));
+  const layerFiles = new Set(served.layers.map((l) => l.file));
   // Layer images must exist; region maps and expression patches (character-control) when committed.
-  for (const file of rigFiles(rig.value)) {
+  for (const file of rigFiles(served)) {
     const url = files[file];
     if (url === undefined && layerFiles.has(file)) return undefined;
     if (url !== undefined) assets[file] = url;
   }
   // forge-creator C1: a rig with faces gets the synthetic expressing hold (the server's replay does the same).
-  const job: ReplayJob = { slug: value.slug, name: value.name, steps: withFacesStep(steps, rig.value), portraitUrl, rig: rig.value, assets };
+  const job: ReplayJob = { slug: value.slug, name: value.name, steps: withFacesStep(steps, served), portraitUrl, rig: served, assets };
   if (typeof value.prompt === "string" && value.prompt !== "") job.prompt = value.prompt;
   if (value.fill === "edit" || value.fill === "fallback") job.fill = value.fill;
   const live = liveOf(value.timings);
@@ -108,7 +138,8 @@ export function statusAt(steps: readonly ReplayStep[], elapsedMs: number): Forge
 export const durationOf = (steps: readonly ReplayStep[]): number => steps.reduce((sum, s) => sum + s.holdMs, 0);
 
 const MANIFESTS = import.meta.glob<unknown>("../../../../assets/replay/forge/*/job.json", { import: "default" });
-const FILES = import.meta.glob<string>("../../../../assets/replay/forge/*/*.{png,jpg,jpeg,webp}", {
+// A cast job's PNGs are not bundled (their WebP is); Malakor's are (house art, never re-encoded).
+const FILES = import.meta.glob<string>(["../../../../assets/replay/forge/*/*.{jpg,jpeg,webp}", "../../../../assets/replay/forge/malakor/*.png"], {
   eager: true,
   query: "?url",
   import: "default",

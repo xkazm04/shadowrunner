@@ -5,7 +5,7 @@ import fc from "fast-check";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ForgeError, readJobView } from "./forgeClient";
 import { createReplayForgeClient, failOf, parseReplayJobId, pickIndex, replayJobId } from "./forgeClient.replay";
-import { loadReplayJobs, replayJobOf, statusAt, type ReplayJob } from "./replayJobs";
+import { loadReplayJobs, replayJobOf, servedName, statusAt, type ReplayJob } from "./replayJobs";
 import { PIXEL_PNG, testJob } from "./testFixtures";
 
 const PROMPT = { mode: "prompt" as const, prompt: "a drowned lighthouse keeper with a lantern heart" };
@@ -132,6 +132,41 @@ describe("recorded jobs", () => {
       expect(job.steps.at(-1)?.status).toBe("done");
       for (const layer of job.rig.layers) expect(job.assets[layer.file]).toBeTypeOf("string");
     }
+  });
+
+  it("serves a cast job's art as WebP and names it so in the rig; Malakor's house art stays PNG (perfection-pass task 12)", async () => {
+    const loaded = await loadReplayJobs();
+    for (const job of loaded) {
+      const names = [...job.rig.layers.map((l) => l.file), ...Object.keys(job.assets)];
+      if (job.slug === "malakor") expect(job.rig.layers.every((l) => l.file.endsWith(".png")), job.slug).toBe(true);
+      else expect(names.filter((f) => f.endsWith(".png")), job.slug).toEqual([]);
+    }
+    expect(loaded.find((j) => j.slug === "moth-widow")?.portraitUrl).toMatch(/portrait.*\.jpg$/);
+  });
+
+  it("servedName takes a bundled file as is, else a .png's committed .webp sibling", () => {
+    const files = { "a.png": "u1", "b.webp": "u2" };
+    expect(servedName("a.png", files)).toBe("a.png");
+    expect(servedName("b.png", files)).toBe("b.webp");
+    expect(servedName("c.png", files)).toBe("c.png");
+    expect(servedName("b.jpg", files)).toBe("b.jpg");
+  });
+
+  it("replayJobOf hands out the rig under its served names, sockets, lids, maps and faces included", () => {
+    const job = testJob();
+    const layers = job.rig.layers.map((l) =>
+      l.name === "eye_l" ? { ...l, socket: "eye_l.socket.png", closed: "eye_l.closed.png", regions: { map: "eye_l.regions.png", slots: [{ id: "iris", name: "iris", hex: "#00ff00" }] }, variants: { joy: { file: "eye_l.joy.png", bbox: l.bbox, mode: "over" as const, socket: "eye_l.joy.socket.png" } } } : l,
+    );
+    const rig = { ...job.rig, layers };
+    const files: Record<string, string> = { "portrait.webp": "p" };
+    for (const l of layers) files[l.file.replace(/\.png$/, ".webp")] = `/${l.file}`;
+    for (const f of ["eye_l.socket", "eye_l.closed", "eye_l.regions", "eye_l.joy", "eye_l.joy.socket"]) files[`${f}.webp`] = `/${f}`;
+    const loaded = replayJobOf({ slug: job.slug, name: job.name, fictional: true, portrait: "portrait.png", steps: job.steps, rig }, files);
+    expect(loaded?.portraitUrl).toBe("p");
+    const eye = loaded?.rig.layers.find((l) => l.name === "eye_l");
+    expect([eye?.file, eye?.socket, eye?.closed, eye?.regions?.map, eye?.variants?.joy?.file, eye?.variants?.joy?.socket]).toEqual(["eye_l.webp", "eye_l.socket.webp", "eye_l.closed.webp", "eye_l.regions.webp", "eye_l.joy.webp", "eye_l.joy.socket.webp"]);
+    expect(loaded?.assets["eye_l.joy.socket.webp"]).toBe("/eye_l.joy.socket");
+    expect(Object.keys(loaded?.assets ?? {}).some((f) => f.endsWith(".png"))).toBe(false);
   });
 
   it("replayJobOf refuses a non-fictional job, a missing file and steps out of order", () => {
