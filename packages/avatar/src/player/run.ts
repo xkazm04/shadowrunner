@@ -145,7 +145,7 @@ export function runPlayer(canvas: HTMLCanvasElement, options: AvatarPlayerOption
       return disposed ? undefined : mouthShown;
     },
     mouthMode(): MouthMode | undefined {
-      return mouthMode(options.rig.mouth);
+      return mouthMode(options.rig.mouth, options.rig.morph);
     },
     resize(width: number, height: number, dpr: number): void {
       if (!disposed) renderer.resize(width, height, dpr);

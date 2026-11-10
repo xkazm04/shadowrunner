@@ -22,8 +22,9 @@
 // - Breathing (motion.breath): a rise of `breath x BREATH_RISE x height` and a scale of
 //   `1 + breath x BREATH_SCALE` (both times `sin(2 pi BREATH_HZ t)`, so the mean is the rest pose)
 //   about the anchor of each head or body layer with no head or body ancestor; followers inherit
-//   it. Off under `Drive.still`. Only a rig with a face profile (`Rig.face` or `Look.face`) or iris
-//   layers breathes: a rig without either keeps today's pose exactly (its default breath is not 0).
+//   it. Off under `Drive.still`. Only a rig with a face profile (`Rig.face` or `Look.face`), iris
+//   layers or morph keys (companion-lanes) breathes: a rig without any keeps today's pose exactly
+//   (its default breath is not 0).
 // - Pixel art (cast-face-pass): on a rig with `mouth.cell` (the art's pixel, canvas px) the gaze
 //   offset is rounded to whole cells (`snapCell`), so an iris steps by art pixels, never between.
 import { resolveFace, type ResolvedFace } from "./face.js";
@@ -61,8 +62,8 @@ export function layerIndex(rig: Pick<Rig, "layers">): { byName: ReadonlyMap<stri
 /** Whether the rig has iris layers (the eyes lead the gaze, face-control). */
 export const hasIris = (rig: Pick<Rig, "layers">): boolean => layerIndex(rig).irises;
 
-/** Whether the rig breathes: it has a face profile (rig or look) or iris layers. */
-export const breathes = (rig: Pick<Rig, "layers" | "face">, look: Pick<Look, "face">): boolean => rig.face !== undefined || look.face !== undefined || hasIris(rig);
+/** Whether the rig breathes: it has a face profile (rig or look), iris layers or morph keys (companion-lanes). */
+export const breathes = (rig: Pick<Rig, "layers" | "face"> & { morph?: Rig["morph"] }, look: Pick<Look, "face">): boolean => rig.face !== undefined || look.face !== undefined || hasIris(rig) || rig.morph !== undefined;
 
 /** The breathing at `t` for amplitude `amp`: a rise (fraction of height, positive up) and a scale; undefined when none. */
 export function breathAt(t: number, amp: number, still: boolean): { rise: number; scale: number } | undefined {

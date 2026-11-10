@@ -179,7 +179,7 @@ function elementClass(): CustomElementConstructor {
       if (!result.ok) return this.#fail(packErrorSentence(result.error));
       let assets: Awaited<ReturnType<typeof decodePackImages>>;
       try {
-        assets = await decodePackImages(result.pack.files);
+        assets = await decodePackImages(result.pack.files, result.pack.rig);
       } catch {
         if (!abort.signal.aborted) this.#fail(UNDECODABLE);
         return;

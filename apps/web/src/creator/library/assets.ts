@@ -52,9 +52,13 @@ export async function urlsToBlobs(urls: Readonly<Record<string, string>>, fetche
   return Object.fromEntries(entries);
 }
 
-/** One layer image for the renderer. ImageBitmap where the browser has it, else a decoded <img>. */
-export async function blobToImage(blob: Blob): Promise<ImageBitmap | HTMLImageElement> {
-  if (typeof createImageBitmap === "function") return createImageBitmap(blob, { premultiplyAlpha: "premultiply" });
+/**
+ * One layer image for the renderer. ImageBitmap where the browser has it, else a decoded <img>.
+ * `raw` (a morph's motion image or sway map, companion-lanes): data, decoded as stored (no
+ * premultiply, no colour-space conversion); an <img> fallback cannot promise that.
+ */
+export async function blobToImage(blob: Blob, raw = false): Promise<ImageBitmap | HTMLImageElement> {
+  if (typeof createImageBitmap === "function") return createImageBitmap(blob, raw ? { premultiplyAlpha: "none", colorSpaceConversion: "none" } : { premultiplyAlpha: "premultiply" });
   const url = URL.createObjectURL(blob);
   try {
     const image = new Image();
@@ -68,7 +72,8 @@ export async function blobToImage(blob: Blob): Promise<ImageBitmap | HTMLImageEl
 
 /**
  * The files a rig names besides its layer images (character-control): each layer's region map and
- * expression patches. Optional: a character without one draws its base art there.
+ * expression patches, then (companion-lanes) the morph's atlas, motion image and sway map. Optional:
+ * a character without one draws its base art there.
  */
 export function extraFiles(rig: Rig): string[] {
   const files = rig.layers.flatMap((layer) => [
@@ -77,8 +82,17 @@ export function extraFiles(rig: Rig): string[] {
     ...(layer.socket === undefined ? [] : [layer.socket]),
     ...(layer.closed === undefined ? [] : [layer.closed]),
   ]);
-  return [...new Set(files)];
+  return [...new Set([...files, ...morphFiles(rig)])];
 }
+
+/** The morph's atlas, motion image and sway map (companion-lanes), as named. */
+export function morphFiles(rig: Rig): string[] {
+  const m = rig.morph;
+  return m === undefined ? [] : [m.atlas, ...(m.flow === undefined ? [] : [m.flow]), ...(m.sway === undefined ? [] : [m.sway.map])];
+}
+
+/** The files decoded as data, not colour (`blobToImage` raw): the morph's motion image and sway map. */
+const rawFiles = (rig: Rig): ReadonlySet<string> => new Set([rig.morph?.flow, rig.morph?.sway?.map].filter((f): f is string => f !== undefined));
 
 /**
  * Every image file a rig names, de-duplicated: its layer images, then each layer's region map and
@@ -102,12 +116,13 @@ export async function rigAssetsOf(rig: Rig, blobs: Readonly<Record<string, Blob>
       assets[layer.file] = await blobToImage(blob);
     }),
   );
+  const raw = rawFiles(rig);
   await Promise.all(
     extraFiles(rig).map(async (file) => {
       const blob = blobs[file];
       if (blob === undefined || assets[file] !== undefined) return;
       try {
-        assets[file] = await blobToImage(blob);
+        assets[file] = await blobToImage(blob, raw.has(file));
       } catch {
         // The base art stands in for a map or face that does not decode.
       }

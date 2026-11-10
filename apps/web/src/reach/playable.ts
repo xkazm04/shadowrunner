@@ -63,7 +63,7 @@ async function fromPack(source: string | Blob, signal: AbortSignal | undefined):
   const { pack } = result;
   let assets: RigAssets;
   try {
-    assets = await decodePackImages(pack.files);
+    assets = await decodePackImages(pack.files, pack.rig);
   } catch {
     return fail(UNDECODABLE);
   }

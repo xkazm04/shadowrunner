@@ -1,5 +1,5 @@
 // Renderer contract shared by the WebGL2 renderer and its canvas2D fallback (design.md "Contracts").
-import type { Drive, LayerPose, Look, Rig } from "@sr/rig";
+import type { Drive, LayerPose, Look, MorphPlan, Rig } from "@sr/rig";
 import type { MouthPose } from "../mouth/state.js";
 
 /** Layer images keyed by `Layer.file`. ImageBitmaps should be created with `premultiplyAlpha: "premultiply"`. */
@@ -43,6 +43,18 @@ export interface FrameClock {
    * The canvas2D fallback ignores it and keeps the rigid pan.
    */
   turn?: { yaw: number; pitch: number };
+  /**
+   * The morph keys this frame (companion-lanes, a rig with `morph`, player/morph.ts): absent when no
+   * key is active and nothing sways, so the morph layer draws exactly as any layer.
+   */
+  morph?: MorphFrame;
+}
+
+/** One frame of a morph rig's keys: the plan (@sr/rig `morphPlan`, reused) and the sway lag. */
+export interface MorphFrame {
+  plan: MorphPlan;
+  /** The sway lag L, -1..1 per axis (x right, y down; 0, 0 = still): a pixel of sway weight s moves by s x amp x L. */
+  sway: { x: number; y: number };
 }
 
 export interface Renderer {

@@ -1,0 +1,203 @@
+// The morph shader's pixel proofs (companion-lanes task 1, D), run by `capture.mjs --proof`: the
+// synthetic rig of apps/web/bench/morphSynth.ts rendered by the real WebGL player at 512 px (1 rig px
+// = 1 device px, t = 0 so the breath is at rest), each check measured against the same picture
+// computed here. `headAt`, `coverageAt` and the constants mirror morphSynth.ts.
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import sharp from "sharp";
+
+const SHIFT = 4;
+const FEATHER = 12;
+const HEAD = [56, 56, 400, 400];
+const KEYS = { shift: [156, 156, 160, 120], solid: [176, 316, 120, 80], lid: [226, 176, 120, 80] };
+const RED = [230, 40, 40];
+const BLUE = [40, 60, 230];
+const YELLOW = [250, 210, 20];
+const SWAY_AMP = 20;
+
+function headAt(x, y) {
+  const gx = (((x - HEAD[0]) % 64) + 64) % 64;
+  const gy = (((y - HEAD[1]) % 64) + 64) % 64;
+  if (Math.hypot(gx - 32, gy - 32) < 5) return [40 + ((x * 3) & 127), 180, 90 + ((y * 5) & 127)];
+  return (Math.floor(x / 4) + Math.floor(y / 4)) % 2 === 0 ? [215, 215, 215] : [60, 60, 60];
+}
+/** The head at a fractional x (bilinear between pixel centres, as the GPU samples). */
+const headAtX = (x, y) => {
+  const x0 = Math.floor(x);
+  const f = x - x0;
+  const a = headAt(x0, y);
+  const b = headAt(x0 + 1, y);
+  return a.map((v, c) => v + (b[c] - v) * f);
+};
+const coverageAt = (u, v, w, h) => Math.min(1, Math.max(0, Math.min(u + 0.5, v + 0.5, w - u - 0.5, h - v - 0.5) / FEATHER));
+
+async function raw(png) {
+  const { data, info } = await sharp(png).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  return { data, width: info.width, at: (x, y) => Array.from(data.subarray(4 * (y * info.width + x), 4 * (y * info.width + x) + 4)) };
+}
+
+/** Mean |rendered - expected| over RGB (of 255) and the largest, over the box [x0, x1) x [y0, y1). */
+function error(img, [x0, y0, x1, y1], expected) {
+  let sum = 0;
+  let max = 0;
+  let n = 0;
+  for (let y = y0; y < y1; y += 1) {
+    for (let x = x0; x < x1; x += 1) {
+      const got = img.at(x, y);
+      const want = expected(x, y);
+      for (let c = 0; c < 3; c += 1) {
+        const d = Math.abs(got[c] - want[c]);
+        sum += d;
+        max = Math.max(max, d);
+        n += 1;
+      }
+    }
+  }
+  return { mean: sum / n, max };
+}
+
+/** Largest channel difference between two renders, and how many pixels differ. */
+function diff(a, b, keep = () => true) {
+  let max = 0;
+  let changed = 0;
+  for (let y = 0; y < 512; y += 1) {
+    for (let x = 0; x < 512; x += 1) {
+      if (!keep(x, y)) continue;
+      const p = a.at(x, y);
+      const q = b.at(x, y);
+      const d = Math.max(...p.map((v, c) => Math.abs(v - q[c])));
+      max = Math.max(max, d);
+      if (d > 0) changed += 1;
+    }
+  }
+  return { max, changed };
+}
+
+/** The shift s in [lo, hi] (step) that best explains the box as the head moved right by s. */
+function bestShift(img, box, lo, hi, step) {
+  let best = { s: NaN, mean: Infinity };
+  for (let s = lo; s <= hi + 1e-9; s += step) {
+    const { mean } = error(img, box, (x, y) => headAtX(x - s, y));
+    if (mean < best.mean) best = { s: Math.round(s * 100) / 100, mean };
+  }
+  return best;
+}
+
+function contrast(img, [x0, y0, x1, y1]) {
+  const l = [];
+  for (let y = y0; y < y1; y += 1) for (let x = x0; x < x1; x += 1) l.push(img.at(x, y).slice(0, 3).reduce((a, b) => a + b, 0) / 3);
+  const m = l.reduce((a, b) => a + b, 0) / l.length;
+  return Math.sqrt(l.reduce((a, b) => a + (b - m) ** 2, 0) / l.length);
+}
+
+const core = ([x, y, w, h]) => [x + FEATHER, y + FEATHER, x + w - FEATHER, y + h - FEATHER];
+
+function centroid(img, test) {
+  let sx = 0;
+  let sy = 0;
+  let n = 0;
+  for (let y = 0; y < 512; y += 1) for (let x = 0; x < 512; x += 1) if (test(img.at(x, y))) [sx, sy, n] = [sx + x, sy + y, n + 1];
+  return { x: sx / n, y: sy / n, n };
+}
+
+/** The turn's shift of a rest point at yaw 1, warp 1 (rig turn.ts / gl/turn.ts for this rig), plus the head's depth pan. */
+function bentX(qx, qy) {
+  const [rx, ry] = [96, 124.8];
+  const [cx, cy] = [256, 200 + 0.15 * ry];
+  const nx = (qx - cx) / (1.25 * rx);
+  const ny = (qy - cy) / (1.25 * ry);
+  const f = Math.max(0, 1 - nx * nx) ** 2 * Math.max(0, 1 - ny * ny) ** 2;
+  return 0.25 * rx * f + 0.04 * 512 * 0.6;
+}
+
+export async function runProof({ out, port, headed, open, board }) {
+  const dir = out ?? "var/companion-lanes/task1/proof";
+  mkdirSync(dir, { recursive: true });
+  const STATES = [
+    ["base", ""],
+    ["w0", "key=shift:0"],
+    ["identity", "sway=0.00001,0"],
+    ["shift_1", "key=shift:1"],
+    ["shift_05", "key=shift:0.5"],
+    ["solid_1", "key=solid_r:1"],
+    ["mouth_avg", "key=solid_r:0.5,solid_b:0.5"],
+    ["lid_over", "key=shift:1,lid:1"],
+    ["sway", "sway=1,0"],
+    ["lid_front", "key=lid:1"],
+    ["lid_yaw", "yaw=22&key=lid:1"],
+    ["yaw", "yaw=22"],
+  ];
+  const capture = await open({ port, headed });
+  const shots = {};
+  let gpu = "";
+  try {
+    for (const [name, query] of STATES) {
+      const { png, info } = await capture.shoot(`${query}&size=512`);
+      gpu = `${info.mode} on ${info.gpu}`;
+      writeFileSync(join(dir, `${name}.png`), png);
+      shots[name] = { png, img: await raw(png) };
+    }
+  } finally {
+    await capture.close();
+  }
+  await board(STATES.map(([name]) => [name, shots[name].png]), join(dir, "board.png"));
+  const img = (name) => shots[name].img;
+  const r = {};
+  r.renderer = gpu;
+  r.weight0_vs_noMorph = diff(img("w0"), img("base"));
+  r.morphProgramAtIdentity_vs_base = diff(img("identity"), img("base"));
+  r.shift_w1_vs_cell_core = error(img("shift_1"), core(KEYS.shift), (x, y) => headAt(x - SHIFT, y));
+  r.shift_w1_base_vs_cell_core = error(img("base"), core(KEYS.shift), (x, y) => headAt(x - SHIFT, y));
+  const [sx, sy, sw, sh] = KEYS.solid;
+  const solidExpected = (x, y) => {
+    const k = Math.round(255 * coverageAt(x - sx, y - sy, sw, sh)) / 255;
+    return headAt(x, y).map((v, c) => v * (1 - k) + RED[c] * k);
+  };
+  r.solid_w1_vs_cell_wholeCoverage = error(img("solid_1"), [sx, sy, sx + sw, sy + sh], solidExpected);
+  r.shift_w05_bestShift = bestShift(img("shift_05"), core(KEYS.shift), 0, 7.75, 0.25);
+  r.shift_w05_errorAtHalf = error(img("shift_05"), core(KEYS.shift), (x, y) => headAt(x - SHIFT / 2, y));
+  r.shift_w05_contrastRatio = contrast(img("shift_05"), core(KEYS.shift)) / contrast(img("base"), core(KEYS.shift));
+  const avg = RED.map((v, c) => (v + BLUE[c]) / 2);
+  r.twoKeysOneGroup_vs_average = error(img("mouth_avg"), core(KEYS.solid), () => avg);
+  // The lid (a later group, no motion of its own) rides the face key's motion (design "Risks"):
+  // inside the face key's core its colour is read at p = x - SHIFT, so its core sits SHIFT px right.
+  r.laterGroup_lid_vs_yellow = error(img("lid_over"), [KEYS.lid[0] + FEATHER + SHIFT, 188, 304, 244], () => YELLOW);
+  r.laterGroup_shiftBesideLid = error(img("lid_over"), [168, 168, KEYS.lid[0], 264], (x, y) => headAt(x - SHIFT, y));
+  r.sway_unweightedRows = diff(img("sway"), img("base"), (_x, y) => y < 250);
+  r.sway_weightedRows = diff(img("sway"), img("base"), (_x, y) => y >= 262 && y < 456);
+  const swayAt = (y) => SWAY_AMP * (Math.round(255 * Math.min(1, Math.max(0, (y - HEAD[1] - 200) / 200))) / 255);
+  r.sway_row408 = { measured: bestShift(img("sway"), [90, 406, 420, 411], 0, 24, 0.1), expected: Math.round(((swayAt(406) + swayAt(410)) / 2) * 100) / 100 };
+  // Yaw: the lid's left and right edges per row, front and turned, against the bend of the rest
+  // edge (rig turn.ts + gl/turn.ts at yaw 1, warp 1) plus the head's depth pan. Keys composited
+  // after the bend (in screen space) would only pan (unbentPanDx) and keep their width.
+  const yellow = (p) => p[0] > 200 && p[1] > 150 && p[2] < 100;
+  const edges = (im, y) => {
+    let lo = -1;
+    let hi = -1;
+    for (let x = 0; x < 512; x += 1) if (yellow(im.at(x, y))) [lo, hi] = [lo < 0 ? x : lo, x];
+    return [lo, hi + 1];
+  };
+  const rows = { left: [], right: [], leftMove: [], rightMove: [] };
+  for (let y = KEYS.lid[1] + FEATHER; y < KEYS.lid[1] + KEYS.lid[3] - FEATHER; y += 1) {
+    const [l0, r0] = edges(img("lid_front"), y);
+    const [l1, r1] = edges(img("lid_yaw"), y);
+    rows.left.push(Math.abs(l1 - (l0 + bentX(l0, y + 0.5))));
+    rows.right.push(Math.abs(r1 - (r0 + bentX(r0, y + 0.5))));
+    rows.leftMove.push(l1 - l0);
+    rows.rightMove.push(r1 - r0);
+  }
+  const mean = (a) => Math.round((a.reduce((x, y) => x + y, 0) / a.length) * 100) / 100;
+  const front = centroid(img("lid_front"), yellow);
+  const turned = centroid(img("lid_yaw"), yellow);
+  r.yaw_lid = {
+    centroidDx: Math.round((turned.x - front.x) * 100) / 100,
+    centroidDy: Math.round((turned.y - front.y) * 100) / 100,
+    leftEdgeMove: mean(rows.leftMove),
+    rightEdgeMove: mean(rows.rightMove),
+    leftEdgeVsBend: mean(rows.left),
+    rightEdgeVsBend: mean(rows.right),
+    unbentPanDx: Math.round(0.04 * 512 * 0.6 * 100) / 100,
+  };
+  writeFileSync(join(dir, "proof.json"), `${JSON.stringify(r, null, 2)}\n`);
+  console.log(JSON.stringify(r, null, 2));
+}

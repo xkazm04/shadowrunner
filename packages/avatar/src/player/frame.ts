@@ -33,7 +33,12 @@
 // - Depth turn (perfection-pass V2): while the turn's strength (rig/look `turn`) is above 0 and the
 //   head is turned, the clock carries the pose's yaw and pitch (`springTargetOf`'s, -1..1) as `turn`;
 //   facing front, or with both strengths 0, the clock has no `turn` key and the frame draws as before.
-import { ACT_S_MAX, applyLook, faceOf, hasIris, MOOD_FADE_S, poseLayers, springStrength, springTargetOf, turnStrength, type ActCue, type Drive, type Emotion, type Gesture, type LayerPose, type Look, type Rig } from "@sr/rig";
+// - Morph keys (companion-lanes, player/morph.ts): on a rig with `morph`, the clock's `morph` carries
+//   this frame's key plan and sway. Mouth mode "morph" steps the mouth state as "drawn" does but uses
+//   only its emotion-free shape mix (no drawn mouth, no emotion bias, the jaw keeps the raw level); a
+//   rig with gaze keys runs the eyes-lead driver as a rig with irises does. A rig without `morph`
+//   runs exactly as before.
+import { ACT_S_MAX, applyLook, faceOf, hasIris, hasMorphGaze, MOOD_FADE_S, poseLayers, springStrength, springTargetOf, turnStrength, type ActCue, type Drive, type Emotion, type Gesture, type LayerPose, type Look, type Rig } from "@sr/rig";
 import type { SurfaceFactory } from "../canvas2d/recolour.js";
 import type { LookAtPoint } from "../driver/lookAt.js";
 import { initialState, type DriverFace, type DriverState, type Gaze, type SpringState } from "../driver/state.js";
@@ -46,6 +51,7 @@ import { createMouthState, type MouthShapesInput } from "../mouth/state.js";
 import { easeDim } from "../render/frame.js";
 import type { FrameClock } from "../render/types.js";
 import { advanceFrame } from "../react/loop.js";
+import { createMorphFrame } from "./morph.js";
 
 /** Tracks emotion changes on the driver clock; returns the drive's `mood` for this frame. */
 export function moodFader(): (emotion: Emotion, t: number, reducedMotion: boolean) => Drive["mood"] {
@@ -141,6 +147,7 @@ export function createFrameBody(seed: number, options: FrameBodyOptions = {}): (
   let dimShown = 0;
   let act: ActCue | undefined;
   const stepMouth = createMouthState();
+  const stepMorph = createMorphFrame();
   let inspector: { assets: RigAssets; inspect: RigInspector } | undefined;
   const inspect = (assets: RigAssets | undefined): RigInspector | undefined => {
     if (assets === undefined) return undefined;
@@ -153,14 +160,14 @@ export function createFrameBody(seed: number, options: FrameBodyOptions = {}): (
   return (p) => {
     const face = faceOf(p.rig, p.look);
     const irises = hasIris(p.rig);
-    const driverFace: DriverFace = { drift: face.motion.drift, ...(irises ? { eyes: { saccadeRate: face.gaze.saccadeRate, habits: face.gaze.habits } } : {}) };
-    const mode = mouthMode(p.rig.mouth);
+    const driverFace: DriverFace = { drift: face.motion.drift, ...(irises || hasMorphGaze(p.rig) ? { eyes: { saccadeRate: face.gaze.saccadeRate, habits: face.gaze.habits } } : {}) };
+    const mode = mouthMode(p.rig.mouth, p.rig.morph);
     const emotionStrength = face.mouth.emotion;
     const mouth =
-      mode !== "drawn" && mode !== "warp"
+      mode !== "drawn" && mode !== "warp" && mode !== "morph"
         ? undefined
         : stepMouth({ emotion: p.look.emotion, level: p.level, reducedMotion: p.reducedMotion, dt: p.dt, emotionStrength, ...(p.mouth === undefined ? {} : { input: p.mouth }) });
-    const jawLevel = mode === "warp" && p.mouth === undefined ? p.level : (mouth?.level ?? p.level);
+    const jawLevel = (mode === "warp" && p.mouth === undefined) || mode === "morph" ? p.level : (mouth?.level ?? p.level);
     const before = state.t;
     const next = advanceFrame(state, {
       dt: p.dt,
@@ -194,14 +201,16 @@ export function createFrameBody(seed: number, options: FrameBodyOptions = {}): (
     const lag = springLag(spring);
     const drive = lag === undefined ? acted : { ...acted, spring: lag };
     const poses = poseLayers(dressed, p.look, drive, { face, ...(sockets === undefined ? {} : { sockets }) });
+    const morph = p.rig.morph === undefined ? undefined : stepMorph({ rig: dressed, look: p.look, drive, face, shapes: mode === "morph" ? mouth?.shapes : undefined, lag, frozen: p.drive !== undefined });
     dimShown = easeDim(dimShown, p.dim ?? 0, p.dt, p.reducedMotion);
     const clock: FrameClock = {
       t: p.drive?.t ?? state.t,
       reducedMotion: p.reducedMotion,
       ...(dimShown > 0 ? { dim: dimShown } : {}),
-      ...(mouth?.pose === undefined ? {} : { mouth: mouth.pose }),
+      ...(mouth?.pose === undefined || mode === "morph" ? {} : { mouth: mouth.pose }),
       ...(drive.mood === undefined ? {} : { mood: drive.mood }),
       ...(target === undefined || !turning || (target.yaw === 0 && target.pitch === 0) ? {} : { turn: { yaw: target.yaw, pitch: target.pitch } }),
+      ...(morph === undefined ? {} : { morph }),
     };
     return { poses, clock, t: state.t };
   };

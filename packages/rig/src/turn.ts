@@ -18,8 +18,11 @@
 //   the eyes on the head (a head's bbox takes in hair, hoods and veils, which are not the face),
 //   FACE_OF_EYES times the eyes' half span wide (never wider than the head layer), FACE_TALL times
 //   as tall (never taller), its centre FACE_DROP of its height below the eye line. A head without
-//   eyes uses its own bbox.
-import type { Layer, Look, Rig, RigTurn } from "./types.js";
+//   eyes uses its own bbox. A head with no eye layer but morph keys (companion-lanes) takes its
+//   eyes from `morph.eyes`: each centre as a box MORPH_EYE_WIDTH times the eye distance wide (an
+//   eye's opening is about half the distance between the pupils), so the face comes out as wide as a
+//   real face (about 2.4 eye distances) by the same FACE_OF_EYES rule.
+import type { Layer, Look, Rig, RigMorph, RigTurn } from "./types.js";
 
 /** Strength when neither the rig nor the look says (design "Task 3": conservative). */
 export const TURN_DEFAULT: Readonly<Required<RigTurn>> = Object.freeze({ warp: 0.5, light: 0.5 });
@@ -31,6 +34,8 @@ export const FACE_OF_EYES = 1.6;
 export const FACE_TALL = 1.3;
 /** The face centre's drop below the eye line, as a share of its half height. */
 export const FACE_DROP = 0.15;
+/** A morph rig's eye box width per eye distance (`morph.eyes`, see the header). */
+export const MORPH_EYE_WIDTH = 0.5;
 
 /** The face ellipse, rest canvas px. */
 export interface TurnFace {
@@ -67,7 +72,13 @@ export interface TurnHead {
   face: TurnFace;
 }
 
-const cache = new WeakMap<Pick<Rig, "layers">, TurnHead | null>();
+const cache = new WeakMap<object, TurnHead | null>();
+
+/** `morph.eyes` as two eye boxes (MORPH_EYE_WIDTH of the eye distance wide, as tall). */
+export function morphEyeBoxes(eyes: RigMorph["eyes"]): Pick<Layer, "bbox">[] {
+  const w = MORPH_EYE_WIDTH * Math.hypot(eyes[1][0] - eyes[0][0], eyes[1][1] - eyes[0][1]);
+  return eyes.map(([x, y]) => ({ bbox: [x - w / 2, y - w / 2, w, w] }));
+}
 
 /** Whether `layer` is a head layer or follows one (missing or cyclic parents end the chain). */
 function onHead(layer: Layer, byName: ReadonlyMap<string, Layer>): boolean {
@@ -79,7 +90,7 @@ function onHead(layer: Layer, byName: ReadonlyMap<string, Layer>): boolean {
   return false;
 }
 
-function faceOf(head: Layer, eyes: readonly Layer[]): TurnFace {
+function faceOf(head: Layer, eyes: readonly Pick<Layer, "bbox">[]): TurnFace {
   const [hx, hy, hw, hh] = head.bbox;
   if (eyes.length === 0) return { cx: hx + hw / 2, cy: hy + hh / 2, rx: hw / 2, ry: hh / 2 };
   let x0 = Infinity;
@@ -98,7 +109,7 @@ function faceOf(head: Layer, eyes: readonly Layer[]): TurnFace {
 }
 
 /** The rig's head group and face (cached per rig object), or undefined when no visible head. */
-export function turnHead(rig: Pick<Rig, "layers">): TurnHead | undefined {
+export function turnHead(rig: Pick<Rig, "layers"> & { morph?: RigMorph | undefined }): TurnHead | undefined {
   const known = cache.get(rig);
   if (known !== undefined) return known ?? undefined;
   const byName = new Map(rig.layers.map((layer) => [layer.name, layer]));
@@ -113,7 +124,8 @@ export function turnHead(rig: Pick<Rig, "layers">): TurnHead | undefined {
   }
   const members = new Set(rig.layers.filter((layer) => onHead(layer, byName)).map((layer) => layer.name));
   const eyes = rig.layers.filter((layer) => layer.kind === "eye" && layer.visible !== false && members.has(layer.name));
-  const found: TurnHead = { head, members, face: faceOf(head, eyes) };
+  const morphEyes = eyes.length === 0 && rig.morph !== undefined && members.has(rig.morph.layer) ? morphEyeBoxes(rig.morph.eyes) : eyes;
+  const found: TurnHead = { head, members, face: faceOf(head, morphEyes) };
   cache.set(rig, found);
   return found;
 }

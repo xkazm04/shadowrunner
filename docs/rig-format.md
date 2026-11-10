@@ -35,6 +35,7 @@ they disagree, the spec wins and this page and the code are fixed to match.
 | `mouth` | RigMouth | no | Where the talking mouth is drawn (see "Mouth"). Omitted when the art owns its mouth. |
 | `face` | RigFace | no | The character's face profile (see "Face profile"): gaze, motion and expression strengths. Omitted means the defaults. Amended by face-control; the format stays version 1. |
 | `motion` | `{ spring?: number }` | no | Secondary motion (perfection-pass V1): `spring` in [0, 2] scales how far loose parts lag and settle (see Pose, Rules, "Secondary motion"); omitted means 1, 0 turns it off; `Look.motion` wins. Faults are `bad_shape` at `$.motion` / `$.motion.spring`. |
+| `morph` | RigMorph | no | Morph keys (companion-lanes): aligned repaints of one head layer blended by track weights, the portrait lane's face (see "Morph keys"). Omitted: none, and the rig renders exactly as before. The format stays version 1. |
 | `turn` | `{ warp?: number; light?: number }` | no | Depth turn and lighting (perfection-pass V2, WebGL only): `warp` in [0, 1] bends the head's layers with a head turn, `light` in [0, 1] moves the light across the face (see "Depth turn in the avatar"); omitted means the defaults (0.5 each; warp lowered for pixel art and mouthless heads), 0 turns one off; `Look.turn` wins field by field. Faults are `bad_shape` at `$.turn` / `$.turn.warp` / `$.turn.light`. |
 
 ### Mouth
@@ -54,6 +55,12 @@ character whose lips the forge could not measure (Lot Ninety, the Understudy) ne
 `render: "still"` is the explicit per-character opt-out for a rig that has `lips`: the art keeps its
 neutral lips and the jaw slides as before, in both renderers. The forge does not set `render`: a
 style is marked drawn, or a character still, by a person after seeing it.
+
+The player names the result `mouthMode` (`@sr/avatar`): `"drawn"`, `"warp"` (with `lips`), `"still"`,
+undefined (no usable `mouth`: the jaw slides), and `"morph"` (companion-lanes): a rig whose `morph`
+has a key on a mouth track talks with those keys whatever its `mouth` says (see "Morph keys"); no
+mouth is drawn or warped, no jaw moves, and `mouth` is still written for the lab's region of
+interest (without `lips` or `render`).
 
 | field | type | required | meaning |
 |---|---|---|---|
@@ -104,6 +111,87 @@ How the forge sets it (`packages/forge`):
 - **Survives every hop.** `serializeRig` writes it, `validateRig`/`parseRigJson` read it back, so it
   rides the live job record (KV, `parseForgeJob`), the `JobView`, the creator's library (IndexedDB,
   `readRecord`) and a pack's `rig.json` unchanged.
+
+### Morph keys
+
+Amended by companion-lanes; the format stays version 1. `morph` animates one head layer of a
+portrait (a photoreal or anime face kept whole) with **keys**: image edits of the portrait with one
+thing changed (eyes shut, mouth open, a smile, a glance), registered to it and blended by weights,
+each with an optional motion field from the layer's own pixels to the key. Declared in
+`packages/rig/src/types.ts` (`RigMorph`, `MorphKey`, `MorphTrack`, `MorphSway`); read by
+`validateMorph.ts`, planned by `morph.ts`, drawn by `packages/avatar/src/gl/morph.ts`.
+
+| field | type | required | meaning |
+|---|---|---|---|
+| `layer` | string | yes | The layer the keys repaint: a visible `head` layer, else `bad_shape` at `$.morph.layer`. |
+| `atlas` | string | yes | One image (WebP with alpha, at most 2048 px a side, straight alpha in the file) holding every key's colour cell; a rig-relative name or a PNG/WebP `data:` URL (the layer-file rule). |
+| `flow` | string | no | One image (lossless PNG, RGB) holding every key's motion cell. Required when a key has `flowCell`, and omitted when none has (`bad_shape` at `$.morph.flow` either way). |
+| `keys` | MorphKey[] | yes | 1..40 keys (`bad_shape` at `$.morph.keys`). |
+| `eyes` | `[[x, y], [x, y]]` | yes | The two eye centres, canvas px, the picture's left first: the turn's face and the gaze. Off the canvas is `bbox_out_of_bounds` at `$.morph.eyes[i]`. |
+| `sway` | `{ map, amp }` | no | Soft secondary motion inside the layer (hair ends, ears): `map` a greyscale image stretched over the layer's bbox (R = how loosely that pixel hangs, 0..1), `amp` the canvas px a weight-1 pixel lags at full deflection, in (0, 0.05 x width]. Omitted: no sway. |
+
+A **MorphKey** is `{ id, track, at?, bbox, cell, flowCell?, flowMax? }`. `id` matches `^[a-z0-9_]+$`
+and is unique in the rig (`duplicate_name` at `$.morph.keys[i].id`). `track` is one of the 18
+tracks below (`bad_shape` otherwise). `at`, the key's stop on its track, is in (0, 1]; omitted means
+1. `bbox` is the canvas box the key repaints and `cell` its colour cell in the atlas (RGB the
+repaint, alpha its coverage feathered to 0 at the edge, a 2 px gutter of repeated edge pixels;
+stretched over `bbox`, 1 atlas px = 1 canvas px as built): integers with x, y >= 0 and w, h > 0
+(`bad_shape`), and `bbox` inside the canvas (`bbox_out_of_bounds`). `flowCell` is the key's motion
+cell in `flow` (the bbox at 1/4 size rounded up, a 1 px gutter, stretched over `bbox`): R and G hold
+the displacement from a layer pixel to the same feature in the key, `(code - 128) / 127 * flowMax`
+canvas px (x right, y down; code 128 is exactly 0), already faded to 0 where the coverage is.
+`flowMax` is in (0, 256] and comes with `flowCell`, never alone (`bad_shape` at the missing one). A
+key without motion has neither: it is a plain cross-fade. A track holds at most 4 keys and no two
+at one stop (`bad_shape`). Omitted fields are omitted, never null or 0.
+
+**Tracks** (each a value v in [0, 1] per frame, `morph.ts`):
+
+| track | group | value |
+|---|---|---|
+| `joy` `showman` `anger` `gloom` `smug` `suspicion` | face | The family's weight in the mood crossfade (the outgoing family at `1 - smoothstep(mix)`, the incoming at `smoothstep(mix)`, one family once), times the face profile's `expression.strength`; 0 for a family retired to `"procedural"`. |
+| `gazeL` `gazeR` `gazeU` `gazeD` | gaze | `max(0, -gx)` / `max(0, gx)` of `gx = gaze.x * range / 0.6` clamped to [-1, 1] (L and R: the picture's left and right), and `gy` likewise (U up, D down); `range` is the profile's `gaze.range`. |
+| `openWide` `openMid` `round` `closed` `teeth` `tongue` `narrow` | mouth | That shape's weight in the player's emotion-free mix (visemes from `setMouthShapes`, or the level's `openMid`); when the seven sum above 1 they are divided by the sum; `rest` is the remainder. |
+| `blink` | blink | `Drive.blink` (a head layer has no blink of its own). |
+
+**Stops.** A track's keys sorted by `at` are `a1 < ... < an`, with `a0 = 0` the layer's own pixels:
+for v in `[a(k), a(k+1)]` key k+1 has weight `(v - a(k)) / (a(k+1) - a(k))` and key k (k >= 1) the
+rest; at or above `an` the last key has weight 1. Two stops make a blink half-shut, then shut.
+
+**Active keys.** A key with weight above 0.002 is active; of more than 8, the lowest weights are
+dropped (a tie drops the key that composites later). They composite by group, `face` < `gaze` <
+`mouth` < `blink` (a later group covers an earlier one), then in `keys` order.
+
+**The shader** (WebGL2, `gl/morph.ts`), in canvas px of the layer's rest frame, before its pose and
+the turn's bend: the sway first moves the sample point by `- s(x) * amp * L`; the displacement field
+is the weighted sum of the active keys' motion, and the point the layer is read at solves
+`p = x - D(p)` by two fixed-point steps (so a key at weight 1 reads the layer where its feature came
+from, and at weight 0.5 halfway: no double image). Then per group, the keys' colours at
+`q_i = p + F_i(p)` are averaged by weight times coverage and mixed over the layer's colour by the
+group's total coverage (at most 1), at the layer's own alpha (a key never adds coverage). Recolour
+regions, the light gain, rim, the turn's bend and light, the dim and the glow source then run on
+that colour as on any layer; the rim's taps and the region map are read about `p`. At weight 1 of
+one key its cell is reproduced inside its coverage; a frame with no active key and no sway draws
+the layer with the base program, exactly as without `morph`. The atlas is uploaded premultiplied
+with mipmaps, the motion image and the sway map as stored (no premultiply, no colour-space
+conversion), linear; the morph program is linked only on a frame that needs it.
+
+**Sway.** L, per axis in [-1, 1], is the head group's spring lag (`Drive.spring`, see Pose
+"Secondary motion"): the yaw and roll lags sideways, the pitch and lift lags up and down, each over
+the lag that counts as full (`SWAY_FULL`: yaw and pitch 0.08 of their limits, roll 0.03 rad, lift
+0.006 of the height), times the spring strength (`motion.spring`; 0 disables), plus a slow idle
+drift of at most 0.15. Reduced motion (`still`) and a frozen drive give L = 0.
+
+**Canvas2D fallback.** The layer, then each active key's atlas cell over its bbox at
+`globalAlpha = opacity x weight`: a cross-fade without motion or sway; keys keep their painted
+colour (no region recolour).
+
+**What a morph rig takes from the rest of the pose.** It needs no jaw, eye or iris layer. Its mouth
+mode is `"morph"` when it has a mouth key; with gaze keys the driver lets the eyes lead (saccades,
+glances, look-at) as on a rig with irises; the turn's face comes from `eyes` when the head has no
+eye layer (each centre a box half the eye distance wide); it breathes, as a rig with a face profile
+does. A rig's file lists (`@sr/pack` `rigFiles`, `@sr/avatar` `rigAssetFiles`, the web app's
+`rigFiles`) carry `atlas`, `flow` and `sway.map`; a pack moves inline ones to `morph.atlas.<ext>`,
+`morph.flow.<ext>` and `morph.sway.<ext>`.
 
 ## Palette
 

@@ -18,7 +18,8 @@
 // all (speech level fallback, reduced-motion ease) stays on the audio clock itself.
 //
 // Shapes reach the player when it moves this rig's mouth itself: mouthMode "drawn" (the procedural
-// mouth) or "warp" (the art's own lips bent by the shader, the default for a measured mouth). A rig
+// mouth), "warp" (the art's own lips bent by the shader, the default for a measured mouth) or "morph"
+// (companion-lanes: the shapes drive the rig's mouth keys; the player draws no mouth to paint over). A rig
 // without `mouth`, or marked render "still", moves only the jaw, through `setLevel`.
 //
 // Reduced motion (the twin, used when the viewer asks and the run does not force motion): no
@@ -69,7 +70,7 @@ export function createMouthDriver(id: LipArmId, ctx: LipContext, options: MouthD
   const track = createVisemeTrack(VISEME_SHAPE);
   // A hand-made player without mouthMode (older fakes) is taken at its rig's word: a mouth draws.
   const mode = player.mouthMode?.() ?? (ctx.mouth === undefined ? undefined : "drawn");
-  const drawsMouth = (mode === "drawn" || mode === "warp") && player.setMouthShapes !== undefined;
+  const drawsMouth = (mode === "drawn" || mode === "warp" || mode === "morph") && player.setMouthShapes !== undefined;
   if (!drawsMouth) {
     console.warn(
       mode === "still"

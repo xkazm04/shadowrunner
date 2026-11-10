@@ -3,7 +3,7 @@
 // contract dropped. It never writes `null`: a non-finite number (which JSON.stringify would turn
 // into null) throws a RangeError instead.
 import { EXPRESSION_FAMILIES } from "./control.js";
-import type { ExpressionFamily, Layer, LayerPatch, LayerRegions, Motion, Palette, Rig, RigFace } from "./types.js";
+import type { ExpressionFamily, Layer, LayerPatch, LayerRegions, MorphKey, Motion, Palette, Rig, RigFace, RigMorph } from "./types.js";
 
 function wirePalette(palette: Palette): Palette {
   return { glow: palette.glow, eye: palette.eye, rim: palette.rim, mouth: palette.mouth };
@@ -68,6 +68,33 @@ function wireLayer(layer: Layer): Layer {
   };
 }
 
+/** A morph key in contract order; `at`, `flowCell` and `flowMax` only when present. */
+function wireKey(key: MorphKey): MorphKey {
+  const box = (b: MorphKey["bbox"]): MorphKey["bbox"] => [b[0], b[1], b[2], b[3]];
+  return {
+    id: key.id,
+    track: key.track,
+    ...(key.at === undefined ? {} : { at: key.at }),
+    bbox: box(key.bbox),
+    cell: box(key.cell),
+    ...(key.flowCell === undefined ? {} : { flowCell: box(key.flowCell) }),
+    ...(key.flowMax === undefined ? {} : { flowMax: key.flowMax }),
+  };
+}
+
+/** Rig.morph (companion-lanes) in contract order. */
+function wireMorph(morph: RigMorph): RigMorph {
+  const [[lx, ly], [rx, ry]] = morph.eyes;
+  return {
+    layer: morph.layer,
+    atlas: morph.atlas,
+    ...(morph.flow === undefined ? {} : { flow: morph.flow }),
+    keys: morph.keys.map(wireKey),
+    eyes: [[lx, ly], [rx, ry]],
+    ...(morph.sway === undefined ? {} : { sway: { map: morph.sway.map, amp: morph.sway.amp } }),
+  };
+}
+
 function wireRig(rig: Rig): Rig {
   return {
     version: rig.version,
@@ -83,6 +110,7 @@ function wireRig(rig: Rig): Rig {
     ...(rig.face === undefined ? {} : { face: JSON.parse(JSON.stringify(rig.face)) as RigFace }),
     ...(rig.motion === undefined ? {} : { motion: rig.motion.spring === undefined ? {} : { spring: rig.motion.spring } }),
     ...(rig.turn === undefined ? {} : { turn: { ...(rig.turn.warp === undefined ? {} : { warp: rig.turn.warp }), ...(rig.turn.light === undefined ? {} : { light: rig.turn.light }) } }),
+    ...(rig.morph === undefined ? {} : { morph: wireMorph(rig.morph) }),
   };
 }
 

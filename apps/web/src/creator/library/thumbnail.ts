@@ -86,7 +86,7 @@ export async function renderThumb(record: CharacterRecord, deps: ThumbDeps = bro
       return image;
     };
     const renderer = createCanvas2dRenderer(canvas, ctx, rig, assets, { loadAsset });
-    const mouth = mouthMode(rig.mouth) === "drawn" ? createMouthState()({ emotion: look.emotion, level: 0, reducedMotion: true, dt: 0, emotionStrength: face.mouth.emotion }).pose : undefined;
+    const mouth = mouthMode(rig.mouth, rig.morph) === "drawn" ? createMouthState()({ emotion: look.emotion, level: 0, reducedMotion: true, dt: 0, emotionStrength: face.mouth.emotion }).pose : undefined;
     const clock: FrameClock = { t: 0, reducedMotion: true, ...(mouth === undefined ? {} : { mouth }) };
     for (let pass = 0; pass < 3; pass += 1) {
       renderer.draw(poses, look, clock);

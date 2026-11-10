@@ -15,6 +15,10 @@ export * from "./gl/renderer.js";
 export * from "./canvas2d/renderer.js";
 export * from "./react/loop.js";
 export * from "./player/player.js";
+// The player's frame body (one driver step, posed and planned, for `renderer.draw`): a capture that
+// renders one frozen frame exactly as the player would (companion-lanes, apps/web/bench/morph.ts).
+export { createFrameBody, type FrameBodyInputs, type FrameOutput } from "./player/frame.js";
+export { SWAY_FULL, SWAY_IDLE, swayLag } from "./player/morph.js";
 // The drawn mouth (spark llm-avatar-lab, "the rig owns the mouth"): shapes, emotion bias, the
 // per-frame mouth state, anchor and paint, for callers that drive or inspect it (the lab).
 export * from "./mouth/shapes.js";

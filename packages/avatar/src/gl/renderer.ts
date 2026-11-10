@@ -27,6 +27,9 @@
 //   the frame's light is `lookLight` for that mix; settled, the light `setLook` computed.
 // - Depth turn (perfection-pass V2, gl/turn.ts): the clock's `turn` with the rig/look strengths
 //   bends the head's layers and moves the light across the face; one TurnFrame, filled per frame.
+// - Morph keys (companion-lanes, gl/morph.ts): the clock's `morph` draws the morph layer with the
+//   morph program; its atlas, motion image and sway map are asked of the texture store with the rig
+//   (so they follow the layer textures' lifecycle: a new rig, `dispose`, a lost context).
 import { defaultLook, type Layer, type LayerPose, type Look, type Rig } from "@sr/rig";
 import { createCanvas2dRenderer } from "../canvas2d/renderer.js";
 import { createAssetCache, type AssetLoader } from "../render/assets.js";
@@ -38,6 +41,7 @@ import type { CanvasHost, FrameClock, Renderer, RendererInfo, RigAssets } from "
 import { createGlContext, watchContext } from "./context.js";
 import { beginScene, createGlowTargets, deleteGlowTargets, glowGain, glowLit, runGlow, type GlowTargets } from "./glow.js";
 import { deleteLayers, drawLayers, emitsGlow, gainOf, uploadLayers, type LayerTexture } from "./layers.js";
+import { createMorphGl } from "./morph.js";
 import { createGlMouth } from "./mouth.js";
 import { createPrograms, deletePrograms } from "./programs.js";
 import { createTurnFrame, planTurn, tintTurn } from "./turn.js";
@@ -58,6 +62,7 @@ export function createGlRenderer(gl: WebGL2RenderingContext, canvas: CanvasHost,
   const programs = createPrograms(gl);
   const mouthArt = createMouthArt(mouthSurface);
   const mouthGl = createGlMouth(gl, programs, mouthSurface);
+  const morphGl = createMorphGl(gl);
   let layers = new Map<string, Layer>();
   let currentAssets = assets;
   let textures = new Map<string, LayerTexture>();
@@ -79,6 +84,7 @@ export function createGlRenderer(gl: WebGL2RenderingContext, canvas: CanvasHost,
     store?.dispose();
     store = createTextureStore(gl, createAssetCache(nextAssets, loadAsset));
     textures = uploadLayers(gl, next, nextAssets, store);
+    morphGl.setRig(next, store);
     uploads += textures.size;
     currentRig = next;
     currentAssets = nextAssets;
@@ -123,7 +129,8 @@ export function createGlRenderer(gl: WebGL2RenderingContext, canvas: CanvasHost,
             };
       const warp = mouth === undefined && currentRig.mouth !== undefined ? planWarp(currentRig, layers, poses, view, light.browY, mouthPose, () => mouthArt.colours(currentRig, currentAssets, look)?.lip) : undefined;
       planTurn(turn, currentRig, look, clock?.turn);
-      if (store !== undefined) drawCalls += drawLayers(gl, programs, textures, poses, view, { light, recolours, store, ...(clock?.dim === undefined ? {} : { dim: clock.dim }), turn }, after, warp);
+      const morph = morphGl.frame(clock?.morph);
+      if (store !== undefined) drawCalls += drawLayers(gl, programs, textures, poses, view, { light, recolours, store, ...(clock?.dim === undefined ? {} : { dim: clock.dim }), turn, ...(morph === undefined ? {} : { morph }) }, after, warp);
       const gain = glowGain(clock);
       drawCalls += runGlow(gl, programs, targets, light.glow, gain, glowLit(emitsGlow(textures, poses), light.glow, gain));
     },
@@ -145,6 +152,7 @@ export function createGlRenderer(gl: WebGL2RenderingContext, canvas: CanvasHost,
       deleteLayers(gl, textures);
       store?.dispose();
       mouthGl.dispose();
+      morphGl.dispose();
       deleteGlowTargets(gl, targets);
       deletePrograms(gl, programs);
     },
