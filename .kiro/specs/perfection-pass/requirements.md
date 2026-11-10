@@ -159,3 +159,19 @@ asked for the four items below.
    the studio cutout and on the stage, and the report SHALL say which commit introduced the gap.
 2. If the pass introduced it, it SHALL be fixed through the Announcer's own rig or look settings
    (or a general rule if the cause is general), with the before/after frames.
+
+## Requirement 16: The forge cut keeps every piece (owner decision, 2026-11-10)
+Task 15 found that the cut leaves foreground pieces (the Announcer's chest grille and collar, the
+Understudy's chest, the Lantern Warden's collar) only in the backdrop, which the studio cutout and
+the stage hide, so a gap shows through.
+1. The forge's cut SHALL assign every foreground pixel of the portrait to some character layer, so
+   that with the backdrop hidden the rest pose covers the character's whole silhouette.
+2. A forge check SHALL fail when a portrait's foreground is not covered by the layers at rest, and
+   SHALL be red on the current Announcer cut.
+3. The recorded cast SHALL be re-cut by the forge's deterministic stages from their recorded model
+   outputs (no new model or image calls), every character SHALL pass the new check and its art
+   geometry checks, the WebP copies (task 12) SHALL be regenerated for changed files, and any
+   committed packs built from the art SHALL be rebuilt.
+4. Malakor's house art SHALL NOT be changed; the report SHALL say what the check finds on it.
+5. Before/after cutout frames for every changed character, at rest and through a turn and tilt;
+   a provenance row describing the re-cut.
