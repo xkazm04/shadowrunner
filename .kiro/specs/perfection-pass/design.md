@@ -160,3 +160,7 @@ are returned in reports and written by the Director.
 - Task 14: the lab lag was Kokoro's viseme timing (57 ms), fixed by `KOKORO_VISEME_LAG_MS`.
 - Task 15: the gap predates the pass (the art cut leaves the chest grille in the backdrop only);
   no code change; an art fix is the owner's decision.
+- Task 16: foreground is the forge's own luma key inside the parts' hull plus enclosed shadow (no
+  matte exists); leftovers go to the nearer of head or body (`keepEveryPiece`, last step of
+  `assembleRig`). Lantern Warden is only partly covered (dark coat on a dark ground needs a matte);
+  Malakor is exempt as house art and pinned as failing the check.

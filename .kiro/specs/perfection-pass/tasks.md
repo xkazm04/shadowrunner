@@ -59,5 +59,5 @@ ownership"). Builder: Claude Opus, one per task; the Director reviews, gates and
 - [x] 15. Announcer hood gap (follow-up)
   - _Requirements: 15.1-15.2_
 
-- [ ] 16. The forge cut keeps every piece (follow-up)
+- [x] 16. The forge cut keeps every piece (follow-up)
   - _Requirements: 16.1-16.5_
