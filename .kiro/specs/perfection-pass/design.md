@@ -149,3 +149,14 @@ are returned in reports and written by the Director.
 - Task 12 encoding: `-q 90` colour with lossless alpha (`-alpha_q 100 -exact` or the library
   equivalent). Both files are kept; nothing is renamed.
 - Task 13 brief field: `"authored": "after-recording"` (omitted on the eight recorded briefs).
+
+## Amendments (Director, 2026-11-10, after the follow-up)
+- Task 12: region maps are stored lossless (they are index maps); a file that misses the
+  tolerance at q90 or is no smaller lossy is stored lossless. The served rig names the `.webp`
+  files so an exported pack never carries WebP bytes under a `.png` name. Requirement 10.2 is met
+  for the app; packs still ship PNG (`scripts/build-packs.mjs` was out of scope).
+- Task 13: the five briefs' `one_line_request` is each job's recorded prompt, so the forge lookup
+  needed no change. A cast folder counts as a cast-forge character only if it has `parts.json`.
+- Task 14: the lab lag was Kokoro's viseme timing (57 ms), fixed by `KOKORO_VISEME_LAG_MS`.
+- Task 15: the gap predates the pass (the art cut leaves the chest grille in the backdrop only);
+  no code change; an art fix is the owner's decision.
