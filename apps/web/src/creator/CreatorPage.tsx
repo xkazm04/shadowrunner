@@ -12,6 +12,7 @@ import { loadCast, type GalleryEntry } from "./gallery/entries";
 import { useHeaderSlot } from "../channels/headerSlot";
 import { Anatomy } from "./glass/Anatomy";
 import { ChannelActions } from "./glass/SignalCards";
+import { companionRecord, loadCompanions, type CompanionEntry } from "./library/companions";
 import { Library, type LibraryOffer } from "./library/Library";
 import { useLibrary, wantedCharacter } from "./library/useLibrary";
 import styles from "./glass/Anatomy.module.css";
@@ -86,10 +87,16 @@ export function CreatorPage() {
   const [galleryOpen, setGalleryOpen] = useState(false);
   // Every gallery character, so the ones not kept yet (the cast-forge eight) sit in the strip too.
   const [castEntries, setCastEntries] = useState<readonly GalleryEntry[]>([]);
+  // companion-lanes: the packs that are not in the cast, read once the cast is known.
+  const [companions, setCompanions] = useState<readonly CompanionEntry[]>([]);
   useEffect(() => {
     let live = true;
     loadCast().then(
-      (list) => live && setCastEntries(list),
+      (list) => {
+        if (!live) return;
+        setCastEntries(list);
+        void loadCompanions(new Set(list.map((e) => e.id))).then((found) => live && setCompanions(found));
+      },
       () => undefined,
     );
     return () => {
@@ -101,6 +108,7 @@ export function CreatorPage() {
   const inLibrary = new Set(
     library.entries.flatMap((e) => (e.kind === "ok" ? [e.record.id] : [])),
   );
+  const takenIds = new Set(library.entries.map((e) => (e.kind === "ok" ? e.record.id : e.id)));
   const adopt = async (entry: GalleryEntry): Promise<void> => {
     await library.add(await entry.load());
     setGalleryOpen(false);
@@ -130,7 +138,17 @@ export function CreatorPage() {
               ? {}
               : { portraitUrl: e.portraitUrl }),
             adopt: () => adopt(e),
-          }));
+          }))
+          .concat(
+            companions
+              .filter((c) => !inLibrary.has(c.id))
+              .map((c) => ({
+                id: c.id,
+                name: c.name,
+                kind: "companion" as const,
+                adopt: async () => library.add(await companionRecord(c, takenIds)),
+              })),
+          );
   const active = library.active;
   const strip = (
     <div className={slot === null ? styles.cast : bar.castBar}>

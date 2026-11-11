@@ -1,0 +1,51 @@
+{
+  "id": "companion-iris",
+  "title": "Iris - a calm assistant across five emotions, with plosives and round vowels (companion-lanes proof)",
+  "character": "iris",
+  "persona": "Iris is a calm, realistic personal assistant with a silver bob and a headset. She keeps the user's calendar, answers in one or two clear sentences, is warm without fuss, allows herself a dry joke, and says plainly when something needs attention.",
+  "seed": 1110,
+  "chat": [
+    {
+      "id": "c1",
+      "user": "maple_byte",
+      "text": "morning Iris, are you there?",
+      "atMs": 2000
+    },
+    {
+      "id": "c2",
+      "user": "maple_byte",
+      "text": "can you move my dentist appointment to Thursday?",
+      "atMs": 11000
+    },
+    {
+      "id": "c3",
+      "user": "maple_byte",
+      "text": "do I have anything before lunch?",
+      "atMs": 20000
+    },
+    {
+      "id": "c4",
+      "user": "maple_byte",
+      "text": "remind me to buy more coffee, it is an emergency",
+      "atMs": 29000
+    },
+    {
+      "id": "c5",
+      "user": "maple_byte",
+      "text": "I will just skip the budget meeting",
+      "atMs": 38000
+    },
+    {
+      "id": "c6",
+      "user": "maple_byte",
+      "text": "wait, my phone battery is at two percent",
+      "atMs": 47000
+    },
+    {
+      "id": "c7",
+      "user": "maple_byte",
+      "text": "thanks Iris, that is all for today",
+      "atMs": 56000
+    }
+  ]
+}

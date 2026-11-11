@@ -116,10 +116,32 @@ export function spread(wanted: readonly number[], gap: number, lo: number, hi: n
   return out;
 }
 
-/** The four pins of `rig`: each light where it lives, its label at the glass edge on that side. */
+/**
+ * Whether the mouth light lands anywhere: a `cavity` region slot on any layer (a live forge paints
+ * it into the head, director amendment of task 3) or a layer named `mouth_glow`.
+ */
+export function hasMouthLight(rig: Pick<Rig, "layers">): boolean {
+  return rig.layers.some((l) => l.name === "mouth_glow" || (l.regions?.slots.some((s) => s.id === "cavity") ?? false));
+}
+
+/**
+ * Whether a light can reach anything on `rig` (companion-lanes requirement 6.3: a control that cannot
+ * apply is not shown). Only a morph rig (Iris, Bun: one head repainted by keys, no eye, iris or
+ * emissive layer) drops lights; every other rig keeps all four as before. On a morph rig the eye light
+ * needs an eye or iris layer, the glow a layer that gives light (`isEmissive`), the mouth light a
+ * mouth-light region; the rim lights every layer's edge, so it always applies.
+ */
+export function lightApplies(rig: Pick<Rig, "layers" | "morph">, key: LightKey): boolean {
+  if (rig.morph === undefined || key === "rim") return true;
+  if (key === "eye") return rig.layers.some((l) => l.kind === "eye" || l.kind === "iris");
+  if (key === "glow") return rig.layers.some((l) => isEmissive(l));
+  return hasMouthLight(rig);
+}
+
+/** The pins of `rig` (four, or on a morph rig the lights that apply): each light where it lives, its label at the glass edge on that side. */
 export function lightPins(rig: Rig): Pin[] {
   const points = lightPoints(rig);
-  const placed = LIGHT_ORDER.map((key) => {
+  const placed = LIGHT_ORDER.filter((key) => lightApplies(rig, key)).map((key) => {
     const at = toGlass(rig, points[key]);
     const side: Pin["side"] = key === "rim" || at[0] <= 50 ? "start" : "end";
     return { key, at, side };

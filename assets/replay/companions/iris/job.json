@@ -1,0 +1,893 @@
+{
+  "rig": {
+    "version": 1,
+    "id": "iris",
+    "name": "Iris",
+    "width": 1024,
+    "height": 1024,
+    "source": "replay",
+    "fictional": true,
+    "palette": {
+      "glow": "#5fd6e8",
+      "eye": "#7f9bb0",
+      "rim": "#000000",
+      "mouth": "#b8686e"
+    },
+    "layers": [
+      {
+        "name": "background",
+        "z": 1,
+        "kind": "static",
+        "file": "background.webp",
+        "bbox": [
+          0,
+          0,
+          1024,
+          1024
+        ],
+        "anchor": [
+          512,
+          512
+        ]
+      },
+      {
+        "name": "body",
+        "z": 2,
+        "kind": "body",
+        "file": "body.webp",
+        "bbox": [
+          37,
+          518,
+          946,
+          506
+        ],
+        "anchor": [
+          512,
+          1024
+        ],
+        "regions": {
+          "map": "body.regions.png",
+          "slots": [
+            {
+              "id": "jacket",
+              "name": "jacket",
+              "hex": "#1a1e25"
+            }
+          ]
+        }
+      },
+      {
+        "name": "head",
+        "z": 3,
+        "kind": "head",
+        "file": "head.webp",
+        "bbox": [
+          228,
+          16,
+          555,
+          601
+        ],
+        "anchor": [
+          512,
+          592
+        ],
+        "regions": {
+          "map": "head.regions.png",
+          "slots": [
+            {
+              "id": "hair",
+              "name": "hair",
+              "hex": "#5e6e78"
+            }
+          ]
+        }
+      }
+    ],
+    "mouth": {
+      "cx": 515,
+      "lineY": 512,
+      "width": 118
+    },
+    "face": {
+      "gaze": {
+        "range": 0.5,
+        "saccadeRate": 0.8
+      },
+      "motion": {
+        "drift": 0.7,
+        "tilt": 0.7,
+        "gesture": 0.7,
+        "breath": 0.3
+      },
+      "expression": {
+        "strength": 1
+      }
+    },
+    "turn": {
+      "warp": 0.4,
+      "light": 0.15
+    },
+    "morph": {
+      "layer": "head",
+      "atlas": "atlas.webp",
+      "flow": "flow.png",
+      "keys": [
+        {
+          "id": "blink_half",
+          "track": "blink",
+          "at": 0.5,
+          "bbox": [
+            342,
+            297,
+            338,
+            115
+          ],
+          "cell": [
+            668,
+            1031,
+            338,
+            115
+          ],
+          "flowCell": [
+            1,
+            160,
+            85,
+            29
+          ],
+          "flowMax": 10,
+          "backCell": [
+            88,
+            160,
+            85,
+            29
+          ]
+        },
+        {
+          "id": "blink",
+          "track": "blink",
+          "bbox": [
+            355,
+            309,
+            315,
+            103
+          ],
+          "cell": [
+            2,
+            1294,
+            315,
+            103
+          ],
+          "flowCell": [
+            489,
+            160,
+            79,
+            26
+          ],
+          "flowMax": 4,
+          "backCell": [
+            570,
+            160,
+            79,
+            26
+          ]
+        },
+        {
+          "id": "open_mid",
+          "track": "openMid",
+          "bbox": [
+            412,
+            448,
+            208,
+            146
+          ],
+          "cell": [
+            2,
+            1031,
+            208,
+            146
+          ],
+          "flowCell": [
+            537,
+            111,
+            52,
+            37
+          ],
+          "flowMax": 11,
+          "backCell": [
+            591,
+            111,
+            52,
+            37
+          ]
+        },
+        {
+          "id": "open_wide",
+          "track": "openWide",
+          "bbox": [
+            395,
+            430,
+            241,
+            183
+          ],
+          "cell": [
+            2,
+            844,
+            241,
+            183
+          ],
+          "flowCell": [
+            175,
+            111,
+            61,
+            46
+          ],
+          "flowMax": 46,
+          "backCell": [
+            238,
+            111,
+            61,
+            46
+          ]
+        },
+        {
+          "id": "round",
+          "track": "round",
+          "bbox": [
+            403,
+            440,
+            225,
+            154
+          ],
+          "cell": [
+            247,
+            844,
+            225,
+            154
+          ],
+          "flowCell": [
+            301,
+            111,
+            57,
+            39
+          ],
+          "flowMax": 11,
+          "backCell": [
+            360,
+            111,
+            57,
+            39
+          ]
+        },
+        {
+          "id": "closed",
+          "track": "closed",
+          "bbox": [
+            403,
+            456,
+            221,
+            138
+          ],
+          "cell": [
+            443,
+            1031,
+            221,
+            138
+          ],
+          "flowCell": [
+            869,
+            111,
+            56,
+            35
+          ],
+          "flowMax": 8,
+          "backCell": [
+            927,
+            111,
+            56,
+            35
+          ]
+        },
+        {
+          "id": "teeth",
+          "track": "teeth",
+          "bbox": [
+            414,
+            446,
+            204,
+            148
+          ],
+          "cell": [
+            705,
+            844,
+            204,
+            148
+          ],
+          "flowCell": [
+            645,
+            111,
+            51,
+            37
+          ],
+          "flowMax": 3,
+          "backCell": [
+            698,
+            111,
+            51,
+            37
+          ]
+        },
+        {
+          "id": "tongue",
+          "track": "tongue",
+          "bbox": [
+            403,
+            454,
+            225,
+            140
+          ],
+          "cell": [
+            214,
+            1031,
+            225,
+            140
+          ],
+          "flowCell": [
+            751,
+            111,
+            57,
+            35
+          ],
+          "flowMax": 14,
+          "backCell": [
+            810,
+            111,
+            57,
+            35
+          ]
+        },
+        {
+          "id": "narrow",
+          "track": "narrow",
+          "bbox": [
+            403,
+            442,
+            225,
+            152
+          ],
+          "cell": [
+            476,
+            844,
+            225,
+            152
+          ],
+          "flowCell": [
+            419,
+            111,
+            57,
+            38
+          ],
+          "flowMax": 12,
+          "backCell": [
+            478,
+            111,
+            57,
+            38
+          ]
+        },
+        {
+          "id": "gaze_l",
+          "track": "gazeL",
+          "bbox": [
+            348,
+            295,
+            294,
+            108
+          ],
+          "cell": [
+            322,
+            1181,
+            294,
+            108
+          ],
+          "flowCell": [
+            337,
+            160,
+            74,
+            27
+          ],
+          "flowMax": 38,
+          "backCell": [
+            413,
+            160,
+            74,
+            27
+          ]
+        },
+        {
+          "id": "gaze_r",
+          "track": "gazeR",
+          "bbox": [
+            385,
+            302,
+            270,
+            100
+          ],
+          "cell": [
+            321,
+            1294,
+            270,
+            100
+          ],
+          "flowCell": [
+            811,
+            160,
+            68,
+            25
+          ],
+          "flowMax": 36,
+          "backCell": [
+            881,
+            160,
+            68,
+            25
+          ]
+        },
+        {
+          "id": "gaze_u",
+          "track": "gazeU",
+          "bbox": [
+            365,
+            294,
+            316,
+            109
+          ],
+          "cell": [
+            2,
+            1181,
+            316,
+            109
+          ],
+          "flowCell": [
+            175,
+            160,
+            79,
+            28
+          ],
+          "flowMax": 13,
+          "backCell": [
+            256,
+            160,
+            79,
+            28
+          ]
+        },
+        {
+          "id": "gaze_d",
+          "track": "gazeD",
+          "bbox": [
+            358,
+            299,
+            311,
+            104
+          ],
+          "cell": [
+            620,
+            1181,
+            311,
+            104
+          ],
+          "flowCell": [
+            651,
+            160,
+            78,
+            26
+          ],
+          "flowMax": 22,
+          "backCell": [
+            731,
+            160,
+            78,
+            26
+          ]
+        },
+        {
+          "id": "joy_upper",
+          "track": "joy",
+          "part": "upper",
+          "bbox": [
+            345,
+            235,
+            339,
+            188
+          ],
+          "cell": [
+            668,
+            639,
+            339,
+            188
+          ],
+          "flowCell": [
+            1,
+            111,
+            85,
+            47
+          ],
+          "flowMax": 14,
+          "backCell": [
+            88,
+            111,
+            85,
+            47
+          ]
+        },
+        {
+          "id": "joy_lower",
+          "track": "joy",
+          "part": "lower",
+          "bbox": [
+            341,
+            401,
+            346,
+            212
+          ],
+          "cell": [
+            353,
+            2,
+            346,
+            212
+          ],
+          "flowCell": [
+            1,
+            1,
+            87,
+            53
+          ],
+          "flowMax": 29,
+          "backCell": [
+            90,
+            1,
+            87,
+            53
+          ]
+        },
+        {
+          "id": "showman_upper",
+          "track": "showman",
+          "part": "upper",
+          "bbox": [
+            343,
+            222,
+            343,
+            201
+          ],
+          "cell": [
+            2,
+            434,
+            343,
+            201
+          ],
+          "flowCell": [
+            87,
+            56,
+            86,
+            51
+          ],
+          "flowMax": 38,
+          "backCell": [
+            175,
+            56,
+            86,
+            51
+          ]
+        },
+        {
+          "id": "showman_lower",
+          "track": "showman",
+          "part": "lower",
+          "bbox": [
+            341,
+            401,
+            347,
+            212
+          ],
+          "cell": [
+            2,
+            2,
+            347,
+            212
+          ],
+          "flowCell": [
+            179,
+            1,
+            87,
+            53
+          ],
+          "flowMax": 33,
+          "backCell": [
+            268,
+            1,
+            87,
+            53
+          ]
+        },
+        {
+          "id": "anger_upper",
+          "track": "anger",
+          "part": "upper",
+          "bbox": [
+            343,
+            222,
+            341,
+            201
+          ],
+          "cell": [
+            349,
+            434,
+            341,
+            201
+          ],
+          "flowCell": [
+            263,
+            56,
+            86,
+            51
+          ],
+          "flowMax": 33,
+          "backCell": [
+            351,
+            56,
+            86,
+            51
+          ]
+        },
+        {
+          "id": "anger_lower",
+          "track": "anger",
+          "part": "lower",
+          "bbox": [
+            341,
+            401,
+            343,
+            212
+          ],
+          "cell": [
+            703,
+            2,
+            343,
+            212
+          ],
+          "flowCell": [
+            357,
+            1,
+            86,
+            53
+          ],
+          "flowMax": 10,
+          "backCell": [
+            445,
+            1,
+            86,
+            53
+          ]
+        },
+        {
+          "id": "gloom_upper",
+          "track": "gloom",
+          "part": "upper",
+          "bbox": [
+            353,
+            222,
+            321,
+            201
+          ],
+          "cell": [
+            2,
+            639,
+            321,
+            201
+          ],
+          "flowCell": [
+            613,
+            56,
+            81,
+            51
+          ],
+          "flowMax": 16,
+          "backCell": [
+            696,
+            56,
+            81,
+            51
+          ]
+        },
+        {
+          "id": "gloom_lower",
+          "track": "gloom",
+          "part": "lower",
+          "bbox": [
+            345,
+            401,
+            336,
+            212
+          ],
+          "cell": [
+            690,
+            218,
+            336,
+            212
+          ],
+          "flowCell": [
+            883,
+            1,
+            84,
+            53
+          ],
+          "flowMax": 6,
+          "backCell": [
+            1,
+            56,
+            84,
+            53
+          ]
+        },
+        {
+          "id": "smug_upper",
+          "track": "smug",
+          "part": "upper",
+          "bbox": [
+            347,
+            223,
+            337,
+            200
+          ],
+          "cell": [
+            327,
+            639,
+            337,
+            200
+          ],
+          "flowCell": [
+            779,
+            56,
+            85,
+            50
+          ],
+          "flowMax": 18,
+          "backCell": [
+            866,
+            56,
+            85,
+            50
+          ]
+        },
+        {
+          "id": "smug_lower",
+          "track": "smug",
+          "part": "lower",
+          "bbox": [
+            347,
+            401,
+            337,
+            212
+          ],
+          "cell": [
+            349,
+            218,
+            337,
+            212
+          ],
+          "flowCell": [
+            709,
+            1,
+            85,
+            53
+          ],
+          "flowMax": 14,
+          "backCell": [
+            796,
+            1,
+            85,
+            53
+          ]
+        },
+        {
+          "id": "suspicion_upper",
+          "track": "suspicion",
+          "part": "upper",
+          "bbox": [
+            345,
+            222,
+            337,
+            201
+          ],
+          "cell": [
+            694,
+            434,
+            337,
+            201
+          ],
+          "flowCell": [
+            439,
+            56,
+            85,
+            51
+          ],
+          "flowMax": 19,
+          "backCell": [
+            526,
+            56,
+            85,
+            51
+          ]
+        },
+        {
+          "id": "suspicion_lower",
+          "track": "suspicion",
+          "part": "lower",
+          "bbox": [
+            343,
+            401,
+            343,
+            212
+          ],
+          "cell": [
+            2,
+            218,
+            343,
+            212
+          ],
+          "flowCell": [
+            533,
+            1,
+            86,
+            53
+          ],
+          "flowMax": 15,
+          "backCell": [
+            621,
+            1,
+            86,
+            53
+          ]
+        }
+      ],
+      "eyes": [
+        [
+          437,
+          346
+        ],
+        [
+          589,
+          345
+        ]
+      ],
+      "sway": {
+        "map": "sway.webp",
+        "amp": 8
+      }
+    }
+  },
+  "built": {
+    "tool": "tools/portrait-keys",
+    "keys": 25,
+    "refused": [],
+    "atlas": [
+      1048,
+      1399
+    ],
+    "flow": [
+      984,
+      190
+    ],
+    "bytes": {
+      "atlas.webp": 380468,
+      "background.webp": 5372,
+      "body.regions.png": 2465,
+      "body.webp": 89294,
+      "flow.png": 104201,
+      "head.regions.png": 5414,
+      "head.webp": 112696,
+      "sway.webp": 2708
+    }
+  }
+}

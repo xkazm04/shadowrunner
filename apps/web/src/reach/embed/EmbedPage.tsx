@@ -100,11 +100,20 @@ export default function EmbedPage({ plane }: { plane: Plane }): ReactElement {
                   setCopy("idle");
                 }}
               >
-                {cast.map((entry) => (
+                {cast.filter((entry) => entry.companion !== true).map((entry) => (
                   <option key={entry.id} value={castSlugOf(entry)}>
                     {entry.name}
                   </option>
                 ))}
+                {cast.some((entry) => entry.companion === true) && (
+                  <optgroup label="Companions">
+                    {cast.filter((entry) => entry.companion === true).map((entry) => (
+                      <option key={entry.id} value={castSlugOf(entry)}>
+                        {entry.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
               </select>
             )}
           </label>

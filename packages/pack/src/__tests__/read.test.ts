@@ -125,6 +125,12 @@ describe("decodePackImages", () => {
     expect(Object.keys(out).sort()).toEqual(["a.png", "b.webp"]);
     expect(out["a.png"]).toMatchObject({ blob: a, options: { premultiplyAlpha: "premultiply" } });
     expect(decode).toHaveBeenCalledTimes(2);
+    // companion-lanes: with the rig, a morph's motion image and sway map are decoded as data.
+    const morph = { layer: "head", atlas: "a.png", flow: "b.webp", keys: [], eyes: [[0, 0], [1, 0]] as [[number, number], [number, number]], sway: { map: "c.png", amp: 1 } };
+    const raw = await decodePackImages({ "a.png": a, "b.webp": b, "c.png": a }, { morph });
+    expect(raw["a.png"]).toMatchObject({ options: { premultiplyAlpha: "premultiply" } });
+    expect(raw["b.webp"]).toMatchObject({ options: { premultiplyAlpha: "none", colorSpaceConversion: "none" } });
+    expect(raw["c.png"]).toMatchObject({ options: { premultiplyAlpha: "none", colorSpaceConversion: "none" } });
   });
 });
 

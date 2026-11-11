@@ -1,0 +1,46 @@
+{
+  "scenario": "companion-bun",
+  "source": "hand-written for the companion-lanes proof (task 3): seven lines, seven emotions, four gestures; p/b/m plosives and round vowels in every line",
+  "replies": {
+    "c1": {
+      "line": "Hi hi hi! Welcome back, bunnies! Big plans, big snacks, big boss fight tonight!",
+      "emotion": "theatrical",
+      "gesture": "flare",
+      "answeredId": "c1"
+    },
+    "c2": {
+      "line": "Five hundred bits?! Boba, you beautiful person! The pom pom emote is yours, I promise!",
+      "emotion": "delighted",
+      "gesture": "lean_in",
+      "answeredId": "c2"
+    },
+    "c3": {
+      "line": "Mid?! Mid?! I beat that boss with one pixel of health and you call it mid?",
+      "emotion": "furious",
+      "gesture": "glare",
+      "answeredId": "c3"
+    },
+    "c4": {
+      "line": "Um. Maybe the bonus round was moved to tomorrow. On purpose. Probably.",
+      "emotion": "suspicious",
+      "answeredId": "c4"
+    },
+    "c5": {
+      "line": "Wow. Okay. The ears get all the love. I am just the person under them, I suppose.",
+      "emotion": "bored",
+      "gesture": "recoil",
+      "answeredId": "c5"
+    },
+    "c6": {
+      "line": "No clipping the pout! Mods, please, I beg you, my reputation is on the line.",
+      "emotion": "irritated",
+      "answeredId": "c6"
+    },
+    "c7": {
+      "line": "You believe in me? Okay, boom, mood fixed. Rematch! Bunnies, pump it up!",
+      "emotion": "amused",
+      "gesture": "nod",
+      "answeredId": "c7"
+    }
+  }
+}

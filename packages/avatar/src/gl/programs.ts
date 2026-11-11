@@ -3,6 +3,8 @@
 // the glow: extract (downsample to half res), blur (one axis of a separable 9-tap Gaussian),
 // composite (scene + tinted glow onto the canvas). All share one unit-quad buffer. Face-control
 // adds the iris twin of the base program: the same pass with the eye's socket masks (gl/iris.ts).
+// Companion-lanes adds the morph twin (gl/morph.ts), linked on first need: the warp twin's vertex
+// stage and the base fragment with its texture read replaced by `LayerSample` (`baseFs`'s third arg).
 import { GLOW_SATURATION, S_FLOOR, S_KEEP } from "../render/recolour.js";
 import { MAW_DARK_LUMA, MAW_TAPS } from "../mouth/warp.js";
 import { createTurnGrid, TURN_FS, TURN_LIGHT_STEP, TURN_UNIFORMS, TURN_VS } from "./turn.js";
@@ -48,7 +50,7 @@ void main() {
 // The iris twin (face-control) also carries the rest point into the eye's socket uv (u_maskM).
 // Depth turn (perfection-pass V2, gl/turn.ts): the rest point is shifted by `turnAt` before u_m while
 // u_turnK.xy is not zero (an iris by its eye's point under it, u_turnEye); v_rest feeds the light.
-const baseVs = (warp: boolean, mask = false): string => `#version 300 es
+export const baseVs = (warp: boolean, mask = false): string => `#version 300 es
 layout(location = 0) in vec2 a_corner;
 uniform vec4 u_rect;${warp ? `
 uniform vec4 u_draw;` : ""}
@@ -130,7 +132,13 @@ float socketAt(vec2 m) {
   if (m.x < 0.0 || m.x > 1.0 || m.y < 0.0 || m.y > 1.0) return 0.0;
   return u_maskW.x * texture(u_mask0, m).a + u_maskW.y * texture(u_mask1, m).a + u_maskW.z * texture(u_mask2, m).a;
 }`;
-const baseFs = (warp: boolean, mask = false): string => `#version 300 es
+/** A replacement of the base fragment's texture read: declarations, and main()'s first lines (they set `uv` and `tex`). */
+export interface LayerSample {
+  decl: string;
+  sample: string;
+}
+
+export const baseFs = (warp: boolean, mask = false, own?: LayerSample): string => `#version 300 es
 precision highp float;
 in vec2 v_uv;${mask ? `
 ${MASK_GLSL}` : ""}
@@ -145,7 +153,7 @@ uniform float u_recolour;
 uniform vec4 u_light;
 uniform vec4 u_mapRect;
 uniform vec4 u_slotOn;
-uniform vec3 u_slots[4];${warp ? `
+uniform vec3 u_slots[4];${warp || own !== undefined ? `
 uniform vec4 u_rect;` : ""}
 const float BRIGHT_LO = 0.3;
 const float BRIGHT_HI = 0.7;
@@ -157,9 +165,10 @@ layout(location = 1) out vec4 o_glow;
 ${RECOLOUR_GLSL}
 ${TURN_FS}${warp ? `
 ${WARP_GLSL}
-float inLayer(vec2 uv) { return uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0 ? 1.0 : 0.0; }` : ""}
+float inLayer(vec2 uv) { return uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0 ? 1.0 : 0.0; }` : ""}${own === undefined ? "" : `
+${own.decl}`}
 void main() {
-${warp ? WARP_SAMPLE : `  vec2 uv = v_uv;
+${own !== undefined ? own.sample : warp ? WARP_SAMPLE : `  vec2 uv = v_uv;
   vec4 tex = texture(u_tex, uv);`}
   vec2 d = u_texel * 2.0;
   vec4 tR = texture(u_tex, uv + vec2(d.x, 0.0));
@@ -241,7 +250,7 @@ export interface Program<K extends string> {
   u: Uniforms<K>;
 }
 
-const BASE_UNIFORMS = [
+export const BASE_UNIFORMS = [
   "u_rect", "u_m", "u_res", "u_tex", "u_map", "u_texel", "u_opacity", "u_gain", "u_rim", "u_emissive",
   "u_recolour", "u_light", "u_mapRect", "u_slotOn", "u_slots", ...TURN_UNIFORMS,
 ] as const;
@@ -280,7 +289,7 @@ function shader(gl: WebGL2RenderingContext, type: GLenum, source: string): WebGL
 }
 
 /** Compiles and links one program; shaders are deleted once linked. */
-function link<K extends string>(gl: WebGL2RenderingContext, vs: string, fs: string, names: readonly K[]): Program<K> {
+export function link<K extends string>(gl: WebGL2RenderingContext, vs: string, fs: string, names: readonly K[]): Program<K> {
   const v = shader(gl, gl.VERTEX_SHADER, vs);
   const f = shader(gl, gl.FRAGMENT_SHADER, fs);
   const program = gl.createProgram();

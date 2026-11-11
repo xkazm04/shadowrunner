@@ -11,6 +11,7 @@
 //   so a shape or face drag skips it.
 import { regionKey, type Layer, type Look, type Palette, type Rig } from "@sr/rig";
 import { memo, useEffect, useState, type ReactNode } from "react";
+import { hasMouthLight, lightApplies } from "./pins";
 import { lamp, Ring } from "./Ring";
 import { LIGHT_LABELS, regionRing, ringOf, swatchName } from "./swatches";
 import signal from "./Signal.module.css";
@@ -20,13 +21,7 @@ export const LIGHT_KEYS: readonly (keyof Palette)[] = ["eye", "glow", "rim", "mo
 
 export const NO_MOUTH_LIGHT = "no mouth light on this character";
 
-/**
- * Whether the mouth light lands anywhere: a `cavity` region slot on any layer (a live forge paints
- * it into the head, director amendment of task 3) or a layer named `mouth_glow`.
- */
-export function hasMouthLight(rig: Rig): boolean {
-  return rig.layers.some((l) => l.name === "mouth_glow" || (l.regions?.slots.some((s) => s.id === "cavity") ?? false));
-}
+export { hasMouthLight };
 
 export interface PaletteCardProps {
   rig: Rig;
@@ -109,7 +104,7 @@ export const PaletteCard = memo(function PaletteCard({ rig, palette, regions, on
       </h2>
       <span className={styles.lbl}>Lights</span>
       <div className={styles.chips}>
-        {LIGHT_KEYS.map((key) => {
+        {LIGHT_KEYS.filter((key) => lightApplies(rig, key)).map((key) => {
           const id = `light:${key}`;
           const off = key === "mouth" && !mouth;
           return (
@@ -124,7 +119,7 @@ export const PaletteCard = memo(function PaletteCard({ rig, palette, regions, on
           );
         })}
       </div>
-      {!mouth && <p className={styles.note}>{NO_MOUTH_LIGHT}</p>}
+      {!mouth && lightApplies(rig, "mouth") && <p className={styles.note}>{NO_MOUTH_LIGHT}</p>}
       {open?.id.startsWith("light:") === true && ring(open)}
       <span className={styles.lbl}>Regions</span>
       {parts.length === 0 ? (

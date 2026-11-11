@@ -2,7 +2,7 @@
 // (the jaw's parent), so it rides every head motion; the jaw's own drop, measured in that frame, is
 // how far the lower lip has moved. A rig without `mouth` has no anchor: its art keeps its own mouth
 // and the player never guesses a place for one.
-import type { Layer, LayerPose, RigLips, RigMouth } from "@sr/rig";
+import { morphHas, type Layer, type LayerPose, type RigLips, type RigMorph, type RigMouth } from "@sr/rig";
 import { applyAffine, layerAffine, type Affine, type View } from "../render/frame.js";
 
 export function invertAffine(m: Affine): Affine | undefined {
@@ -45,10 +45,14 @@ export function drawnMouthGeometry(mouth: RigMouth | undefined): MouthGeometry |
  * own lips (the default for a measured mouth whose lips the forge found, `mouthLips`), "still"
  * keeps the art's lips and slides the jaw (also a mouth without usable lips: a box guessed from the
  * width would bend teeth and shadows). Undefined: no usable `rig.mouth`; the jaw slides as always.
+ * "morph" (companion-lanes): the rig's `morph` has a key on a mouth track, whatever its `mouth`
+ * says; the shape weights drive those keys, nothing is drawn or warped and no jaw moves.
  */
-export type MouthMode = "drawn" | "warp" | "still";
+export type MouthMode = "drawn" | "warp" | "still" | "morph";
 
-export function mouthMode(mouth: RigMouth | undefined): MouthMode | undefined {
+/** How the player moves a rig's mouth; pass the rig's `morph` too (a caller holding only `mouth` never sees "morph"). */
+export function mouthMode(mouth: RigMouth | undefined, morph?: RigMorph): MouthMode | undefined {
+  if (morphHas(morph, "mouth")) return "morph";
   if (mouthGeometry(mouth) === undefined) return undefined;
   if (mouth?.render === "drawn") return "drawn";
   if (mouth?.render === "still" || mouthLips(mouth) === undefined) return "still";

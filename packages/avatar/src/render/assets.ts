@@ -16,8 +16,11 @@ export type AssetImage = ImageBitmap | HTMLImageElement;
 /** Fetches and decodes one rig file (as `RigAssets` would hold it) on demand. */
 export type AssetLoader = (file: string) => Promise<AssetImage>;
 
-/** Every file `rig` may draw: layer images, then region maps, then face patches; each once. */
-export function rigAssetFiles(rig: Pick<Rig, "layers">): { layers: string[]; maps: string[]; patches: string[] } {
+/**
+ * Every file `rig` may draw: layer images, then region maps, then face patches, then (companion-lanes)
+ * the morph's atlas, motion image and sway map; each once.
+ */
+export function rigAssetFiles(rig: Pick<Rig, "layers"> & { morph?: Rig["morph"] }): { layers: string[]; maps: string[]; patches: string[]; morph: string[] } {
   const seen = new Set<string>();
   const once = (file: string | undefined, into: string[]): void => {
     if (file === undefined || seen.has(file)) return;
@@ -36,7 +39,11 @@ export function rigAssetFiles(rig: Pick<Rig, "layers">): { layers: string[]; map
     once(layer.closed, patches);
     for (const patch of Object.values(layer.variants ?? {})) once(patch.socket, patches);
   }
-  return { layers, maps, patches };
+  const morph: string[] = [];
+  once(rig.morph?.atlas, morph);
+  once(rig.morph?.flow, morph);
+  once(rig.morph?.sway?.map, morph);
+  return { layers, maps, patches, morph };
 }
 
 export interface AssetCache {

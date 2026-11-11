@@ -68,7 +68,7 @@ export interface AvatarPlayer {
   setMouthShapes?(shapes: ShapeWeights | undefined, options?: Omit<MouthShapesInput, "shapes">): void;
   /** The mouth the last frame drew (read-only), undefined when none (no `rig.mouth`, neutral rest). */
   mouth?(): MouthPose | undefined;
-  /** How this rig's mouth moves (`mouthMode(rig.mouth)`); shapes reach "drawn" and "warp" only. */
+  /** How this rig's mouth moves (`mouthMode(rig.mouth, rig.morph)`); shapes reach "drawn", "warp" and "morph" only. */
   mouthMode?(): MouthMode | undefined;
   resize(width: number, height: number, dpr: number): void;
   /** requestAnimationFrame loop on the browser clock. */

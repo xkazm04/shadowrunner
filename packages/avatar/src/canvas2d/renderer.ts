@@ -17,13 +17,17 @@
 // a socket is drawn clipped by the socket masks (canvas2d/iris.ts); the look's light follows the
 // frame clock's `mood` as in GL. An emissive eye or iris with `tint: false` (cast-face-pass) is never
 // recoloured and takes the eyeGain in its filter, as GL's `gainOf`.
+// Morph keys (companion-lanes design "Shader", Canvas 2D): after the morph layer, each active key's
+// atlas cell is drawn over its bbox at `globalAlpha = opacity x weight x colour` (round 3), in the plan's compositing
+// order, with the layer's transform and filter: a plain cross-fade, no motion field, no sway, and
+// the keys keep their painted colour (the look's region recolour is not applied to them).
 import { isEmissive, type Layer, type LayerPose, type Look, type Rig } from "@sr/rig";
 import { createMouthArt } from "../mouth/draw.js";
 import type { MouthSurfaceFactory } from "../mouth/colours.js";
 import { createAssetCache, type AssetCache, type AssetImage, type AssetLoader } from "../render/assets.js";
 import { dimGain, fitView, layerAffine, lookLight, type LookLight } from "../render/frame.js";
 import { keepsArtColour, mapRect, needsMap, rigRecolours, type LayerRecolour } from "../render/recolour.js";
-import type { CanvasHost, FrameClock, Renderer, RendererInfo, RigAssets } from "../render/types.js";
+import type { CanvasHost, FrameClock, MorphFrame, Renderer, RendererInfo, RigAssets } from "../render/types.js";
 import { createIrisClipper } from "./iris.js";
 import { createRecolourCache, type SurfaceFactory } from "./recolour.js";
 
@@ -134,6 +138,24 @@ export function createCanvas2dRenderer(canvas: CanvasHost, ctx: CanvasRenderingC
     return clipped === undefined ? [] : [{ image: clipped, rect: layer.bbox, alpha: Math.min(1, Math.max(0, pose.opacity)) }];
   };
 
+  /** The active morph keys over the morph layer (module header); the draw count. */
+  const drawKeys = (c: CanvasRenderingContext2D, morph: MorphFrame, opacity: number): number => {
+    const { plan } = morph;
+    const atlas = plan.morph === currentRig.morph ? images.get(plan.morph.atlas) : undefined;
+    if (atlas === undefined) return 0;
+    let n = 0;
+    for (let k = 0; k < plan.count; k += 1) {
+      const i = plan.active[k] ?? 0;
+      const key = plan.morph.keys[i];
+      const w = (plan.weights[i] ?? 0) * (plan.colour[i] ?? 1);
+      if (key === undefined || !(w > 0)) continue;
+      c.globalAlpha = opacity * Math.min(1, w);
+      c.drawImage(atlas, key.cell[0], key.cell[1], key.cell[2], key.cell[3], key.bbox[0], key.bbox[1], key.bbox[2], key.bbox[3]);
+      n += 1;
+    }
+    return n;
+  };
+
   setRig(rig, assets);
 
   return {
@@ -167,6 +189,7 @@ export function createCanvas2dRenderer(canvas: CanvasHost, ctx: CanvasRenderingC
           ctx.drawImage(draw.image, draw.rect[0] ?? 0, draw.rect[1] ?? 0, draw.rect[2] ?? 0, draw.rect[3] ?? 0);
           drawCalls += 1;
         }
+        if (clock?.morph !== undefined && layer.name === clock.morph.plan.morph.layer) drawCalls += drawKeys(ctx, clock.morph, Math.min(1, Math.max(0, pose.opacity)));
         if (mouth !== undefined && mouthColours !== undefined && clock?.mouth !== undefined && i === mouth.host.index) {
           ctx.filter = tintFilter(mouth.frame.pose.tint * dimGain(mouth.frame.layer, clock.dim));
           mouthArt.paint(ctx, mouth.anchor, clock.mouth, mouthColours);

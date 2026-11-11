@@ -1,9 +1,15 @@
 // Rig v1 wire contract (.kiro/specs/rig-core/design.md, "Data model").
-// This file is the ONLY declaration of these types; docs/rig-format.md describes the same contract.
+// This file is the single entry of these types (the ONLY declaration of all but the morph types,
+// which live beside it in morphTypes.ts and are re-exported here); docs/rig-format.md describes the
+// same contract.
 // Optional fields are omitted when absent, never null.
 // Layer.motion (FloatMotion, PulseMotion) is amended by cast-forge (req 1) and Layer.drop by
 // cast-forge task 3, Motion.blink by cast-forge task 6, Layer.emissive by the cast-forge task 12
 // follow-up (emissive per layer); Rig stays version 1.
+
+import type { RigMorph } from "./morphTypes.js";
+
+export type { MorphKey, MorphPart, MorphSway, MorphTrack, RigMorph } from "./morphTypes.js";
 
 export const RIG_VERSION = 1 as const;
 
@@ -196,6 +202,8 @@ export interface Rig {
   motion?: RigMotion;
   /** Depth turn and lighting (perfection-pass V2, turn.ts). Omitted: defaults. */
   turn?: RigTurn;
+  /** Morph keys (companion-lanes, morph.ts): the face of one layer repainted by track weights. Omitted: none. */
+  morph?: RigMorph;
 }
 
 /** Secondary motion strength (perfection-pass V1); `Look.motion` wins over `Rig.motion`. */

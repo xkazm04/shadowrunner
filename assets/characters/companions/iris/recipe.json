@@ -1,0 +1,514 @@
+{
+  "id": "iris",
+  "name": "Iris",
+  "eyes": [
+    [
+      437,
+      346
+    ],
+    [
+      589,
+      345
+    ]
+  ],
+  "mouth": {
+    "cx": 515,
+    "lineY": 512,
+    "width": 118
+  },
+  "regions": {
+    "eyes": {
+      "ellipses": [
+        [
+          437,
+          347,
+          80,
+          44
+        ],
+        [
+          589,
+          346,
+          80,
+          44
+        ]
+      ]
+    },
+    "mouth": {
+      "ellipses": [
+        [
+          515,
+          515,
+          92,
+          58
+        ]
+      ]
+    },
+    "mouthWide": {
+      "ellipses": [
+        [
+          515,
+          535,
+          100,
+          85
+        ]
+      ]
+    },
+    "face": {
+      "ellipses": [
+        [
+          514,
+          440,
+          160,
+          205
+        ]
+      ]
+    }
+  },
+  "mattes": {
+    "figure": "matte",
+    "head": "head"
+  },
+  "floor": "noop",
+  "keys": [
+    {
+      "id": "blink_half",
+      "track": "blink",
+      "at": 0.5,
+      "edit": "blink_half",
+      "region": "eyes",
+      "flow": "optical"
+    },
+    {
+      "id": "blink",
+      "track": "blink",
+      "edit": "blink",
+      "region": "eyes",
+      "flow": "optical"
+    },
+    {
+      "id": "open_mid",
+      "track": "openMid",
+      "edit": "openMid",
+      "region": "mouth",
+      "flow": "optical"
+    },
+    {
+      "id": "open_wide",
+      "track": "openWide",
+      "edit": "openWide",
+      "region": "mouthWide",
+      "flow": "optical"
+    },
+    {
+      "id": "round",
+      "track": "round",
+      "edit": "round",
+      "region": "mouth",
+      "flow": "optical"
+    },
+    {
+      "id": "closed",
+      "track": "closed",
+      "edit": "closed",
+      "region": "mouth",
+      "flow": "optical"
+    },
+    {
+      "id": "teeth",
+      "track": "teeth",
+      "edit": "teeth",
+      "region": "mouth",
+      "flow": "optical"
+    },
+    {
+      "id": "tongue",
+      "track": "tongue",
+      "edit": "tongue",
+      "region": "mouth",
+      "flow": "optical"
+    },
+    {
+      "id": "narrow",
+      "track": "narrow",
+      "edit": "narrow",
+      "region": "mouth",
+      "flow": "optical"
+    },
+    {
+      "id": "gaze_l",
+      "track": "gazeL",
+      "edit": "gazeL",
+      "region": "eyes",
+      "flow": "iris"
+    },
+    {
+      "id": "gaze_r",
+      "track": "gazeR",
+      "edit": "gazeR",
+      "region": "eyes",
+      "flow": "iris"
+    },
+    {
+      "id": "gaze_u",
+      "track": "gazeU",
+      "edit": "gazeU",
+      "region": "eyes",
+      "flow": "iris"
+    },
+    {
+      "id": "gaze_d",
+      "track": "gazeD",
+      "edit": "gazeD",
+      "region": "eyes",
+      "flow": "iris"
+    },
+    {
+      "id": "joy",
+      "track": "joy",
+      "edit": "joy",
+      "region": "face",
+      "flow": "optical"
+    },
+    {
+      "id": "showman",
+      "track": "showman",
+      "edit": "showman",
+      "region": "face",
+      "flow": "optical"
+    },
+    {
+      "id": "anger",
+      "track": "anger",
+      "edit": "anger",
+      "region": "face",
+      "flow": "optical"
+    },
+    {
+      "id": "gloom",
+      "track": "gloom",
+      "edit": "gloom",
+      "region": "face",
+      "flow": "optical"
+    },
+    {
+      "id": "smug",
+      "track": "smug",
+      "edit": "smug",
+      "region": "face",
+      "flow": "optical"
+    },
+    {
+      "id": "suspicion",
+      "track": "suspicion",
+      "edit": "suspicion",
+      "region": "face",
+      "flow": "optical"
+    }
+  ],
+  "sway": {
+    "amp": 8,
+    "inner": [
+      512,
+      300,
+      190,
+      260
+    ],
+    "reach": 1.6,
+    "gamma": 1.5,
+    "zero": [
+      {
+        "ellipses": [
+          [
+            514,
+            470,
+            125,
+            150
+          ]
+        ]
+      },
+      {
+        "ellipses": [
+          [
+            300,
+            380,
+            40,
+            72
+          ],
+          [
+            722,
+            380,
+            40,
+            72
+          ]
+        ]
+      },
+      {
+        "box": [
+          590,
+          410,
+          140,
+          140
+        ]
+      }
+    ]
+  },
+  "rig": {
+    "palette": {
+      "glow": "#5fd6e8",
+      "eye": "#7f9bb0",
+      "rim": "#000000",
+      "mouth": "#b8686e"
+    },
+    "anchors": {
+      "head": [
+        512,
+        592
+      ],
+      "body": [
+        512,
+        1024
+      ]
+    },
+    "face": {
+      "gaze": {
+        "range": 0.5,
+        "saccadeRate": 0.8
+      },
+      "motion": {
+        "drift": 0.7,
+        "tilt": 0.7,
+        "gesture": 0.7,
+        "breath": 0.3
+      },
+      "expression": {
+        "strength": 1
+      }
+    },
+    "turn": {
+      "warp": 0.4,
+      "light": 0.15
+    }
+  },
+  "inspect": [
+    [
+      235,
+      430,
+      130,
+      140
+    ],
+    [
+      660,
+      420,
+      130,
+      140
+    ],
+    [
+      400,
+      15,
+      220,
+      90
+    ],
+    [
+      420,
+      540,
+      190,
+      110
+    ],
+    [
+      560,
+      450,
+      150,
+      120
+    ],
+    [
+      270,
+      260,
+      90,
+      150
+    ]
+  ],
+  "seam": [
+    400,
+    520,
+    230,
+    140
+  ],
+  "faceBox": [
+    330,
+    250,
+    370,
+    400
+  ],
+  "gates": {
+    "flowSigma": 12,
+    "flowFrom": "back"
+  },
+  "irisRadius": 21,
+  "openings": [
+    [
+      436,
+      349,
+      52,
+      18
+    ],
+    [
+      590,
+      348,
+      52,
+      18
+    ]
+  ],
+  "matte": {
+    "headOnly": [
+      {
+        "box": [
+          585,
+          470,
+          130,
+          90
+        ]
+      }
+    ]
+  },
+  "recolour": {
+    "head": [
+      {
+        "id": "hair",
+        "name": "hair",
+        "parts": [
+          {
+            "colour": [
+              {
+                "warm": [
+                  -1.0,
+                  0.03
+                ],
+                "light": [
+                  0.13,
+                  1.0
+                ]
+              },
+              {
+                "hue": [
+                  [
+                    0.4,
+                    0.62
+                  ]
+                ],
+                "sat": [
+                  0.25,
+                  1.0
+                ],
+                "light": [
+                  0.13,
+                  1.0
+                ]
+              }
+            ],
+            "without": [
+              {
+                "ellipses": [
+                  [
+                    514,
+                    470,
+                    140,
+                    150
+                  ],
+                  [
+                    436,
+                    350,
+                    58,
+                    24
+                  ],
+                  [
+                    590,
+                    349,
+                    58,
+                    24
+                  ],
+                  [
+                    300,
+                    382,
+                    22,
+                    50
+                  ],
+                  [
+                    722,
+                    382,
+                    22,
+                    50
+                  ],
+                  [
+                    346,
+                    446,
+                    9,
+                    9
+                  ],
+                  [
+                    679,
+                    446,
+                    9,
+                    9
+                  ]
+                ]
+              }
+            ]
+          }
+        ],
+        "minArea": 150
+      }
+    ],
+    "body": [
+      {
+        "id": "jacket",
+        "name": "jacket",
+        "parts": [
+          {
+            "except": [
+              {
+                "warm": [
+                  0.03,
+                  1.0
+                ]
+              },
+              {
+                "hue": [
+                  [
+                    0.0,
+                    0.12
+                  ],
+                  [
+                    0.94,
+                    1.0
+                  ]
+                ],
+                "sat": [
+                  0.14,
+                  1.0
+                ],
+                "light": [
+                  0.28,
+                  0.95
+                ]
+              }
+            ],
+            "without": [
+              {
+                "ellipses": [
+                  [
+                    512,
+                    600,
+                    72,
+                    140
+                  ]
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "faceSplitY": 412,
+  "faceSplitBand": 24
+}

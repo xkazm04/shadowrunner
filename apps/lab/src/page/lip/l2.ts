@@ -86,8 +86,16 @@ export function splitMix(weights: ShapeWeights, drawn: ReadonlySet<MouthShape>):
   return { art: art.map(([s, w]) => [s, artShare > 0 ? w / artShare : 0]), artShare, procedural, proceduralShare };
 }
 
+/**
+ * companion-lanes: a morph rig (Iris, Bun) draws its mouth from its own repainted keys and shows no
+ * drawn mouth pose, so L2 would hide the set's shapes from the player and paint nothing in their place
+ * (the painter runs only while the player's mouth alpha is above 0). It refuses with a sentence.
+ */
+export const MORPH_REFUSAL = "the rig moves its mouth with its own morph keys (repainted art), so forge mouths have nothing to replace; run L1";
+
 export const createL2: LipDriverFactory = (ctx: LipContext) => {
   const character = ctx.character;
+  if (ctx.player.mouthMode?.() === "morph") throw new Error(`Lip arm L2: ${character}: ${MORPH_REFUSAL}.`);
   const found = findMouthSet(character);
   if (typeof found === "string") throw new Error(`Lip arm L2: ${found}.`);
   const { manifest, urls } = found;

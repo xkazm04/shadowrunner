@@ -3,10 +3,10 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import type { Layer, Rig } from "@sr/rig";
+import type { Layer, MorphTrack, Rig } from "@sr/rig";
 import { measureFile } from "../measure.js";
 import { frameStats } from "../probe.js";
-import { jawRoi, parseRoi } from "../roi.js";
+import { castRoi, jawRoi, morphMouthRoi, parseRoi } from "../roi.js";
 import { envelope, SYNTH_ROI, synthClip } from "../synth.js";
 import { findOffset } from "../sync.js";
 
@@ -77,6 +77,24 @@ describe("ROI", () => {
     expect(roi.x + roi.w).toBeGreaterThanOrEqual(420 + 600 * 1.08 - 2);
     expect(roi.y + roi.h).toBeGreaterThanOrEqual(700 * 1.08);
     expect(() => jawRoi({ ...rig, layers: [] }, 1920, 1080)).toThrow(/no jaw layer/);
+  });
+
+  it("a morph rig (no jaw): the union of its mouth keys' boxes, through the same fit; the companions resolve by slug", () => {
+    const key = (id: string, track: MorphTrack, bbox: [number, number, number, number]) => ({ id, track, bbox, cell: [0, 0, 1, 1] as [number, number, number, number] });
+    const morph = {
+      layer: "head",
+      atlas: "a.webp",
+      eyes: [[400, 300], [600, 300]] as [[number, number], [number, number]],
+      keys: [key("o", "openWide", [450, 500, 100, 120]), key("r", "round", [460, 490, 80, 60]), key("b", "blink", [380, 280, 240, 40])],
+    };
+    const roi = morphMouthRoi({ width: 1000, height: 1000, morph }, 1920, 1080);
+    expect(roi.x).toBeLessThanOrEqual(420 + 450 * 1.08);
+    expect(roi.y).toBeLessThanOrEqual(490 * 1.08);
+    expect(roi.x + roi.w).toBeGreaterThanOrEqual(420 + 550 * 1.08 - 2);
+    expect(roi.y + roi.h).toBeGreaterThanOrEqual(620 * 1.08 - 2);
+    expect(roi.y, "the blink key is not a mouth key").toBeGreaterThan(320 * 1.08);
+    expect(() => morphMouthRoi({ width: 1000, height: 1000 }, 1920, 1080)).toThrow(/no morph mouth key/);
+    for (const slug of ["iris", "bun"]) expect(castRoi(slug, 1920, 1080).w).toBeGreaterThan(20);
   });
 });
 

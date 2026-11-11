@@ -57,6 +57,11 @@ export interface MouthStep {
   pose: MouthPose | undefined;
   /** The driver level that opens the jaw for this mouth. */
   level: number;
+  /**
+   * The shape mix shown this frame, emotion-free (the caller's, the level's, or the reduced-motion
+   * twin's; read only, reused): a morph rig's mouth keys are driven by it (companion-lanes).
+   */
+  shapes: Readonly<ShapeWeights>;
 }
 
 export function createMouthState(): (inputs: MouthStepInputs) => MouthStep {
@@ -69,7 +74,7 @@ export function createMouthState(): (inputs: MouthStepInputs) => MouthStep {
   const params: MouthParams = { ...SHAPE_PARAMS.rest };
   const jawParams: MouthParams = { ...SHAPE_PARAMS.rest };
   const pose = { params, alpha: 0, lips: 1 };
-  const out: MouthStep = { pose: undefined, level: 0 };
+  const out: MouthStep = { pose: undefined, level: 0, shapes: levelMix };
 
   return (p) => {
     reduced = p.reducedMotion;
@@ -100,6 +105,7 @@ export function createMouthState(): (inputs: MouthStepInputs) => MouthStep {
       talk = coverOf(shown);
     }
 
+    out.shapes = shown;
     const jawMix = p.input?.jaw ?? shown;
     out.level = jawLevel(withBias(blendInto(jawMix, jawParams), bias).jaw);
 

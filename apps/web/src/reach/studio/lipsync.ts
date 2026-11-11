@@ -4,8 +4,8 @@
 // player's loop (`lipSync`); Record steps it before each `renderFrame` (`trackShaper`, recorder.ts).
 //
 // Decisions:
-// - Only a player whose rig moves its own mouth (mouthMode "drawn" or "warp") is shaped; any other
-//   rig keeps the loudness jaw from the level tap that playLine attaches, as before.
+// - Only a player whose rig moves its own mouth (mouthMode "drawn", "warp" or, companion-lanes, "morph")
+//   is shaped; any other rig keeps the loudness jaw from the level tap that playLine attaches, as before.
 // - Order in a frame matters (the shapes set must be the ones drawn): `lipSync` stops the player's
 //   loop, registers its own frame callback, then starts the player again, so in every animation
 //   frame the shapes are set first and the player draws them (callbacks run in the order they were
@@ -25,7 +25,7 @@ export interface LipTrack {
 /** Whether the player draws or bends its own mouth and takes shapes. */
 export function shapesMouth(player: LipPlayer): boolean {
   const mode = player.mouthMode?.();
-  return (mode === "drawn" || mode === "warp") && player.setMouthShapes !== undefined;
+  return (mode === "drawn" || mode === "warp" || mode === "morph") && player.setMouthShapes !== undefined;
 }
 
 /** The buffer's channels mixed down to one. */

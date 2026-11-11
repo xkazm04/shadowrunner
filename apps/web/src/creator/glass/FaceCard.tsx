@@ -6,7 +6,7 @@
 // "Look around" cycles the glass's gaze (useLookAround) so the range can be seen; it is off and
 // disabled under reduced motion.
 // perfection-pass task 9: memoised on `look.face` alone, so a colour or shape drag skips it.
-import { FACE_LIMITS, faceValue, resolveFace, type FaceField, type Look, type Rig } from "@sr/rig";
+import { FACE_LIMITS, faceValue, MORPH_MOUTH_TRACKS, resolveFace, type FaceField, type Look, type Rig } from "@sr/rig";
 import { memo } from "react";
 import signal from "./Signal.module.css";
 import lookCss from "./Look.module.css";
@@ -69,8 +69,17 @@ export const FACE_GROUPS: readonly FaceGroup[] = [
 
 const inputId = (field: FaceField): string => `face-${field.replace(/\./g, "-")}`;
 
+/**
+ * The rows that reach `rig`: a morph rig whose keys move the mouth (companion-lanes: Iris, Bun) takes
+ * the mouth's emotion-free shape mix, so "mouth emotion" would change nothing and is not shown.
+ */
+export function faceRows(group: FaceGroup, rig: { morph?: Rig["morph"] }): readonly FaceRow[] {
+  const morphMouth = rig.morph?.keys.some((k) => (MORPH_MOUTH_TRACKS as readonly string[]).includes(k.track)) ?? false;
+  return morphMouth ? group.rows.filter((row) => row.field !== "mouth.emotion") : group.rows;
+}
+
 export interface FaceCardProps {
-  rig: Pick<Rig, "face">;
+  rig: Pick<Rig, "face"> & { morph?: Rig["morph"] };
   /** The look's face profile. */
   face: Look["face"];
   onFace: (field: FaceField, value: number) => void;
@@ -109,7 +118,7 @@ export const FaceCard = memo(function FaceCard({ rig, face: own, onFace, onReset
           </div>
           {group.id === "gaze" && reduced && <p className={lookCss.note}>Look around is off under reduced motion.</p>}
           <div className={lookCss.sliders}>
-            {group.rows.map((row) => {
+            {faceRows(group, rig).map((row) => {
               const id = inputId(row.field);
               const [min, max] = FACE_LIMITS[row.field];
               const v = faceValue(face, row.field) ?? min;

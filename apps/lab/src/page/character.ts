@@ -14,7 +14,7 @@ export type LoadedCharacter = AvatarPlayer & { readonly rig: Rig };
 export async function loadCharacter(canvas: HTMLCanvasElement, id: string, seed: number, forceMotion: boolean): Promise<LoadedCharacter> {
   const result = await loadPack(`/packs/${encodeURIComponent(id)}.srpack`);
   if (!result.ok) throw new Error(`Character "${id}": ${packErrorSentence(result.error)}`);
-  const assets = await decodePackImages(result.pack.files);
+  const assets = await decodePackImages(result.pack.files, result.pack.rig);
   const { rig, look } = result.pack;
   const player = createAvatarPlayer(canvas, {
     rig,

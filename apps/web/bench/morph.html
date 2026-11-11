@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Morph capture</title>
+    <!-- companion-lanes task 1 (D): one deterministic frame of a morph rig through the player's frame
+         body and the real renderer, for scripts/portrait/capture.mjs. Served by `vite` only, never in
+         the app bundle (vite build reads index.html alone). Query: see morph.ts. -->
+    <style>
+      html, body { margin: 0; padding: 0; background: transparent; }
+      #morph { display: block; }
+    </style>
+  </head>
+  <body>
+    <canvas id="morph"></canvas>
+    <script type="module" src="./morph.ts"></script>
+  </body>
+</html>

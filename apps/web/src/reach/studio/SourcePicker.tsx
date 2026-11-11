@@ -77,11 +77,20 @@ export function SourcePicker({ current, onPick, busy }: SourcePickerProps): Reac
         <span>Cast</span>
         <select value={value("cast:")} onChange={pickCast} disabled={cast === undefined || cast.length === 0}>
           <option value="">{cast === undefined ? "Loading the cast…" : cast.length === 0 ? "No cast packs here" : "Pick a cast member"}</option>
-          {cast?.map((entry) => (
+          {cast?.filter((entry) => entry.companion !== true).map((entry) => (
             <option key={entry.id} value={entry.id}>
               {entry.name}
             </option>
           ))}
+          {cast?.some((entry) => entry.companion === true) === true && (
+            <optgroup label="Companions">
+              {cast.filter((entry) => entry.companion === true).map((entry) => (
+                <option key={entry.id} value={entry.id}>
+                  {entry.name}
+                </option>
+              ))}
+            </optgroup>
+          )}
         </select>
       </label>
       <label className={styles.field}>

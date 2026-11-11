@@ -4,7 +4,7 @@
 // DOM types the Node director's tsconfig does not load), then to the recording's resolution.
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { JAW_DROP, validateRig, type Rig } from "@sr/rig";
+import { JAW_DROP, MORPH_MOUTH_TRACKS, validateRig, type Rig } from "@sr/rig";
 import { isRecord, readJsonFile } from "../director/json.js";
 import { REPO_ROOT } from "../director/paths.js";
 import type { Roi } from "./probe.js";
@@ -13,6 +13,7 @@ export const STAGE_W = 1920;
 export const STAGE_H = 1080;
 const MARGIN = 0.25;
 const FORGE_DIR = join(REPO_ROOT, "assets", "replay", "forge");
+const COMPANIONS_DIR = join(REPO_ROOT, "assets", "replay", "companions");
 /** Upward margin, as a fraction of the jaw height: the lips sit at or just above the jaw bbox top. */
 const MARGIN_UP = 0.6;
 
@@ -52,17 +53,44 @@ export function jawRoi(rig: Pick<Rig, "width" | "height" | "layers">, width: num
 }
 
 /**
- * The ROI for cast character `character`. The rig is read where scripts/build-packs.mjs reads it to
- * build apps/web/public/packs/<id>.srpack (assets/replay/forge/<id>/job.json), because @sr/pack's
- * entry carries DOM types (ImageBitmap) the Node director's tsconfig does not load.
+ * Mouth ROI of a morph rig (companion-lanes: Iris, Bun have no jaw layer): the union of its mouth keys'
+ * boxes (each key's box covers that shape at full weight, so the union holds every opening), a margin
+ * around, mapped as `jawRoi` maps. Throws when the rig has no mouth key.
+ */
+export function morphMouthRoi(rig: Pick<Rig, "width" | "height" | "morph">, width: number, height: number): Roi {
+  const keys = rig.morph?.keys.filter((k) => (MORPH_MOUTH_TRACKS as readonly string[]).includes(k.track)) ?? [];
+  if (keys.length === 0) throw new Error(`Rig has no jaw layer and no morph mouth key, so there is no automatic mouth ROI; pass --roi x,y,w,h.`);
+  const x0 = Math.min(...keys.map((k) => k.bbox[0]));
+  const y0 = Math.min(...keys.map((k) => k.bbox[1]));
+  const x1 = Math.max(...keys.map((k) => k.bbox[0] + k.bbox[2]));
+  const y1 = Math.max(...keys.map((k) => k.bbox[1] + k.bbox[3]));
+  const mx = (x1 - x0) * MARGIN;
+  const my = (y1 - y0) * MARGIN;
+  const view = fitStage(rig);
+  const sx = width / STAGE_W;
+  const sy = height / STAGE_H;
+  const left = Math.max(0, Math.floor(((x0 - mx) * view.scale + view.ox) * sx));
+  const top = Math.max(0, Math.floor(((y0 - my) * view.scale + view.oy) * sy));
+  const right = Math.min(width, Math.ceil(((x1 + mx) * view.scale + view.ox) * sx));
+  const bottom = Math.min(height, Math.ceil(((y1 + my) * view.scale + view.oy) * sy));
+  return { x: left, y: top, w: Math.max(2, (right - left) & ~1), h: Math.max(2, (bottom - top) & ~1) };
+}
+
+/**
+ * The ROI for character `character`. The rig is read where scripts/build-packs.mjs reads it to
+ * build apps/web/public/packs/<id>.srpack (assets/replay/forge/<id>/job.json, or for a companion
+ * assets/replay/companions/<id>/job.json), because @sr/pack's entry carries DOM types (ImageBitmap)
+ * the Node director's tsconfig does not load. A rig with a jaw layer gets `jawRoi`, a morph rig
+ * without one `morphMouthRoi`.
  */
 export function castRoi(character: string, width: number, height: number): Roi {
-  const file = join(FORGE_DIR, character, "job.json");
-  if (!existsSync(file)) throw new Error(`No cast rig for "${character}" at ${file}; pass --roi x,y,w,h.`);
+  const file = [FORGE_DIR, COMPANIONS_DIR].map((dir) => join(dir, character, "job.json")).find((f) => existsSync(f));
+  if (file === undefined) throw new Error(`No cast or companion rig for "${character}" under ${FORGE_DIR} or ${COMPANIONS_DIR}; pass --roi x,y,w,h.`);
   const job: unknown = readJsonFile(file);
   const checked = validateRig(isRecord(job) ? job.rig : undefined);
   if (!checked.ok) throw new Error(`${file}: the rig does not validate (${checked.errors[0]?.message ?? "unknown"}).`);
-  return jawRoi(checked.value, width, height);
+  const rig = checked.value;
+  return rig.layers.some((l) => l.kind === "jaw") || rig.morph === undefined ? jawRoi(rig, width, height) : morphMouthRoi(rig, width, height);
 }
 
 /** "x,y,w,h" -> Roi; throws a sentence on anything else. */

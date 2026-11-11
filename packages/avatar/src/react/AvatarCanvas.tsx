@@ -76,7 +76,7 @@ export interface AvatarCanvasProps {
   level?: () => number;
   /**
    * A clip's mouth track on the clip's clock (perfection-pass task 4): while set, a rig whose
-   * `mouthMode` is "drawn" or "warp" shapes its mouth (and opens its jaw) from the track; other
+   * `mouthMode` is "drawn", "warp" or "morph" shapes its mouth (and opens its jaw) from the track; other
    * rigs keep the level drive. Under reduced motion one soft speaking shape (speech/drive.ts).
    */
   mouth?: ClipMouth | undefined;

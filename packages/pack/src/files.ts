@@ -5,9 +5,10 @@ import type { Layer, Rig } from "@sr/rig";
 /**
  * Every image file a rig names, de-duplicated, in the order the renderer loads them: layer images,
  * then region maps, then expression patches (as apps/web `rigFiles` and @sr/avatar
- * `rigAssetFiles`). Only the layer images are required.
+ * `rigAssetFiles`), then (companion-lanes) the morph's atlas, motion image and sway map. Only the
+ * layer images are required.
  */
-export function rigFiles(rig: Pick<Rig, "layers">): string[] {
+export function rigFiles(rig: Pick<Rig, "layers"> & { morph?: Rig["morph"] }): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
   const once = (file: string | undefined): void => {
@@ -24,6 +25,9 @@ export function rigFiles(rig: Pick<Rig, "layers">): string[] {
     once(layer.closed);
     for (const patch of Object.values(layer.variants ?? {})) once(patch.socket);
   }
+  once(rig.morph?.atlas);
+  once(rig.morph?.flow);
+  once(rig.morph?.sway?.map);
   return out;
 }
 
@@ -49,7 +53,8 @@ export function decodeDataUrl(file: string): { ext: "png" | "webp"; bytes: Uint8
 
 /**
  * The rig with every inline `data:` image moved to a named file: a layer's to `<layer>.<ext>`, a
- * region map's to `<layer>.regions.<ext>`, an expression patch's to `<layer>.<family>.<ext>` (a
+ * region map's to `<layer>.regions.<ext>`, an expression patch's to `<layer>.<family>.<ext>`, the
+ * morph's atlas, motion image and sway map to `morph.atlas.<ext>`, `morph.flow.<ext>`, `morph.sway.<ext>` (a
  * `-2`, `-3`... suffix when the name is taken). The same data URL gets one name. The moved bytes
  * are returned keyed by their new names.
  */
@@ -84,5 +89,10 @@ export function inlineToFiles(rig: Rig): { rig: Rig; moved: Map<string, Uint8Arr
     if (layer.closed !== undefined) next.closed = nameFor(layer.closed, `${layer.name}.closed`);
     return next;
   });
-  return { rig: { ...rig, layers }, moved };
+  const morph = rig.morph;
+  if (morph === undefined) return { rig: { ...rig, layers }, moved };
+  const atlas = nameFor(morph.atlas, "morph.atlas");
+  const flow = morph.flow === undefined ? {} : { flow: nameFor(morph.flow, "morph.flow") };
+  const sway = morph.sway === undefined ? {} : { sway: { ...morph.sway, map: nameFor(morph.sway.map, "morph.sway") } };
+  return { rig: { ...rig, layers, morph: { ...morph, atlas, ...flow, ...sway } }, moved };
 }

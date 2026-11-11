@@ -16,3 +16,5 @@ export * from "./readLook.js";
 export * from "./face.js";
 export * from "./spring.js";
 export * from "./turn.js";
+export * from "./morph.js";
+export * from "./validateMorph.js";

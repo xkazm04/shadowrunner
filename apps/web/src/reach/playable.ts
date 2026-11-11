@@ -8,7 +8,7 @@
 //   images that will not decode and library misses have their own.
 // - An aborted load resolves to an error like any other; callers that aborted ignore it.
 import type { RigAssets } from "@sr/avatar/core";
-import type { VoiceId } from "@sr/engine";
+import { castVoice, type VoiceId } from "@sr/engine";
 import { decodePackImages, loadPack, type PackLicence } from "@sr/pack";
 import type { Look, Rig } from "@sr/rig";
 import { rigAssetsOf } from "../creator/library/assets";
@@ -36,6 +36,8 @@ export interface CastEntry {
   name: string;
   file: string;
   bytes: number;
+  /** companion-lanes: a pack outside the Halloween cast (Iris, Bun), listed after the cast under "Companions". */
+  companion?: true;
 }
 
 const CAST_SLUG = /^[a-z0-9-]+$/;
@@ -63,7 +65,7 @@ async function fromPack(source: string | Blob, signal: AbortSignal | undefined):
   const { pack } = result;
   let assets: RigAssets;
   try {
-    assets = await decodePackImages(pack.files);
+    assets = await decodePackImages(pack.files, pack.rig);
   } catch {
     return fail(UNDECODABLE);
   }
@@ -112,13 +114,24 @@ const isCastEntry = (v: unknown): v is CastEntry => {
   return typeof e.id === "string" && typeof e.name === "string" && typeof e.file === "string" && typeof e.bytes === "number";
 };
 
-/** `/packs/index.json`; `[]` on any failure. Malformed entries are dropped. */
+/**
+ * The index's entries, the cast first and then the companions (packs whose id has no cast voice,
+ * marked `companion`), each part in index order: a page that picks the first entry picks a cast
+ * member, and the companions never sit in the cast's list (companion-lanes requirement 5.3).
+ */
+export function castFirst(entries: readonly CastEntry[]): CastEntry[] {
+  const cast = entries.filter((e) => castVoice(e.id) !== undefined);
+  const companions = entries.filter((e) => castVoice(e.id) === undefined).map((e): CastEntry => ({ ...e, companion: true }));
+  return [...cast, ...companions];
+}
+
+/** `/packs/index.json` as `castFirst` orders it; `[]` on any failure. Malformed entries are dropped. */
 export async function loadCastIndex(init?: { signal?: AbortSignal }): Promise<CastEntry[]> {
   try {
     const response = await fetch(CAST_INDEX, init?.signal === undefined ? undefined : { signal: init.signal });
     if (!response.ok) return [];
     const body: unknown = await response.json();
-    return Array.isArray(body) ? body.filter(isCastEntry) : [];
+    return Array.isArray(body) ? castFirst(body.filter(isCastEntry)) : [];
   } catch {
     return [];
   }

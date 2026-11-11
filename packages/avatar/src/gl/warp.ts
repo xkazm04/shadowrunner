@@ -117,7 +117,7 @@ export interface WarpPlan {
 export function planWarp(rig: Rig, layers: ReadonlyMap<string, Layer>, poses: readonly LayerPose[], view: View, browY: number, pose: MouthPose | undefined, lip: () => MouthRgb | undefined): WarpPlan | undefined {
   const mouth = rig.mouth;
   const geometry = mouthGeometry(mouth);
-  if (mouth === undefined || geometry === undefined || mouthMode(mouth) !== "warp") return undefined;
+  if (mouth === undefined || geometry === undefined || mouthMode(mouth, rig.morph) !== "warp") return undefined;
   const found = mouthLayers(layers, poses);
   if (found === undefined) return undefined;
   const { gap } = anchorOf(geometry, found.jaw, found.head, view, browY);

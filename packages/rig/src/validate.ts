@@ -3,7 +3,7 @@
 // text. Shape is checked first (`bad_shape`, naming the JSON path); the semantic checks run only
 // on shape-valid input. Every error found is collected. The returned Rig is a fresh object holding
 // only contract fields. Rig.motion (perfection-pass V1) is read by validateMotion.ts (`readRigMotion`),
-// Rig.turn (perfection-pass V2) by `readRigTurn`.
+// Rig.turn (perfection-pass V2) by `readRigTurn`, Rig.morph (companion-lanes) by validateMorph.ts.
 // Layer.motion (cast-forge req 1.2) is read by validateMotion.ts; its shape and range faults are
 // `bad_shape` at `$.layers[i].motion.<field>`, every one reported. Layer.drop (cast-forge task 3)
 // is `bad_shape` at `$.layers[i].drop` when out of [JAW_DROP_MIN, JAW_DROP_MAX] or not on a jaw;
@@ -25,6 +25,7 @@ import { RIG_VERSION, type Layer, type LayerKind, type Palette, type Rig, type R
 import { readFace } from "./face.js";
 import { readLayerControls } from "./validateControl.js";
 import { readMotion, readRigMotion, readRigTurn, type MotionCanvas } from "./validateMotion.js";
+import { checkMorph, readMorph } from "./validateMorph.js";
 
 export const RIG_ERROR_CODES = ["bbox_out_of_bounds", "duplicate_name", "duplicate_z", "bad_follow", "bad_color", "bad_shape"] as const;
 export type RigErrorCode = (typeof RIG_ERROR_CODES)[number];
@@ -264,11 +265,12 @@ class Reader {
     const { face, problems: faceProblems } = readFace(value.face, "$.face");
     const { motion, problems: motionProblems } = readRigMotion(value.motion, "$.motion");
     const { turn, problems: turnProblems } = readRigTurn(value.turn, "$.turn");
-    for (const problem of [...faceProblems, ...motionProblems, ...turnProblems]) this.fail(problem.path, problem.message.slice(problem.path.length + 2));
+    const { morph, problems: morphProblems } = readMorph(value.morph, "$.morph", width, fileProblem);
+    for (const problem of [...faceProblems, ...motionProblems, ...turnProblems, ...morphProblems]) this.fail(problem.path, problem.message.slice(problem.path.length + 2));
     if (this.errors.length > before) return undefined;
     if (version === undefined || id === undefined || name === undefined || width === undefined || height === undefined) return undefined;
     if (source === undefined || palette === undefined || layers === undefined) return undefined;
-    return { version, id, name, width, height, source, ...(fictional === undefined ? {} : { fictional }), palette, layers, ...(mouth === undefined ? {} : { mouth }), ...(face === undefined ? {} : { face }), ...(motion === undefined ? {} : { motion }), ...(turn === undefined ? {} : { turn }) };
+    return { version, id, name, width, height, source, ...(fictional === undefined ? {} : { fictional }), palette, layers, ...(mouth === undefined ? {} : { mouth }), ...(face === undefined ? {} : { face }), ...(motion === undefined ? {} : { motion }), ...(turn === undefined ? {} : { turn }), ...(morph === undefined ? {} : { morph }) };
   }
 }
 
@@ -380,6 +382,7 @@ export function validateRig(input: unknown): Result<Rig, RigError[]> {
   checkUnique(rig, "name", "duplicate_name", errors);
   checkUnique(rig, "z", "duplicate_z", errors);
   checkFollows(rig, errors);
+  errors.push(...checkMorph(rig));
   return errors.length > 0 ? { ok: false, errors } : { ok: true, value: rig };
 }
 

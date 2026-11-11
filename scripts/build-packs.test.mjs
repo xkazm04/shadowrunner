@@ -1,16 +1,20 @@
 // build-packs (avatar-pack design "Testing"): two cast folders into a temp dir twice give identical
-// bytes, malakor is skipped, and every pack passes readPack.
+// bytes, malakor is skipped, and every pack passes readPack. companion-lanes: the companion jobs
+// (assets/replay/companions) pack beside the cast with their morph files and their own voices.
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runnerImport } from "vite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { buildPacks } from "./build-packs.mjs";
+import { buildPacks, COMPANION_VOICES } from "./build-packs.mjs";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const FORGE = join(ROOT, "assets", "replay", "forge");
 const CAST = ["lantern-warden", "moth-widow"];
+const COMPANIONS_SRC = join(ROOT, "assets", "replay", "companions");
+const COMPANIONS = ["bun", "iris"];
+const packModule = async () => (await runnerImport("/packages/pack/src/index.ts", { configFile: false, root: ROOT, logLevel: "warn" })).module;
 
 describe("buildPacks", () => {
   let tmp;
@@ -57,4 +61,37 @@ describe("buildPacks", () => {
     rmSync(join(broken, CAST[0], job.rig.layers[0].file));
     await expect(buildPacks(broken, join(tmp, "c"))).rejects.toThrow(/missing the layer image/);
   });
+
+  it("packs the companions beside the cast, with their morph files and companion voices", async () => {
+    const companions = join(tmp, "companions");
+    for (const slug of COMPANIONS) cpSync(join(COMPANIONS_SRC, slug), join(companions, slug), { recursive: true });
+    const index = await buildPacks(forge, join(tmp, "d"), companions);
+    expect(index.map((entry) => entry.file)).toEqual(["bun.srpack", "iris.srpack", "lantern-warden.srpack", "moth-widow.srpack"]);
+    const again = await buildPacks(forge, join(tmp, "e"), companions);
+    expect(again).toEqual(index);
+    const pack = await packModule();
+    for (const slug of COMPANIONS) {
+      const bytes = readFileSync(join(tmp, "d", `${slug}.srpack`));
+      expect(bytes.equals(readFileSync(join(tmp, "e", `${slug}.srpack`))), slug).toBe(true);
+      const read = await pack.readPack(new Uint8Array(bytes));
+      expect(read.ok, slug).toBe(true);
+      if (!read.ok) continue;
+      const { rig, manifest, files } = read.pack;
+      expect(manifest).toMatchObject({ id: slug, fictional: true, author: "Shadowrunner companions" });
+      expect(read.pack.voice).toBe(COMPANION_VOICES[slug]);
+      expect(rig.morph).toBeDefined();
+      for (const name of [rig.morph.atlas, rig.morph.flow, rig.morph.sway?.map].filter(Boolean)) expect(Object.keys(files), `${slug} ${name}`).toContain(name);
+    }
+    // Neither joins the Halloween cast's voices.
+    const { module: engine } = await runnerImport("/packages/engine/src/index.ts", { configFile: false, root: ROOT, logLevel: "warn" });
+    for (const slug of COMPANIONS) expect(engine.castVoice(slug)).toBeUndefined();
+  }, 30_000);
+
+  it("fails when a companion's morph image is missing", async () => {
+    const companions = join(tmp, "companions-broken");
+    cpSync(join(COMPANIONS_SRC, "iris"), join(companions, "iris"), { recursive: true });
+    const job = JSON.parse(readFileSync(join(companions, "iris", "job.json"), "utf8"));
+    rmSync(join(companions, "iris", job.rig.morph.atlas));
+    await expect(buildPacks(forge, join(tmp, "f"), companions)).rejects.toThrow(/missing the morph image/);
+  }, 30_000);
 });
