@@ -57,6 +57,15 @@ the real renderer at 640 px); strips in `var/companion-lanes/round4/sheets/iris/
   and boards are unchanged (`board-regress.jpg`).
 - Region slots carry `shade: "move"` (recolour maps lightness too, design "Round 4 amendment").
 
+## Round 6 (mouth size in speech, 2026-11-11)
+Owner: the speaking mouth was too large. Each viseme drove its track to 1, so speech always showed
+the edit at full size. The recipe's `mouthGain` (the Director's choice on the strength strips
+`var/ms/iris-strength.jpg`) is copied to `morph.mouthGain`: openMid 0.7, round 0.6, tongue 0.7,
+narrow 0.6, openWide 0.45 (an "ah" lands at 0.45 on the track: `open_wide_half` at 0.9, the wide
+key never reached in speech at the default `mouth.size`). `closed` and `teeth` are not reduced.
+No key's bytes changed (only `job.json`). Boards: `var/companion-lanes/round6/board-iris.jpg`
+(every shape at weight 1, before | after).
+
 ## Known
 - gaze_d at 0.5 shows a second, faint eyeliner wing below the first (as before round 4).
 - Recolour keeps the art's lightness (the renderer's rule): "black" hair reads dark grey-silver,

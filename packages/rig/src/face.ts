@@ -15,14 +15,15 @@ export interface ResolvedFace {
   motion: { drift: number; tilt: number; gesture: number; breath: number };
   /** `faces`: every retired family (Rig.face's and Look.face's), `{}` when none is. */
   expression: { strength: number; faces: RetiredFaces };
-  mouth: { emotion: number };
+  /** `size` (round 6): the morph plan's speaking-mouth multiplier; nothing else reads it. */
+  mouth: { emotion: number; size: number };
 }
 
 export const FACE_DEFAULTS: ResolvedFace = {
   gaze: { range: 0.6, saccadeRate: 1.2, habits: { chat: 1, content: 1, host: 1 } },
   motion: { drift: 1, tilt: 1, gesture: 1, breath: 0.3 },
   expression: { strength: 1, faces: {} },
-  mouth: { emotion: 1 },
+  mouth: { emotion: 1, size: 1 },
 };
 
 /** [min, max] of each field, by dotted path. */
@@ -38,6 +39,7 @@ export const FACE_LIMITS = {
   "motion.breath": [0, 1],
   "expression.strength": [0, 1],
   "mouth.emotion": [0, 1.5],
+  "mouth.size": [0.3, 1],
 } as const satisfies Record<string, readonly [number, number]>;
 
 export type FaceField = keyof typeof FACE_LIMITS;
@@ -84,7 +86,7 @@ export function resolveFace(rig: Pick<Rig, "face"> | undefined, look?: Pick<Look
     },
     motion: { drift: pick("motion.drift"), tilt: pick("motion.tilt"), gesture: pick("motion.gesture"), breath: pick("motion.breath") },
     expression: { strength: pick("expression.strength"), faces: { ...retiredOf(rig?.face), ...retiredOf(look?.face) } },
-    mouth: { emotion: pick("mouth.emotion") },
+    mouth: { emotion: pick("mouth.emotion"), size: pick("mouth.size") },
   };
 }
 

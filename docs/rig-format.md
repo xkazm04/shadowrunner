@@ -129,6 +129,7 @@ each with an optional motion field from the layer's own pixels to the key. Decla
 | `keys` | MorphKey[] | yes | 1..40 keys (`bad_shape` at `$.morph.keys`). |
 | `eyes` | `[[x, y], [x, y]]` | yes | The two eye centres, canvas px, the picture's left first: the turn's face and the gaze. Off the canvas is `bbox_out_of_bounds` at `$.morph.eyes[i]`. |
 | `sway` | `{ map, amp }` | no | Soft secondary motion inside the layer (hair ends, ears): `map` a greyscale image stretched over the layer's bbox (R = how loosely that pixel hangs, 0..1), `amp` the canvas px a weight-1 pixel lags at full deflection, in (0, 0.05 x width]. Omitted: no sway. |
+| `mouthGain` | `{ <track>: number }` | no | Round 6: per mouth track, a gain in (0, 1] on its shape weight, so speech lands below the drawn key's full size (keys `openWide` `openMid` `round` `tongue` `narrow`). `closed` and `teeth` are refused (`bad_shape` at `$.morph.mouthGain.<track>`: they are never reduced, the lips must meet on p, b, m), as is any other key or a value outside (0, 1]. Written in that track order, after `sway`. Omitted, or a track omitted: 1. |
 
 A **MorphKey** is `{ id, track, at?, bbox, cell, flowCell?, flowMax?, backCell?, part? }`. `id` matches `^[a-z0-9_]+$`
 and is unique in the rig (`duplicate_name` at `$.morph.keys[i].id`). `track` is one of the 18
@@ -160,7 +161,7 @@ omitted, never null or 0. The morph types are declared in `morphTypes.ts`, re-ex
 |---|---|---|
 | `joy` `showman` `anger` `gloom` `smug` `suspicion` | face | The family's weight in the mood crossfade (the outgoing family at `1 - smoothstep(mix)`, the incoming at `smoothstep(mix)`, one family once), times the face profile's `expression.strength`; 0 for a family retired to `"procedural"`. |
 | `gazeL` `gazeR` `gazeU` `gazeD` | gaze | `max(0, -gx)` / `max(0, gx)` of `gx = gaze.x * range / 0.6` clamped to [-1, 1] (L and R: the picture's left and right), and `gy` likewise (U up, D down); `range` is the profile's `gaze.range`. |
-| `openWide` `openMid` `round` `closed` `teeth` `tongue` `narrow` | mouth | That shape's weight in the player's emotion-free mix (visemes from `setMouthShapes`, or the level's `openMid`); when the seven sum above 1 they are divided by the sum; `rest` is the remainder. |
+| `openWide` `openMid` `round` `closed` `teeth` `tongue` `narrow` | mouth | That shape's weight in the player's emotion-free mix (visemes from `setMouthShapes`, or the level's `openMid`); round 6: every track but `closed` and `teeth` is first multiplied by its `mouthGain` and the face profile's `mouth.size`, clamped to 1; then when the seven sum above 1 they are divided by the sum; `rest` is the remainder. |
 | `blink` | blink | `Drive.blink` (a head layer has no blink of its own). |
 
 **Stops.** A track's keys sorted by `at` are `a1 < ... < an`, with `a0 = 0` the layer's own pixels:
@@ -478,6 +479,7 @@ optional and omitted when absent:
 | `expression.strength` | 1 | `[0, 1]` | Multiplier of every expression face's weight. |
 | `expression.faces` | none | family -> `"procedural"` | Retired faces (retire-a-face): each named family's painted face is not drawn, as if no layer had a variant for it, so procedural motion carries that mood. Omitted when no family is retired. |
 | `mouth.emotion` | 1 | `[0, 1.5]` | Multiplier of the emotion's bias on the player's mouth (warp and drawn). |
+| `mouth.size` | 1 | `[0.3, 1]` | Companion-lanes round 6: multiplier (shrink only: above the tuned size a drawn key would cross-fade into the next) of a morph rig's speaking mouth (every mouth track but `closed` and `teeth`, after `morph.mouthGain`, clamped to 1). Read only by the morph plan, so a cast rig's mouth is unchanged; the creator shows it only on a morph rig (where it hides `mouth.emotion`). |
 
 `resolveFace(rig, look)` (`packages/rig/src/face.ts`) is the only place defaults apply: each field
 is `Look.face`'s, else `Rig.face`'s, else the default, clamped to its range. `readFace` checks a
@@ -705,7 +707,8 @@ How `@sr/avatar` uses the fields above (face-control; behaviour, not wire format
   takes the palette's glow colour; only the layer itself keeps the art's colour.
 - **Dead patches.** A `jaw` or `eye` layer whose two or more patches are one image (one file name,
   or for images in hand, identical decoded pixels) has its patches dropped before the pose.
-- **Mouth.** `mouth.emotion` multiplies the emotion's bias on the player's mouth.
+- **Mouth.** `mouth.emotion` multiplies the emotion's bias on the player's mouth. `mouth.size`
+  scales a morph rig's mouth tracks (see "Tracks" under the morph section) and nothing else.
 
 ### Mouth in the avatar
 

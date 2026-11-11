@@ -20,6 +20,8 @@ from .shade import Morph, place
 
 LAYER_PAD = 4
 SWAY_SCALE = 4
+# The mouth tracks a recipe `mouthGain` may lower (rig MORPH_GAIN_TRACKS, in that order).
+GAIN_TRACKS = ("openWide", "openMid", "round", "tongue", "narrow")
 
 
 def sharpness(a: np.ndarray, b: np.ndarray, mask: np.ndarray) -> float:
@@ -202,6 +204,13 @@ def build(char_dir: Path, out_dir: Path, sheet_dir: Path | None) -> bool:
         small = cv2.resize(sway[hy:hy + hh, hx:hx + hw], (-(-hw // SWAY_SCALE), -(-hh // SWAY_SCALE)), interpolation=cv2.INTER_AREA)
         files["sway.webp"] = webp_bytes(np.repeat(small[..., None], 3, axis=2), lossless=True)
         morph["sway"] = {"map": "sway.webp", "amp": recipe["sway"]["amp"]}
+    if "mouthGain" in recipe:
+        # Round 6: per mouth track, a gain in (0, 1] on its shape weight (closed and teeth never reduced).
+        gain = recipe["mouthGain"]
+        bad = [t for t, g in gain.items() if t not in GAIN_TRACKS or not (isinstance(g, (int, float)) and 0 < g <= 1)]
+        if bad:
+            raise SystemExit(f"recipe mouthGain: {bad} (tracks {', '.join(GAIN_TRACKS)}, gains in (0, 1])")
+        morph["mouthGain"] = {t: gain[t] for t in GAIN_TRACKS if t in gain}
 
     r = recipe["rig"]
     rig = {

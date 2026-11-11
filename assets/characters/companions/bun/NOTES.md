@@ -69,6 +69,22 @@ parts; all gates pass (weight 1 at 0.75-1.96/255). Boards: `var/companion-lanes/
   hair-held region the shader reads at x, not at the displaced point).
 - Region slots carry `shade: "move"`.
 
+## Round 6 (mouth size in speech, 2026-11-11)
+Owner: Bun's mouth too large only when wide open. Her `open_wide` key arrives as colour (its field
+moves the lips 7-9 px), so a gain on one key cannot shrink it. New edit `openWide_half` (a calm
+"ah", Codex, `import --only`, no other edit re-encoded) as `open_wide_half` at 0.5, `optical`
+(weight 1 at 0.93/255, 11 px of motion); `mouthGain` openWide 0.5 (the Director's, on
+`var/ms/bun-strength.jpg`), so a full "ah" in speech lands exactly on the half key. The other
+shapes keep gain 1 (0.36-0.65 of the mouth width, right for the style).
+- The faint grey smudges either side of the wide mouth: the wide edit drops the chin line, outside
+  the `mouthWide` prior; the colour match blurred that change (sigma 12) into the key's drift and
+  carried it across the coverage. `open_wide` now has `residual: "clean"` (the drift sampled only
+  where the edit is within twice the support level of the portrait): smudges gone, colourShift
+  3.94 -> 2.49/255 (`var/companion-lanes/round6/board-bun-wide-key.jpg`).
+- Strips (`round6/board-bun-eighths.jpg`): the shape in eighths opens evenly to the half key with
+  no step. On the track above 0.5 (reached only with `mouth.size` above 1) the wide key still fades
+  in as a cross-fade between two drawn mouths (`board-bun-track-eighths.jpg`, 5/8-7/8), as before.
+
 ## Known
 - At blink 0.75 and 1 a faint purple line can show just under the lower lash (the pressed iris at
   the bottom of the lid field).
@@ -77,4 +93,4 @@ parts; all gates pass (weight 1 at 0.75-1.96/255). Boards: `var/companion-lanes/
   grey (the rule keeps lightness).
 
 ## Refused keys
-None: 13 keys plus 6 families x 2 parts pass every gate.
+None: 16 keys plus 6 families x 2 parts pass every gate (round 6).

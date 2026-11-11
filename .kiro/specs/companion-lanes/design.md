@@ -198,7 +198,7 @@ the lips 7-9 px), so scaling cannot shrink it.
   `closed` and `teeth` are never reduced (the lips must meet on p/b/m).
 - Bun gains `open_wide_half` (a new Codex edit, a calm "ah") at `at: 0.5` on openWide, so her
   speech lands on a drawn key, as Iris's already does.
-- `FaceProfile.mouth.size` in [0.3, 1.5], default 1: a viewer-facing multiplier on the same tracks
+- `FaceProfile.mouth.size` in [0.3, 1], default 1 (shrink only: above 1, Bun's half-wide key cross-faded into the shout as a ghost, and the owner asked for smaller, not larger): a viewer-facing multiplier on the same tracks
   (except closed, teeth), clamped to 1 after gain; read only by the morph plan, so the cast's
   drawn mouths are unchanged. The creator's Face tab shows it only on a morph rig.
 

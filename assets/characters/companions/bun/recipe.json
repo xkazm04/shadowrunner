@@ -125,11 +125,20 @@
       "flow": "optical"
     },
     {
+      "id": "open_wide_half",
+      "track": "openWide",
+      "at": 0.5,
+      "edit": "openWide_half",
+      "region": "mouthWide",
+      "flow": "optical"
+    },
+    {
       "id": "open_wide",
       "track": "openWide",
       "edit": "openWide",
       "region": "mouthWide",
-      "flow": "optical"
+      "flow": "optical",
+      "residual": "clean"
     },
     {
       "id": "round",
@@ -237,6 +246,9 @@
       "flow": "optical"
     }
   ],
+  "mouthGain": {
+    "openWide": 0.5
+  },
   "sway": {
     "amp": 9,
     "inner": [

@@ -3,6 +3,7 @@
 // contract dropped. It never writes `null`: a non-finite number (which JSON.stringify would turn
 // into null) throws a RangeError instead.
 import { EXPRESSION_FAMILIES } from "./control.js";
+import { MORPH_GAIN_TRACKS } from "./morph.js";
 import type { ExpressionFamily, Layer, LayerPatch, LayerRegions, MorphKey, Motion, Palette, Rig, RigFace, RigMorph } from "./types.js";
 
 function wirePalette(palette: Palette): Palette {
@@ -84,6 +85,11 @@ function wireKey(key: MorphKey): MorphKey {
   };
 }
 
+/** RigMorph.mouthGain (round 6) in MORPH_GAIN_TRACKS order, tracks without a gain omitted. */
+function wireGain(gain: NonNullable<RigMorph["mouthGain"]>): NonNullable<RigMorph["mouthGain"]> {
+  return Object.fromEntries(MORPH_GAIN_TRACKS.flatMap((track) => (gain[track] === undefined ? [] : [[track, gain[track]]])));
+}
+
 /** Rig.morph (companion-lanes) in contract order. */
 function wireMorph(morph: RigMorph): RigMorph {
   const [[lx, ly], [rx, ry]] = morph.eyes;
@@ -94,6 +100,7 @@ function wireMorph(morph: RigMorph): RigMorph {
     keys: morph.keys.map(wireKey),
     eyes: [[lx, ly], [rx, ry]],
     ...(morph.sway === undefined ? {} : { sway: { map: morph.sway.map, amp: morph.sway.amp } }),
+    ...(morph.mouthGain === undefined ? {} : { mouthGain: wireGain(morph.mouthGain) }),
   };
 }
 

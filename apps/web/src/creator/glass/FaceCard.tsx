@@ -1,6 +1,7 @@
 // The Face tab (face-control "UX/UI spec"): the character's face profile as three cards of labelled
 // range inputs with read-outs, Gaze (range, saccade rate, the three gaze habits), Motion (drift,
-// tilt, gesture, breath) and Expression (expression strength, mouth emotion), each bounded by
+// tilt, gesture, breath) and Expression (expression strength, mouth emotion or, on a morph rig,
+// mouth size: companion-lanes round 6), each bounded by
 // FACE_LIMITS and showing resolveFace(rig, look), so it starts at the character's own profile.
 // A change writes Look.face (lookReducer "face"); "Reset to character default" deletes it.
 // "Look around" cycles the glass's gaze (useLookAround) so the range can be seen; it is off and
@@ -63,6 +64,7 @@ export const FACE_GROUPS: readonly FaceGroup[] = [
     rows: [
       { field: "expression.strength", label: "strength", step: 0.05, show: percent },
       { field: "mouth.emotion", label: "mouth emotion", step: 0.05, show: times },
+      { field: "mouth.size", label: "mouth size", step: 0.05, show: times },
     ],
   },
 ];
@@ -70,12 +72,13 @@ export const FACE_GROUPS: readonly FaceGroup[] = [
 const inputId = (field: FaceField): string => `face-${field.replace(/\./g, "-")}`;
 
 /**
- * The rows that reach `rig`: a morph rig whose keys move the mouth (companion-lanes: Iris, Bun) takes
- * the mouth's emotion-free shape mix, so "mouth emotion" would change nothing and is not shown.
+ * The rows that reach `rig`: a morph rig whose keys move the mouth (companion-lanes: Iris, Bun; the
+ * mouth mode "morph") takes the mouth's emotion-free shape mix, so "mouth emotion" would change
+ * nothing and is not shown; "mouth size" (round 6) is read only by the morph plan, so it shows only there.
  */
 export function faceRows(group: FaceGroup, rig: { morph?: Rig["morph"] }): readonly FaceRow[] {
   const morphMouth = rig.morph?.keys.some((k) => (MORPH_MOUTH_TRACKS as readonly string[]).includes(k.track)) ?? false;
-  return morphMouth ? group.rows.filter((row) => row.field !== "mouth.emotion") : group.rows;
+  return group.rows.filter((row) => row.field !== (morphMouth ? "mouth.emotion" : "mouth.size"));
 }
 
 export interface FaceCardProps {

@@ -2,7 +2,7 @@
 // socket and narrowed flag, Rig.face and Look.face all validate, survive serializeRig/readLook, and
 // resolveFace fills defaults (Look over Rig over FACE_DEFAULTS) clamped to FACE_LIMITS.
 import { describe, expect, it } from "vitest";
-import { FACE_DEFAULTS, readFace, resolveFace, withFaceValue } from "../face.js";
+import { FACE_DEFAULTS, FACE_LIMITS, readFace, resolveFace, withFaceValue } from "../face.js";
 import { readLook } from "../readLook.js";
 import { serializeRig } from "../serialize.js";
 import { parseRigJson, validateRig } from "../validate.js";
@@ -85,6 +85,17 @@ describe("resolveFace", () => {
     const f = withFaceValue(undefined, "motion.breath", 0.2);
     expect(f).toEqual({ motion: { breath: 0.2 } });
     expect(withFaceValue(f, "motion.breath", undefined)).toEqual({});
+  });
+
+  it("mouth.size (round 6): default 1, limits [0.3, 1], clamped, read and round-tripped beside mouth.emotion", () => {
+    expect(FACE_DEFAULTS.mouth.size).toBe(1);
+    expect(FACE_LIMITS["mouth.size"]).toEqual([0.3, 1]);
+    expect(resolveFace({ face: { mouth: { size: 0.1 } } }).mouth).toEqual({ emotion: 1, size: 0.3 });
+    expect(resolveFace({ face: { mouth: { size: 0.8 } } }, { face: { mouth: { size: 0.9, emotion: 0.5 } } }).mouth).toEqual({ emotion: 0.5, size: 0.9 });
+    const r = readFace({ mouth: { size: 0.7, emotion: 1.2 } }, "$.face");
+    expect(r.face).toEqual({ mouth: { emotion: 1.2, size: 0.7 } });
+    expect(readFace({ mouth: { size: 2 } }, "$.face").problems.map((p) => p.path)).toEqual(["$.face.mouth.size"]);
+    expect(withFaceValue({ mouth: { emotion: 1 } }, "mouth.size", 0.6)).toEqual({ mouth: { emotion: 1, size: 0.6 } });
   });
 
   it("readFace keeps good fields and reports bad ones", () => {

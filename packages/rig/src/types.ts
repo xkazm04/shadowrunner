@@ -9,7 +9,7 @@
 
 import type { RigMorph } from "./morphTypes.js";
 
-export type { MorphKey, MorphPart, MorphSway, MorphTrack, RigMorph } from "./morphTypes.js";
+export type { MorphGainTrack, MorphKey, MorphPart, MorphSway, MorphTrack, RigMorph } from "./morphTypes.js";
 
 export const RIG_VERSION = 1 as const;
 
@@ -260,8 +260,12 @@ export interface RigFace {
    * to procedural motion (retire-a-face), as if its variants were absent. Omitted when none is.
    */
   expression?: { strength?: number; faces?: RetiredFaces };
-  /** How strongly emotion bends the mouth (warp and drawn), 0..1.5. */
-  mouth?: { emotion?: number };
+  /**
+   * `emotion`: how strongly emotion bends the mouth (warp and drawn), 0..1.5. `size` (companion-lanes
+   * round 6): a multiplier on a morph rig's speaking mouth (every mouth track but closed and teeth,
+   * clamped to 1 after the rig's `mouthGain`), 0.3..1.5; read only by the morph plan.
+   */
+  mouth?: { emotion?: number; size?: number };
 }
 
 /** The rest mouth: centre x, lip line y, and width (corner to corner), canvas px. */

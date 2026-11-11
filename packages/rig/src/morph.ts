@@ -5,7 +5,9 @@
 // Decisions the spec leaves open (documented here so the renderer, the builder and the docs agree):
 // - Track values: blink is the caller's closure (the driver's, or a layer's own if larger), clamped
 //   to [0, 1]; a mouth track is its shape's weight, the seven divided by their sum when it is above 1
-//   (`rest` and any other key of the mix are ignored); a face track is its family's weight in the
+//   (`rest` and any other key of the mix are ignored); before that sum (round 6) each mouth track but
+//   `closed` and `teeth` is its shape times the morph's `mouthGain` for it (1 when absent) times the
+//   face profile's `mouth.size` (1 when absent or not a finite positive), clamped to [0, 1]; a face track is its family's weight in the
 //   mood crossfade (the outgoing family at 1 - smoothstep(mix), the incoming at smoothstep(mix), one
 //   family listed once as in mood.ts `facesOf`) times `expression.strength`, 0 when retired; a gaze
 //   track is `max(0, -gx)` / `max(0, gx)` with `gx = gaze.x * range / MORPH_GAZE_FULL` clamped to
@@ -38,10 +40,12 @@ import { EMOTION_FAMILY, EXPRESSION_FAMILIES } from "./control.js";
 export const BLINK_YIELD_BELOW = 0.5;
 import type { ResolvedFace } from "./face.js";
 import { smoothstep } from "./look.js";
-import type { Emotion, ExpressionFamily, MorphTrack, Rig, RigMorph } from "./types.js";
+import type { Emotion, ExpressionFamily, MorphGainTrack, MorphTrack, Rig, RigMorph } from "./types.js";
 
 /** The seven non-rest mouth shapes, as tracks (`@sr/avatar` MOUTH_SHAPES without `rest`). */
 export const MORPH_MOUTH_TRACKS = ["openWide", "openMid", "round", "closed", "teeth", "tongue", "narrow"] as const satisfies readonly MorphTrack[];
+/** The mouth tracks `mouthGain` and `mouth.size` scale (round 6): all but closed and teeth (the lips meet on p, b, m). */
+export const MORPH_GAIN_TRACKS = ["openWide", "openMid", "round", "tongue", "narrow"] as const satisfies readonly MorphGainTrack[];
 export const MORPH_GAZE_TRACKS = ["gazeL", "gazeR", "gazeU", "gazeD"] as const satisfies readonly MorphTrack[];
 /** Every track, in group order: the six families, the gaze, the mouth, the blink. */
 export const MORPH_TRACKS: readonly MorphTrack[] = Object.freeze([...EXPRESSION_FAMILIES, ...MORPH_GAZE_TRACKS, ...MORPH_MOUTH_TRACKS, "blink"]);
@@ -62,6 +66,7 @@ export const MORPH_GAZE_FULL = 0.6;
 const TRACK_INDEX: ReadonlyMap<string, number> = new Map(MORPH_TRACKS.map((track, i) => [track, i]));
 const MOUTH_SET: ReadonlySet<string> = new Set(MORPH_MOUTH_TRACKS);
 const GAZE_SET: ReadonlySet<string> = new Set(MORPH_GAZE_TRACKS);
+const GAIN_SET: ReadonlySet<string> = new Set(MORPH_GAIN_TRACKS);
 
 /** Whether `value` names a track. */
 export const isMorphTrack = (value: unknown): value is MorphTrack => typeof value === "string" && TRACK_INDEX.has(value);
@@ -88,6 +93,8 @@ interface MorphIndex {
   order: Int32Array;
   /** Whether some key sits in each group. */
   groups: boolean[];
+  /** Per MORPH_MOUTH_TRACKS entry, its `mouthGain` (1 when absent, and always 1 on closed and teeth). */
+  gain: Float64Array;
 }
 
 const indexes = new WeakMap<RigMorph, MorphIndex>();
@@ -109,7 +116,11 @@ function indexOf(morph: RigMorph): MorphIndex {
   const order = Int32Array.from(keys.map((_, i) => i).sort((a, b) => (group[a] ?? 0) - (group[b] ?? 0) || a - b));
   const groups = MORPH_GROUPS.map(() => false);
   for (const g of group) groups[g] = true;
-  index = { group, stops, kind, order, groups };
+  const gain = Float64Array.from(MORPH_MOUTH_TRACKS, (track) => {
+    const g = GAIN_SET.has(track) ? morph.mouthGain?.[track as MorphGainTrack] : undefined;
+    return g !== undefined && Number.isFinite(g) && g > 0 ? Math.min(1, g) : 1;
+  });
+  index = { group, stops, kind, order, groups, gain };
   indexes.set(morph, index);
   return index;
 }
@@ -131,8 +142,8 @@ export interface MorphInputs {
   emotion: Emotion;
   /** `Drive.mood`: the crossfade in progress; absent = settled. */
   mood?: { from: Emotion; mix: number } | undefined;
-  /** The face profile in force: `gaze.range`, `expression.strength` and the retired families. */
-  face: Pick<ResolvedFace, "gaze" | "expression">;
+  /** The face profile in force: `gaze.range`, `expression.strength`, the retired families and `mouth.size` (round 6; absent = 1). */
+  face: Pick<ResolvedFace, "gaze" | "expression"> & { mouth?: { size?: number } };
   /** How much the mouth is speaking, 0..1 (round 3: a lower face key gives way); absent = 0. */
   speak?: number | undefined;
 }
@@ -173,12 +184,21 @@ function planOf(morph: RigMorph): MorphPlan {
 }
 
 /** The track values of this frame into `values` (MORPH_TRACKS order). */
-function trackValues(inputs: MorphInputs, values: Float64Array): void {
+function trackValues(inputs: MorphInputs, gain: Float64Array, values: Float64Array): void {
   values[TRACK_INDEX.get("blink") ?? 0] = unit01(inputs.blink);
+  const s = inputs.face.mouth?.size;
+  const size = s !== undefined && Number.isFinite(s) && s > 0 ? s : 1;
   let sum = 0;
-  for (const track of MORPH_MOUTH_TRACKS) sum += unit01(inputs.shapes?.[track]);
-  const k = sum > 1 ? 1 / sum : 1;
-  for (const track of MORPH_MOUTH_TRACKS) values[TRACK_INDEX.get(track) ?? 0] = unit01(inputs.shapes?.[track]) * k;
+  for (let m = 0; m < MORPH_MOUTH_TRACKS.length; m += 1) {
+    const track = MORPH_MOUTH_TRACKS[m] ?? "closed";
+    const at = TRACK_INDEX.get(track) ?? 0;
+    const shape = unit01(inputs.shapes?.[track]);
+    // Round 6: shape x gain x size, clamped to 1; closed and teeth untouched (their gain is 1 and size skips them).
+    const v = GAIN_SET.has(track) ? Math.min(1, shape * (gain[m] ?? 1) * size) : shape;
+    values[at] = v;
+    sum += v;
+  }
+  if (sum > 1) for (const track of MORPH_MOUTH_TRACKS) values[TRACK_INDEX.get(track) ?? 0] = (values[TRACK_INDEX.get(track) ?? 0] ?? 0) / sum;
   const gaze = inputs.gaze;
   if (gaze !== undefined) {
     const r = unit01(inputs.face.gaze.range) / MORPH_GAZE_FULL;
@@ -267,9 +287,9 @@ export function selectMorphKeys(plan: MorphPlan): MorphPlan {
 /** This frame's plan for `morph` (module header). The same object every call for one morph. */
 export function morphPlan(morph: RigMorph, inputs: MorphInputs): MorphPlan {
   const plan = planOf(morph);
-  const { stops, kind } = indexOf(morph);
+  const { stops, kind, gain } = indexOf(morph);
   const { values, weights, colour } = plan;
-  trackValues(inputs, values);
+  trackValues(inputs, gain, values);
   for (let n = 0; n < stops.length; n += 1) {
     const s = stops[n];
     if (s !== undefined) stopWeights(s.keys, s.at, values[s.track] ?? 0, weights);

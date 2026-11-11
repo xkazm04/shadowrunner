@@ -63,6 +63,12 @@ export interface MorphKey {
   part?: MorphPart;
 }
 
+/**
+ * The mouth tracks a `RigMorph.mouthGain` may lower (round 6): every mouth track but `closed` and
+ * `teeth`, which are never reduced (the lips must meet on p, b, m).
+ */
+export type MorphGainTrack = "openWide" | "openMid" | "round" | "tongue" | "narrow";
+
 /** The half of a face an expression key repaints (round 3). */
 export type MorphPart = "upper" | "lower";
 
@@ -88,4 +94,11 @@ export interface RigMorph {
   eyes: [[x: number, y: number], [x: number, y: number]];
   /** Omitted: no sway. */
   sway?: MorphSway;
+  /**
+   * Per mouth track, a gain in (0, 1] on its shape weight (companion-lanes round 6): the plan
+   * multiplies the shape by it (and by the face profile's `mouth.size`) before the seven mouth
+   * values are normalised, so speech lands below the drawn key's full size. `closed` and `teeth`
+   * take none (validateRig refuses them). Omitted, or a track omitted: 1.
+   */
+  mouthGain?: Partial<Record<MorphGainTrack, number>>;
 }

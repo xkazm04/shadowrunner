@@ -39,6 +39,7 @@ describe("validateRig: morph accepted", () => {
     ["four stops on one track", (_r, m, k) => void k.push(key({ id: "b1", track: "blink", at: 0.25 }), key({ id: "b2", track: "blink", at: 0.75 }))],
     ["sway amp at the 5 % cap", (_r, m) => void (m.sway = { map: "s.png", amp: 0.05 * 256 })],
     ["a data: URL atlas", (_r, m) => void (m.atlas = "data:image/webp;base64,AAAA")],
+    ["a mouth gain per gainable track, 1 at the top", (_r, m) => void (m.mouthGain = { openWide: 0.45, openMid: 1, round: 0.6, tongue: 0.7, narrow: 0.001 })],
   ])("%s", (_label, edit) => {
     const result = validateRig(edited(edit));
     expect(result.ok ? [] : result.errors).toEqual([]);
@@ -76,6 +77,12 @@ describe("validateRig: morph refused, the field named", () => {
     ["an absolute atlas path", (_r, m) => void (m.atlas = "/atlas.webp"), "bad_shape", "$.morph.atlas"],
     ["a sway past 5 % of the width", (_r, m) => void (m.sway = { map: "s.png", amp: 13 }), "bad_shape", "$.morph.sway.amp"],
     ["a sway without a map", (_r, m) => void (m.sway = { amp: 3 }), "bad_shape", "$.morph.sway.map"],
+    ["a mouth gain that is not an object", (_r, m) => void (m.mouthGain = 0.5), "bad_shape", "$.morph.mouthGain"],
+    ["a mouth gain on closed (never reduced)", (_r, m) => void (m.mouthGain = { openWide: 0.5, closed: 0.5 }), "bad_shape", "$.morph.mouthGain.closed"],
+    ["a mouth gain on teeth (never reduced)", (_r, m) => void (m.mouthGain = { teeth: 1 }), "bad_shape", "$.morph.mouthGain.teeth"],
+    ["a mouth gain on a face track", (_r, m) => void (m.mouthGain = { joy: 0.5 }), "bad_shape", "$.morph.mouthGain.joy"],
+    ["a mouth gain of 0", (_r, m) => void (m.mouthGain = { openWide: 0 }), "bad_shape", "$.morph.mouthGain.openWide"],
+    ["a mouth gain above 1", (_r, m) => void (m.mouthGain = { round: 1.2 }), "bad_shape", "$.morph.mouthGain.round"],
   ])("%s", (_label, edit, code, path) => {
     const result = validateRig(edited(edit));
     expect(result.ok).toBe(false);
@@ -99,6 +106,19 @@ describe("serializeRig: morph", () => {
     expect(Object.keys(wire.morph.keys[0] ?? {})).toEqual(["id", "track", "at", "bbox", "cell", "flowCell", "flowMax"]);
     expect(Object.keys(wire.morph.keys[1] ?? {})).toEqual(["id", "track", "bbox", "cell"]);
     expect(Object.keys(wire.morph.keys[2] ?? {})).toEqual(["id", "track", "bbox", "cell", "flowCell", "flowMax", "backCell"]);
+  });
+
+  it("round-trips mouthGain (round 6) last, in track order; a morph without it writes none", () => {
+    const base = morphRig();
+    const rig: Rig = { ...base, morph: { ...(base.morph as NonNullable<Rig["morph"]>), mouthGain: { narrow: 0.6, openWide: 0.45, openMid: 0.7 } } };
+    const text = serializeRig(rig);
+    const back = parseRigJson(text);
+    expect(back.ok && back.value).toEqual(rig);
+    expect(back.ok && serializeRig(back.value)).toBe(text);
+    const wire = JSON.parse(text) as { morph: Record<string, unknown> };
+    expect(Object.keys(wire.morph).at(-1)).toBe("mouthGain");
+    expect(Object.keys(wire.morph.mouthGain as object)).toEqual(["openWide", "openMid", "narrow"]);
+    expect(serializeRig(base)).not.toContain("mouthGain");
   });
 
   it("drops fields outside the contract and writes no morph key for a rig without one", () => {

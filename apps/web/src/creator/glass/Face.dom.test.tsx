@@ -143,7 +143,9 @@ describe("the Face tab", () => {
     await open();
     await click(tab("Face"));
     expect(FACE_GROUPS.flatMap((g) => g.rows.map((r) => r.field)).sort()).toEqual([...FACE_FIELDS].sort());
-    for (const field of FACE_FIELDS) {
+    // mouth.size shows only on a morph rig (companion.dom.test); this is a cast rig.
+    expect(view.container.querySelector('[data-face="mouth.size"]')).toBeNull();
+    for (const field of FACE_FIELDS.filter((f) => f !== "mouth.size")) {
       const input = slider(field);
       expect([input.min, input.max], field).toEqual(FACE_LIMITS[field].map(String));
       expect(view.container.querySelector(`label[for="${input.id}"]`)?.textContent, field).not.toBe("");

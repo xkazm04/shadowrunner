@@ -99,6 +99,18 @@ describe("the Face card on a morph rig", () => {
     if (expression === undefined) throw new Error("no expression group");
     expect(faceRows(expression, testRig()).map((r) => r.field)).toContain("mouth.emotion");
   });
+
+  it("shows Mouth size (round 6) only when the mouth mode is morph, bounded by FACE_LIMITS and reading the profile", async () => {
+    view = await mount(<FaceCard rig={morphRig()} face={{ mouth: { size: 0.6 } }} onFace={() => undefined} onReset={() => undefined} lookAround={false} onLookAround={() => undefined} reduced={false} />);
+    const size = view.container.querySelector<HTMLInputElement>('[data-face="mouth.size"]');
+    expect([size?.min, size?.max, size?.value]).toEqual(["0.3", "1", "0.6"]);
+    expect(size?.getAttribute("aria-label")).toBe("Expression mouth size");
+    expect(size?.getAttribute("aria-valuetext")).toBe("×0.60");
+    await view.unmount();
+    view = await mount(<FaceCard rig={testRig()} face={undefined} onFace={() => undefined} onReset={() => undefined} lookAround={false} onLookAround={() => undefined} reduced={false} />);
+    expect(view.container.querySelector('[data-face="mouth.size"]')).toBeNull();
+    expect(view.container.querySelector('[data-face="mouth.emotion"]')).not.toBeNull();
+  });
 });
 
 describe("FACES on a morph rig", () => {

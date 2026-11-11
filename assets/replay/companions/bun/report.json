@@ -20,7 +20,7 @@
   "figures": {
     "sharpness": {
       "head": 0.971,
-      "keysMin": 0.975
+      "keysMin": 0.981
     },
     "regions": {
       "head": {
@@ -131,19 +131,19 @@
       ]
     },
     "atlas": [
-      802,
-      2015
+      1199,
+      1370
     ],
     "flow": [
-      505,
-      400
+      800,
+      266
     ],
     "bytes": {
-      "atlas.webp": 483034,
+      "atlas.webp": 491114,
       "background.webp": 4104,
       "body.regions.png": 3240,
       "body.webp": 60718,
-      "flow.png": 132575,
+      "flow.png": 134249,
       "head.regions.png": 78139,
       "head.webp": 154168,
       "sway.webp": 5790
@@ -199,8 +199,8 @@
       "verdict": "ok",
       "track": "blink",
       "flow": "lid",
-      "weight1": 1.819,
-      "sharpness": 0.998
+      "weight1": 1.816,
+      "sharpness": 0.997
     },
     {
       "id": "blink_half",
@@ -251,8 +251,8 @@
       "verdict": "ok",
       "track": "blink",
       "flow": "lid",
-      "weight1": 1.957,
-      "sharpness": 0.99
+      "weight1": 1.893,
+      "sharpness": 0.989
     },
     {
       "id": "blink_3q",
@@ -303,8 +303,8 @@
       "verdict": "ok",
       "track": "blink",
       "flow": "lid",
-      "weight1": 1.939,
-      "sharpness": 0.991
+      "weight1": 1.893,
+      "sharpness": 0.994
     },
     {
       "id": "blink",
@@ -355,8 +355,8 @@
       "verdict": "ok",
       "track": "blink",
       "flow": "lid",
-      "weight1": 1.921,
-      "sharpness": 0.987
+      "weight1": 1.851,
+      "sharpness": 0.985
     },
     {
       "id": "open_mid",
@@ -391,8 +391,44 @@
       "verdict": "ok",
       "track": "openMid",
       "flow": "optical",
-      "weight1": 0.897,
-      "sharpness": 1.01
+      "weight1": 0.904,
+      "sharpness": 1.007
+    },
+    {
+      "id": "open_wide_half",
+      "edit": "openWide_half",
+      "affine": [
+        [
+          0.99944,
+          7e-05,
+          0.23201
+        ],
+        [
+          -0.00011,
+          0.99998,
+          0.11321
+        ]
+      ],
+      "cornerShift": 0.341,
+      "floor": 3.439,
+      "outsidePrior": 3.233,
+      "supportPx": 11819,
+      "colourShift": 0.466,
+      "bbox": [
+        429,
+        465,
+        173,
+        142
+      ],
+      "flowMax": 11,
+      "flowP99": 10.08,
+      "revealMean": 0.123,
+      "medianMotion": 1.846,
+      "verdict": "ok",
+      "track": "openWide",
+      "flow": "optical",
+      "weight1": 0.935,
+      "sharpness": 0.988
     },
     {
       "id": "open_wide",
@@ -413,7 +449,7 @@
       "floor": 3.439,
       "outsidePrior": 4.101,
       "supportPx": 12006,
-      "colourShift": 3.938,
+      "colourShift": 2.486,
       "bbox": [
         429,
         465,
@@ -422,13 +458,13 @@
       ],
       "flowMax": 9,
       "flowP99": 8.023,
-      "revealMean": 0.576,
+      "revealMean": 0.52,
       "medianMotion": 3.013,
       "verdict": "ok",
       "track": "openWide",
       "flow": "optical",
-      "weight1": 1.601,
-      "sharpness": 1.014
+      "weight1": 1.523,
+      "sharpness": 0.999
     },
     {
       "id": "round",
@@ -463,8 +499,8 @@
       "verdict": "ok",
       "track": "round",
       "flow": "optical",
-      "weight1": 0.766,
-      "sharpness": 1.025
+      "weight1": 0.746,
+      "sharpness": 1.006
     },
     {
       "id": "closed",
@@ -499,8 +535,8 @@
       "verdict": "ok",
       "track": "closed",
       "flow": "optical",
-      "weight1": 0.75,
-      "sharpness": 0.975
+      "weight1": 0.752,
+      "sharpness": 0.987
     },
     {
       "id": "teeth",
@@ -535,8 +571,8 @@
       "verdict": "ok",
       "track": "teeth",
       "flow": "optical",
-      "weight1": 0.958,
-      "sharpness": 1.003
+      "weight1": 0.964,
+      "sharpness": 1.011
     },
     {
       "id": "tongue",
@@ -571,8 +607,8 @@
       "verdict": "ok",
       "track": "tongue",
       "flow": "optical",
-      "weight1": 0.937,
-      "sharpness": 1.01
+      "weight1": 1.016,
+      "sharpness": 1.02
     },
     {
       "id": "narrow",
@@ -607,8 +643,8 @@
       "verdict": "ok",
       "track": "narrow",
       "flow": "optical",
-      "weight1": 1.001,
-      "sharpness": 0.999
+      "weight1": 1.002,
+      "sharpness": 1.001
     },
     {
       "id": "gaze_l",
@@ -653,8 +689,8 @@
       "verdict": "ok",
       "track": "gazeL",
       "flow": "iris",
-      "weight1": 1.57,
-      "sharpness": 1.006
+      "weight1": 1.554,
+      "sharpness": 1.004
     },
     {
       "id": "gaze_r",
@@ -699,8 +735,8 @@
       "verdict": "ok",
       "track": "gazeR",
       "flow": "iris",
-      "weight1": 1.481,
-      "sharpness": 1.001
+      "weight1": 1.423,
+      "sharpness": 1.005
     },
     {
       "id": "gaze_u",
@@ -745,8 +781,8 @@
       "verdict": "ok",
       "track": "gazeU",
       "flow": "iris",
-      "weight1": 1.546,
-      "sharpness": 0.997
+      "weight1": 1.565,
+      "sharpness": 1.002
     },
     {
       "id": "gaze_d",
@@ -791,8 +827,8 @@
       "verdict": "ok",
       "track": "gazeD",
       "flow": "iris",
-      "weight1": 1.606,
-      "sharpness": 0.994
+      "weight1": 1.563,
+      "sharpness": 0.995
     },
     {
       "id": "joy",
@@ -865,9 +901,9 @@
       "flowMax": 18,
       "part": "upper",
       "of": "joy",
-      "weight1": 1.39,
+      "weight1": 1.408,
       "sharpness": 0.981,
-      "composedWeight1": 1.3
+      "composedWeight1": 1.314
     },
     {
       "id": "joy_lower",
@@ -902,9 +938,9 @@
       "flowMax": 9,
       "part": "lower",
       "of": "joy",
-      "weight1": 1.189,
+      "weight1": 1.199,
       "sharpness": 0.991,
-      "composedWeight1": 1.3
+      "composedWeight1": 1.314
     },
     {
       "id": "showman",
@@ -977,9 +1013,9 @@
       "flowMax": 25,
       "part": "upper",
       "of": "showman",
-      "weight1": 1.807,
-      "sharpness": 0.987,
-      "composedWeight1": 1.683
+      "weight1": 1.81,
+      "sharpness": 0.988,
+      "composedWeight1": 1.703
     },
     {
       "id": "showman_lower",
@@ -1014,9 +1050,9 @@
       "flowMax": 10,
       "part": "lower",
       "of": "showman",
-      "weight1": 1.286,
-      "sharpness": 0.996,
-      "composedWeight1": 1.683
+      "weight1": 1.334,
+      "sharpness": 0.989,
+      "composedWeight1": 1.703
     },
     {
       "id": "anger",
@@ -1089,9 +1125,9 @@
       "flowMax": 12,
       "part": "upper",
       "of": "anger",
-      "weight1": 1.517,
-      "sharpness": 0.996,
-      "composedWeight1": 1.274
+      "weight1": 1.493,
+      "sharpness": 0.995,
+      "composedWeight1": 1.242
     },
     {
       "id": "anger_lower",
@@ -1126,9 +1162,9 @@
       "flowMax": 5,
       "part": "lower",
       "of": "anger",
-      "weight1": 0.811,
-      "sharpness": 0.985,
-      "composedWeight1": 1.274
+      "weight1": 0.768,
+      "sharpness": 0.992,
+      "composedWeight1": 1.242
     },
     {
       "id": "gloom",
@@ -1201,9 +1237,9 @@
       "flowMax": 28,
       "part": "upper",
       "of": "gloom",
-      "weight1": 1.502,
-      "sharpness": 1.005,
-      "composedWeight1": 1.353
+      "weight1": 1.611,
+      "sharpness": 0.998,
+      "composedWeight1": 1.414
     },
     {
       "id": "gloom_lower",
@@ -1238,9 +1274,9 @@
       "flowMax": 6,
       "part": "lower",
       "of": "gloom",
-      "weight1": 1.135,
-      "sharpness": 0.992,
-      "composedWeight1": 1.353
+      "weight1": 1.131,
+      "sharpness": 0.985,
+      "composedWeight1": 1.414
     },
     {
       "id": "smug",
@@ -1313,9 +1349,9 @@
       "flowMax": 19,
       "part": "upper",
       "of": "smug",
-      "weight1": 1.594,
-      "sharpness": 0.998,
-      "composedWeight1": 1.359
+      "weight1": 1.591,
+      "sharpness": 0.991,
+      "composedWeight1": 1.363
     },
     {
       "id": "smug_lower",
@@ -1350,9 +1386,9 @@
       "flowMax": 9,
       "part": "lower",
       "of": "smug",
-      "weight1": 0.915,
-      "sharpness": 0.984,
-      "composedWeight1": 1.359
+      "weight1": 0.931,
+      "sharpness": 0.986,
+      "composedWeight1": 1.363
     },
     {
       "id": "suspicion",
@@ -1425,8 +1461,8 @@
       "flowMax": 17,
       "part": "upper",
       "of": "suspicion",
-      "weight1": 1.573,
-      "sharpness": 0.993,
+      "weight1": 1.588,
+      "sharpness": 0.989,
       "composedWeight1": 1.358
     },
     {
@@ -1462,8 +1498,8 @@
       "flowMax": 14,
       "part": "lower",
       "of": "suspicion",
-      "weight1": 0.99,
-      "sharpness": 0.995,
+      "weight1": 0.959,
+      "sharpness": 0.992,
       "composedWeight1": 1.358
     }
   ],

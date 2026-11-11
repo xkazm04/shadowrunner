@@ -957,6 +957,13 @@
       "sway": {
         "map": "sway.webp",
         "amp": 8
+      },
+      "mouthGain": {
+        "openWide": 0.45,
+        "openMid": 0.7,
+        "round": 0.6,
+        "tongue": 0.7,
+        "narrow": 0.6
       }
     }
   },

@@ -72,6 +72,40 @@ describe("track values", () => {
   });
 });
 
+describe("mouth gain and mouth size (round 6)", () => {
+  const mouth = (gain?: RigMorph["mouthGain"]): RigMorph => ({
+    ...morphOf(["openWide", "openMid", "round", "closed", "teeth", "tongue", "narrow"].map((t) => key(t, t as MorphTrack))),
+    ...(gain === undefined ? {} : { mouthGain: gain }),
+  });
+  const sized = (size: number): MorphInputs["face"] => ({ ...FACE_DEFAULTS, mouth: { ...FACE_DEFAULTS.mouth, size } });
+
+  it("multiplies a track's shape by its gain; a track without one, and a morph without any, keep 1", () => {
+    expect(at(mouth({ openWide: 0.45, round: 0.6 }), { shapes: { openWide: 0.6, round: 0.5, narrow: 0.2 } })).toMatchObject({ openWide: 0.27, round: 0.3, narrow: 0.2 });
+    expect(at(mouth(), { shapes: { openWide: 1 } }).openWide).toBe(1);
+  });
+
+  it("closed and teeth are never reduced, by a gain (ignored if a hand-built morph carries one) or by size", () => {
+    const morph = mouth({ openWide: 0.5, closed: 0.2, teeth: 0.2 } as RigMorph["mouthGain"]);
+    expect(at(morph, { shapes: { closed: 1 }, face: sized(0.3) }).closed).toBe(1);
+    expect(at(morph, { shapes: { teeth: 0.7 }, face: sized(0.3) }).teeth).toBe(0.7);
+  });
+
+  it("size multiplies after gain (at most 1: speech never passes the tuned size); absent or bad size is 1", () => {
+    const morph = mouth({ openWide: 0.5 });
+    expect(at(morph, { shapes: { openWide: 1 }, face: sized(1) }).openWide).toBe(0.5);
+    expect(at(morph, { shapes: { openMid: 0.8 }, face: sized(1) }).openMid).toBeCloseTo(0.8 * (morph.mouthGain?.openMid ?? 1), 9);
+    expect(at(morph, { shapes: { openWide: 0.8 }, face: sized(0.5) }).openWide).toBe(0.2);
+    expect(at(morph, { shapes: { openWide: 1 }, face: { gaze: FACE_DEFAULTS.gaze, expression: FACE_DEFAULTS.expression } }).openWide).toBe(0.5);
+    expect(at(morph, { shapes: { openWide: 1 }, face: sized(Number.NaN) }).openWide).toBe(0.5);
+  });
+
+  it("gain applies before the seven are normalised", () => {
+    // 1 x 0.5 + 0.8 = 1.3 > 1: each over 1.3. Without the gain the sum would be 1.8.
+    expect(at(mouth({ openWide: 0.5 }), { shapes: { openWide: 1, closed: 0.8 } })).toMatchObject({ openWide: 0.384615, closed: 0.615385 });
+    expect(at(mouth({ openWide: 0.2 }), { shapes: { openWide: 1, closed: 0.8 } })).toMatchObject({ openWide: 0.2, closed: 0.8 });
+  });
+});
+
 describe("the active list", () => {
   it("is ordered face < gaze < mouth < blink, then by position in morph.keys", () => {
     const morph = morphRig().morph as RigMorph;

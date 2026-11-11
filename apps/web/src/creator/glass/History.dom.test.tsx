@@ -220,6 +220,20 @@ describe("undo and redo (requirement 7.1)", () => {
     expect(slider("gaze.range").value).toBe("0.25");
   });
 
+  it("mouth size on a morph rig (companion-lanes round 6) is one step per drag, undone and redone like its neighbours", async () => {
+    const rig = testRig("morph-ghost");
+    const morph = { layer: "head", atlas: "a.webp", keys: [{ id: "open_mid", track: "openMid" as const, bbox: [24, 28, 16, 8] as [number, number, number, number], cell: [0, 0, 16, 8] as [number, number, number, number] }], eyes: [[25, 20], [39, 20]] as [[number, number], [number, number]] };
+    await reopen({ ...record("morph-ghost"), rig: { ...rig, morph } });
+    expect(slider("mouth.size").value).toBe("1");
+    for (const v of ["0.9", "0.8", "0.7"]) await slide(slider("mouth.size"), v);
+    expect(last().look.face).toEqual({ mouth: { size: 0.7 } });
+    await click(named("Undo look change"));
+    expect(slider("mouth.size").value).toBe("1");
+    expect(last().look.face).toBeUndefined();
+    await click(named("Redo look change"));
+    expect(slider("mouth.size").value).toBe("0.7");
+  });
+
   it("Reset look can be undone", async () => {
     await click(named("crown on the face"));
     await click(named("Reset look"));

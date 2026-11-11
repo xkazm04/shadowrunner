@@ -5,7 +5,8 @@
 // the gap is listed in the character's NOTES.md. Round 2: back cells inside the motion image,
 // region maps the size of their layer. Round 3: each expression family is an upper and a lower key.
 // Round 4: four blink stops (.25 .5 .75 1) on both, Iris's openWide at .5 and 1, every region slot
-// `shade: "move"`.
+// `shade: "move"`. Round 6: openWide at .5 and 1 on both (Bun's `open_wide_half`), and each
+// character's `mouthGain` as the Director chose it on the strength strips.
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -22,6 +23,10 @@ const TRACKS = {
   openWide: 1, openMid: 1, round: 1, closed: 1, teeth: 1, tongue: 1, narrow: 1,
   joy: 2, showman: 2, anger: 2, gloom: 2, smug: 2, suspicion: 2,
   gazeL: 1, gazeR: 1, gazeU: 1, gazeD: 1,
+};
+const MOUTH_GAIN = {
+  iris: { openWide: 0.45, openMid: 0.7, round: 0.6, tongue: 0.7, narrow: 0.6 },
+  bun: { openWide: 0.5 },
 };
 const slugs = readdirSync(BUILT, { withFileTypes: true })
   .filter((entry) => entry.isDirectory() && existsSync(join(BUILT, entry.name, "job.json")))
@@ -82,7 +87,7 @@ describe("built companions", () => {
 
     it("has every track, or lists the gap in NOTES.md", () => {
       const notes = readFileSync(join(SOURCES, slug, "NOTES.md"), "utf8").replace(/\r\n/g, "\n");
-      const want = { ...TRACKS, ...(slug === "iris" ? { openWide: 2 } : {}) };
+      const want = { ...TRACKS, openWide: 2 };
       for (const [track, stops] of Object.entries(want)) {
         const keys = rig.morph.keys.filter((key) => key.track === track);
         if (keys.length === stops) continue;
@@ -96,6 +101,11 @@ describe("built companions", () => {
       if (blink.length === 4) expect(blink).toEqual([0.25, 0.5, 0.75, 1]);
       const wide = rig.morph.keys.filter((key) => key.track === "openWide").map((key) => key.at ?? 1).sort();
       if (wide.length === 2) expect(wide).toEqual([0.5, 1]);
+      expect(rig.morph.keys.find((key) => key.track === "openWide" && key.at === 0.5)?.id).toBe("open_wide_half");
+    });
+
+    it("carries the mouth gains chosen on the strength strips (round 6; closed and teeth never reduced)", () => {
+      expect(rig.morph.mouthGain).toEqual(MOUTH_GAIN[slug]);
     });
 
     it("gives its region maps the size of their layer image", async () => {

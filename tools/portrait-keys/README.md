@@ -43,7 +43,8 @@ written either way.
   mouth: { cx, lineY, width },        // Rig.mouth
   regions: { <name>: { ellipses: [[cx, cy, rx, ry], ...] } | { box: [x, y, w, h] } },
   mattes: { figure: "matte", head: "head" }, floor: "noop",
-  keys: [{ id, track, at?, edit, region, flow: "optical" | "iris" | "lid" | "none", optional? }],
+  keys: [{ id, track, at?, edit, region, flow: "optical" | "iris" | "lid" | "none", optional?, residual?: "clean" }],
+  mouthGain?: { openWide?, openMid?, round?, tongue?, narrow? },  // round 6: each in (0, 1], copied to morph.mouthGain
   sway?: { amp, inner: [cx, cy, rx, ry], reach, gamma, zero?: [region], cap?: [region + max], boost?: [region + min], margin? },
   gates?: { cornerShift, outsideMargin, floorTimes, floorMin, moves, flowSigma, flowFrom, revealTimes, revealRamp, gazeReach, weight1, lidSigma, lidReach, lidHold },
   matte?: { lo, hi, core, nearBody, under, groundCheck, headOnly: [region] },
@@ -65,6 +66,16 @@ below pressed into the lower lash with no fold, so two blink stops mixed by the 
 lid instead of showing two (`lidSigma`, `lidReach`, `lidHold`); `none` is a plain cross-fade. Pick
 per key by looking at its strip. Round 2 (design "Round 2 amendment"): every moving key writes F
 (`flowCell`) and G plus reveal (`backCell`) unscaled; the shader needs no inversion.
+
+`mouthGain` (round 6): per mouth track, a gain in (0, 1] on the shape weight at run time (the rig's
+`morph.mouthGain`; `closed` and `teeth` are refused, the lips must meet on p, b, m). The build checks
+and copies it in track order; nothing else in the build reads it. Choose it by eye on strength
+strips (the shape at 0.4 .. 1 through the real renderer), so speech lands on a calm mouth.
+
+`residual: "clean"` (round 6, per key): the colour match's drift is sampled only where the edit is
+within twice the support level of the portrait, so a real change past the region prior is not
+blurred into the key (Bun's wide "ah" drops the chin line; without it, grey smudges either side of
+the mouth). Omitted: the drift is sampled everywhere outside the coverage, as before.
 
 ## Steps and gates (report.json)
 1. Mattes: soft alpha from the green edits (a projection keyer, pockets filled, then a ground check

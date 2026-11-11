@@ -230,6 +230,11 @@ def build_key(spec: dict, portrait: np.ndarray, edit: np.ndarray, noop_reg: np.n
 
     # Colour match: the low-frequency residual outside the support, extended across it.
     away = (~dilate(coverage > 0, 6)) & (head_alpha > 0.5)
+    if spec.get("residual") == "clean":
+        # Round 6 (opt-in per key): sample the drift only where the edit is within the editor's
+        # noise, so a real change past the region prior (Bun's wide "ah" drops the chin line) is not
+        # blurred into the key as a grey smudge either side of the mouth.
+        away &= gauss(diff_key, 1.5) < 2.0 * level
     resid, wsum = nblur(portrait - reg, away.astype(np.float32), 12.0)
     resid = pushpull(resid, np.clip(wsum * 4.0, 0.0, 1.0))
     colour = np.clip(reg + resid, 0.0, 1.0).astype(np.float32)

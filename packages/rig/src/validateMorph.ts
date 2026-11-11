@@ -12,13 +12,15 @@
 //   MORPH_MAX_STOPS keys on a track (per part) and no two of one part at one stop
 //   (the stop rule divides by the gap); `flow` only when some key has a `flowCell` (the wire rule:
 //   a rig whose keys all lack motion has no flow); `sway` an object of a `map` file and `amp` in
-//   (0, 0.05 x width].
+//   (0, 0.05 x width]; `mouthGain` (round 6) an object whose keys are MORPH_GAIN_TRACKS and values
+//   numbers in (0, 1]: `closed` or `teeth` is refused (those are never reduced: the lips must meet
+//   on p, b, m), as is any other key.
 // - Against the rig: `layer` names a visible `head` layer (`bad_shape` at `$.morph.layer`), a
 //   repeated key id is `duplicate_name` at its `id`, a key `bbox` or an eye centre off the canvas
 //   is `bbox_out_of_bounds` at its own path.
 import { EXPRESSION_FAMILIES } from "./control.js";
-import { isMorphTrack, MORPH_MAX_KEYS, MORPH_MAX_STOPS, MORPH_TRACKS } from "./morph.js";
-import type { MorphKey, MorphSway, Rig, RigMorph } from "./types.js";
+import { isMorphTrack, MORPH_GAIN_TRACKS, MORPH_MAX_KEYS, MORPH_MAX_STOPS, MORPH_TRACKS } from "./morph.js";
+import type { MorphGainTrack, MorphKey, MorphSway, Rig, RigMorph } from "./types.js";
 
 export interface MorphProblem {
   path: string;
@@ -112,6 +114,20 @@ class MorphReader {
     return map === undefined ? undefined : { map, amp };
   }
 
+  /** Round 6: per gainable mouth track, a number in (0, 1]; closed, teeth and anything else refused. */
+  mouthGain(value: unknown, path: string): RigMorph["mouthGain"] | undefined {
+    if (!isRecord(value)) return this.fail(path, `when present, expected an object of mouth track -> gain, got ${describe(value)}`);
+    const before = this.problems.length;
+    const out: Partial<Record<MorphGainTrack, number>> = {};
+    for (const [track, gain] of Object.entries(value)) {
+      if (!(MORPH_GAIN_TRACKS as readonly string[]).includes(track)) {
+        this.fail(`${path}.${track}`, track === "closed" || track === "teeth" ? `${track} is never reduced (the lips must meet on p, b, m)` : `not a gainable mouth track (${MORPH_GAIN_TRACKS.join(", ")})`);
+      } else if (!(isFiniteNumber(gain) && gain > 0 && gain <= 1)) this.fail(`${path}.${track}`, `expected a number in (0, 1], got ${describe(gain)}`);
+      else out[track as MorphGainTrack] = gain;
+    }
+    return this.problems.length > before ? undefined : out;
+  }
+
   morph(value: unknown, path: string, width: number | undefined): RigMorph | undefined {
     if (!isRecord(value)) return this.fail(path, `when present, expected a morph object, got ${describe(value)}`);
     const layer = typeof value.layer === "string" && value.layer !== "" ? value.layer : this.fail(`${path}.layer`, `expected a layer name, got ${describe(value.layer)}`);
@@ -119,6 +135,7 @@ class MorphReader {
     const flow = value.flow === undefined ? undefined : this.file(value.flow, `${path}.flow`);
     const eyes = this.eyes(value.eyes, `${path}.eyes`);
     const sway = value.sway === undefined ? undefined : this.sway(value.sway, `${path}.sway`, width);
+    const mouthGain = value.mouthGain === undefined ? undefined : this.mouthGain(value.mouthGain, `${path}.mouthGain`);
     const raw = value.keys;
     if (!Array.isArray(raw) || raw.length < 1 || raw.length > MORPH_MAX_KEYS) {
       return this.fail(`${path}.keys`, `expected 1..${MORPH_MAX_KEYS} keys, got ${Array.isArray(raw) ? `${raw.length} keys` : describe(raw)}`);
@@ -135,7 +152,7 @@ class MorphReader {
     if (moving && value.flow === undefined) this.fail(`${path}.flow`, "required when a key has a flowCell");
     if (!moving && value.flow !== undefined) this.fail(`${path}.flow`, "no key has a flowCell (omit flow when no key moves)");
     if (this.problems.length > 0 || layer === undefined || atlas === undefined || eyes === undefined) return undefined;
-    return { layer, atlas, ...(flow === undefined ? {} : { flow }), keys, eyes, ...(sway === undefined ? {} : { sway }) };
+    return { layer, atlas, ...(flow === undefined ? {} : { flow }), keys, eyes, ...(sway === undefined ? {} : { sway }), ...(mouthGain === undefined ? {} : { mouthGain }) };
   }
 
   /**
