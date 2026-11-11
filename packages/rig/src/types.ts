@@ -114,6 +114,11 @@ export interface RegionSlot {
   name: string;
   /** "#rrggbb", the region's median colour as painted. */
   hex: string;
+  /**
+   * companion-lanes round 4: "move" = a recolour moves this slot's lightness from `hex`'s to the
+   * target's (a material slot); omitted = lightness kept (forge lightness bands, every cast slot).
+   */
+  shade?: "move";
 }
 
 /** `map`: a PNG the size of the layer image, R = slot index + 1 (0 = no region). */

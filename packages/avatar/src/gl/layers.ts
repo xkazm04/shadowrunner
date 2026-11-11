@@ -119,6 +119,7 @@ function setRecolour(gl: WebGL2RenderingContext, u: Programs["base"]["u"], plan:
   const on = plan.slots.map((s) => (map !== undefined && s !== undefined ? 1 : 0));
   gl.uniform4f(u.u_slotOn, on[0] ?? 0, on[1] ?? 0, on[2] ?? 0, on[3] ?? 0);
   gl.uniform3fv(u.u_slots, plan.slots.flatMap((s) => s ?? [0, 0, 0]));
+  gl.uniform4f(u.u_slotRef, plan.refs[0] ?? -1, plan.refs[1] ?? -1, plan.refs[2] ?? -1, plan.refs[3] ?? -1);
   gl.activeTexture(gl.TEXTURE1);
   gl.bindTexture(gl.TEXTURE_2D, map?.texture ?? null);
   gl.uniform4f(u.u_mapRect, 0, 0, 1, 1);

@@ -6,7 +6,7 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { RECOLOUR_GLSL } from "../gl/programs.js";
 import type { Rgb } from "../render/frame.js";
-import { hexToHsl, layerRecolour, recolourRgb, rgbToHsl, rigRecolours, S_FLOOR, S_KEEP, type Hsl } from "../render/recolour.js";
+import { hexToHsl, KEEP_L, L_EPS, layerRecolour, mapLightness, recolourRgb, rgbToHsl, rigRecolours, S_FLOOR, S_KEEP, type Hsl } from "../render/recolour.js";
 import { malakorRig } from "./malakor.js";
 import { pixelRig } from "./pixels.js";
 
@@ -56,8 +56,74 @@ describe("recolourRgb", () => {
   });
 });
 
+describe("mapLightness (a region slot's lightness, companion-lanes round 4)", () => {
+  const unit = fc.double({ min: 0, max: 1, noNaN: true });
+
+  it("is the identity when lt == lr, and KEEP_L keeps l whatever lt", () => {
+    fc.assert(
+      fc.property(unit, unit, (l, lr) => {
+        expect(mapLightness(l, lr, lr)).toBeCloseTo(l, 12);
+      }),
+    );
+    fc.assert(
+      fc.property(unit, unit, (l, lt) => {
+        expect(mapLightness(l, KEEP_L, lt)).toBe(l);
+      }),
+    );
+  });
+
+  it("holds the endpoints and sends the reference to the target", () => {
+    fc.assert(
+      fc.property(fc.double({ min: L_EPS, max: 1 - L_EPS, noNaN: true }), fc.double({ min: L_EPS, max: 1 - L_EPS, noNaN: true }), (lr, lt) => {
+        expect(mapLightness(0, lr, lt)).toBe(0);
+        expect(mapLightness(1, lr, lt)).toBeCloseTo(1, 12);
+        expect(mapLightness(lr, lr, lt)).toBeCloseTo(lt, 12);
+      }),
+    );
+  });
+
+  it("is monotonic and stays in 0..1", () => {
+    fc.assert(
+      fc.property(unit, unit, unit, unit, (a, b, lr, lt) => {
+        const [lo, hi] = a <= b ? [a, b] : [b, a];
+        const x = mapLightness(lo, lr, lt);
+        const y = mapLightness(hi, lr, lt);
+        expect(x).toBeLessThanOrEqual(y + 1e-12);
+        expect(x).toBeGreaterThanOrEqual(0);
+        expect(y).toBeLessThanOrEqual(1 + 1e-12);
+      }),
+    );
+  });
+
+  it("guards a pure black or white reference: finite, and a black or white target within L_EPS", () => {
+    for (const lr of [0, 1e-9, 1 - 1e-9, 1]) {
+      for (const l of [0, 1e-6, 0.5, 1]) {
+        for (const lt of [0, 0.5, 1]) {
+          const out = mapLightness(l, lr, lt);
+          expect(Number.isFinite(out)).toBe(true);
+          expect(out).toBeGreaterThanOrEqual(0);
+          expect(out).toBeLessThanOrEqual(1);
+        }
+      }
+    }
+    expect(mapLightness(0.2, 0.2, 0)).toBeLessThanOrEqual(L_EPS);
+    expect(mapLightness(0.2, 0.2, 1)).toBeGreaterThanOrEqual(1 - L_EPS);
+  });
+
+  it("dark jacket to cream: the slot's colour lands on cream's lightness, folds keep their order", () => {
+    const ref = hexToHsl("#2a2a30")[2];
+    const cream = hexToHsl("#e8e2d0");
+    const at = (l: number): number => rgbToHsl(recolourRgb([l, l, l * 1.1], cream, ref))[2];
+    expect(at(ref)).toBeCloseTo(cream[2], 2);
+    expect(at(ref * 0.5)).toBeLessThan(at(ref));
+    expect(at(ref)).toBeLessThan(at(ref + 0.1));
+    // The old rule (no ref) keeps the dark lightness: the olive the round-4 defect named.
+    expect(rgbToHsl(recolourRgb([ref, ref, ref], cream))[2]).toBeCloseTo(ref, 6);
+  });
+});
+
 /** A JS port of RECOLOUR_GLSL, expression for expression (GLSL `mod` is x - y * floor(x / y)). */
-function glslRecolour(src: Rgb, target: Hsl): Rgb {
+function glslRecolour(src: Rgb, target: Hsl, ref = KEEP_L): Rgb {
   const mod = (x: number, y: number): number => x - y * Math.floor(x / y);
   const clamp = (x: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, x));
   const rgb2hsl = ([r, g, b]: Rgb): Hsl => {
@@ -78,26 +144,52 @@ function glslRecolour(src: Rgb, target: Hsl): Rgb {
     const k = (o: number): number => l + c * (clamp(Math.abs(mod(h * 6 + o, 6) - 3) - 1, 0, 1) - 0.5);
     return [k(0), k(4), k(2)];
   };
+  const mapL = (l: number, lr: number, lt: number): number => {
+    if (lr < 0) return l;
+    const r = clamp(lr, L_EPS, 1 - L_EPS);
+    const t = clamp(lt, L_EPS, 1 - L_EPS);
+    return l <= r ? (l * t) / r : t + ((l - r) * (1 - t)) / (1 - r);
+  };
   const hsl = rgb2hsl(src);
   const s = Math.max(target[1] * S_KEEP + hsl[1] * (1 - S_KEEP), S_FLOOR * target[1]);
-  return hsl2rgb([target[0], s, hsl[2]]);
+  return hsl2rgb([target[0], s, mapL(hsl[2], ref, target[2])]);
 }
 
 describe("the GLSL recolour", () => {
   it("is the ported expressions (the port tracks the shader source)", () => {
-    for (const line of ["float s = min(1.0, d / (1.0 - abs(2.0 * l - 1.0)));", "vec3 x = mod(hsl.x * 6.0 + vec3(0.0, 4.0, 2.0), 6.0);", "return hsl.z + c * (clamp(abs(x - 3.0) - 1.0, 0.0, 1.0) - 0.5);", "float s = max(target.y * S_KEEP + src.y * (1.0 - S_KEEP), S_FLOOR * target.y);", "return hsl2rgb(vec3(target.x, s, src.z));"]) {
+    for (const line of [
+      "float s = min(1.0, d / (1.0 - abs(2.0 * l - 1.0)));",
+      "vec3 x = mod(hsl.x * 6.0 + vec3(0.0, 4.0, 2.0), 6.0);",
+      "return hsl.z + c * (clamp(abs(x - 3.0) - 1.0, 0.0, 1.0) - 0.5);",
+      "if (lr < 0.0) return l;",
+      "float r = clamp(lr, L_EPS, 1.0 - L_EPS);",
+      "float t = clamp(lt, L_EPS, 1.0 - L_EPS);",
+      "return l <= r ? l * t / r : t + (l - r) * (1.0 - t) / (1.0 - r);",
+      "float s = max(target.y * S_KEEP + src.y * (1.0 - S_KEEP), S_FLOOR * target.y);",
+      "return hsl2rgb(vec3(target.x, s, mapL(src.z, ref, target.z)));",
+    ]) {
       expect(RECOLOUR_GLSL).toContain(line);
     }
   });
 
-  it("agrees with recolour.ts within 3/255 per channel, red on teal included", () => {
-    const check = (src: Rgb, hex: string): void => {
-      const a = glslRecolour(src, hexToHsl(hex));
-      const b = recolourRgb(src, hex);
+  it("agrees with recolour.ts within 3/255 per channel, red on teal included, with and without a reference", () => {
+    const check = (src: Rgb, hex: string, ref = KEEP_L): void => {
+      const a = glslRecolour(src, hexToHsl(hex), ref);
+      const b = recolourRgb(src, hex, ref);
       a.forEach((v, i) => expect(Math.abs(v - (b[i] ?? NaN)) * 255).toBeLessThanOrEqual(3));
     };
     check([32 / 255, 178 / 255, 170 / 255], "#ff0000");
-    fc.assert(fc.property(rgbArb, hexArb, (src, hex) => check(src, hex)));
+    check([0.1, 0.1, 0.12], "#e8e2d0", 0.1);
+    fc.assert(
+      fc.property(rgbArb, hexArb, (src, hex) => {
+        check(src, hex);
+      }),
+    );
+    fc.assert(
+      fc.property(rgbArb, hexArb, fc.double({ min: 0, max: 1, noNaN: true }), (src, hex, ref) => {
+        check(src, hex, ref);
+      }),
+    );
   });
 });
 
@@ -129,5 +221,22 @@ describe("layerRecolour (which light or region a layer takes)", () => {
     expect(mouth?.slots.map((s) => s !== undefined)).toEqual([false, true, false, false]);
     const own = layerRecolour(pixel, jaw, { ...defaultLook(pixel), palette: { ...pixel.palette, mouth: "#00ff00" }, regions: { [regionKey("jaw", "cavity")]: "#0000ff" } });
     expect(own?.slots[1]).toEqual(hexToHsl("#0000ff"));
+  });
+
+  it("only a shade \"move\" slot maps lightness from its reference hex; a cast-like slot and the mouth light keep it", () => {
+    const pixel = pixelRig();
+    const jaw = pixel.layers.find((l) => l.name === "jaw");
+    const cavity = jaw?.regions?.slots[1];
+    if (jaw === undefined || jaw.regions === undefined || cavity === undefined) throw new Error("fixture");
+    expect(cavity.shade).toBeUndefined();
+    const named: Look = { ...defaultLook(pixel), regions: { [regionKey("jaw", "cavity")]: "#0000ff" } };
+    // Cast-like (no flag): exactly the old rule.
+    expect(layerRecolour(pixel, jaw, named)?.refs).toEqual([KEEP_L, KEEP_L, KEEP_L, KEEP_L]);
+    const moving = { ...jaw, regions: { ...jaw.regions, slots: jaw.regions.slots.map((s) => ({ ...s, shade: "move" as const })) } };
+    const lit = layerRecolour(pixel, moving, { ...defaultLook(pixel), palette: { ...pixel.palette, mouth: "#00ff00" } });
+    expect(lit?.refs).toEqual([KEEP_L, KEEP_L, KEEP_L, KEEP_L]);
+    const own = layerRecolour(pixel, moving, named);
+    expect(own?.refs[1]).toBe(hexToHsl(cavity.hex)[2]);
+    expect(own?.refs.filter((r) => r !== KEEP_L)).toHaveLength(1);
   });
 });
