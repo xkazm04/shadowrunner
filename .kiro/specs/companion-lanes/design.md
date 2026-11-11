@@ -156,6 +156,20 @@ tracks more stops: Iris `openWide_half` (an even oval halfway to the wide "ah"),
   trapezoid), while material slots (the companions', Lot Ninety's suit) map cleanly. The portrait
   builder writes `shade: "move"` on every companion slot; the cast is byte-for-byte as before.
 
+### Round 4 as built
+- Iris `openWide` and the blink: optical fields through every stop (the lid reads as moving down
+  at each stop; a little dissolve remains between stops). Bun's blink: `flow: "lid"`
+  (`portrait_keys/lid.py`): the upper lash line is found column by column in each edit and the lid
+  slides down to it, squeezing the open eye below instead of covering it (covering tore between stops).
+- A gaze key's coverage spans its own motion (removed Bun's `gaze_d` ring).
+- Blink stops below `BLINK_YIELD_BELOW` = 0.5 yield to a held expression in colour and motion, as
+  gaze does (`packages/rig/src/morph.ts`): a neutral quarter lid opened a furious glare wide. A
+  blink over an expression now starts from the expression's eyes and meets the half lid at 0.5.
+- `build.py import --only <name>` brings one edit in without re-encoding the others.
+- Not fixed: Bun's fringe strands still bend a little with the iris on a glance. Holding the hair
+  region still tore the lash line and the iris at each strand's edge (worse than the bend); a real
+  fix draws the strands over the moved eye (a strand layer, or a hair region read unmoved).
+
 ## Builder
 `tools/portrait-keys/build.py` (Python 3.12: numpy, opencv-python, pillow; `requirements.txt`).
 `python tools/portrait-keys/build.py <character dir> --out <built dir> [--sheets <dir>]`.
