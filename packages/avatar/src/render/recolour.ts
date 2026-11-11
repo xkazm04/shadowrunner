@@ -3,18 +3,26 @@
 // of which light or region colour a layer's pixels take for a look. Pure, no DOM.
 //
 //   src (r,g,b) -> HSL (h, s, l); target -> (ht, st, lt)
-//   out = HSL->RGB(ht, max(st * S_KEEP + s * (1 - S_KEEP), S_FLOOR * st), L(l))
+//   out = HSL->RGB(ht, max(st * S_KEEP + s * (1 - S_KEEP) * K, S_FLOOR * st), L(l))
+//
+// K is the saturation carry (round 7, `carryOf`): 1 for a light and an unflagged slot (the old rule,
+// exactly); on a `shade: "move"` slot min(1, st / CARRY_S) * min(1, (1 - |2 lt - 1|) / CARRY_C), so a
+// grey, near-black or near-white target reads neutral instead of keeping the art's own cast (the
+// round-6 brown-black on #101010).
 //
 // L is the lightness map (companion-lanes round 4). A light (eye, glow, mouth) keeps the art's
 // lightness: L(l) = l, and so does a region slot without `shade: "move"` (the forge's slots are
 // lightness bands of one material: moving one band tears it from its neighbours; director ruling,
 // round 4). A `shade: "move"` slot (a material, e.g. a companion's jacket) moves it: with lr the
 // lightness of the slot's reference colour
-// (`regions.slots[i].hex`, the art's median colour of that slot), L is the piecewise-linear curve
+// (`regions.slots[i].hex`, the art's median colour of that slot), L is a curve through
 // (0,0) - (lr,lt) - (1,1), so the slot's own colour lands on the target's lightness, the shading
 // around it keeps its order and black and white stay put. lr and lt are both clamped to
 // [L_EPS, 1 - L_EPS] first (no division by ~0 on a pure black or white reference), so lt == lr is
-// exactly the identity and a black or white target is off by at most L_EPS.
+// the identity and a black or white target is off by at most L_EPS. Each side is the round-4 line
+// while its slope is at most L_SLOPE; a steeper side (a large move: black jacket to cream ~7, cream
+// hoodie to black ~6, which read as satin) is the power curve x^m in that side's unit square, m
+// chosen so the slope at the reference is L_SLOPE (round 7, `mapLightness`, `curveL`).
 //
 // Soft edges (companion-lanes round 5, `LayerRegions.soft`): the map's G is the pixel's coverage of
 // its slot, and the slot's result is mixed over the pixel without it by that coverage (`softMix`);
@@ -85,15 +93,43 @@ export const L_EPS = 1 / 256;
 /** `ref` for "keep the source's lightness" (the lights, and a slot with no readable reference). */
 export const KEEP_L = -1;
 
+/** The lightness map's slope at the reference, at most (round 7: a steeper map read as satin). */
+export const L_SLOPE = 3;
+
 /**
  * The lightness map: `l` through (0,0) - (lr,lt) - (1,1); `lr` < 0 (KEEP_L) returns `l` unchanged.
- * Continuous, monotonic, 0 -> 0, 1 -> 1, lr -> lt, the identity when lt == lr.
+ * Each side is a power curve in its own unit square (round 7): below lr, t * (l / r)^m; above it,
+ * 1 - (1 - t) * ((1 - l) / (1 - r))^m, with m = min(1, L_SLOPE * span_r / span_t), so the slope at
+ * the reference is min(linear slope, L_SLOPE) and a side whose linear slope is within L_SLOPE stays
+ * linear (m >= 1: `curveL` is the round-4 line). Continuous, monotonic, 0 -> 0, 1 -> 1, lr -> lt, the identity
+ * when lt == lr.
  */
 export function mapLightness(l: number, lr: number, lt: number): number {
   if (lr < 0) return l;
   const r = Math.min(1 - L_EPS, Math.max(L_EPS, lr));
   const t = Math.min(1 - L_EPS, Math.max(L_EPS, lt));
-  return l <= r ? (l * t) / r : t + ((l - r) * (1 - t)) / (1 - r);
+  if (l <= r) return t * curveL(Math.max(0, l) / r, (L_SLOPE * r) / t);
+  return 1 - (1 - t) * curveL(Math.max(0, 1 - l) / (1 - r), (L_SLOPE * (1 - r)) / (1 - t));
+}
+
+/** One side of the map in its unit square: x^m below slope 1 at x = 1 (m < 1), else the line. */
+export function curveL(x: number, m: number): number {
+  return m < 1 ? Math.pow(x, m) : x;
+}
+
+/** The saturation carry's fade on a moved slot (round 7): full at target s >= CARRY_S and chroma >= CARRY_C. */
+export const CARRY_S = 0.25;
+export const CARRY_C = 0.25;
+
+/**
+ * How much of the art's own saturation a target keeps (`1 - S_KEEP` times this): 1 for a light or
+ * an unflagged slot (`ref` < 0, the old rule exactly); on a `shade: "move"` slot it fades to 0 as
+ * the target's saturation, or its lightness's room for chroma (1 - |2 lt - 1|), goes to 0, so a
+ * near-black, near-white or grey target reads neutral instead of the art's own cast.
+ */
+export function carryOf(target: Hsl, ref: number): number {
+  if (ref < 0) return 1;
+  return Math.min(1, target[1] / CARRY_S) * Math.min(1, (1 - Math.abs(2 * target[2] - 1)) / CARRY_C);
 }
 
 /**
@@ -102,7 +138,7 @@ export function mapLightness(l: number, lr: number, lt: number): number {
  */
 export function recolourHsl(src: Hsl, target: Hsl, ref: number = KEEP_L): Rgb {
   const st = target[1];
-  return hslToRgb([target[0], Math.max(st * S_KEEP + src[1] * (1 - S_KEEP), S_FLOOR * st), mapLightness(src[2], ref, target[2])]);
+  return hslToRgb([target[0], Math.max(st * S_KEEP + src[1] * (1 - S_KEEP) * carryOf(target, ref), S_FLOOR * st), mapLightness(src[2], ref, target[2])]);
 }
 
 /** The rule on 0..1 RGB toward `target` ("#rrggbb" or HSL); `ref` as `recolourHsl`. */

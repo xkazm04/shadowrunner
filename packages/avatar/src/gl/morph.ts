@@ -16,8 +16,11 @@
 //                                                 colour_i its colour scale (u_kParam.w)
 //   c = layer(p); per group g in order: S = sum a_i m_i, C = sum a_i m_i rgb_i / max(S, 1e-4)
 //   at q_i; c.rgb = mix(c.rgb, C * c.a, min(1, S))
-// The layer's 4 rim taps and the region map are read about p (the rim and the turn light's bump
-// see the layer's own pixels there, not the keys'). The layer and atlas reads take the gradients of
+// The layer's 4 rim taps are read about p (the rim and the turn light's bump see the layer's own
+// pixels there, not the keys'). The region map (round 7) is read at mix(p, x, K), K = 1 - prod_g
+// (1 - min(1, S_g)) the share of the pixel the keys paint: their art lies in the rest frame at x, so
+// a key's hair pixel takes the hair slot's recolour even where p has left the slot (a glance with
+// recoloured hair showed the art's own pink there). The layer and atlas reads take the gradients of
 // x (textureGrad), so a displaced read keeps the base pass's level of detail.
 //
 // Decisions the spec leaves open:
@@ -82,6 +85,7 @@ const MORPH_SAMPLE = `  vec2 x = u_rect.xy + v_uv * u_rect.zw;
   vec2 p = x - disp;
   vec2 uv = (p - u_rect.xy) / u_rect.zw;
   vec4 tex = textureGrad(u_tex, uv, gdx / u_rect.zw, gdy / u_rect.zw) * inLayer(uv);
+  float keyed = 0.0;
   for (int g = 0; g < 4; g++) {
     float s = 0.0;
     vec3 c = vec3(0.0);
@@ -98,10 +102,16 @@ const MORPH_SAMPLE = `  vec2 x = u_rect.xy + v_uv * u_rect.zw;
       c += a * t.rgb;
     }
     if (s > 0.0) tex.rgb = mix(tex.rgb, c / max(s, 1e-4) * tex.a, min(1.0, s));
-  }`;
+    keyed = keyed + min(1.0, s) * (1.0 - keyed);
+  }
+  vec2 kuv = mix(uv, (x - u_rect.xy) / u_rect.zw, keyed);`;
 
-/** The base fragment's texture read, replaced (gl/programs.ts `baseFs`). */
-export const MORPH_LAYER_SAMPLE: LayerSample = { decl: MORPH_DECL, sample: MORPH_SAMPLE };
+/**
+ * The base fragment's texture read, replaced (gl/programs.ts `baseFs`). Round 7: the region map is
+ * read at `kuv`, moved from p toward x by the share of the pixel the keys paint (their art is in
+ * the rest frame at x), so a key's hair pixel takes the hair slot's colour where p left the slot.
+ */
+export const MORPH_LAYER_SAMPLE: LayerSample = { decl: MORPH_DECL, sample: MORPH_SAMPLE, mapUv: "kuv" };
 
 export const MORPH_UNIFORMS = [
   ...BASE_UNIFORMS, "u_draw", "u_atlas", "u_flow", "u_sway", "u_atlasTexel", "u_flowTexel", "u_swayK", "u_swayBox",

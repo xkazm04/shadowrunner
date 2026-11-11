@@ -6,7 +6,7 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { RECOLOUR_GLSL } from "../gl/programs.js";
 import type { Rgb } from "../render/frame.js";
-import { hexToHsl, KEEP_L, L_EPS, layerRecolour, mapLightness, recolourRgb, rgbToHsl, rigRecolours, S_FLOOR, S_KEEP, type Hsl } from "../render/recolour.js";
+import { CARRY_C, CARRY_S, hexToHsl, KEEP_L, L_EPS, L_SLOPE, layerRecolour, mapLightness, recolourRgb, rgbToHsl, rigRecolours, S_FLOOR, S_KEEP, type Hsl } from "../render/recolour.js";
 import { malakorRig } from "./malakor.js";
 import { pixelRig } from "./pixels.js";
 
@@ -144,14 +144,20 @@ function glslRecolour(src: Rgb, target: Hsl, ref = KEEP_L): Rgb {
     const k = (o: number): number => l + c * (clamp(Math.abs(mod(h * 6 + o, 6) - 3) - 1, 0, 1) - 0.5);
     return [k(0), k(4), k(2)];
   };
+  const curveL = (x: number, m: number): number => (m < 1 ? Math.pow(x, m) : x);
   const mapL = (l: number, lr: number, lt: number): number => {
     if (lr < 0) return l;
     const r = clamp(lr, L_EPS, 1 - L_EPS);
     const t = clamp(lt, L_EPS, 1 - L_EPS);
-    return l <= r ? (l * t) / r : t + ((l - r) * (1 - t)) / (1 - r);
+    if (l <= r) return t * curveL(Math.max(0, l) / r, (L_SLOPE * r) / t);
+    return 1 - (1 - t) * curveL(Math.max(0, 1 - l) / (1 - r), (L_SLOPE * (1 - r)) / (1 - t));
+  };
+  const carryOf = (tg: Hsl, ref: number): number => {
+    if (ref < 0) return 1;
+    return Math.min(1, tg[1] / CARRY_S) * Math.min(1, (1 - Math.abs(2 * tg[2] - 1)) / CARRY_C);
   };
   const hsl = rgb2hsl(src);
-  const s = Math.max(target[1] * S_KEEP + hsl[1] * (1 - S_KEEP), S_FLOOR * target[1]);
+  const s = Math.max(target[1] * S_KEEP + hsl[1] * (1 - S_KEEP) * carryOf(target, ref), S_FLOOR * target[1]);
   return hsl2rgb([target[0], s, mapL(hsl[2], ref, target[2])]);
 }
 
@@ -164,8 +170,12 @@ describe("the GLSL recolour", () => {
       "if (lr < 0.0) return l;",
       "float r = clamp(lr, L_EPS, 1.0 - L_EPS);",
       "float t = clamp(lt, L_EPS, 1.0 - L_EPS);",
-      "return l <= r ? l * t / r : t + (l - r) * (1.0 - t) / (1.0 - r);",
-      "float s = max(target.y * S_KEEP + src.y * (1.0 - S_KEEP), S_FLOOR * target.y);",
+      "float curveL(float x, float m) { return m < 1.0 ? pow(x, m) : x; }",
+      "if (l <= r) return t * curveL(max(0.0, l) / r, L_SLOPE * r / t);",
+      "return 1.0 - (1.0 - t) * curveL(max(0.0, 1.0 - l) / (1.0 - r), L_SLOPE * (1.0 - r) / (1.0 - t));",
+      "if (ref < 0.0) return 1.0;",
+      "return min(1.0, target.y / CARRY_S) * min(1.0, (1.0 - abs(2.0 * target.z - 1.0)) / CARRY_C);",
+      "float s = max(target.y * S_KEEP + src.y * (1.0 - S_KEEP) * carryOf(target, ref), S_FLOOR * target.y);",
       "return hsl2rgb(vec3(target.x, s, mapL(src.z, ref, target.z)));",
     ]) {
       expect(RECOLOUR_GLSL).toContain(line);

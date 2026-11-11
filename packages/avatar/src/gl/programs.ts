@@ -5,7 +5,7 @@
 // adds the iris twin of the base program: the same pass with the eye's socket masks (gl/iris.ts).
 // Companion-lanes adds the morph twin (gl/morph.ts), linked on first need: the warp twin's vertex
 // stage and the base fragment with its texture read replaced by `LayerSample` (`baseFs`'s third arg).
-import { GLOW_SATURATION, L_EPS, S_FLOOR, S_KEEP } from "../render/recolour.js";
+import { CARRY_C, CARRY_S, GLOW_SATURATION, L_EPS, L_SLOPE, S_FLOOR, S_KEEP } from "../render/recolour.js";
 import { MAW_DARK_LUMA, MAW_TAPS } from "../mouth/warp.js";
 import { createTurnGrid, TURN_FS, TURN_LIGHT_STEP, TURN_UNIFORMS, TURN_VS } from "./turn.js";
 import { WARP_GLSL, WARP_UNIFORMS } from "./warp.js";
@@ -32,14 +32,20 @@ vec3 hsl2rgb(vec3 hsl) {
   vec3 x = mod(hsl.x * 6.0 + vec3(0.0, 4.0, 2.0), 6.0);
   return hsl.z + c * (clamp(abs(x - 3.0) - 1.0, 0.0, 1.0) - 0.5);
 }
+float curveL(float x, float m) { return m < 1.0 ? pow(x, m) : x; }
 float mapL(float l, float lr, float lt) {
   if (lr < 0.0) return l;
   float r = clamp(lr, L_EPS, 1.0 - L_EPS);
   float t = clamp(lt, L_EPS, 1.0 - L_EPS);
-  return l <= r ? l * t / r : t + (l - r) * (1.0 - t) / (1.0 - r);
+  if (l <= r) return t * curveL(max(0.0, l) / r, L_SLOPE * r / t);
+  return 1.0 - (1.0 - t) * curveL(max(0.0, 1.0 - l) / (1.0 - r), L_SLOPE * (1.0 - r) / (1.0 - t));
+}
+float carryOf(vec3 target, float ref) {
+  if (ref < 0.0) return 1.0;
+  return min(1.0, target.y / CARRY_S) * min(1.0, (1.0 - abs(2.0 * target.z - 1.0)) / CARRY_C);
 }
 vec3 recolour(vec3 src, vec3 target, float ref) {
-  float s = max(target.y * S_KEEP + src.y * (1.0 - S_KEEP), S_FLOOR * target.y);
+  float s = max(target.y * S_KEEP + src.y * (1.0 - S_KEEP) * carryOf(target, ref), S_FLOOR * target.y);
   return hsl2rgb(vec3(target.x, s, mapL(src.z, ref, target.z)));
 }`;
 
@@ -145,6 +151,8 @@ float socketAt(vec2 m) {
 export interface LayerSample {
   decl: string;
   sample: string;
+  /** The layer uv the region map is read at (an expression of main()'s locals); absent = `uv`. */
+  mapUv?: string;
 }
 
 export const baseFs = (warp: boolean, mask = false, own?: LayerSample): string => `#version 300 es
@@ -172,6 +180,9 @@ const float S_KEEP = ${S_KEEP.toFixed(4)};
 const float S_FLOOR = ${S_FLOOR.toFixed(4)};
 const float GLOW_SAT = ${GLOW_SATURATION.toFixed(4)};
 const float L_EPS = ${L_EPS.toFixed(8)};
+const float L_SLOPE = ${L_SLOPE.toFixed(4)};
+const float CARRY_S = ${CARRY_S.toFixed(4)};
+const float CARRY_C = ${CARRY_C.toFixed(4)};
 layout(location = 0) out vec4 o_color;
 layout(location = 1) out vec4 o_glow;
 ${RECOLOUR_GLSL}
@@ -189,7 +200,7 @@ ${own !== undefined ? own.sample : warp ? WARP_SAMPLE : `  vec2 uv = v_uv;
   vec4 tU = texture(u_tex, uv - vec2(0.0, d.y));
   float gx = tR.a - tL.a;
   float gy = tD.a - tU.a;
-  vec2 muv = u_mapRect.xy + uv * u_mapRect.zw;
+  vec2 muv = u_mapRect.xy + ${own?.mapUv ?? "uv"} * u_mapRect.zw;
   vec4 texel = texture(u_map, clamp(muv, 0.0, 1.0));
   float slot = texel.r;
   float albedo = tex.a > 0.0 ? max(tex.r, max(tex.g, tex.b)) / tex.a : 0.0;
