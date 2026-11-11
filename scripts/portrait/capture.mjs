@@ -122,7 +122,7 @@ async function main() {
       const { png, info } = await capture.shoot(q);
       writeFileSync(join(opts.out, `${name}.png`), png);
       shots.push([name, png]);
-      console.log(`${name}: ${info.mode} on ${info.gpu}; keys ${info.keys.map((k) => `${k.id}:${k.weight.toFixed(3)}`).join(" ") || "none"}${info.sway === null ? "" : `; sway ${info.sway.x},${info.sway.y}`}`);
+      console.log(`${name}: ${info.mode} on ${info.gpu}; keys ${info.keys.map((k) => `${k.id}:${k.weight.toFixed(3)}${k.colour === 1 ? "" : `/c${k.colour.toFixed(2)}`}`).join(" ") || "none"}${info.sway === null ? "" : `; sway ${info.sway.x},${info.sway.y}`}`);
     }
     if (opts.board) await board(shots, join(opts.out, "board.png"));
   } finally {

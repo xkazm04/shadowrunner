@@ -11,7 +11,9 @@
 //                                                 cell, G_i the back cell's R, G, both at x and 0
 //                                                 outside the bbox; no back cell: Fh_i = F_i
 //   D(x) = sum_i w_i Fh_i(x);  p = x' - D(x')      no inversion: exact at weight 0 and 1 for any field
-//   q_i = p + Fh_i(x');  r_i = back cell B at q_i (0 without one);  a_i = mix(w_i, smoothstep(0, .4, w_i), r_i)
+//   q_i = p + Fh_i(x');  r_i = back cell B at q_i (0 without one);
+//   a_i = colour_i * mix(w_i, smoothstep(0, .4, w_i), r_i)   round 3: w_i the plan's motion weight,
+//                                                 colour_i its colour scale (u_kParam.w)
 //   c = layer(p); per group g in order: S = sum a_i m_i, C = sum a_i m_i rgb_i / max(S, 1e-4)
 //   at q_i; c.rgb = mix(c.rgb, C * c.a, min(1, S))
 // The layer's 4 rim taps and the region map are read about p (the rim and the turn light's bump
@@ -91,7 +93,7 @@ const MORPH_SAMPLE = `  vec2 x = u_rect.xy + v_uv * u_rect.zw;
       vec2 r = u_kCell[i].zw / u_kBox[i].zw * u_atlasTexel;
       vec4 t = textureGrad(u_atlas, (u_kCell[i].xy + k * u_kCell[i].zw) * u_atlasTexel, gdx * r, gdy * r);
       float w = u_kParam[i].x;
-      float a = mix(w, smoothstep(0.0, 0.4, w), kReveal(i, k));
+      float a = u_kParam[i].w * mix(w, smoothstep(0.0, 0.4, w), kReveal(i, k));
       s += a * t.a;
       c += a * t.rgb;
     }
@@ -218,6 +220,7 @@ export function createMorphGl(gl: WebGL2RenderingContext): MorphGl {
         param[4 * n] = plan.weights[plan.active[n] ?? 0] ?? 0;
         param[4 * n + 1] = flow !== undefined && key.flowCell !== undefined ? (key.flowMax ?? 0) : 0;
         param[4 * n + 2] = morphGroupIndex(key.track);
+        param[4 * n + 3] = plan.colour[plan.active[n] ?? 0] ?? 1;
       }
       program ??= link(gl, baseVs(true), baseFs(false, false, MORPH_LAYER_SAMPLE), MORPH_UNIFORMS);
       if (draw?.program !== program) draw = { layer: morph.layer, program, ...methods };

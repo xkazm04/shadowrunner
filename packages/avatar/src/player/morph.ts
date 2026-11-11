@@ -15,6 +15,11 @@
 //   its pivot above the hanging hair, so a positive (clockwise) roll lag swings it to the left.
 // - Reduced motion (`still`), a `drive` override (a frozen screenshot: no springs) at the frame body,
 //   or spring strength 0: L = 0 and no drift.
+// - Speak (round 3): how much the mouth is speaking, the mouth mix's non-rest total (capped at 1),
+//   followed with a fast attack (95 % in SPEAK_ATTACK_S) and a slow release (SPEAK_RELEASE_S),
+//   exponential in dt, so it does not depend on the frame rate and a smile's lower face does not
+//   flicker back between words. 0 without mouth shapes (no mouth keys). A frozen frame takes the
+//   total as it is; `speak` in the inputs (a capture's override) wins over both.
 // - Allocation: one MorphFrame and one sway vector per frame body, refilled; the plan is @sr/rig's.
 import { FACE_DEFAULTS, morphPlan, springStrength, type Drive, type Look, type MorphInputs, type ResolvedFace, type Rig, type SpringChannels } from "@sr/rig";
 import type { ShapeWeights } from "../mouth/shapes.js";
@@ -24,6 +29,24 @@ import type { MorphFrame } from "../render/types.js";
 export const SWAY_FULL = Object.freeze({ yaw: 0.08, pitch: 0.08, roll: 0.03, lift: 0.006 });
 /** The idle drift's largest |L| per axis. */
 export const SWAY_IDLE = 0.15;
+/** Seconds to cover 95 % of the way to a higher / a lower speak. */
+export const SPEAK_ATTACK_S = 0.06;
+export const SPEAK_RELEASE_S = 0.35;
+
+/** The mouth mix's non-rest total, 0..1 (non-positive and non-finite weights count 0). */
+export function speakOf(shapes: Readonly<Partial<Record<string, number>>> | undefined): number {
+  if (shapes === undefined) return 0;
+  let total = 0;
+  for (const [shape, w] of Object.entries(shapes)) if (shape !== "rest" && w !== undefined && w > 0 && Number.isFinite(w)) total += w;
+  return Math.min(1, total);
+}
+
+/** `from` eased toward `to` over `dt` s: attack when rising, release when falling (95 % in each time). */
+export function easeSpeak(from: number, to: number, dt: number): number {
+  const s = Number.isFinite(dt) ? Math.max(0, dt) : 0;
+  const ease = to > from ? SPEAK_ATTACK_S : SPEAK_RELEASE_S;
+  return from + (to - from) * (1 - Math.pow(0.05, s / ease));
+}
 
 const clampUnit = (v: number): number => (Number.isFinite(v) ? Math.min(1, Math.max(-1, v)) : 0);
 
@@ -54,8 +77,12 @@ export interface MorphFrameInputs {
   shapes: Readonly<ShapeWeights> | undefined;
   /** The spring lag (`Drive.spring`); undefined at rest or when the springs are off. */
   lag: SpringChannels | undefined;
-  /** A `drive` override (a frozen frame): no sway, not even the idle drift. */
+  /** A `drive` override (a frozen frame): no sway, not even the idle drift; speak is the mix's total. */
   frozen: boolean;
+  /** Seconds since the previous frame (the speak's ease). Omitted: 0. */
+  dt?: number;
+  /** A capture's speak, 0..1, overriding the followed one. */
+  speak?: number | undefined;
 }
 
 /** A per-mount morph step: the frame clock's `morph` for this frame, or undefined (none). */
@@ -63,6 +90,7 @@ export function createMorphFrame(): (inputs: MorphFrameInputs) => MorphFrame | u
   const sway = { x: 0, y: 0 };
   const inputs: MorphInputs = { blink: 0, emotion: "neutral", face: FACE_DEFAULTS };
   let out: MorphFrame | undefined;
+  let speak = 0;
   return (p) => {
     const morph = p.rig.morph;
     if (morph === undefined) return undefined;
@@ -72,6 +100,9 @@ export function createMorphFrame(): (inputs: MorphFrameInputs) => MorphFrame | u
     inputs.emotion = p.look.emotion;
     inputs.mood = p.drive.mood;
     inputs.face = p.face;
+    const total = speakOf(p.shapes);
+    speak = p.frozen ? total : easeSpeak(speak, total, p.dt ?? 0);
+    inputs.speak = p.speak !== undefined && Number.isFinite(p.speak) ? Math.min(1, Math.max(0, p.speak)) : speak;
     const plan = morphPlan(morph, inputs);
     swayLag(p.lag, p.drive.t, morph.sway === undefined ? 0 : springStrength(p.rig, p.look), p.drive.still === true || p.frozen, sway);
     if (!(plan.count > 0 || sway.x !== 0 || sway.y !== 0)) return undefined;

@@ -7,13 +7,16 @@
 //   of 1..MORPH_MAX_KEYS keys, `eyes` two [x, y] pairs of finite numbers; per key an id matching
 //   ^[a-z0-9_]+$, a known track, `at` in (0, 1], integer `bbox` and `cell` tuples with w, h > 0 and
 //   x, y >= 0, `flowCell` (integers, as `cell`) only with `flowMax` in (0, 256] and with `flow`, and
-//   `flowMax` only with `flowCell`, `backCell` (round 2; integers, as `cell`) only with `flowCell`; at most MORPH_MAX_STOPS keys on a track and no two at one stop
+//   `flowMax` only with `flowCell`, `backCell` (round 2; integers, as `cell`) only with `flowCell`;
+//   `part` (round 3) "upper" or "lower", only on an expression family's track; at most
+//   MORPH_MAX_STOPS keys on a track (per part) and no two of one part at one stop
 //   (the stop rule divides by the gap); `flow` only when some key has a `flowCell` (the wire rule:
 //   a rig whose keys all lack motion has no flow); `sway` an object of a `map` file and `amp` in
 //   (0, 0.05 x width].
 // - Against the rig: `layer` names a visible `head` layer (`bad_shape` at `$.morph.layer`), a
 //   repeated key id is `duplicate_name` at its `id`, a key `bbox` or an eye centre off the canvas
 //   is `bbox_out_of_bounds` at its own path.
+import { EXPRESSION_FAMILIES } from "./control.js";
 import { isMorphTrack, MORPH_MAX_KEYS, MORPH_MAX_STOPS, MORPH_TRACKS } from "./morph.js";
 import type { MorphKey, MorphSway, Rig, RigMorph } from "./types.js";
 
@@ -75,7 +78,9 @@ class MorphReader {
   key(value: unknown, path: string): MorphKey | undefined {
     if (!isRecord(value)) return this.fail(path, `expected a key object, got ${describe(value)}`);
     const before = this.problems.length;
-    const { id, track, at, flowMax } = value;
+    const { id, track, at, flowMax, part } = value;
+    if (part !== undefined && part !== "upper" && part !== "lower") this.fail(`${path}.part`, `when present, expected "upper" or "lower", got ${typeof part === "string" ? JSON.stringify(part) : describe(part)}`);
+    else if (part !== undefined && !(EXPRESSION_FAMILIES as readonly unknown[]).includes(track)) this.fail(`${path}.part`, `only an expression family's key has a part, this one is on ${typeof track === "string" ? track : describe(track)}`);
     if (typeof id !== "string" || !KEY_ID.test(id)) this.fail(`${path}.id`, `expected an id matching ^[a-z0-9_]+$, got ${typeof id === "string" ? JSON.stringify(id) : describe(id)}`);
     if (!isMorphTrack(track)) this.fail(`${path}.track`, `${typeof track === "string" ? JSON.stringify(track) : describe(track)} is not a track (${MORPH_TRACKS.join(", ")})`);
     if (at !== undefined && !(isFiniteNumber(at) && at > 0 && at <= 1)) this.fail(`${path}.at`, `when present, expected a number in (0, 1], got ${describe(at)}`);
@@ -89,7 +94,7 @@ class MorphReader {
     if (value.flowCell === undefined && flowMax !== undefined) this.fail(`${path}.flowCell`, "required with flowMax (omit both for a key without motion)");
     if (this.problems.length > before || typeof id !== "string" || !isMorphTrack(track) || bbox === undefined || cell === undefined) return undefined;
     const moving = flowCell !== undefined && isFiniteNumber(flowMax);
-    return { id, track, ...(isFiniteNumber(at) ? { at } : {}), bbox, cell, ...(moving ? { flowCell, flowMax } : {}), ...(moving && backCell !== undefined ? { backCell } : {}) };
+    return { id, track, ...(isFiniteNumber(at) ? { at } : {}), bbox, cell, ...(moving ? { flowCell, flowMax } : {}), ...(moving && backCell !== undefined ? { backCell } : {}), ...(part === "upper" || part === "lower" ? { part } : {}) };
   }
 
   eyes(value: unknown, path: string): RigMorph["eyes"] | undefined {
@@ -133,17 +138,27 @@ class MorphReader {
     return { layer, atlas, ...(flow === undefined ? {} : { flow }), keys, eyes, ...(sway === undefined ? {} : { sway }) };
   }
 
-  /** At most MORPH_MAX_STOPS keys per track, and no two at one stop. */
+  /**
+   * Per track and part, at most MORPH_MAX_STOPS keys and no two at one stop: an upper and a lower
+   * key may share a stop, two keys of one part (or two whole-face keys) may not. A track's keys
+   * either all carry a part or none does (a whole-face key has no place in the two halves' stops).
+   */
   stops(keys: readonly MorphKey[], path: string): void {
     for (const track of MORPH_TRACKS) {
       const on = keys.flatMap((key, i) => (key.track === track ? [i] : []));
-      if (on.length > MORPH_MAX_STOPS) this.fail(`${path}[${on[MORPH_MAX_STOPS] ?? 0}].track`, `${on.length} keys on track ${track}; at most ${MORPH_MAX_STOPS} stops`);
-      const seen = new Map<number, number>();
-      for (const i of on) {
-        const at = keys[i]?.at ?? 1;
-        const earlier = seen.get(at);
-        if (earlier !== undefined) this.fail(`${path}[${i}].at`, `keys[${earlier}] is already the ${track} stop at ${at}`);
-        seen.set(at, i);
+      const parted = on.filter((i) => keys[i]?.part !== undefined);
+      if (parted.length > 0 && parted.length < on.length) this.fail(`${path}[${on.find((i) => keys[i]?.part === undefined) ?? 0}].part`, `track ${track} has keys with a part: every key on it needs one ("upper" or "lower")`);
+      for (const part of ["upper", "lower", undefined] as const) {
+        const mine = on.filter((i) => keys[i]?.part === part);
+        const what = part === undefined ? "" : ` ${part}`;
+        if (mine.length > MORPH_MAX_STOPS) this.fail(`${path}[${mine[MORPH_MAX_STOPS] ?? 0}].track`, `${mine.length}${what} keys on track ${track}; at most ${MORPH_MAX_STOPS} stops`);
+        const seen = new Map<number, number>();
+        for (const i of mine) {
+          const at = keys[i]?.at ?? 1;
+          const earlier = seen.get(at);
+          if (earlier !== undefined) this.fail(`${path}[${i}].at`, `keys[${earlier}] is already the ${track}${what} stop at ${at}`);
+          seen.set(at, i);
+        }
       }
     }
   }

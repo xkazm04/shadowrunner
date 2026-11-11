@@ -3,6 +3,9 @@
 // canvas px relative to the key's bbox (u, v at pixel centres). F and G fade with the coverage.
 // - `shift`: the checker moved SHIFT px right; F only (no back cell): the round-1 path.
 // - `big`: the head moved BIG px right; F = BIG, G = -BIG: a field two fixed-point steps could not invert.
+// - round 3: `face_up` / `face_low` (joy, upper and lower part) the head moved FACE px and tinted
+//   green / red, `look_r` (gazeR, inside `face_up`) the head moved LOOK px and tinted blue; each
+//   with a back cell, so their paint and their motion can be told apart on the pixels.
 // - `stretch`: a vertical stretch about the box's middle row that opens a gap of half height
 //   STRETCH (tapering to none across the box: full in the left half, gone from 3/4 on), filled with
 //   INTERIOR (new surface, r = 1); where the stretch is gone the key is the head inverted (no
@@ -16,6 +19,18 @@ export const SHIFT = 4;
 export const BIG = 42;
 export const STRETCH = 16;
 export const INTERIOR: readonly [number, number, number] = [120, 20, 40];
+export const FACE = 22;
+export const LOOK = 10;
+/** Round 3's slides: the move and the tint (`tinted`) of each. */
+export const SLIDES: Readonly<Record<string, { move: number; tint?: readonly [number, number, number] }>> = {
+  big: { move: BIG },
+  face_up: { move: FACE, tint: [0, 255, 0] },
+  face_low: { move: FACE, tint: [255, 0, 0] },
+  look_r: { move: LOOK, tint: [0, 0, 255] },
+};
+/** A colour 60 % its own, 40 % the tint. */
+export const tinted = (c: readonly number[], tint: readonly number[] | undefined): [number, number, number] =>
+  [0, 1, 2].map((i) => (tint === undefined ? (c[i] ?? 0) : Math.round(0.6 * (c[i] ?? 0) + 0.4 * (tint[i] ?? 0)))) as [number, number, number];
 
 type Rgb = [number, number, number];
 type Head = (x: number, y: number) => Rgb;
@@ -35,8 +50,10 @@ export interface Moving {
 export function moving(id: string, [x0, y0, w, h]: readonly [number, number, number, number]): Moving | undefined {
   const cov = (u: number, v: number): number => coverageAt(u - 0.5, v - 0.5, w, h);
   if (id === "shift") return { flowMax: SHIFT, colour: (head, u, v) => head(x0 + u - SHIFT, y0 + v), f: (u, v) => [SHIFT * cov(u, v), 0] };
-  if (id === "big") {
-    return { flowMax: BIG, colour: (head, u, v) => head(x0 + u - BIG, y0 + v), f: (u, v) => [BIG * cov(u, v), 0], g: (u, v) => [-BIG * cov(u, v), 0], r: () => 0 };
+  const slide = SLIDES[id];
+  if (slide !== undefined) {
+    const d = slide.move;
+    return { flowMax: d, colour: (head, u, v) => tinted(head(x0 + u - d, y0 + v), slide.tint), f: (u, v) => [d * cov(u, v), 0], g: (u, v) => [-d * cov(u, v), 0], r: () => 0 };
   }
   if (id !== "stretch") return undefined;
   const mid = h / 2;

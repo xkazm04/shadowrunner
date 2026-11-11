@@ -63,7 +63,7 @@ describe("the morph program", () => {
     expect(uniform(swaying, "u_swayBox")).toEqual([[60, 30, 140, 180]]);
   });
 
-  it("carries the plan: count, boxes, cells, flow cells, weight / flowMax / group, compositing order", () => {
+  it("carries the plan: count, boxes, cells, flow cells, weight / flowMax / group / colour, compositing order", () => {
     const { rig, draw } = setup();
     const morph = rig.morph as RigMorph;
     const log = draw(frameOf(morph, { blink: 1, emotion: "amused", shapes: { openMid: 0.6, round: 0.2 } }));
@@ -75,7 +75,7 @@ describe("the morph program", () => {
     expect(uniform(log, "u_kFlow")).toEqual([[pad([[44, 0, 30, 33], [27, 0, 15, 10], [0, 0, 0, 0], [0, 0, 0, 0]])]]);
     // Round 2: the back cell of the key that has one (joy has none: the forward motion alone).
     expect(uniform(log, "u_kBack")).toEqual([[pad([[0, 0, 0, 0], [27, 12, 15, 10], [0, 0, 0, 0], [0, 0, 0, 0]])]]);
-    expect(uniform(log, "u_kParam")).toEqual([[pad([[1, 2, 0, 0], [Math.fround(0.6), 6, 2, 0], [Math.fround(0.2), 0, 2, 0], [1, 0, 3, 0]])]]);
+    expect(uniform(log, "u_kParam")).toEqual([[pad([[1, 2, 0, 1], [Math.fround(0.6), 6, 2, 1], [Math.fround(0.2), 0, 2, 1], [1, 0, 3, 1]])]]);
     expect(uniform(log, "u_swayK")).toEqual([[0, 0, 0, 0]]);
     expect(uniform(log, "u_atlasTexel")).toEqual([[1 / 256, 1 / 256]]);
     expect(uniform(log, "u_flowTexel")).toEqual([[1 / 128, 1 / 64]]);
@@ -122,7 +122,7 @@ describe("the morph program", () => {
     const renderer = createRenderer(createCanvasStub({ webgl2: stub }).canvas, rig, assets);
     const look = defaultLook(rig);
     renderer.draw(poseLayers(rig, look, DRIVE), look, { t: 1, reducedMotion: false, morph: frameOf(morph, { shapes: { openMid: 1 } }) });
-    expect(uniform(stub.log, "u_kParam")[0]?.[0]).toEqual([1, 0, 2, 0, ...new Array<number>(28).fill(0)]);
+    expect(uniform(stub.log, "u_kParam")[0]?.[0]).toEqual([1, 0, 2, 1, ...new Array<number>(28).fill(0)]);
     const noAtlas = Object.fromEntries(Object.entries(morphAssets(rig)).filter(([file]) => file !== morph.atlas));
     const bare = createGlStub();
     const r2 = createRenderer(createCanvasStub({ webgl2: bare }).canvas, rig, noAtlas);

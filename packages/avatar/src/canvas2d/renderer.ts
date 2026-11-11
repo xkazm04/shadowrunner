@@ -18,7 +18,7 @@
 // frame clock's `mood` as in GL. An emissive eye or iris with `tint: false` (cast-face-pass) is never
 // recoloured and takes the eyeGain in its filter, as GL's `gainOf`.
 // Morph keys (companion-lanes design "Shader", Canvas 2D): after the morph layer, each active key's
-// atlas cell is drawn over its bbox at `globalAlpha = opacity x weight`, in the plan's compositing
+// atlas cell is drawn over its bbox at `globalAlpha = opacity x weight x colour` (round 3), in the plan's compositing
 // order, with the layer's transform and filter: a plain cross-fade, no motion field, no sway, and
 // the keys keep their painted colour (the look's region recolour is not applied to them).
 import { isEmissive, type Layer, type LayerPose, type Look, type Rig } from "@sr/rig";
@@ -147,7 +147,7 @@ export function createCanvas2dRenderer(canvas: CanvasHost, ctx: CanvasRenderingC
     for (let k = 0; k < plan.count; k += 1) {
       const i = plan.active[k] ?? 0;
       const key = plan.morph.keys[i];
-      const w = plan.weights[i] ?? 0;
+      const w = (plan.weights[i] ?? 0) * (plan.colour[i] ?? 1);
       if (key === undefined || !(w > 0)) continue;
       c.globalAlpha = opacity * Math.min(1, w);
       c.drawImage(atlas, key.cell[0], key.cell[1], key.cell[2], key.cell[3], key.bbox[0], key.bbox[1], key.bbox[2], key.bbox[3]);

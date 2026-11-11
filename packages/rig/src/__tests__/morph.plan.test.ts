@@ -75,7 +75,7 @@ describe("track values", () => {
 describe("the active list", () => {
   it("is ordered face < gaze < mouth < blink, then by position in morph.keys", () => {
     const morph = morphRig().morph as RigMorph;
-    const plan = morphPlan(morph, { ...REST, blink: 1, emotion: "amused", gaze: { x: 0.3, y: 0 }, shapes: { openWide: 0.5, round: 0.5 } });
+    const plan = morphPlan(morph, { ...REST, blink: 1, emotion: "amused", mood: { from: "neutral", mix: 0.5 }, gaze: { x: 0.3, y: 0 }, shapes: { openWide: 0.5, round: 0.5 } });
     expect(Array.from(plan.active.subarray(0, plan.count), (i) => morph.keys[i]?.id)).toEqual(["joy", "look_r", "open_wide", "round", "blink"]);
   });
 

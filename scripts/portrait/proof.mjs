@@ -78,11 +78,17 @@ function diff(a, b, keep = () => true) {
   return { max, changed };
 }
 
-/** The shift s in [lo, hi] (step) that best explains the box as the head moved right by s. */
-function bestShift(img, box, lo, hi, step) {
+/** 60 % the colour, 40 % the tint (morphFields.ts `tinted`); no tint: the colour. */
+const tinted = (c, tint) => (tint === undefined ? c : c.map((v, i) => 0.6 * v + 0.4 * tint[i]));
+const GREEN = [0, 255, 0];
+const RED_TINT = [255, 0, 0];
+const BLUE_TINT = [0, 0, 255];
+
+/** The shift s in [lo, hi] (step) that best explains the box as the head (tinted) moved right by s. */
+function bestShift(img, box, lo, hi, step, tint) {
   let best = { s: NaN, mean: Infinity };
   for (let s = lo; s <= hi + 1e-9; s += step) {
-    const { mean } = error(img, box, (x, y) => headAtX(x - s, y));
+    const { mean } = error(img, box, (x, y) => tinted(headAtX(x - s, y), tint));
     if (mean < best.mean) best = { s: Math.round(s * 100) / 100, mean };
   }
   return best;
@@ -135,6 +141,10 @@ export async function runProof({ out, port, headed, open, board }) {
     ["big_05", "key=big:0.5"],
     ["stretch_03", "key=stretch:0.3"],
     ["stretch_1", "key=stretch:1"],
+    ["parts_rest", "emotion=amused&speak=0"],
+    ["parts_speak", "emotion=amused&shapes=openWide:1&speak=1"],
+    ["gaze_alone", "gx=1"],
+    ["gaze_face", "emotion=amused&gx=1&speak=0"],
   ];
   const capture = await open({ port, headed });
   const shots = {};
@@ -234,6 +244,21 @@ export async function runProof({ out, port, headed, open, board }) {
   r.stretch_w03_gapShare = share([tx + 14, ty + 58, tx + 57, ty + 62], () => INTERIOR);
   r.stretch_w03_flankShare = share([tx + 92, ty + 14, tx + 107, ty + 107], (base) => base.map((v, c) => (c < 3 ? 255 - v : v)));
   r.stretch_w1_gapVsInterior = error(img("stretch_1"), [tx + 14, ty + 46, tx + 57, ty + 74], () => INTERIOR);
+  // Round 3: colour apart from motion. The joy face is split in `face_up` (green) and `face_low`
+  // (red), each the head moved 22 px; `look_r` (blue, gazeR) is the head moved 10 px inside face_up.
+  const FACE = 22;
+  const LOOK = 10;
+  const up = [132, 92, 308, 168];
+  const low = [132, 208, 308, 284];
+  const eye = [172, 132, 268, 168];
+  r.parts_speak0_low_vs_redCell = error(img("parts_rest"), low, (x, y) => tinted(headAt(x - FACE, y), RED_TINT));
+  r.parts_speak1_low_bestUntintedShift = bestShift(img("parts_speak"), low, 0, 30, 0.5);
+  r.parts_speak1_low_vs_redCellAtThatShift = error(img("parts_speak"), low, (x, y) => tinted(headAtX(x - r.parts_speak1_low_bestUntintedShift.s, y), RED_TINT));
+  r.parts_speak1_up_vs_greenCell = error(img("parts_speak"), up, (x, y) => tinted(headAt(x - FACE, y), GREEN));
+  r.gaze_alone_vs_blueCell = error(img("gaze_alone"), eye, (x, y) => tinted(headAt(x - LOOK, y), BLUE_TINT));
+  r.gaze_overFace_bestGreenShift = bestShift(img("gaze_face"), eye, 0, 40, 0.5, GREEN);
+  r.gaze_overFace_vs_blueAtThatShift = error(img("gaze_face"), eye, (x, y) => tinted(headAtX(x - r.gaze_overFace_bestGreenShift.s, y), BLUE_TINT));
+  r.gaze_overFace_faceWithoutGaze = bestShift(img("parts_rest"), eye, 0, 40, 0.5, GREEN);
   writeFileSync(join(dir, "proof.json"), `${JSON.stringify(r, null, 2)}\n`);
   console.log(JSON.stringify(r, null, 2));
 }

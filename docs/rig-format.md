@@ -130,7 +130,7 @@ each with an optional motion field from the layer's own pixels to the key. Decla
 | `eyes` | `[[x, y], [x, y]]` | yes | The two eye centres, canvas px, the picture's left first: the turn's face and the gaze. Off the canvas is `bbox_out_of_bounds` at `$.morph.eyes[i]`. |
 | `sway` | `{ map, amp }` | no | Soft secondary motion inside the layer (hair ends, ears): `map` a greyscale image stretched over the layer's bbox (R = how loosely that pixel hangs, 0..1), `amp` the canvas px a weight-1 pixel lags at full deflection, in (0, 0.05 x width]. Omitted: no sway. |
 
-A **MorphKey** is `{ id, track, at?, bbox, cell, flowCell?, flowMax?, backCell? }`. `id` matches `^[a-z0-9_]+$`
+A **MorphKey** is `{ id, track, at?, bbox, cell, flowCell?, flowMax?, backCell?, part? }`. `id` matches `^[a-z0-9_]+$`
 and is unique in the rig (`duplicate_name` at `$.morph.keys[i].id`). `track` is one of the 18
 tracks below (`bad_shape` otherwise). `at`, the key's stop on its track, is in (0, 1]; omitted means
 1. `bbox` is the canvas box the key repaints and `cell` its colour cell in the atlas (RGB the
@@ -146,8 +146,13 @@ key without motion has neither: it is a plain cross-fade. `backCell` (round 2; i
 `flow`, stretched over `bbox` and read in the KEY's frame: R and G the displacement from a key pixel
 back to the same feature in the layer (same code and `flowMax`), B how much that key pixel is new
 surface the layer does not have (teeth, a mouth's inside, a lowered lid), `code / 255`. Omitted: the
-forward motion alone, no reveal. A track holds at most 4 keys and no two at one stop (`bad_shape`).
-Omitted fields are omitted, never null or 0.
+forward motion alone, no reveal. `part` (round 3) is `"upper"` (brows, lids, eyes) or `"lower"`
+(cheeks, mouth), only on the six family tracks (`bad_shape` at `part` elsewhere): the half of the
+face the key repaints. On one track either every key has a part or none does; an upper and a lower
+key may share a stop, two keys of one part may not. Omitted: the key is the whole face. A track
+holds at most 4 keys per part and no two of one part at one stop (`bad_shape`). Omitted fields are
+omitted, never null or 0. The morph types are declared in `morphTypes.ts`, re-exported by
+`types.ts`.
 
 **Tracks** (each a value v in [0, 1] per frame, `morph.ts`):
 
@@ -162,7 +167,21 @@ Omitted fields are omitted, never null or 0.
 for v in `[a(k), a(k+1)]` key k+1 has weight `(v - a(k)) / (a(k+1) - a(k))` and key k (k >= 1) the
 rest; at or above `an` the last key has weight 1. Two stops make a blink half-shut, then shut.
 
-**Active keys.** A key with weight above 0.002 is active; of more than 8, the lowest weights are
+**Colour and motion** (round 3). Every key is painted on the neutral face, so the plan gives each
+key two numbers: its motion weight (the stop rule's weight; it moves pixels and makes the key
+active) and a colour scale in [0, 1] (how much of its paint shows). A family key with
+`part: "lower"` shows `1 - speak` of its colour and moves at `w (1 - 0.5 speak)`: while the mouth
+speaks, the mouth keys paint the mouth and the smile still lifts it half way. A gaze key shows
+`1 - E` and moves at `w (1 - E)`, with E = min(1, the sum of the six family values): its paint
+and its field were made on the neutral eye, so under an expression it yields and the expression's
+own eyes hold (painted, it ghosts inside the lids; moved alone, it smears them). Every
+other key shows its colour in full. `speak` is the mouth mix's non-rest total (capped at 1),
+followed by the player with a fast attack (95 % in 60 ms) and a slow release (95 % in 350 ms), so
+a smile's lower face does not flicker back between words; 0 without mouth keys; a frozen frame
+takes the total as it is.
+
+**Active keys.** A key with motion weight above 0.002 is active (also when its colour is 0: it
+still moves pixels); of more than 8, the lowest weights are
 dropped (a tie drops the key that composites later). They composite by group, `face` < `gaze` <
 `mouth` < `blink` (a later group covers an earlier one), then in `keys` order.
 
@@ -172,7 +191,8 @@ motion): the sway first moves the point x by `- s(x) * amp * L`. Each active key
 `Fh_i = mix(F_i, -G_i, w_i)` (F the flow cell, G the back cell's R, G, both at x and 0 outside the
 key's bbox; a key without a back cell has `Fh_i = F_i`); the layer is read at `p = x - sum w_i Fh_i`
 and key i at `q_i = p + Fh_i`, where its colour, coverage m_i and reveal r_i (back cell B; 0 without
-one) are read. A key's share is `a_i = mix(w_i, smoothstep(0, 0.4, w_i), r_i)`: new surface is
+one) are read. A key's share is `a_i = colour_i * mix(w_i, smoothstep(0, 0.4, w_i), r_i)` (w the motion weight,
+colour the colour scale): new surface is
 mostly there by weight 0.4, uncovered by the motion rather than faded in. One key at weight 1 reads
 the layer where each key pixel's feature came from and the key at x: its cell exactly; a pure shift
 d at weight w moves the layer w d and the key meets it (no double image). Then per group, the keys'
@@ -193,7 +213,7 @@ the lag that counts as full (`SWAY_FULL`: yaw and pitch 0.08 of their limits, ro
 drift of at most 0.15. Reduced motion (`still`) and a frozen drive give L = 0.
 
 **Canvas2D fallback.** The layer, then each active key's atlas cell over its bbox at
-`globalAlpha = opacity x weight`: a cross-fade without motion or sway; keys keep their painted
+`globalAlpha = opacity x weight x colour`: a cross-fade without motion or sway; keys keep their painted
 colour (no region recolour).
 
 **What a morph rig takes from the rest of the pose.** It needs no jaw, eye or iris layer. Its mouth

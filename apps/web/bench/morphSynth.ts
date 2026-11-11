@@ -1,7 +1,7 @@
 // The synthetic morph rig of the morph capture page (companion-lanes task 1, D): drawn in the page,
 // so the shader's fixed points can be measured on known pixels. A 512 px canvas; one head layer
 // (a fine checker, 4 px squares, two greys, with coloured dots on a 64 px grid); five keys:
-// - `shift` (track joy, face group): the checker moved by SHIFT px, with a uniform flow of that move
+// - `shift` (track showman, face group): the checker moved by SHIFT px, with a uniform flow of that move
 //   (faded with the coverage), so at weight w the checker sits at w x SHIFT;
 // - `solid_r`, `solid_b` (openWide, round: one mouth group, one box): solid red and blue, no flow;
 // - `lid` (blink, the last group): solid yellow, over part of `shift`'s box;
@@ -18,12 +18,15 @@ export const HEAD_BOX: [number, number, number, number] = [56, 56, 400, 400];
 export const SWAY_AMP = 20;
 
 export const SYNTH_KEYS: MorphKey[] = [
-  { id: "shift", track: "joy", bbox: [156, 156, 160, 120], cell: [2, 2, 160, 120], flowCell: [1, 1, 40, 30], flowMax: 4 },
+  { id: "shift", track: "showman", bbox: [156, 156, 160, 120], cell: [2, 2, 160, 120], flowCell: [1, 1, 40, 30], flowMax: 4 },
   { id: "solid_r", track: "openWide", bbox: [176, 316, 120, 80], cell: [166, 2, 120, 80] },
   { id: "solid_b", track: "round", bbox: [176, 316, 120, 80], cell: [290, 2, 120, 80] },
   { id: "lid", track: "blink", bbox: [226, 176, 120, 80], cell: [166, 86, 120, 80] },
   { id: "big", track: "gloom", bbox: [120, 300, 240, 120], cell: [2, 170, 240, 120], flowCell: [43, 1, 60, 30], flowMax: 42, backCell: [105, 1, 60, 30] },
   { id: "stretch", track: "openMid", bbox: [320, 100, 120, 120], cell: [246, 170, 120, 120], flowCell: [167, 1, 30, 30], flowMax: 16, backCell: [199, 1, 30, 30] },
+  { id: "face_up", track: "joy", part: "upper", bbox: [120, 80, 200, 100], cell: [2, 294, 200, 100], flowCell: [1, 34, 50, 25], flowMax: 22, backCell: [53, 34, 50, 25] },
+  { id: "face_low", track: "joy", part: "lower", bbox: [120, 196, 200, 100], cell: [206, 294, 200, 100], flowCell: [105, 34, 50, 25], flowMax: 22, backCell: [157, 34, 50, 25] },
+  { id: "look_r", track: "gazeR", bbox: [160, 120, 120, 60], cell: [2, 398, 120, 60], flowCell: [1, 61, 30, 15], flowMax: 10, backCell: [33, 61, 30, 15] },
 ];
 
 export const SOLID: Readonly<Record<string, readonly [number, number, number]>> = { solid_r: [230, 40, 40], solid_b: [40, 60, 230], lid: [250, 210, 20] };
@@ -49,6 +52,8 @@ export function synthRig(): Rig {
     palette: { glow: "#000000", eye: "#ffffff", rim: "#000000", mouth: "#000000" },
     layers: [{ name: "head", z: 1, kind: "head", file: "head.png", bbox: HEAD_BOX, anchor: [256, 456] }],
     turn: { warp: 1, light: 0 },
+    // No mood tilt or pitch: an emotion (round 3's states) drives the keys without turning the head.
+    face: { motion: { tilt: 0 } },
     morph: {
       layer: "head",
       atlas: "atlas.png",
@@ -121,7 +126,7 @@ function flowData(): ImageData {
     }
     return out;
   });
-  return imageData(256, 64, (x, y) => {
+  return imageData(256, 128, (x, y) => {
     for (const { key, box, at } of cells) {
       const u = x - box[0];
       const v = y - box[1];

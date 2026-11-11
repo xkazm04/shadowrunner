@@ -13,7 +13,17 @@
 // - Stops: a track's keys sorted by `at` (missing = 1) are a1 < ... < an; with a0 = 0 (the layer's
 //   own pixels), a value v in [a(k), a(k+1)] gives key k+1 the weight (v - a(k)) / (a(k+1) - a(k))
 //   and key k (k >= 1) the rest; at or above an, the last key has weight 1. validateRig refuses two
-//   keys at one stop of a track, so no interval is empty.
+//   keys at one stop of a track, so no interval is empty. Keys with a `part` (round 3) are stops of
+//   their own half: a family's upper and lower keys each follow the track on their own.
+// - Colour and motion (round 3, every key is painted on the neutral face): the plan gives each key
+//   a motion weight (`weights`: what moves its pixels, and what makes it active) and a colour scale
+//   (`colour`, 0..1: how much of its paint shows). A family key with part "lower" shows
+//   `1 - speak` of its colour and moves at `w (1 - 0.5 speak)` while the mouth speaks (the mouth
+//   keys then paint the mouth, the smile's motion still lifts it half way); a gaze key shows
+//   `1 - E` with E = min(1, sum of the six family values) and moves at `w (1 - E)` (under an
+//   expression its neutral eyes would ghost inside the expression's lids and its field, measured
+//   on the neutral eye, smears them: the expression's own eyes hold); every other key shows 1. A key whose colour is 0 but whose motion weight is
+//   above the threshold stays active: it still moves pixels.
 // - Active keys: weight > MORPH_MIN_WEIGHT; above MORPH_MAX_ACTIVE, the lowest weights are dropped
 //   (a tie drops the key that composites later) and their weights read 0; the rest are ordered by
 //   group (face < gaze < mouth < blink), then by the key's position in `morph.keys`.
@@ -65,8 +75,10 @@ export const morphGroupIndex = (track: MorphTrack): number => MORPH_GROUPS.index
 interface MorphIndex {
   /** Per key, its group index. */
   group: Uint8Array;
-  /** Per track (MORPH_TRACKS order), its keys sorted by `at`, and their stops. */
-  stops: { keys: Int32Array; at: Float64Array }[];
+  /** Per track (MORPH_TRACKS index `track`) and part, its keys sorted by `at`, and their stops. */
+  stops: { track: number; keys: Int32Array; at: Float64Array }[];
+  /** Per key: 1 a family key with part "lower", 2 a gaze key, 0 any other. */
+  kind: Uint8Array;
   /** Every key sorted by (group, position): the compositing order. */
   order: Int32Array;
   /** Whether some key sits in each group. */
@@ -80,14 +92,17 @@ function indexOf(morph: RigMorph): MorphIndex {
   if (index !== undefined) return index;
   const keys = morph.keys;
   const group = Uint8Array.from(keys, (key) => morphGroupIndex(key.track));
-  const stops = MORPH_TRACKS.map((track) => {
-    const on = keys.flatMap((key, i) => (key.track === track ? [i] : [])).sort((a, b) => (keys[a]?.at ?? 1) - (keys[b]?.at ?? 1) || a - b);
-    return { keys: Int32Array.from(on), at: Float64Array.from(on, (i) => keys[i]?.at ?? 1) };
-  });
+  const stops = MORPH_TRACKS.flatMap((track, t) =>
+    (["upper", "lower", undefined] as const).flatMap((part) => {
+      const on = keys.flatMap((key, i) => (key.track === track && key.part === part ? [i] : [])).sort((a, b) => (keys[a]?.at ?? 1) - (keys[b]?.at ?? 1) || a - b);
+      return on.length === 0 ? [] : [{ track: t, keys: Int32Array.from(on), at: Float64Array.from(on, (i) => keys[i]?.at ?? 1) }];
+    }),
+  );
+  const kind = Uint8Array.from(keys, (key) => (key.part === "lower" ? 1 : GAZE_SET.has(key.track) ? 2 : 0));
   const order = Int32Array.from(keys.map((_, i) => i).sort((a, b) => (group[a] ?? 0) - (group[b] ?? 0) || a - b));
   const groups = MORPH_GROUPS.map(() => false);
   for (const g of group) groups[g] = true;
-  index = { group, stops, order, groups };
+  index = { group, stops, kind, order, groups };
   indexes.set(morph, index);
   return index;
 }
@@ -111,13 +126,17 @@ export interface MorphInputs {
   mood?: { from: Emotion; mix: number } | undefined;
   /** The face profile in force: `gaze.range`, `expression.strength` and the retired families. */
   face: Pick<ResolvedFace, "gaze" | "expression">;
+  /** How much the mouth is speaking, 0..1 (round 3: a lower face key gives way); absent = 0. */
+  speak?: number | undefined;
 }
 
 /** One frame's plan; reused per morph (valid until the next `morphPlan` call on that morph). */
 export interface MorphPlan {
   morph: RigMorph;
-  /** Per key (`morph.keys` order), its weight this frame; 0 when not active. */
+  /** Per key (`morph.keys` order), its motion weight this frame; 0 when not active. */
   weights: Float64Array;
+  /** Per key, its colour scale this frame, 0..1 (round 3; 1 unless a rule lowers it). */
+  colour: Float64Array;
   /** The active keys' indices in compositing order; the first `count` are valid. */
   active: Int32Array;
   count: number;
@@ -136,10 +155,11 @@ const signed = (v: number): number => (Number.isFinite(v) ? Math.min(1, Math.max
 function planOf(morph: RigMorph): MorphPlan {
   let plan = plans.get(morph);
   if (plan === undefined) {
-    plan = { morph, weights: new Float64Array(morph.keys.length), active: new Int32Array(MORPH_MAX_ACTIVE), count: 0, values: new Float64Array(MORPH_TRACKS.length) };
+    plan = { morph, weights: new Float64Array(morph.keys.length), colour: new Float64Array(morph.keys.length), active: new Int32Array(MORPH_MAX_ACTIVE), count: 0, values: new Float64Array(MORPH_TRACKS.length) };
     plans.set(morph, plan);
   }
   plan.weights.fill(0);
+  plan.colour.fill(1);
   plan.values.fill(0);
   plan.count = 0;
   return plan;
@@ -240,11 +260,28 @@ export function selectMorphKeys(plan: MorphPlan): MorphPlan {
 /** This frame's plan for `morph` (module header). The same object every call for one morph. */
 export function morphPlan(morph: RigMorph, inputs: MorphInputs): MorphPlan {
   const plan = planOf(morph);
-  const { stops } = indexOf(morph);
-  trackValues(inputs, plan.values);
-  for (let t = 0; t < stops.length; t += 1) {
-    const s = stops[t];
-    if (s !== undefined) stopWeights(s.keys, s.at, plan.values[t] ?? 0, plan.weights);
+  const { stops, kind } = indexOf(morph);
+  const { values, weights, colour } = plan;
+  trackValues(inputs, values);
+  for (let n = 0; n < stops.length; n += 1) {
+    const s = stops[n];
+    if (s !== undefined) stopWeights(s.keys, s.at, values[s.track] ?? 0, weights);
+  }
+  const speak = unit01(inputs.speak);
+  // The six family tracks come first in MORPH_TRACKS.
+  let expression = 0;
+  for (let t = 0; t < EXPRESSION_FAMILIES.length; t += 1) expression += values[t] ?? 0;
+  const eyes = 1 - Math.min(1, expression);
+  for (let i = 0; i < weights.length; i += 1) {
+    const k = kind[i];
+    if (k === 1) {
+      colour[i] = 1 - speak;
+      weights[i] = (weights[i] ?? 0) * (1 - 0.5 * speak);
+    } else if (k === 2) {
+      // The gaze's field was measured on the neutral eye: on an expression's lids it smears them, so it yields too.
+      colour[i] = eyes;
+      weights[i] = (weights[i] ?? 0) * eyes;
+    }
   }
   return selectMorphKeys(plan);
 }

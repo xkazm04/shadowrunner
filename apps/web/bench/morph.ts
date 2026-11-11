@@ -13,6 +13,7 @@
 // (those keys at those weights, bypassing the tracks); bg=<css colour> (default transparent);
 // size=<px> (the square canvas, default 512); mode=2d forces the canvas2D fallback;
 // regions=<layer>/<slot>:<rrggbb>[,...] sets Look.regions (the region recolour, `#` optional);
+// speak=0..1 overrides the morph's followed speak (round 3: a lower face key gives way to the mouth);
 // hidden=<layer>[,...] adds to Look.hidden; backdrop=1 shows the `background` layer (default: the
 // player's cutout, hidden).
 import { createCanvas2dRenderer, createFrameBody, createRenderer, cutoutLook, type FrameClock, type Renderer, type RigAssets } from "@sr/avatar";
@@ -23,7 +24,7 @@ import { synthAssets, synthRig } from "./morphSynth";
 declare global {
   interface Window {
     morphPng?: () => string;
-    morphInfo?: { mode: string; gpu: string; keys: { id: string; weight: number }[]; sway: { x: number; y: number } | null };
+    morphInfo?: { mode: string; gpu: string; keys: { id: string; weight: number; colour: number }[]; sway: { x: number; y: number } | null };
     morphError?: string;
   }
 }
@@ -112,7 +113,7 @@ async function main(): Promise<void> {
   const shown = Object.values(shapes).reduce((a, b) => a + b, 0);
   const mouth = Object.keys(shapes).length === 0 ? undefined : { shapes: { rest: Math.max(0, 1 - shown), openWide: 0, openMid: 0, round: 0, closed: 0, teeth: 0, tongue: 0, narrow: 0, ...shapes } };
   const body = createFrameBody(1);
-  const out = body({ rig, look, dt: 0, level: num("level"), gaze: "host", reducedMotion: false, drive, assets, ...(mouth === undefined ? {} : { mouth }) });
+  const out = body({ rig, look, dt: 0, level: num("level"), gaze: "host", reducedMotion: false, drive, assets, ...(mouth === undefined ? {} : { mouth }), ...(params.has("speak") ? { speak: num("speak") } : {}) });
 
   // Overrides: forced key weights (bypassing the tracks) and the sway lag.
   let clock: FrameClock = out.clock;
@@ -149,7 +150,7 @@ async function main(): Promise<void> {
   window.morphInfo = {
     mode,
     gpu: gpuOf(canvas, mode),
-    keys: plan === undefined ? [] : Array.from(plan.active.subarray(0, plan.count), (i) => ({ id: rig.morph?.keys[i]?.id ?? "?", weight: plan.weights[i] ?? 0 })),
+    keys: plan === undefined ? [] : Array.from(plan.active.subarray(0, plan.count), (i) => ({ id: rig.morph?.keys[i]?.id ?? "?", weight: plan.weights[i] ?? 0, colour: plan.colour[i] ?? 1 })),
     sway: clock.morph === undefined ? null : { ...clock.morph.sway },
   };
   document.documentElement.dataset.ready = "1";

@@ -101,6 +101,8 @@ export interface FrameBodyInputs {
   dim?: number;
   /** A caller's mouth mix (visemes); only a rig with `mouth` reads it. Absent = the level drive. */
   mouth?: MouthShapesInput;
+  /** A capture's morph `speak`, 0..1 (companion-lanes round 3); absent: followed from the mouth mix. */
+  speak?: number;
   /** The rig's images (face-control): sockets are measured and dead patches found from them. */
   assets?: RigAssets;
 }
@@ -201,7 +203,7 @@ export function createFrameBody(seed: number, options: FrameBodyOptions = {}): (
     const lag = springLag(spring);
     const drive = lag === undefined ? acted : { ...acted, spring: lag };
     const poses = poseLayers(dressed, p.look, drive, { face, ...(sockets === undefined ? {} : { sockets }) });
-    const morph = p.rig.morph === undefined ? undefined : stepMorph({ rig: dressed, look: p.look, drive, face, shapes: mode === "morph" ? mouth?.shapes : undefined, lag, frozen: p.drive !== undefined });
+    const morph = p.rig.morph === undefined ? undefined : stepMorph({ rig: dressed, look: p.look, drive, face, shapes: mode === "morph" ? mouth?.shapes : undefined, lag, frozen: p.drive !== undefined, dt: p.dt, speak: p.speak });
     dimShown = easeDim(dimShown, p.dim ?? 0, p.dt, p.reducedMotion);
     const clock: FrameClock = {
       t: p.drive?.t ?? state.t,

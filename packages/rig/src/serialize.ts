@@ -80,6 +80,7 @@ function wireKey(key: MorphKey): MorphKey {
     ...(key.flowCell === undefined ? {} : { flowCell: box(key.flowCell) }),
     ...(key.flowMax === undefined ? {} : { flowMax: key.flowMax }),
     ...(key.backCell === undefined ? {} : { backCell: box(key.backCell) }),
+    ...(key.part === undefined ? {} : { part: key.part }),
   };
 }
 
