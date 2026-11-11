@@ -1,0 +1,779 @@
+{
+  "id": "bun",
+  "verdict": "ok",
+  "gates": {
+    "cornerShift": 6.0,
+    "outsideMargin": 3.0,
+    "floorTimes": 3.0,
+    "floorMin": 4.0,
+    "moves": 0.75,
+    "flowSigma": 6.0,
+    "invertPx": 1.5,
+    "weight1": 6.0
+  },
+  "figures": {
+    "mattes": {
+      "figure": {
+        "key": [
+          3.0,
+          250.0,
+          5.0
+        ],
+        "affine": [
+          [
+            0.99909,
+            0.00013,
+            0.35533
+          ],
+          [
+            -5e-05,
+            1.00019,
+            -0.15803
+          ]
+        ],
+        "cornerShift": 0.613
+      },
+      "head": {
+        "key": [
+          3.0,
+          250.0,
+          3.0
+        ],
+        "affine": [
+          [
+            1.00019,
+            0.00016,
+            -0.34589
+          ],
+          [
+            -0.00016,
+            1.00036,
+            -0.37557
+          ]
+        ],
+        "cornerShift": 0.563
+      },
+      "groundCheckLowered": 0.0109,
+      "recomposeMeanAbs": 0.272,
+      "recomposeP99": 4.62,
+      "groundRgb": [
+        154.3,
+        204.8,
+        236.0
+      ]
+    },
+    "floor": {
+      "cornerShift": 0.339,
+      "affine": [
+        [
+          0.99992,
+          0.0001,
+          -0.05814
+        ],
+        [
+          -4e-05,
+          1.00012,
+          -0.2731
+        ]
+      ],
+      "meanAbs": 2.836
+    },
+    "layers": {
+      "body": [
+        95,
+        540,
+        820,
+        484
+      ],
+      "head": [
+        152,
+        26,
+        770,
+        666
+      ]
+    },
+    "atlas": [
+      1305,
+      1122
+    ],
+    "flow": [
+      114,
+      138
+    ],
+    "bytes": {
+      "atlas.webp": 356850,
+      "background.webp": 4104,
+      "body.webp": 46954,
+      "flow.png": 3427,
+      "head.webp": 128652,
+      "sway.webp": 5790
+    }
+  },
+  "keys": [
+    {
+      "id": "blink_half",
+      "edit": "blink_half",
+      "affine": [
+        [
+          0.99958,
+          0.00021,
+          0.17645
+        ],
+        [
+          -0.0001,
+          1.00019,
+          0.05263
+        ]
+      ],
+      "cornerShift": 0.467,
+      "floor": 3.263,
+      "outsidePrior": 3.095,
+      "supportPx": 27417,
+      "colourShift": 0.727,
+      "bbox": [
+        317,
+        345,
+        397,
+        131
+      ],
+      "medianMotion": 8.224,
+      "verdict": "ok",
+      "track": "blink",
+      "flow": "none",
+      "weight1": 1.8
+    },
+    {
+      "id": "blink",
+      "edit": "blink",
+      "affine": [
+        [
+          0.99936,
+          0.0001,
+          0.16555
+        ],
+        [
+          -0.00012,
+          0.99989,
+          0.10744
+        ]
+      ],
+      "cornerShift": 0.495,
+      "floor": 3.263,
+      "outsidePrior": 3.246,
+      "supportPx": 28046,
+      "colourShift": 1.007,
+      "bbox": [
+        317,
+        345,
+        397,
+        131
+      ],
+      "medianMotion": 27.237,
+      "verdict": "ok",
+      "track": "blink",
+      "flow": "none",
+      "weight1": 1.62
+    },
+    {
+      "id": "open_mid",
+      "edit": "openMid",
+      "affine": [
+        [
+          0.99948,
+          0.0002,
+          0.10234
+        ],
+        [
+          -0.00012,
+          1.00028,
+          0.06817
+        ]
+      ],
+      "cornerShift": 0.472,
+      "floor": 3.434,
+      "outsidePrior": 3.628,
+      "supportPx": 7681,
+      "colourShift": 0.687,
+      "bbox": [
+        446,
+        478,
+        137,
+        106
+      ],
+      "medianMotion": 2.613,
+      "verdict": "ok",
+      "track": "openMid",
+      "flow": "none",
+      "weight1": 0.981
+    },
+    {
+      "id": "open_wide",
+      "edit": "openWide",
+      "affine": [
+        [
+          1.0,
+          7e-05,
+          -0.11209
+        ],
+        [
+          -0.00023,
+          1.00011,
+          -0.20389
+        ]
+      ],
+      "cornerShift": 0.451,
+      "floor": 3.439,
+      "outsidePrior": 4.101,
+      "supportPx": 12006,
+      "colourShift": 3.938,
+      "bbox": [
+        438,
+        474,
+        155,
+        133
+      ],
+      "medianMotion": 3.013,
+      "verdict": "ok",
+      "track": "openWide",
+      "flow": "none",
+      "weight1": 1.801
+    },
+    {
+      "id": "round",
+      "edit": "round",
+      "affine": [
+        [
+          0.99985,
+          0.00014,
+          0.10735
+        ],
+        [
+          -9e-05,
+          1.00016,
+          0.09237
+        ]
+      ],
+      "cornerShift": 0.353,
+      "floor": 3.434,
+      "outsidePrior": 3.851,
+      "supportPx": 7670,
+      "colourShift": 1.6,
+      "bbox": [
+        446,
+        478,
+        139,
+        106
+      ],
+      "medianMotion": 2.73,
+      "verdict": "ok",
+      "track": "round",
+      "flow": "none",
+      "weight1": 0.864
+    },
+    {
+      "id": "closed",
+      "edit": "closed",
+      "affine": [
+        [
+          0.99921,
+          9e-05,
+          0.35158
+        ],
+        [
+          -8e-05,
+          0.99981,
+          0.13881
+        ]
+      ],
+      "cornerShift": 0.46,
+      "floor": 3.434,
+      "outsidePrior": 3.272,
+      "supportPx": 5522,
+      "colourShift": 1.233,
+      "bbox": [
+        446,
+        478,
+        139,
+        85
+      ],
+      "medianMotion": 0.654,
+      "verdict": "ok",
+      "track": "closed",
+      "flow": "none",
+      "weight1": 0.881
+    },
+    {
+      "id": "teeth",
+      "edit": "teeth",
+      "affine": [
+        [
+          0.99953,
+          0.00023,
+          0.17267
+        ],
+        [
+          1e-05,
+          1.00015,
+          -0.07053
+        ]
+      ],
+      "cornerShift": 0.418,
+      "floor": 3.434,
+      "outsidePrior": 4.075,
+      "supportPx": 7709,
+      "colourShift": 1.608,
+      "bbox": [
+        446,
+        477,
+        139,
+        107
+      ],
+      "medianMotion": 2.216,
+      "verdict": "ok",
+      "track": "teeth",
+      "flow": "none",
+      "weight1": 1.086
+    },
+    {
+      "id": "tongue",
+      "edit": "tongue",
+      "affine": [
+        [
+          0.99941,
+          0.00026,
+          0.13753
+        ],
+        [
+          -9e-05,
+          1.0001,
+          0.21581
+        ]
+      ],
+      "cornerShift": 0.512,
+      "floor": 3.434,
+      "outsidePrior": 3.492,
+      "supportPx": 7700,
+      "colourShift": 0.884,
+      "bbox": [
+        446,
+        478,
+        139,
+        106
+      ],
+      "medianMotion": 2.644,
+      "verdict": "ok",
+      "track": "tongue",
+      "flow": "none",
+      "weight1": 1.193
+    },
+    {
+      "id": "narrow",
+      "edit": "narrow",
+      "affine": [
+        [
+          0.99932,
+          5e-05,
+          0.32604
+        ],
+        [
+          -6e-05,
+          0.99981,
+          0.12951
+        ]
+      ],
+      "cornerShift": 0.383,
+      "floor": 3.434,
+      "outsidePrior": 3.345,
+      "supportPx": 7663,
+      "colourShift": 0.929,
+      "bbox": [
+        446,
+        477,
+        139,
+        107
+      ],
+      "medianMotion": 3.205,
+      "verdict": "ok",
+      "track": "narrow",
+      "flow": "none",
+      "weight1": 1.262
+    },
+    {
+      "id": "gaze_l",
+      "edit": "gazeL",
+      "affine": [
+        [
+          0.99946,
+          0.00024,
+          0.22556
+        ],
+        [
+          -4e-05,
+          0.99975,
+          0.47236
+        ]
+      ],
+      "cornerShift": 0.542,
+      "floor": 3.237,
+      "outsidePrior": 3.731,
+      "supportPx": 23823,
+      "colourShift": 1.938,
+      "irisMove": [
+        [
+          -45.8,
+          4.88
+        ],
+        [
+          -38.61,
+          6.3
+        ]
+      ],
+      "bbox": [
+        292,
+        355,
+        446,
+        125
+      ],
+      "flowInvert": 1.398,
+      "flowScaled": 0.453,
+      "flowMax": 21,
+      "flowP99": 20.869,
+      "medianMotion": 1.129,
+      "verdict": "ok",
+      "track": "gazeL",
+      "flow": "iris",
+      "weight1": 4.501
+    },
+    {
+      "id": "gaze_r",
+      "edit": "gazeR",
+      "affine": [
+        [
+          0.99996,
+          4e-05,
+          -0.03699
+        ],
+        [
+          -8e-05,
+          1.00005,
+          -0.22474
+        ]
+      ],
+      "cornerShift": 0.319,
+      "floor": 3.237,
+      "outsidePrior": 3.657,
+      "supportPx": 19422,
+      "colourShift": 1.489,
+      "irisMove": [
+        [
+          32.8,
+          3.44
+        ],
+        [
+          43.06,
+          4.63
+        ]
+      ],
+      "bbox": [
+        293,
+        360,
+        445,
+        120
+      ],
+      "flowInvert": 1.419,
+      "flowScaled": 0.484,
+      "flowMax": 21,
+      "flowP99": 20.976,
+      "medianMotion": 0.506,
+      "verdict": "ok",
+      "track": "gazeR",
+      "flow": "iris",
+      "weight1": 4.214
+    },
+    {
+      "id": "gaze_u",
+      "edit": "gazeU",
+      "affine": [
+        [
+          0.99977,
+          0.00013,
+          0.12224
+        ],
+        [
+          -6e-05,
+          0.99986,
+          0.25693
+        ]
+      ],
+      "cornerShift": 0.285,
+      "floor": 3.237,
+      "outsidePrior": 3.154,
+      "supportPx": 24335,
+      "colourShift": 1.91,
+      "irisMove": [
+        [
+          -0.23,
+          -13.29
+        ],
+        [
+          -0.56,
+          -13.55
+        ]
+      ],
+      "bbox": [
+        298,
+        345,
+        435,
+        135
+      ],
+      "flowInvert": 1.444,
+      "flowScaled": 0.922,
+      "flowMax": 13,
+      "flowP99": 12.506,
+      "medianMotion": 2.485,
+      "verdict": "ok",
+      "track": "gazeU",
+      "flow": "iris",
+      "weight1": 4.757
+    },
+    {
+      "id": "gaze_d",
+      "edit": "gazeD",
+      "affine": [
+        [
+          0.99945,
+          2e-05,
+          0.21726
+        ],
+        [
+          -8e-05,
+          0.99974,
+          0.24176
+        ]
+      ],
+      "cornerShift": 0.384,
+      "floor": 3.237,
+      "outsidePrior": 3.302,
+      "supportPx": 31554,
+      "colourShift": 1.197,
+      "irisMove": [
+        [
+          0.58,
+          33.23
+        ],
+        [
+          -1.09,
+          33.56
+        ]
+      ],
+      "bbox": [
+        298,
+        345,
+        435,
+        135
+      ],
+      "flowInvert": 1.476,
+      "flowScaled": 0.375,
+      "flowMax": 13,
+      "flowP99": 12.593,
+      "medianMotion": 8.102,
+      "verdict": "ok",
+      "track": "gazeD",
+      "flow": "iris",
+      "weight1": 5.12
+    },
+    {
+      "id": "joy",
+      "edit": "joy",
+      "affine": [
+        [
+          0.99951,
+          0.00021,
+          0.16678
+        ],
+        [
+          -0.00017,
+          1.00042,
+          -0.03377
+        ]
+      ],
+      "cornerShift": 0.546,
+      "floor": 3.31,
+      "outsidePrior": 3.587,
+      "supportPx": 86421,
+      "colourShift": 1.15,
+      "bbox": [
+        319,
+        266,
+        390,
+        363
+      ],
+      "medianMotion": 2.289,
+      "verdict": "ok",
+      "track": "joy",
+      "flow": "none",
+      "weight1": 1.444
+    },
+    {
+      "id": "showman",
+      "edit": "showman",
+      "affine": [
+        [
+          0.99946,
+          0.00024,
+          0.22457
+        ],
+        [
+          -2e-05,
+          1.0005,
+          -0.35359
+        ]
+      ],
+      "cornerShift": 0.5,
+      "floor": 3.31,
+      "outsidePrior": 4.422,
+      "supportPx": 97214,
+      "colourShift": 1.302,
+      "bbox": [
+        315,
+        264,
+        397,
+        365
+      ],
+      "medianMotion": 5.983,
+      "verdict": "ok",
+      "track": "showman",
+      "flow": "none",
+      "weight1": 1.885
+    },
+    {
+      "id": "anger",
+      "edit": "anger",
+      "affine": [
+        [
+          0.99999,
+          3e-05,
+          -0.03324
+        ],
+        [
+          -0.00013,
+          0.99999,
+          -0.19775
+        ]
+      ],
+      "cornerShift": 0.338,
+      "floor": 3.31,
+      "outsidePrior": 3.142,
+      "supportPx": 69441,
+      "colourShift": 0.299,
+      "bbox": [
+        324,
+        270,
+        381,
+        358
+      ],
+      "medianMotion": 1.587,
+      "verdict": "ok",
+      "track": "anger",
+      "flow": "none",
+      "weight1": 1.458
+    },
+    {
+      "id": "gloom",
+      "edit": "gloom",
+      "affine": [
+        [
+          0.99989,
+          0.00046,
+          -0.16389
+        ],
+        [
+          0.0001,
+          0.99959,
+          0.35996
+        ]
+      ],
+      "cornerShift": 0.536,
+      "floor": 3.31,
+      "outsidePrior": 3.989,
+      "supportPx": 80721,
+      "colourShift": 1.786,
+      "bbox": [
+        318,
+        279,
+        392,
+        351
+      ],
+      "medianMotion": 1.632,
+      "verdict": "ok",
+      "track": "gloom",
+      "flow": "none",
+      "weight1": 1.485
+    },
+    {
+      "id": "smug",
+      "edit": "smug",
+      "affine": [
+        [
+          0.99991,
+          1e-05,
+          0.00892
+        ],
+        [
+          -0.00013,
+          1.00014,
+          -0.24273
+        ]
+      ],
+      "cornerShift": 0.38,
+      "floor": 3.31,
+      "outsidePrior": 3.513,
+      "supportPx": 71253,
+      "colourShift": 1.448,
+      "bbox": [
+        319,
+        267,
+        387,
+        340
+      ],
+      "medianMotion": 3.185,
+      "verdict": "ok",
+      "track": "smug",
+      "flow": "none",
+      "weight1": 1.459
+    },
+    {
+      "id": "suspicion",
+      "edit": "suspicion",
+      "affine": [
+        [
+          0.99951,
+          4e-05,
+          0.30197
+        ],
+        [
+          -4e-05,
+          1.00018,
+          0.11359
+        ]
+      ],
+      "cornerShift": 0.457,
+      "floor": 3.31,
+      "outsidePrior": 3.202,
+      "supportPx": 65095,
+      "colourShift": 0.921,
+      "bbox": [
+        320,
+        289,
+        386,
+        333
+      ],
+      "medianMotion": 1.931,
+      "verdict": "ok",
+      "track": "suspicion",
+      "flow": "none",
+      "weight1": 1.576
+    }
+  ],
+  "refused": []
+}

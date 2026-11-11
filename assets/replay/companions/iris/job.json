@@ -1,0 +1,571 @@
+{
+  "rig": {
+    "version": 1,
+    "id": "iris",
+    "name": "Iris",
+    "width": 1024,
+    "height": 1024,
+    "source": "replay",
+    "fictional": true,
+    "palette": {
+      "glow": "#5fd6e8",
+      "eye": "#7f9bb0",
+      "rim": "#000000",
+      "mouth": "#b8686e"
+    },
+    "layers": [
+      {
+        "name": "background",
+        "z": 1,
+        "kind": "static",
+        "file": "background.webp",
+        "bbox": [
+          0,
+          0,
+          1024,
+          1024
+        ],
+        "anchor": [
+          512,
+          512
+        ]
+      },
+      {
+        "name": "body",
+        "z": 2,
+        "kind": "body",
+        "file": "body.webp",
+        "bbox": [
+          37,
+          510,
+          946,
+          514
+        ],
+        "anchor": [
+          512,
+          1024
+        ]
+      },
+      {
+        "name": "head",
+        "z": 3,
+        "kind": "head",
+        "file": "head.webp",
+        "bbox": [
+          228,
+          16,
+          555,
+          601
+        ],
+        "anchor": [
+          512,
+          592
+        ]
+      }
+    ],
+    "mouth": {
+      "cx": 515,
+      "lineY": 512,
+      "width": 118
+    },
+    "face": {
+      "gaze": {
+        "range": 0.5,
+        "saccadeRate": 0.8
+      },
+      "motion": {
+        "drift": 0.7,
+        "tilt": 0.7,
+        "gesture": 0.7,
+        "breath": 0.3
+      },
+      "expression": {
+        "strength": 1
+      }
+    },
+    "turn": {
+      "warp": 0.4,
+      "light": 0.15
+    },
+    "morph": {
+      "layer": "head",
+      "atlas": "atlas.webp",
+      "flow": "flow.png",
+      "keys": [
+        {
+          "id": "blink_half",
+          "track": "blink",
+          "at": 0.5,
+          "bbox": [
+            346,
+            297,
+            334,
+            106
+          ],
+          "cell": [
+            326,
+            1646,
+            334,
+            106
+          ],
+          "flowCell": [
+            1,
+            420,
+            84,
+            27
+          ],
+          "flowMax": 10
+        },
+        {
+          "id": "blink",
+          "track": "blink",
+          "bbox": [
+            355,
+            309,
+            315,
+            94
+          ],
+          "cell": [
+            2,
+            1866,
+            315,
+            94
+          ],
+          "flowCell": [
+            1,
+            477,
+            79,
+            24
+          ],
+          "flowMax": 5
+        },
+        {
+          "id": "open_mid",
+          "track": "openMid",
+          "bbox": [
+            413,
+            448,
+            206,
+            137
+          ],
+          "cell": [
+            432,
+            1191,
+            206,
+            137
+          ],
+          "flowCell": [
+            59,
+            302,
+            52,
+            35
+          ],
+          "flowMax": 8
+        },
+        {
+          "id": "open_wide",
+          "track": "openWide",
+          "bbox": [
+            403,
+            439,
+            223,
+            178
+          ],
+          "cell": [
+            2,
+            1191,
+            223,
+            178
+          ],
+          "flowCell": [
+            1,
+            302,
+            56,
+            45
+          ],
+          "flowMax": 13
+        },
+        {
+          "id": "round",
+          "track": "round",
+          "bbox": [
+            411,
+            450,
+            208,
+            135
+          ],
+          "cell": [
+            2,
+            1373,
+            208,
+            135
+          ],
+          "flowCell": [
+            1,
+            349,
+            52,
+            34
+          ],
+          "flowMax": 12
+        },
+        {
+          "id": "closed",
+          "track": "closed",
+          "bbox": [
+            418,
+            456,
+            200,
+            130
+          ],
+          "cell": [
+            2,
+            1512,
+            200,
+            130
+          ],
+          "flowCell": [
+            1,
+            385,
+            50,
+            33
+          ],
+          "flowMax": 8
+        },
+        {
+          "id": "teeth",
+          "track": "teeth",
+          "bbox": [
+            414,
+            446,
+            199,
+            139
+          ],
+          "cell": [
+            229,
+            1191,
+            199,
+            139
+          ],
+          "flowCell": [
+            113,
+            302,
+            50,
+            35
+          ],
+          "flowMax": 4
+        },
+        {
+          "id": "tongue",
+          "track": "tongue",
+          "bbox": [
+            412,
+            454,
+            207,
+            132
+          ],
+          "cell": [
+            425,
+            1373,
+            207,
+            132
+          ],
+          "flowCell": [
+            109,
+            349,
+            52,
+            33
+          ],
+          "flowMax": 10
+        },
+        {
+          "id": "narrow",
+          "track": "narrow",
+          "bbox": [
+            412,
+            450,
+            207,
+            135
+          ],
+          "cell": [
+            214,
+            1373,
+            207,
+            135
+          ],
+          "flowCell": [
+            55,
+            349,
+            52,
+            34
+          ],
+          "flowMax": 10
+        },
+        {
+          "id": "gaze_l",
+          "track": "gazeL",
+          "bbox": [
+            348,
+            295,
+            320,
+            108
+          ],
+          "cell": [
+            2,
+            1646,
+            320,
+            108
+          ],
+          "flowCell": [
+            87,
+            420,
+            80,
+            27
+          ],
+          "flowMax": 16
+        },
+        {
+          "id": "gaze_r",
+          "track": "gazeR",
+          "bbox": [
+            359,
+            302,
+            309,
+            100
+          ],
+          "cell": [
+            317,
+            1758,
+            309,
+            100
+          ],
+          "flowCell": [
+            81,
+            449,
+            78,
+            25
+          ],
+          "flowMax": 17
+        },
+        {
+          "id": "gaze_u",
+          "track": "gazeU",
+          "bbox": [
+            363,
+            294,
+            318,
+            109
+          ],
+          "cell": [
+            206,
+            1512,
+            318,
+            109
+          ],
+          "flowCell": [
+            53,
+            385,
+            80,
+            28
+          ],
+          "flowMax": 11
+        },
+        {
+          "id": "gaze_d",
+          "track": "gazeD",
+          "bbox": [
+            358,
+            299,
+            311,
+            104
+          ],
+          "cell": [
+            2,
+            1758,
+            311,
+            104
+          ],
+          "flowCell": [
+            1,
+            449,
+            78,
+            26
+          ],
+          "flowMax": 11
+        },
+        {
+          "id": "joy",
+          "track": "joy",
+          "bbox": [
+            343,
+            235,
+            343,
+            382
+          ],
+          "cell": [
+            342,
+            796,
+            343,
+            382
+          ],
+          "flowCell": [
+            87,
+            202,
+            86,
+            96
+          ],
+          "flowMax": 12
+        },
+        {
+          "id": "showman",
+          "track": "showman",
+          "bbox": [
+            343,
+            223,
+            343,
+            394
+          ],
+          "cell": [
+            2,
+            2,
+            343,
+            394
+          ],
+          "flowCell": [
+            1,
+            1,
+            86,
+            99
+          ],
+          "flowMax": 13
+        },
+        {
+          "id": "anger",
+          "track": "anger",
+          "bbox": [
+            343,
+            223,
+            342,
+            393
+          ],
+          "cell": [
+            349,
+            2,
+            342,
+            393
+          ],
+          "flowCell": [
+            89,
+            1,
+            86,
+            99
+          ],
+          "flowMax": 18
+        },
+        {
+          "id": "gloom",
+          "track": "gloom",
+          "bbox": [
+            345,
+            224,
+            336,
+            391
+          ],
+          "cell": [
+            2,
+            796,
+            336,
+            391
+          ],
+          "flowCell": [
+            1,
+            202,
+            84,
+            98
+          ],
+          "flowMax": 15
+        },
+        {
+          "id": "smug",
+          "track": "smug",
+          "bbox": [
+            347,
+            224,
+            337,
+            392
+          ],
+          "cell": [
+            349,
+            400,
+            337,
+            392
+          ],
+          "flowCell": [
+            89,
+            102,
+            85,
+            98
+          ],
+          "flowMax": 13
+        },
+        {
+          "id": "suspicion",
+          "track": "suspicion",
+          "bbox": [
+            343,
+            224,
+            343,
+            392
+          ],
+          "cell": [
+            2,
+            400,
+            343,
+            392
+          ],
+          "flowCell": [
+            1,
+            102,
+            86,
+            98
+          ],
+          "flowMax": 13
+        }
+      ],
+      "eyes": [
+        [
+          437,
+          346
+        ],
+        [
+          589,
+          345
+        ]
+      ],
+      "sway": {
+        "map": "sway.webp",
+        "amp": 8
+      }
+    }
+  },
+  "built": {
+    "tool": "tools/portrait-keys",
+    "keys": 19,
+    "refused": [],
+    "atlas": [
+      693,
+      1962
+    ],
+    "flow": [
+      176,
+      502
+    ],
+    "bytes": {
+      "atlas.webp": 274280,
+      "background.webp": 5372,
+      "body.webp": 65056,
+      "flow.png": 45237,
+      "head.webp": 92078,
+      "sway.webp": 2708
+    }
+  }
+}
