@@ -22,7 +22,9 @@
 //   keys then paint the mouth, the smile's motion still lifts it half way); a gaze key shows
 //   `1 - E` with E = min(1, sum of the six family values) and moves at `w (1 - E)` (under an
 //   expression its neutral eyes would ghost inside the expression's lids and its field, measured
-//   on the neutral eye, smears them: the expression's own eyes hold); every other key shows 1. A key whose colour is 0 but whose motion weight is
+//   on the neutral eye, smears them: the expression's own eyes hold); a blink key below the half stop
+//   (`at` < BLINK_YIELD_BELOW, round 4) yields the same way, so a blink over a held expression starts
+//   from the expression's own eyes and meets the half-closed lid at 0.5; every other key shows 1. A key whose colour is 0 but whose motion weight is
 //   above the threshold stays active: it still moves pixels.
 // - Active keys: weight > MORPH_MIN_WEIGHT; above MORPH_MAX_ACTIVE, the lowest weights are dropped
 //   (a tie drops the key that composites later) and their weights read 0; the rest are ordered by
@@ -31,6 +33,9 @@
 //   built once per `RigMorph` object (rigs are not mutated) and refilled in place each call, so a
 //   plan is valid until the next `morphPlan` call on the same morph.
 import { EMOTION_FAMILY, EXPRESSION_FAMILIES } from "./control.js";
+
+/** Blink stops below this `at` yield to a held expression (round 4: a neutral quarter-lid opened a furious glare). */
+export const BLINK_YIELD_BELOW = 0.5;
 import type { ResolvedFace } from "./face.js";
 import { smoothstep } from "./look.js";
 import type { Emotion, ExpressionFamily, MorphTrack, Rig, RigMorph } from "./types.js";
@@ -98,7 +103,9 @@ function indexOf(morph: RigMorph): MorphIndex {
       return on.length === 0 ? [] : [{ track: t, keys: Int32Array.from(on), at: Float64Array.from(on, (i) => keys[i]?.at ?? 1) }];
     }),
   );
-  const kind = Uint8Array.from(keys, (key) => (key.part === "lower" ? 1 : GAZE_SET.has(key.track) ? 2 : 0));
+  const kind = Uint8Array.from(keys, (key) =>
+    key.part === "lower" ? 1 : GAZE_SET.has(key.track) ? 2 : key.track === "blink" && (key.at ?? 1) < BLINK_YIELD_BELOW ? 3 : 0,
+  );
   const order = Int32Array.from(keys.map((_, i) => i).sort((a, b) => (group[a] ?? 0) - (group[b] ?? 0) || a - b));
   const groups = MORPH_GROUPS.map(() => false);
   for (const g of group) groups[g] = true;
@@ -277,8 +284,9 @@ export function morphPlan(morph: RigMorph, inputs: MorphInputs): MorphPlan {
     if (k === 1) {
       colour[i] = 1 - speak;
       weights[i] = (weights[i] ?? 0) * (1 - 0.5 * speak);
-    } else if (k === 2) {
+    } else if (k === 2 || k === 3) {
       // The gaze's field was measured on the neutral eye: on an expression's lids it smears them, so it yields too.
+      // So does an early blink stop: its neutral, still-open eye would replace a narrowed expression's eye.
       colour[i] = eyes;
       weights[i] = (weights[i] ?? 0) * eyes;
     }
