@@ -42,13 +42,16 @@ export const FAMILY_EMOTION: Readonly<Record<ExpressionFamily, Emotion>> = {
 
 export type FamilyState = "painted" | "retired" | "rig-retired" | "none";
 
-/** Each family's state for `rig` under `look`. */
-export function familyStates(rig: Pick<Rig, "layers" | "face">, look: Pick<Look, "face">): Record<ExpressionFamily, FamilyState> {
+/** The rig fields the card reads; `morph` (companion-lanes) paints a family with a key on its track. */
+export type FamiliesRig = Pick<Rig, "layers" | "face"> & { morph?: Rig["morph"] };
+
+/** Each family's state for `rig` under `look`. A family is painted by a layer variant or by a morph key on its track. */
+export function familyStates(rig: FamiliesRig, look: Pick<Look, "face">): Record<ExpressionFamily, FamilyState> {
   const own = resolveFace(rig, {});
   const now = resolveFace(rig, look);
   const out = {} as Record<ExpressionFamily, FamilyState>;
   for (const family of EXPRESSION_FAMILIES) {
-    const painted = rig.layers.some((layer) => layer.variants?.[family] !== undefined);
+    const painted = rig.layers.some((layer) => layer.variants?.[family] !== undefined) || (rig.morph?.keys.some((key) => key.track === family) ?? false);
     out[family] = !painted ? "none" : isRetired(own, family) ? "rig-retired" : isRetired(now, family) ? "retired" : "painted";
   }
   return out;
@@ -74,7 +77,7 @@ const NOTE: Record<FamilyState, string> = {
 };
 
 export interface FaceFamiliesProps {
-  rig: Pick<Rig, "layers" | "face">;
+  rig: FamiliesRig;
   /** The look's retired faces (`look.face.expression.faces`). */
   retired: RetiredFaces | undefined;
   onRetire: (family: ExpressionFamily, retired: boolean) => void;

@@ -1,0 +1,45 @@
+{
+  "scenario": "companion-iris",
+  "source": "hand-written for the companion-lanes proof (task 3): seven lines, six emotions, three gestures; p/b/m plosives and round vowels in every line",
+  "replies": {
+    "c1": {
+      "line": "Good morning. I am here, and your day is already open in front of me.",
+      "emotion": "neutral",
+      "answeredId": "c1"
+    },
+    "c2": {
+      "line": "Done. Your dentist moved to Thursday at ten, and I booked a reminder the morning before.",
+      "emotion": "amused",
+      "gesture": "nod",
+      "answeredId": "c2"
+    },
+    "c3": {
+      "line": "Just one: a ten minute call with Bob from the product team. Plenty of room to breathe.",
+      "emotion": "delighted",
+      "gesture": "tilt",
+      "answeredId": "c3"
+    },
+    "c4": {
+      "line": "Coffee is on the list, marked urgent. I would not want you to meet a Monday without it.",
+      "emotion": "smug",
+      "answeredId": "c4"
+    },
+    "c5": {
+      "line": "Hmm. That is the meeting where they approve your new monitor. Are you sure about that?",
+      "emotion": "suspicious",
+      "gesture": "lean_in",
+      "answeredId": "c5"
+    },
+    "c6": {
+      "line": "Two percent. Please plug it in now. Your boarding pass for the evening flight is on that phone.",
+      "emotion": "grim",
+      "answeredId": "c6"
+    },
+    "c7": {
+      "line": "My pleasure. Good luck with the dentist, and maybe go home before nine for once.",
+      "emotion": "amused",
+      "gesture": "nod",
+      "answeredId": "c7"
+    }
+  }
+}

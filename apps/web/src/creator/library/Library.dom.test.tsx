@@ -84,4 +84,14 @@ describe("<Library>", () => {
     await act(async () => named(v, "Replay gallery")?.click());
     expect(onOpenGallery).toHaveBeenCalledOnce();
   });
+
+  it("offers a companion pack as a one-press tile, said apart from the gallery's (companion-lanes 6.3)", async () => {
+    const adopt = vi.fn(async () => undefined);
+    const v = await show({ offers: [{ id: "iris", name: "Iris", kind: "companion", adopt }, { id: "reveille", name: "Reveille", adopt: async () => undefined }] });
+    expect(v.container.querySelector('[data-offer="iris"]')?.getAttribute("data-offer-kind")).toBe("companion");
+    expect(v.container.querySelector('[data-offer="reveille"]')?.hasAttribute("data-offer-kind")).toBe(false);
+    expect(named(v, "Reveille: adopt from the gallery")).toBeDefined();
+    await act(async () => named(v, "Iris: add from the companion packs")?.click());
+    expect(adopt).toHaveBeenCalledOnce();
+  });
 });

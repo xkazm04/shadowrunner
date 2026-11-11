@@ -6,7 +6,7 @@ import { defaultLook } from "@sr/rig";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { memoryLibrary, type CharacterRecord, type LibraryStore } from "../creator/library/libraryStore";
 import { testRig } from "../creator/testFixtures";
-import { castSlugOf, DAMAGED_RECORD, loadCastIndex, loadPlayable, NOT_IN_LIBRARY, packUrlOf, UNDECODABLE } from "./playable";
+import { castFirst, castSlugOf, DAMAGED_RECORD, loadCastIndex, loadPlayable, NOT_IN_LIBRARY, packUrlOf, UNDECODABLE } from "./playable";
 
 const lib = vi.hoisted(() => ({ store: undefined as LibraryStore | undefined }));
 
@@ -140,6 +140,16 @@ describe("loadCastIndex", () => {
     serve({ "/packs/index.json": () => Response.json([good, { id: 3 }, null]) });
     expect(await loadCastIndex()).toEqual([good]);
     expect(fetched).toEqual(["/packs/index.json"]);
+  });
+
+  it("lists the cast first and the companions after it, marked (companion-lanes 5.3: never in the cast's list)", async () => {
+    const bun = { id: "bun", name: "Bun", file: "bun.srpack", bytes: 1 };
+    const iris = { id: "iris", name: "Iris", file: "iris.srpack", bytes: 1 };
+    const asp = { id: "replay-auntie-asp", name: "Auntie Asp", file: "auntie-asp.srpack", bytes: 1 };
+    const tally = { id: "replay-the-tallyman", name: "The Tallyman", file: "the-tallyman.srpack", bytes: 1 };
+    serve({ "/packs/index.json": () => Response.json([bun, iris, asp, tally]) });
+    expect(await loadCastIndex()).toEqual([asp, tally, { ...bun, companion: true }, { ...iris, companion: true }]);
+    expect(castFirst([tally, asp])).toEqual([tally, asp]);
   });
 
   it.each([

@@ -1,0 +1,51 @@
+{
+  "id": "companion-bun",
+  "title": "Bun - an energetic streamer through hype, outrage, a sulk and a bounce back (companion-lanes proof)",
+  "character": "bun",
+  "persona": "Bun is a bubbly anime streamer with pink hair and cat-ear headphones. She hypes her chat, overreacts to everything on purpose, sulks for about five seconds when teased, and always bounces back. One or two short, loud sentences at a time.",
+  "seed": 1111,
+  "chat": [
+    {
+      "id": "c1",
+      "user": "pocket_mochi",
+      "text": "BUN WE ARE LIVE",
+      "atMs": 2000
+    },
+    {
+      "id": "c2",
+      "user": "boba_paladin",
+      "text": "just sent five hundred bits for the new emote",
+      "atMs": 10000
+    },
+    {
+      "id": "c3",
+      "user": "pocket_mochi",
+      "text": "your last boss fight was kind of mid ngl",
+      "atMs": 18000
+    },
+    {
+      "id": "c4",
+      "user": "plum_pixel",
+      "text": "bun what happened to the bonus round",
+      "atMs": 26000
+    },
+    {
+      "id": "c5",
+      "user": "pocket_mochi",
+      "text": "the cat ears are cuter than you",
+      "atMs": 34000
+    },
+    {
+      "id": "c6",
+      "user": "plum_pixel",
+      "text": "mods are gonna clip that pout",
+      "atMs": 42000
+    },
+    {
+      "id": "c7",
+      "user": "boba_paladin",
+      "text": "rematch the boss? we believe in you",
+      "atMs": 50000
+    }
+  ]
+}

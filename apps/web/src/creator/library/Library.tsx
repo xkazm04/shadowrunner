@@ -22,6 +22,8 @@ export interface LibraryOffer {
   id: string;
   name: string;
   portraitUrl?: string;
+  /** "companion" (companion-lanes): a pack from /packs/ outside the cast (Iris, Bun); default a gallery character. */
+  kind?: "gallery" | "companion";
   adopt(): Promise<void>;
 }
 
@@ -77,14 +79,15 @@ function OfferTile({ offer }: { offer: LibraryOffer }) {
     }
   };
   const name = offer.name.replace(/^the\s+/i, "");
+  const companion = offer.kind === "companion";
   return (
-    <li className={styles.item} data-offer={offer.id}>
+    <li className={styles.item} data-offer={offer.id} data-offer-kind={companion ? "companion" : undefined}>
       <button
         type="button"
         className={`${styles.card} ${styles.offer}`}
         aria-busy={busy}
-        aria-label={`${offer.name}: ${failed ? "could not be read, press to try again" : "adopt from the gallery"}`}
-        title={offer.name}
+        aria-label={`${offer.name}: ${failed ? "could not be read, press to try again" : companion ? "add from the companion packs" : "adopt from the gallery"}`}
+        title={companion ? `Companion · ${offer.name}` : offer.name}
         disabled={busy}
         onClick={() => void adopt()}
       >

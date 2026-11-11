@@ -1,13 +1,15 @@
 // A live run: the scenario's chat arrives on the scaled clock; each message is one control-arm
 // turn (queued behind the previous one); every `say` is voiced by Kokoro and emitted as say, pcm,
 // audio and viseme events. Audio lands in audio/<utteranceId>.wav.
-import { writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { castVoice, type VoiceId } from "@sr/engine";
+import { castVoice, VOICE_IDS, type VoiceId } from "@sr/engine";
+import { PACK_EXTENSION, readPack } from "@sr/pack";
 import type { ControlArm, RunConfig, Scenario } from "../contract.js";
 import type { ControlFixture } from "./arms/control/fixture.js";
 import type { ControlUsage } from "./arms/control/index.js";
 import type { LlmTransport } from "./llm/index.js";
+import { PACKS_DIR } from "./paths.js";
 import { newRunId, runOnStage, type RunDeps, type RunResult } from "./run.js";
 import { playMark, type Session } from "./session.js";
 import type { VoiceSynth } from "./voice/kokoro.js";
@@ -28,9 +30,19 @@ export interface LiveOptions {
   debug: boolean;
 }
 
-/** Characters' voice ids: the cast map, or "crypt" (as scripts/build-packs.mjs does). */
-export function voiceOf(character: string): VoiceId {
-  return castVoice(character) ?? "crypt";
+const isVoiceId = (value: string): value is VoiceId => (VOICE_IDS as readonly string[]).includes(value);
+
+/**
+ * Characters' voice ids: the cast map; else the voice the built pack carries (a companion's comes
+ * from build-packs' COMPANION_VOICES, companion-lanes); else "crypt" (as scripts/build-packs.mjs does).
+ */
+export async function voiceOf(character: string, packsDir = PACKS_DIR): Promise<VoiceId> {
+  const cast = castVoice(character);
+  if (cast !== undefined) return cast;
+  const file = join(packsDir, `${character}${PACK_EXTENSION}`);
+  if (!existsSync(file)) return "crypt";
+  const read = await readPack(new Uint8Array(readFileSync(file)));
+  return read.ok && isVoiceId(read.pack.voice) ? read.pack.voice : "crypt";
 }
 
 async function playTurn(
@@ -64,7 +76,7 @@ async function playTurn(
 export async function runLive(options: LiveOptions, deps: RunDeps): Promise<RunResult> {
   const { config, scenario } = options;
   const character = config.character ?? scenario.character;
-  const voiceId = voiceOf(character);
+  const voiceId = await voiceOf(character);
   // Built before anything opens, so an unbuilt arm fails with its sentence and nothing to clean up.
   const arm = deps.createControl(config.control, {
     llm: options.llm,

@@ -17,6 +17,8 @@ interface Choice {
   value: string;
   label: string;
   source: OverlaySource;
+  /** companion-lanes: listed under "Companions", after the cast. */
+  companion?: true;
 }
 
 type BgChoice = "transparent" | "green" | "colour";
@@ -43,7 +45,7 @@ function useChoices(): { cast: Choice[]; library: Choice[]; loaded: boolean } {
     const castLoad = loadCastIndex({ signal: abort.signal }).then((entries) =>
       entries.map((entry) => {
         const slug = entry.file.replace(PACK_EXTENSION, "");
-        return { value: `pack:${slug}`, label: entry.name, source: { pack: slug } };
+        return { value: `pack:${slug}`, label: entry.name, source: { pack: slug }, ...(entry.companion === true ? { companion: true as const } : {}) };
       }),
     );
     const libraryLoad = openLibrary()
@@ -117,14 +119,21 @@ export function OverlaySetup({ plane, origin = window.location.origin }: Overlay
           >
             {!loaded && <option value="">Loading the cast.</option>}
             {loaded && cast.length === 0 && library.length === 0 && <option value="">No characters found.</option>}
-            {cast.length > 0 && (
-              <optgroup label="Cast">
-                {cast.map((c) => (
-                  <option key={c.value} value={c.value}>
-                    {c.label}
-                  </option>
-                ))}
-              </optgroup>
+            {(
+              [
+                ["Cast", cast.filter((c) => c.companion !== true)],
+                ["Companions", cast.filter((c) => c.companion === true)],
+              ] satisfies [string, Choice[]][]
+            ).map(([label, group]) =>
+              group.length === 0 ? null : (
+                <optgroup key={label} label={label}>
+                  {group.map((c) => (
+                    <option key={c.value} value={c.value}>
+                      {c.label}
+                    </option>
+                  ))}
+                </optgroup>
+              ),
             )}
             {library.length > 0 && (
               <optgroup label="Your library">
