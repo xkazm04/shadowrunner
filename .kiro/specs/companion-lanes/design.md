@@ -182,6 +182,26 @@ own `within`/`without` shapes allow, and fills "pockets" (free pixels between tw
 row, Iris's fringe notches, whose chroma is skin's). Clothes slots stay binary. Left: a faint haze
 beside Iris's left ear with white hair; Bun's eye-corner specks under a recoloured gaze.
 
+### Round 6 amendment (2026-11-11): mouth size in speech
+Owner: "the mouth size is still too large, for Iris in most cases, for Bun only if wide open".
+Cause: each viseme drives its mouth track to 1 (`apps/lab/src/page/lip/mouth/shapes.ts`, `aa` ->
+openWide), so speech always shows the Codex edit at full size, and the edits are drawn emphatic.
+Measured (height of the region that differs from rest, centre columns, / mouth width): Iris
+openMid 0.65, narrow/tongue 0.47, round 0.42, openWide 1.0; Bun normal shapes 0.36-0.65 (right for
+the style) but openWide 1.42 already at weight 0.25 (her wide key arrives as colour: its field moves
+the lips 7-9 px), so scaling cannot shrink it.
+
+- `RigMorph.mouthGain?: Partial<Record<mouth track, number>>`, each in (0, 1], omitted = 1: the
+  plan multiplies the track's shape weight by it before the seven are normalised. Written by the
+  builder from the recipe; chosen by eye on strength strips (Director, 2026-11-11):
+  Iris openMid 0.7, round 0.6, tongue 0.7, narrow 0.6, openWide 0.45; Bun openWide 0.5.
+  `closed` and `teeth` are never reduced (the lips must meet on p/b/m).
+- Bun gains `open_wide_half` (a new Codex edit, a calm "ah") at `at: 0.5` on openWide, so her
+  speech lands on a drawn key, as Iris's already does.
+- `FaceProfile.mouth.size` in [0.3, 1.5], default 1: a viewer-facing multiplier on the same tracks
+  (except closed, teeth), clamped to 1 after gain; read only by the morph plan, so the cast's
+  drawn mouths are unchanged. The creator's Face tab shows it only on a morph rig.
+
 ## Builder
 `tools/portrait-keys/build.py` (Python 3.12: numpy, opencv-python, pillow; `requirements.txt`).
 `python tools/portrait-keys/build.py <character dir> --out <built dir> [--sheets <dir>]`.
