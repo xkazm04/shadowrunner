@@ -102,6 +102,38 @@ the layer. A pure shift `d` (F = d, G = -d): the layer moves `w d` and the key m
 applied to `x` first, as before. The builder writes F and G unscaled (both faded to 0 with
 coverage), and `r` from where the key does not match the layer it was warped from.
 
+### Round 3 amendment (2026-11-11): parts, colour apart from motion, gaze yields
+Seen on the first lab recordings: a smile held while the mouth speaks left the smile's creases
+around a neutral mouth; a gaze key over an expression ghosted the neutral eye onto changed lids.
+The declaration moved to `packages/rig/src/morphTypes.ts` (re-exported from `types.ts`).
+
+- `MorphKey.part?: "upper" | "lower"` on the six family tracks only. A family is one whole key or
+  one `upper` plus one `lower` key at the same `at` (ids `<family>_upper`, `<family>_lower`); the
+  two coverages are a partition of unity across a 24 px band at the character's own cheek line
+  (`faceSplitY` in the recipe: 412 on Iris, 466 on Bun), so both at weight 1 equal the whole key.
+- The plan gives every active key two numbers: the motion weight `w_i` (as before) and a colour
+  scale `k_i` in [0, 1]. The shader's `a_i` becomes `k_i * mix(w_i, smoothstep(0, 0.4, w_i), r_i)`;
+  the Canvas 2D fallback draws with `globalAlpha = opacity * w_i * k_i`.
+- `speak` in [0, 1]: the sum of the non-rest mouth shapes, eased by the player (60 ms attack,
+  350 ms release). A `lower` key gets `k = 1 - speak` and `w * (1 - 0.5 * speak)`: the smile's
+  mouth and creases give way to the speaking mouth while half of its cheek motion stays.
+- Gaze keys get `k = 1 - E` and `w * (1 - E)` with `E = min(1, sum of the family track values)`:
+  a gaze field measured on the neutral eye smears an expression's lids, so the gaze yields in
+  colour and in motion while an expression is held (the layer's own drift and saccades continue).
+
+### As built (task 2, rounds 1-2): where the builder left this page
+- Field smoothing is Gaussian sigma 12, not 2: at 2 and 4 the widest mouth tore the lower lip at a
+  quarter weight. The forward field is derived from the back field, so both describe one motion;
+  both fade to 0 inside the head's outline and each key's coverage is widened to cover its motion.
+- Gaze keys are a translation over each eye's measured opening (recipe `openings`), not optical.
+- Bun's mouth and family keys are optical (clearly better than the cross-fade once the two-ended
+  scheme landed); Bun's blink stays a cross-fade through the half stop.
+- Layers and atlas are WebP q95. Each layer carries a region index map (`<layer>.regions.png`)
+  built by `regions.py` from a recipe rule per slot: Iris head `hair`, body `jacket`; Bun head
+  `hair` and `headphones`, body `hoodie` and `strings`.
+- Where nothing moves and the edit is within the editor's noise, the key's colour is the
+  portrait's own (removes a grey halo around Bun's widest mouth).
+
 ## Builder
 `tools/portrait-keys/build.py` (Python 3.12: numpy, opencv-python, pillow; `requirements.txt`).
 `python tools/portrait-keys/build.py <character dir> --out <built dir> [--sheets <dir>]`.
