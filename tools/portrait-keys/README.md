@@ -14,6 +14,9 @@ there and add it to `.gitignore` beside the lab-voice venv).
 python tools/portrait-keys/build.py import --portrait <concept.png> --edits <dir of <name>/out.png> \
     --noop <noop/out.png> --out assets/characters/companions/<slug>
 
+# one or more new edits into a finished character (nothing else is re-encoded)
+python tools/portrait-keys/build.py import --edits <dir of <name>/out.png> --only <name> [--only <name>...]     --out assets/characters/companions/<slug>
+
 # a character folder -> a built folder (+ review sheets)
 python tools/portrait-keys/build.py build assets/characters/companions/<slug> \
     --out assets/replay/companions/<slug> [--sheets var/companion-lanes/sheets/<slug>]
@@ -40,11 +43,11 @@ written either way.
   mouth: { cx, lineY, width },        // Rig.mouth
   regions: { <name>: { ellipses: [[cx, cy, rx, ry], ...] } | { box: [x, y, w, h] } },
   mattes: { figure: "matte", head: "head" }, floor: "noop",
-  keys: [{ id, track, at?, edit, region, flow: "optical" | "iris" | "none", optional? }],
+  keys: [{ id, track, at?, edit, region, flow: "optical" | "iris" | "lid" | "none", optional? }],
   sway?: { amp, inner: [cx, cy, rx, ry], reach, gamma, zero?: [region], cap?: [region + max], boost?: [region + min], margin? },
-  gates?: { cornerShift, outsideMargin, floorTimes, floorMin, moves, flowSigma, flowFrom, revealTimes, revealRamp, gazeReach, weight1 },
+  gates?: { cornerShift, outsideMargin, floorTimes, floorMin, moves, flowSigma, flowFrom, revealTimes, revealRamp, gazeReach, weight1, lidSigma, lidReach, lidHold },
   matte?: { lo, hi, core, nearBody, under, groundCheck, headOnly: [region] },
-  recolour?: { <layer>: [{ id, name, minArea?, parts: [{ within?, without?, colour?, except? }] }] },  // see regions.py
+  recolour?: { <layer>: [{ id, name, minArea?, shade?: "move", parts: [{ within?, without?, colour?, except? }] }] },  // see regions.py; shade is copied to the rig slot
   layerQuality?, atlasQuality?,       // WebP quality, default 95
   rig: { palette, anchors: { head: [x, y], body: [x, y] }, face, turn },
   inspect: [[x, y, w, h], ...],       // 2x zoom boxes on the layer sheets (hair ends, jaw, headgear)
@@ -56,7 +59,10 @@ is measured on that character's own portrait: never copy one character's numbers
 `flow`: `optical` is DIS (medium, finest scale 1) both ways with a forward-backward check, smoothed
 (`flowSigma`); with `flowFrom: "back"` the forward field F is the inverse of the back field G (one
 motion both ways); `iris` is one translation per eye (the portrait's iris disc found in the edit
-along the track's direction), over the eye's `openings` ellipse; `none` is a plain cross-fade. Pick
+along the track's direction), over the eye's `openings` ellipse; `lid` (round 4, blink keys; `lid.py`)
+is the upper lash line found per column in the edit and the lid stretched down to it, the eye
+below pressed into the lower lash with no fold, so two blink stops mixed by the shader slide one
+lid instead of showing two (`lidSigma`, `lidReach`, `lidHold`); `none` is a plain cross-fade. Pick
 per key by looking at its strip. Round 2 (design "Round 2 amendment"): every moving key writes F
 (`flowCell`) and G plus reveal (`backCell`) unscaled; the shader needs no inversion.
 

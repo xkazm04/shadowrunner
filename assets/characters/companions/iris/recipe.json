@@ -71,10 +71,26 @@
   "floor": "noop",
   "keys": [
     {
+      "id": "blink_quarter",
+      "track": "blink",
+      "at": 0.25,
+      "edit": "blink_quarter",
+      "region": "eyes",
+      "flow": "optical"
+    },
+    {
       "id": "blink_half",
       "track": "blink",
       "at": 0.5,
       "edit": "blink_half",
+      "region": "eyes",
+      "flow": "optical"
+    },
+    {
+      "id": "blink_3q",
+      "track": "blink",
+      "at": 0.75,
+      "edit": "blink_3q",
       "region": "eyes",
       "flow": "optical"
     },
@@ -90,6 +106,14 @@
       "track": "openMid",
       "edit": "openMid",
       "region": "mouth",
+      "flow": "optical"
+    },
+    {
+      "id": "open_wide_half",
+      "track": "openWide",
+      "at": 0.5,
+      "edit": "openWide_half",
+      "region": "mouthWide",
       "flow": "optical"
     },
     {
@@ -455,7 +479,8 @@
             ]
           }
         ],
-        "minArea": 150
+        "minArea": 150,
+        "shade": "move"
       }
     ],
     "body": [
@@ -505,7 +530,8 @@
               }
             ]
           }
-        ]
+        ],
+        "shade": "move"
       }
     ]
   },

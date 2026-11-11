@@ -87,19 +87,35 @@
   "floor": "noop",
   "keys": [
     {
+      "id": "blink_quarter",
+      "track": "blink",
+      "at": 0.25,
+      "edit": "blink_quarter",
+      "region": "eyes",
+      "flow": "lid"
+    },
+    {
       "id": "blink_half",
       "track": "blink",
       "at": 0.5,
       "edit": "blink_half",
       "region": "eyes",
-      "flow": "none"
+      "flow": "lid"
+    },
+    {
+      "id": "blink_3q",
+      "track": "blink",
+      "at": 0.75,
+      "edit": "blink_3q",
+      "region": "eyes",
+      "flow": "lid"
     },
     {
       "id": "blink",
       "track": "blink",
       "edit": "blink",
       "region": "eyes",
-      "flow": "none"
+      "flow": "lid"
     },
     {
       "id": "open_mid",
@@ -383,7 +399,9 @@
   "gates": {
     "flowSigma": 12,
     "flowFrom": "back",
-    "gazeReach": 2.5
+    "gazeReach": 2.5,
+    "lidSigma": 16,
+    "lidHold": 0.7
   },
   "openings": [
     [
@@ -499,7 +517,8 @@
               }
             ]
           }
-        ]
+        ],
+        "shade": "move"
       },
       {
         "id": "hair",
@@ -537,7 +556,8 @@
               }
             ]
           }
-        ]
+        ],
+        "shade": "move"
       }
     ],
     "body": [
@@ -591,7 +611,8 @@
               }
             ]
           }
-        ]
+        ],
+        "shade": "move"
       },
       {
         "id": "hoodie",
@@ -673,7 +694,8 @@
               }
             ]
           }
-        ]
+        ],
+        "shade": "move"
       }
     ]
   },

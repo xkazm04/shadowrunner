@@ -4,6 +4,8 @@
 // motion image, and the tracks are complete (2 blink stops, 7 mouth shapes, 6 families, 4 gaze) or
 // the gap is listed in the character's NOTES.md. Round 2: back cells inside the motion image,
 // region maps the size of their layer. Round 3: each expression family is an upper and a lower key.
+// Round 4: four blink stops (.25 .5 .75 1) on both, Iris's openWide at .5 and 1, every region slot
+// `shade: "move"`.
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -16,7 +18,7 @@ const BUILT = join(ROOT, "assets", "replay", "companions");
 const SOURCES = join(ROOT, "assets", "characters", "companions");
 const CAP = 1.5 * 1024 * 1024;
 const TRACKS = {
-  blink: 2,
+  blink: 4,
   openWide: 1, openMid: 1, round: 1, closed: 1, teeth: 1, tongue: 1, narrow: 1,
   joy: 2, showman: 2, anger: 2, gloom: 2, smug: 2, suspicion: 2,
   gazeL: 1, gazeR: 1, gazeU: 1, gazeD: 1,
@@ -80,7 +82,8 @@ describe("built companions", () => {
 
     it("has every track, or lists the gap in NOTES.md", () => {
       const notes = readFileSync(join(SOURCES, slug, "NOTES.md"), "utf8").replace(/\r\n/g, "\n");
-      for (const [track, stops] of Object.entries(TRACKS)) {
+      const want = { ...TRACKS, ...(slug === "iris" ? { openWide: 2 } : {}) };
+      for (const [track, stops] of Object.entries(want)) {
         const keys = rig.morph.keys.filter((key) => key.track === track);
         if (keys.length === stops) continue;
         expect(notes, `${slug}: track ${track} has ${keys.length} of ${stops} keys and NOTES.md does not list it`).toMatch(new RegExp(`\\b${track}\\b.*refused`, "i"));
@@ -90,7 +93,9 @@ describe("built companions", () => {
         if (parts.length === 2) expect(parts, family).toEqual(["lower", "upper"]);
       }
       const blink = rig.morph.keys.filter((key) => key.track === "blink").map((key) => key.at ?? 1).sort();
-      if (blink.length === 2) expect(blink).toEqual([0.5, 1]);
+      if (blink.length === 4) expect(blink).toEqual([0.25, 0.5, 0.75, 1]);
+      const wide = rig.morph.keys.filter((key) => key.track === "openWide").map((key) => key.at ?? 1).sort();
+      if (wide.length === 2) expect(wide).toEqual([0.5, 1]);
     });
 
     it("gives its region maps the size of their layer image", async () => {
@@ -103,6 +108,7 @@ describe("built companions", () => {
         expect([image.width, image.height], layer.name).toEqual(layer.bbox.slice(2));
         expect(layer.regions.slots.length).toBeGreaterThanOrEqual(1);
         expect(layer.regions.slots.length).toBeLessThanOrEqual(4);
+        for (const slot of layer.regions.slots) expect(slot.shade, `${layer.name}.${slot.id}`).toBe("move");
       }
     });
 

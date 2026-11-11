@@ -12,12 +12,15 @@
     "revealRamp": 3.0,
     "flowFrom": "back",
     "gazeReach": 1.6,
-    "weight1": 2.5
+    "weight1": 2.5,
+    "lidSigma": 8.0,
+    "lidReach": 1.6,
+    "lidHold": 0.7
   },
   "figures": {
     "sharpness": {
       "head": 0.995,
-      "keysMin": 0.994
+      "keysMin": 0.989
     },
     "regions": {
       "head": {
@@ -115,24 +118,60 @@
     },
     "atlas": [
       1048,
-      1399
+      1519
     ],
     "flow": [
-      984,
-      190
+      892,
+      230
     ],
     "bytes": {
-      "atlas.webp": 380468,
+      "atlas.webp": 415360,
       "background.webp": 5372,
       "body.regions.png": 2465,
       "body.webp": 89294,
-      "flow.png": 104201,
+      "flow.png": 114316,
       "head.regions.png": 5414,
       "head.webp": 112696,
       "sway.webp": 2708
     }
   },
   "keys": [
+    {
+      "id": "blink_quarter",
+      "edit": "blink_quarter",
+      "affine": [
+        [
+          0.99963,
+          0.00024,
+          -0.01897
+        ],
+        [
+          0.00012,
+          1.00016,
+          -0.27106
+        ]
+      ],
+      "cornerShift": 0.426,
+      "floor": 8.074,
+      "outsidePrior": 4.21,
+      "supportPx": 13972,
+      "colourShift": 1.919,
+      "bbox": [
+        366,
+        300,
+        306,
+        106
+      ],
+      "flowMax": 4,
+      "flowP99": 3.227,
+      "revealMean": 0.039,
+      "medianMotion": 0.83,
+      "verdict": "ok",
+      "track": "blink",
+      "flow": "optical",
+      "weight1": 1.332,
+      "sharpness": 1.024
+    },
     {
       "id": "blink_half",
       "edit": "blink_half",
@@ -166,8 +205,44 @@
       "verdict": "ok",
       "track": "blink",
       "flow": "optical",
-      "weight1": 1.391,
-      "sharpness": 1.013
+      "weight1": 1.35,
+      "sharpness": 1.045
+    },
+    {
+      "id": "blink_3q",
+      "edit": "blink_3q",
+      "affine": [
+        [
+          0.99988,
+          0.00017,
+          -0.23058
+        ],
+        [
+          -4e-05,
+          1.0005,
+          -0.45565
+        ]
+      ],
+      "cornerShift": 0.616,
+      "floor": 8.074,
+      "outsidePrior": 4.547,
+      "supportPx": 17240,
+      "colourShift": 2.808,
+      "bbox": [
+        354,
+        301,
+        316,
+        111
+      ],
+      "flowMax": 6,
+      "flowP99": 6.205,
+      "revealMean": 0.123,
+      "medianMotion": 1.963,
+      "verdict": "ok",
+      "track": "blink",
+      "flow": "optical",
+      "weight1": 1.319,
+      "sharpness": 1.079
     },
     {
       "id": "blink",
@@ -202,8 +277,8 @@
       "verdict": "ok",
       "track": "blink",
       "flow": "optical",
-      "weight1": 1.316,
-      "sharpness": 1.084
+      "weight1": 1.343,
+      "sharpness": 1.074
     },
     {
       "id": "open_mid",
@@ -238,8 +313,44 @@
       "verdict": "ok",
       "track": "openMid",
       "flow": "optical",
-      "weight1": 1.213,
-      "sharpness": 1.122
+      "weight1": 1.218,
+      "sharpness": 1.126
+    },
+    {
+      "id": "open_wide_half",
+      "edit": "openWide_half",
+      "affine": [
+        [
+          0.99956,
+          0.00011,
+          0.1726
+        ],
+        [
+          -0.00018,
+          1.00019,
+          -0.24781
+        ]
+      ],
+      "cornerShift": 0.515,
+      "floor": 8.022,
+      "outsidePrior": 6.125,
+      "supportPx": 24105,
+      "colourShift": 7.255,
+      "bbox": [
+        395,
+        449,
+        241,
+        164
+      ],
+      "flowMax": 31,
+      "flowP99": 29.501,
+      "revealMean": 0.089,
+      "medianMotion": 13.603,
+      "verdict": "ok",
+      "track": "openWide",
+      "flow": "optical",
+      "weight1": 1.153,
+      "sharpness": 1.043
     },
     {
       "id": "open_wide",
@@ -274,8 +385,8 @@
       "verdict": "ok",
       "track": "openWide",
       "flow": "optical",
-      "weight1": 1.266,
-      "sharpness": 1.016
+      "weight1": 1.268,
+      "sharpness": 1.011
     },
     {
       "id": "round",
@@ -310,8 +421,8 @@
       "verdict": "ok",
       "track": "round",
       "flow": "optical",
-      "weight1": 1.094,
-      "sharpness": 1.231
+      "weight1": 1.125,
+      "sharpness": 1.202
     },
     {
       "id": "closed",
@@ -346,8 +457,8 @@
       "verdict": "ok",
       "track": "closed",
       "flow": "optical",
-      "weight1": 1.204,
-      "sharpness": 1.084
+      "weight1": 1.207,
+      "sharpness": 1.078
     },
     {
       "id": "teeth",
@@ -382,8 +493,8 @@
       "verdict": "ok",
       "track": "teeth",
       "flow": "optical",
-      "weight1": 1.196,
-      "sharpness": 1.008
+      "weight1": 1.146,
+      "sharpness": 1.04
     },
     {
       "id": "tongue",
@@ -418,8 +529,8 @@
       "verdict": "ok",
       "track": "tongue",
       "flow": "optical",
-      "weight1": 1.513,
-      "sharpness": 1.0
+      "weight1": 1.518,
+      "sharpness": 1.007
     },
     {
       "id": "narrow",
@@ -454,8 +565,8 @@
       "verdict": "ok",
       "track": "narrow",
       "flow": "optical",
-      "weight1": 1.285,
-      "sharpness": 1.036
+      "weight1": 1.297,
+      "sharpness": 1.04
     },
     {
       "id": "gaze_l",
@@ -500,8 +611,8 @@
       "verdict": "ok",
       "track": "gazeL",
       "flow": "iris",
-      "weight1": 1.384,
-      "sharpness": 1.011
+      "weight1": 1.415,
+      "sharpness": 0.996
     },
     {
       "id": "gaze_r",
@@ -546,8 +657,8 @@
       "verdict": "ok",
       "track": "gazeR",
       "flow": "iris",
-      "weight1": 1.324,
-      "sharpness": 0.994
+      "weight1": 1.329,
+      "sharpness": 0.989
     },
     {
       "id": "gaze_u",
@@ -592,8 +703,8 @@
       "verdict": "ok",
       "track": "gazeU",
       "flow": "iris",
-      "weight1": 1.385,
-      "sharpness": 1.003
+      "weight1": 1.396,
+      "sharpness": 0.997
     },
     {
       "id": "gaze_d",
@@ -638,7 +749,7 @@
       "verdict": "ok",
       "track": "gazeD",
       "flow": "iris",
-      "weight1": 1.342,
+      "weight1": 1.344,
       "sharpness": 1.017
     },
     {
@@ -712,9 +823,9 @@
       "flowMax": 14,
       "part": "upper",
       "of": "joy",
-      "weight1": 1.392,
-      "sharpness": 1.02,
-      "composedWeight1": 1.404
+      "weight1": 1.394,
+      "sharpness": 1.016,
+      "composedWeight1": 1.405
     },
     {
       "id": "joy_lower",
@@ -749,9 +860,9 @@
       "flowMax": 29,
       "part": "lower",
       "of": "joy",
-      "weight1": 1.221,
-      "sharpness": 1.051,
-      "composedWeight1": 1.404
+      "weight1": 1.222,
+      "sharpness": 1.052,
+      "composedWeight1": 1.405
     },
     {
       "id": "showman",
@@ -824,9 +935,9 @@
       "flowMax": 38,
       "part": "upper",
       "of": "showman",
-      "weight1": 1.736,
-      "sharpness": 1.051,
-      "composedWeight1": 2.026
+      "weight1": 1.739,
+      "sharpness": 1.059,
+      "composedWeight1": 2.027
     },
     {
       "id": "showman_lower",
@@ -861,9 +972,9 @@
       "flowMax": 33,
       "part": "lower",
       "of": "showman",
-      "weight1": 1.261,
+      "weight1": 1.26,
       "sharpness": 1.085,
-      "composedWeight1": 2.026
+      "composedWeight1": 2.027
     },
     {
       "id": "anger",
@@ -936,9 +1047,9 @@
       "flowMax": 33,
       "part": "upper",
       "of": "anger",
-      "weight1": 1.447,
-      "sharpness": 1.049,
-      "composedWeight1": 1.342
+      "weight1": 1.44,
+      "sharpness": 1.055,
+      "composedWeight1": 1.339
     },
     {
       "id": "anger_lower",
@@ -975,7 +1086,7 @@
       "of": "anger",
       "weight1": 1.22,
       "sharpness": 1.004,
-      "composedWeight1": 1.342
+      "composedWeight1": 1.339
     },
     {
       "id": "gloom",
@@ -1048,9 +1159,9 @@
       "flowMax": 16,
       "part": "upper",
       "of": "gloom",
-      "weight1": 1.347,
-      "sharpness": 1.007,
-      "composedWeight1": 1.231
+      "weight1": 1.343,
+      "sharpness": 1.01,
+      "composedWeight1": 1.23
     },
     {
       "id": "gloom_lower",
@@ -1085,9 +1196,9 @@
       "flowMax": 6,
       "part": "lower",
       "of": "gloom",
-      "weight1": 1.154,
-      "sharpness": 1.019,
-      "composedWeight1": 1.231
+      "weight1": 1.155,
+      "sharpness": 1.016,
+      "composedWeight1": 1.23
     },
     {
       "id": "smug",
@@ -1160,9 +1271,9 @@
       "flowMax": 18,
       "part": "upper",
       "of": "smug",
-      "weight1": 1.304,
-      "sharpness": 1.057,
-      "composedWeight1": 1.258
+      "weight1": 1.301,
+      "sharpness": 1.056,
+      "composedWeight1": 1.256
     },
     {
       "id": "smug_lower",
@@ -1197,9 +1308,9 @@
       "flowMax": 14,
       "part": "lower",
       "of": "smug",
-      "weight1": 1.209,
-      "sharpness": 1.022,
-      "composedWeight1": 1.258
+      "weight1": 1.208,
+      "sharpness": 1.017,
+      "composedWeight1": 1.256
     },
     {
       "id": "suspicion",
@@ -1272,8 +1383,8 @@
       "flowMax": 19,
       "part": "upper",
       "of": "suspicion",
-      "weight1": 1.409,
-      "sharpness": 1.016,
+      "weight1": 1.408,
+      "sharpness": 1.021,
       "composedWeight1": 1.307
     },
     {
@@ -1310,7 +1421,7 @@
       "part": "lower",
       "of": "suspicion",
       "weight1": 1.18,
-      "sharpness": 1.05,
+      "sharpness": 1.051,
       "composedWeight1": 1.307
     }
   ],

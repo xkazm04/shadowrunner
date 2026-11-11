@@ -34,9 +34,44 @@ Anime streamer (pink hair, side ponytail, cream cat-ear headphones, sky-blue gro
 - gaze_l/r: one iris travels; strands crossing the eye bend with it at 0.25-0.75 and the lash line
   slides a little. gaze_d: the iris moves down whole; its lower part is a shade lighter mid-way.
 - open_wide / open_mid / round: the mouth opens as one shape (reveal brings the inside in early).
-- blink: a cross-fade through the half stop, short enough not to read as a ghost.
+- blink (round 2): a cross-fade through the half stop; replaced in round 4 (below).
+
+## Round 4 (the defect round, 2026-11-11)
+New edits `blink_quarter`, `blink_3q`, brought in with `import --only`. 15 keys plus 6 families x 2
+parts; all gates pass (weight 1 at 0.75-1.96/255). Boards: `var/companion-lanes/round4/bun/board-*.jpg`
+(before | after, the real renderer at 640 px); strips in `var/companion-lanes/round4/sheets/bun/`.
+- `blink`: four stops (.25 .5 .75 1), new flow `lid` (`portrait_keys/lid.py`): per eye and column
+  the portrait's upper lash line is found in the edit (a column template matched downward, a
+  running median across columns); the key's back field is one monotone remap per column: the lid
+  stretched from `lidReach` (1.6) x ry above the lash down to the new lash, the open eye below it
+  moving with it over `lidHold` (0.7) of what is left and then pressed into the lower lash; blurred
+  `lidSigma` 16 px down, 1.5 across. Travel at weight 1: 67-70 px (quarter 23-28, half 44-45,
+  3q 51-62). Why: the cross-fade doubles the lid at every midpoint (.125, .375, .625, .875);
+  `optical` (DIS) smeared the iris under the lid; a field where the lid simply covers the eye (a
+  fold) is exact for one key but tears when two stops mix their fields; sigma 8 left more doubling
+  than 16, 24 no better than 16. Result: on the stops the lid sits where the edit has it, with no
+  ghost (`board-blink.jpg`); between .25 and .5 a faint grey second lash remains (`track-blink.jpg`
+  at .375: the two keys' lids land a few px apart, as the shader reads each field at the mixed
+  point); .625 and .875 are close to one lid.
+- Over held expressions (`board-blink-expr.jpg`: furious, delighted, bored at blink .25/.5/.75)
+  the ghost lids are gone; the blink keys now replace the expression's eyes with the neutral
+  stop's lids (furious at .25 shows calm, wide eyes; bored at .25 opens wider than bored itself).
+  A runtime rule is needed (see the round-4 report), not a key.
+- `gaze_d`: the ring of the old iris under each eye is gone. Cause: the iris field reaches 2.5 x
+  the opening's half height below the eye, past the `gaze` region prior, so the key's coverage
+  there was thin and the moved iris showed through. A gaze key's coverage now holds its whole field.
+  Mid-way (0.5) the lower part of the iris is still a shade lighter, less than before.
+- Fringe strands crossing an eye still bend with the iris on a glance. Tried: the head's `hair`
+  slot held out of the gaze fields (field 0 there, the key's colour the portrait's strand,
+  reveal 1 beside it), also only inside the openings: the strands stood still, but the field's
+  step at each strand tore the lash line and the iris mid-gaze (worse than the bend), so it was
+  taken out. A clean fix needs the strand drawn over the moved eye (a separate strand layer or a
+  hair-held region the shader reads at x, not at the displaced point).
+- Region slots carry `shade: "move"`.
 
 ## Known
+- At blink 0.75 and 1 a faint purple line can show just under the lower lash (the pressed iris at
+  the bottom of the lid field).
 - Recolour reads the region map at the displaced point: under a gaze key, eye-white pixels whose
   back motion lands on a strand take a faint hair tint at the eye corners. "Black" hoodie reads light
   grey (the rule keeps lightness).
