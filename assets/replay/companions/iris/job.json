@@ -51,7 +51,7 @@
             {
               "id": "jacket",
               "name": "jacket",
-              "hex": "#1a1f25"
+              "hex": "#1a1e25"
             }
           ]
         }
@@ -882,7 +882,7 @@
     "bytes": {
       "atlas.webp": 380468,
       "background.webp": 5372,
-      "body.regions.png": 2593,
+      "body.regions.png": 2465,
       "body.webp": 89294,
       "flow.png": 104201,
       "head.regions.png": 5414,
