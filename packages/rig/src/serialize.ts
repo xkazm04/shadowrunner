@@ -40,7 +40,7 @@ function wireVariants(variants: Partial<Record<ExpressionFamily, LayerPatch>>): 
 }
 
 function wireRegions(regions: LayerRegions): LayerRegions {
-  return { map: regions.map, slots: regions.slots.map((slot) => ({ id: slot.id, name: slot.name, hex: slot.hex })) };
+  return { map: regions.map, slots: regions.slots.map((slot) => ({ id: slot.id, name: slot.name, hex: slot.hex, ...(slot.shade === "move" ? { shade: "move" as const } : {}) })) };
 }
 
 function wireLayer(layer: Layer): Layer {

@@ -1,16 +1,15 @@
 // canvas2d recolour, regions and faces (character-control task 2) on pixels: the fallback's
 // offscreen copies run on a pixel surface stub, and the main context records what it drew.
-import { defaultLook, poseLayers, regionKey, type Drive, type LayerPose, type Look } from "@sr/rig";
+import { defaultLook, poseLayers, regionKey, type Drive, type LayerPose, type Look, type Rig } from "@sr/rig";
 import { describe, expect, it } from "vitest";
 import { createCanvas2dRenderer } from "../canvas2d/renderer.js";
-import { recolourRgb, rgbToHsl } from "../render/recolour.js";
+import { hexToHsl, KEEP_L, recolourRgb, rgbToHsl } from "../render/recolour.js";
 import { createCanvasStub, createCtx2dStub } from "./glStub.js";
 import { asImage, asRigAssets, CAVITY, pixelAssets, pixelOf, pixelRig, pixelSurfaces, ROBE_A, ROBE_B, TEAL, TEETH, type PixelImage, type Rgba } from "./pixels.js";
 
 const DRIVE: Drive = { t: 0, headYaw: 0, headPitch: 0, jawOpen: 0, blink: 0 };
 
-function setup(images: Record<string, PixelImage> = pixelAssets(), loadAsset?: (file: string) => Promise<ImageBitmap>) {
-  const rig = pixelRig();
+function setup(images: Record<string, PixelImage> = pixelAssets(), loadAsset?: (file: string) => Promise<ImageBitmap>, rig: Rig = pixelRig()) {
   const ctx2d = createCtx2dStub();
   const { canvas } = createCanvasStub({ webgl2: "null", ctx2d, width: 64, height: 64 });
   const surfaces = pixelSurfaces();
@@ -26,8 +25,8 @@ function setup(images: Record<string, PixelImage> = pixelAssets(), loadAsset?: (
   return { rig, images, renderer, draw, surfaces };
 }
 
-const expected = (src: Rgba, hex: string): Rgba => {
-  const [r, g, b] = recolourRgb([src[0] / 255, src[1] / 255, src[2] / 255], hex);
+const expected = (src: Rgba, hex: string, ref = KEEP_L): Rgba => {
+  const [r, g, b] = recolourRgb([src[0] / 255, src[1] / 255, src[2] / 255], hex, ref);
   return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255), src[3]];
 };
 
@@ -51,13 +50,26 @@ describe("canvas2d recolour", () => {
     expect(l).toBeCloseTo(rgbToHsl([TEAL[0] / 255, TEAL[1] / 255, TEAL[2] / 255])[2], 2);
   });
 
-  it("a region colour changes only its slot's pixels", () => {
+  it("a region colour changes only its slot's pixels (a cast-like slot: lightness kept)", () => {
     const { rig, draw } = setup();
     const look: Look = { ...defaultLook(rig), regions: { [regionKey("robe", "r2")]: "#00ff00" } };
     const [robe, jaw] = draw(look);
     expect(pixelOf(robe?.image, 2, 3)).toEqual(ROBE_A);
     expect(pixelOf(robe?.image, 12, 3)).toEqual(expected(ROBE_B, "#00ff00"));
     expect(pixelOf(jaw?.image, 0, 3)).toEqual(CAVITY);
+  });
+
+  it("a shade \"move\" slot maps lightness from its reference hex (dark robe to cream lands on cream's lightness)", () => {
+    const flagged = pixelRig();
+    flagged.layers = flagged.layers.map((l) => (l.regions === undefined ? l : { ...l, regions: { ...l.regions, slots: l.regions.slots.map((s) => ({ ...s, shade: "move" as const })) } }));
+    const { rig, draw } = setup(pixelAssets(), undefined, flagged);
+    const [robe] = draw({ ...defaultLook(rig), regions: { [regionKey("robe", "r2")]: "#e8e2d0" } });
+    const ref = hexToHsl(rig.layers.find((l) => l.name === "robe")?.regions?.slots[1]?.hex ?? "")[2];
+    expect(ref).not.toBeCloseTo(hexToHsl("#e8e2d0")[2], 1);
+    const px = pixelOf(robe?.image, 12, 3);
+    expect(px).toEqual(expected(ROBE_B, "#e8e2d0", ref));
+    expect(px).not.toEqual(expected(ROBE_B, "#e8e2d0"));
+    expect(pixelOf(robe?.image, 2, 3)).toEqual(ROBE_A);
   });
 
   it("the mouth light recolours the jaw's cavity slot and nothing else", () => {

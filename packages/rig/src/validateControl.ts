@@ -90,7 +90,8 @@ class ControlReader {
 
   slot(value: unknown, path: string, seen: Set<string>): RegionSlot | undefined {
     if (!isRecord(value)) return this.fail(path, `expected a slot object, got ${describe(value)}`);
-    const { id, name, hex } = value;
+    const { id, name, hex, shade } = value;
+    if (shade !== undefined && shade !== "move") this.fail(`${path}.shade`, `expected "move" (omit the field otherwise), got ${describe(shade)}`);
     let okId = typeof id === "string" && SLOT_ID.test(id);
     if (!okId) this.fail(`${path}.id`, `expected an id matching ^[a-z0-9_]+$, got ${typeof id === "string" ? JSON.stringify(id) : describe(id)}`);
     if (typeof id === "string" && okId && seen.has(id)) {
@@ -101,7 +102,8 @@ class ControlReader {
     if (typeof name !== "string" || name === "") this.fail(`${path}.name`, `expected a non-empty string, got ${describe(name)}`);
     if (typeof hex !== "string") this.fail(`${path}.hex`, `expected a "#rrggbb" string, got ${describe(hex)}`);
     if (!okId || typeof id !== "string" || typeof name !== "string" || name === "" || typeof hex !== "string") return undefined;
-    return { id, name, hex };
+    if (shade !== undefined && shade !== "move") return undefined;
+    return { id, name, hex, ...(shade === "move" ? { shade } : {}) };
   }
 
   regions(value: unknown, path: string): LayerRegions | undefined {

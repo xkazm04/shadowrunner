@@ -134,6 +134,42 @@ The declaration moved to `packages/rig/src/morphTypes.ts` (re-exported from `typ
 - Where nothing moves and the edit is within the editor's noise, the key's colour is the
   portrait's own (removes a grey halo around Bun's widest mouth).
 
+### Round 4 amendment (2026-11-11): the defect round
+Six defects named on the owner's verdict page. Five new Codex edits (same prompt scheme) give the
+tracks more stops: Iris `openWide_half` (an even oval halfway to the wide "ah"), and
+`blink_quarter`, `blink_3q` on both characters.
+
+- Iris `openWide` has two stops: `open_wide_half` at 0.5, `open_wide` at 1 (the lower lip skewed
+  near a quarter weight when one field carried the whole 45 px travel).
+- `blink` has four stops on both: `blink_quarter` 0.25, `blink_half` 0.5, `blink_3q` 0.75, `blink`
+  1. Motion or cross-fade per character, chosen on the strips; the target is a lid that reads as
+  sliding, with no doubled lid or iris smudge at any in-between weight, also over a held expression.
+- Bun `gaze_d`: no ring of the old iris; Bun gazes: hair strands crossing the eye do not move with
+  the iris (the head's `hair` region is excluded from the gaze fields).
+- Region recolour can move lightness as well as hue, opt-in per slot: `RegionSlot.shade?: "move"`
+  (omitted when absent). On such a slot the pixel's lightness goes through the piecewise-linear
+  curve `(0,0) - (lr,lt) - (1,1)`, `lr` the lightness of the slot's `hex`, `lt` the target's, both
+  clamped to [1/256, 1 - 1/256] (so `lt = lr` is the identity). Every other slot, and the lights
+  (glow, eye, mouth), keep character-control's rule unchanged. Why opt-in: the forge splits
+  near-grey pixels into lightness bands (`packages/forge/src/regions.ts`); moving one band's
+  lightness tore it from its neighbours on Sister Vesper (posterised strands, a lit backdrop
+  trapezoid), while material slots (the companions', Lot Ninety's suit) map cleanly. The portrait
+  builder writes `shade: "move"` on every companion slot; the cast is byte-for-byte as before.
+
+### Round 4 as built
+- Iris `openWide` and the blink: optical fields through every stop (the lid reads as moving down
+  at each stop; a little dissolve remains between stops). Bun's blink: `flow: "lid"`
+  (`portrait_keys/lid.py`): the upper lash line is found column by column in each edit and the lid
+  slides down to it, squeezing the open eye below instead of covering it (covering tore between stops).
+- A gaze key's coverage spans its own motion (removed Bun's `gaze_d` ring).
+- Blink stops below `BLINK_YIELD_BELOW` = 0.5 yield to a held expression in colour and motion, as
+  gaze does (`packages/rig/src/morph.ts`): a neutral quarter lid opened a furious glare wide. A
+  blink over an expression now starts from the expression's eyes and meets the half lid at 0.5.
+- `build.py import --only <name>` brings one edit in without re-encoding the others.
+- Not fixed: Bun's fringe strands still bend a little with the iris on a glance. Holding the hair
+  region still tore the lash line and the iris at each strand's edge (worse than the bend); a real
+  fix draws the strands over the moved eye (a strand layer, or a hair region read unmoved).
+
 ## Builder
 `tools/portrait-keys/build.py` (Python 3.12: numpy, opencv-python, pillow; `requirements.txt`).
 `python tools/portrait-keys/build.py <character dir> --out <built dir> [--sheets <dir>]`.

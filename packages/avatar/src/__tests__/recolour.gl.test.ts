@@ -52,11 +52,25 @@ describe("GL recolour", () => {
     expect(uniformCalls(stub, "uniform4f", "u_slotOn")).toEqual([[0, 1, 0, 0]]);
     const slots = uniformCalls(stub, "uniform3fv", "u_slots")[0]?.[0] as number[];
     expect(slots.slice(3, 6)).toEqual(hexToHsl("#00ff00"));
+    // A cast-like slot (no `shade`) keeps the art's lightness: every ref -1, the old rule exactly.
+    expect(uniformCalls(stub, "uniform4f", "u_slotRef")).toEqual([[-1, -1, -1, -1]]);
     const fresh = createGlStub();
     createRenderer(createCanvasStub({ webgl2: fresh }).canvas, rig, asRigAssets(pixelAssets()));
     const nearest = fresh.log.filter(([n, a]) => n === "texParameteri" && a[2] === fresh.gl.NEAREST);
     expect(nearest).toHaveLength(4); // MIN and MAG for each of the two maps
     expect(fresh.count("generateMipmap")).toBe(3);
+  });
+
+  it("a shade \"move\" slot uploads its reference lightness in u_slotRef", () => {
+    const stub = createGlStub();
+    const base = pixelRig();
+    const rig: Rig = { ...base, layers: base.layers.map((l) => (l.name === "robe" && l.regions !== undefined ? { ...l, regions: { ...l.regions, slots: l.regions.slots.map((s) => ({ ...s, shade: "move" as const })) } } : l)) };
+    const renderer = createRenderer(createCanvasStub({ webgl2: stub, width: 64, height: 64 }).canvas, rig, asRigAssets(pixelAssets()));
+    const look: Look = { ...defaultLook(rig), regions: { [regionKey("robe", "r2")]: "#00ff00" } };
+    stub.reset();
+    renderer.draw(poseLayers(rig, look, DRIVE), look);
+    const robe = rig.layers.find((l) => l.name === "robe")?.regions?.slots[1];
+    expect(uniformCalls(stub, "uniform4f", "u_slotRef")).toEqual([[-1, hexToHsl(robe?.hex ?? "")[2], -1, -1]]);
   });
 
   it("mouth light takes a `cavity` slot on any layer (a head included), and a layer named mouth_glow", () => {

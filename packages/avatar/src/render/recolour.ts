@@ -3,7 +3,18 @@
 // of which light or region colour a layer's pixels take for a look. Pure, no DOM.
 //
 //   src (r,g,b) -> HSL (h, s, l); target -> (ht, st, lt)
-//   out = HSL->RGB(ht, max(st * S_KEEP + s * (1 - S_KEEP), S_FLOOR * st), l)
+//   out = HSL->RGB(ht, max(st * S_KEEP + s * (1 - S_KEEP), S_FLOOR * st), L(l))
+//
+// L is the lightness map (companion-lanes round 4). A light (eye, glow, mouth) keeps the art's
+// lightness: L(l) = l, and so does a region slot without `shade: "move"` (the forge's slots are
+// lightness bands of one material: moving one band tears it from its neighbours; director ruling,
+// round 4). A `shade: "move"` slot (a material, e.g. a companion's jacket) moves it: with lr the
+// lightness of the slot's reference colour
+// (`regions.slots[i].hex`, the art's median colour of that slot), L is the piecewise-linear curve
+// (0,0) - (lr,lt) - (1,1), so the slot's own colour lands on the target's lightness, the shading
+// around it keeps its order and black and white stay put. lr and lt are both clamped to
+// [L_EPS, 1 - L_EPS] first (no division by ~0 on a pure black or white reference), so lt == lr is
+// exactly the identity and a black or white target is off by at most L_EPS.
 //
 // Decisions the spec leaves open:
 // - Per light, not per look: a light recolours only when the look's colour differs from the rig's
@@ -65,15 +76,34 @@ export function hexToHsl(hex: string): Hsl {
   return rgbToHsl([parseInt(m[1] ?? "0", 16) / 255, parseInt(m[2] ?? "0", 16) / 255, parseInt(m[3] ?? "0", 16) / 255]);
 }
 
-/** The rule on a source already in HSL: the target's hue, mostly its saturation, the source's lightness. */
-export function recolourHsl(src: Hsl, target: Hsl): Rgb {
-  const st = target[1];
-  return hslToRgb([target[0], Math.max(st * S_KEEP + src[1] * (1 - S_KEEP), S_FLOOR * st), src[2]]);
+/** The lightness map's guard: lr and lt are clamped to [L_EPS, 1 - L_EPS] (1/256, half an 8-bit step). */
+export const L_EPS = 1 / 256;
+/** `ref` for "keep the source's lightness" (the lights, and a slot with no readable reference). */
+export const KEEP_L = -1;
+
+/**
+ * The lightness map: `l` through (0,0) - (lr,lt) - (1,1); `lr` < 0 (KEEP_L) returns `l` unchanged.
+ * Continuous, monotonic, 0 -> 0, 1 -> 1, lr -> lt, the identity when lt == lr.
+ */
+export function mapLightness(l: number, lr: number, lt: number): number {
+  if (lr < 0) return l;
+  const r = Math.min(1 - L_EPS, Math.max(L_EPS, lr));
+  const t = Math.min(1 - L_EPS, Math.max(L_EPS, lt));
+  return l <= r ? (l * t) / r : t + ((l - r) * (1 - t)) / (1 - r);
 }
 
-/** The rule on 0..1 RGB toward `target` ("#rrggbb" or HSL). */
-export function recolourRgb(src: Rgb, target: string | Hsl): Rgb {
-  return recolourHsl(rgbToHsl(src), typeof target === "string" ? hexToHsl(target) : target);
+/**
+ * The rule on a source already in HSL: the target's hue, mostly its saturation, and the source's
+ * lightness mapped by `ref` (a region slot's reference lightness; KEEP_L for a light).
+ */
+export function recolourHsl(src: Hsl, target: Hsl, ref: number = KEEP_L): Rgb {
+  const st = target[1];
+  return hslToRgb([target[0], Math.max(st * S_KEEP + src[1] * (1 - S_KEEP), S_FLOOR * st), mapLightness(src[2], ref, target[2])]);
+}
+
+/** The rule on 0..1 RGB toward `target` ("#rrggbb" or HSL); `ref` as `recolourHsl`. */
+export function recolourRgb(src: Rgb, target: string | Hsl, ref: number = KEEP_L): Rgb {
+  return recolourHsl(rgbToHsl(src), typeof target === "string" ? hexToHsl(target) : target, ref);
 }
 
 export type LightMode = "all" | "saturated";
@@ -92,6 +122,12 @@ export interface LayerRecolour {
   light?: LayerLight;
   /** Per slot index (map value - 1), the target; length MAX_REGION_SLOTS, undefined = as painted. */
   slots: readonly (Hsl | undefined)[];
+  /**
+   * Per slot index, the lightness its pixels map from (`mapLightness`'s lr): the slot's reference
+   * hex's lightness when the slot is `shade: "move"` and `look.regions` names its colour; KEEP_L
+   * otherwise (no flag, the mouth light on a cavity, off). Length MAX_REGION_SLOTS.
+   */
+  refs: readonly number[];
 }
 
 const same = (a: string, b: string): boolean => a.toLowerCase() === b.toLowerCase();
@@ -117,20 +153,25 @@ function lightOf(rig: Pick<Rig, "palette">, layer: Layer, look: Pick<Look, "pale
 export function layerRecolour(rig: Pick<Rig, "palette">, layer: Layer, look: Pick<Look, "palette" | "regions">): LayerRecolour | undefined {
   const light = lightOf(rig, layer, look);
   const slots: (Hsl | undefined)[] = new Array<Hsl | undefined>(MAX_REGION_SLOTS).fill(undefined);
+  const refs: number[] = new Array<number>(MAX_REGION_SLOTS).fill(KEEP_L);
   const keys: string[] = [];
   const mouth = look.palette.mouth;
   const mouthOn = HEX.test(mouth) && !same(mouth, rig.palette.mouth);
   (layer.regions?.slots ?? []).slice(0, MAX_REGION_SLOTS).forEach((slot, i) => {
     const key = regionKey(layer.name, slot.id);
     const own = look.regions !== undefined && Object.hasOwn(look.regions, key) ? look.regions[key] : undefined;
-    const hex = own !== undefined && HEX.test(own) ? own : slot.id === "cavity" && mouthOn ? mouth : undefined;
+    const region = own !== undefined && HEX.test(own);
+    const hex = region ? own : slot.id === "cavity" && mouthOn ? mouth : undefined;
     if (hex === undefined) return;
     slots[i] = hexToHsl(hex);
+    // A region colour on a `shade: "move"` slot moves lightness from the slot's reference; every
+    // other slot (the forge's lightness bands, the whole cast) and the mouth light keep the art's.
+    if (region && slot.shade === "move" && HEX.test(slot.hex)) refs[i] = hexToHsl(slot.hex)[2];
     keys.push(`${i}${hex.toLowerCase()}`);
   });
   if (light === undefined && keys.length === 0) return undefined;
   const lightKey = light === undefined ? "-" : `${light.name}${look.palette[light.name].toLowerCase()}`;
-  return { key: `${lightKey}|${keys.join(",")}`, ...(light === undefined ? {} : { light }), slots };
+  return { key: `${lightKey}|${keys.join(",")}`, ...(light === undefined ? {} : { light }), slots, refs };
 }
 
 /** Every layer's recolour for `look`, by layer name (layers drawn as painted are absent). */
@@ -188,14 +229,18 @@ export function recolourPixels(data: Uint8ClampedArray, w: number, h: number, pl
       if ((data[i + 3] ?? 0) === 0) continue;
       const hsl = rgbToHsl([(data[i] ?? 0) / 255, (data[i + 1] ?? 0) / 255, (data[i + 2] ?? 0) / 255]);
       let target: Hsl | undefined;
+      let ref = KEEP_L;
       if (light !== undefined && (light.mode === "all" || hsl[1] > GLOW_SATURATION)) target = light.target;
       if (useMap) {
         const slot = slotAt(map, x, y, w, h);
         const own = slot >= 1 && slot <= MAX_REGION_SLOTS ? plan.slots[slot - 1] : undefined;
-        if (own !== undefined) target = own;
+        if (own !== undefined) {
+          target = own;
+          ref = plan.refs[slot - 1] ?? KEEP_L;
+        }
       }
       if (target === undefined) continue;
-      const [r, g, b] = recolourHsl(hsl, target);
+      const [r, g, b] = recolourHsl(hsl, target, ref);
       data[i] = Math.round(r * 255);
       data[i + 1] = Math.round(g * 255);
       data[i + 2] = Math.round(b * 255);

@@ -40,7 +40,25 @@ Photoreal companion (silver bob, black headset with boom mic, charcoal ground). 
   the opening ellipse); gaze_d drags the lid and liner down with the iris, as the edit does.
 - joy, showman: the smile widens and the cheeks rise as one face; no double mouth.
 
+## Round 4 (the defect round, 2026-11-11)
+New edits `openWide_half`, `blink_quarter`, `blink_3q` (Codex, same prompt scheme), brought in with
+`import --only` (no other edit re-encoded). 16 keys plus 6 families x 2 parts; all gates pass
+(weight 1 at 1.13-1.74/255). Boards: `var/companion-lanes/round4/iris/board-*.jpg` (before | after,
+the real renderer at 640 px); strips in `var/companion-lanes/round4/sheets/iris/`.
+- `openWide`: `open_wide_half` at 0.5, `open_wide` at 1, both `optical` (sigma 12, F from G). Each
+  field now carries at most about half the lip travel: the lower-lip skew at 0.25 is gone; the
+  strip in eighths opens evenly with no step at 0.5 (`board-openwide.jpg`, `track-openWide.jpg`).
+- `blink`: four stops, `blink_quarter` .25, `blink_half` .5, `blink_3q` .75, `blink` 1, all
+  `optical`. Compared on the strips: `none` (cross-fade) shows the iris through a see-through lid
+  at .375 and a ghost lid even at 1; the round-4 `lid` field (Bun's, below) left a broken lash line
+  at .875 on this face; `optical` reads as the lid coming down, with a little dissolve left at the
+  midpoints between stops (.375, .625). Chosen: `optical`.
+- The gaze keys' coverage now covers their whole field (round 4 fix for Bun); on Iris the strips
+  and boards are unchanged (`board-regress.jpg`).
+- Region slots carry `shade: "move"` (recolour maps lightness too, design "Round 4 amendment").
+
 ## Known
+- gaze_d at 0.5 shows a second, faint eyeliner wing below the first (as before round 4).
 - Recolour keeps the art's lightness (the renderer's rule): "black" hair reads dark grey-silver,
   not black; the fringe's very tips (mixed with forehead skin) stay silver-grey.
 

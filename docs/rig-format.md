@@ -369,7 +369,8 @@ Amended by character-control (design.md "Regions"). `regions` is `{ map, slots }
 | `slots` | RegionSlot[] | yes | 1..4 (`MAX_REGION_SLOTS`) slots, in index order. |
 | `slots[j].id` | string | yes | `[a-z0-9_]+`, unique in the layer. A jaw's painted mouth is `cavity`. |
 | `slots[j].name` | string | yes | Non-empty display name (`robe`, `robe 2`, `mouth`). |
-| `slots[j].hex` | string | yes | The region's colour as painted, `#rrggbb`. |
+| `slots[j].hex` | string | yes | The region's colour as painted, `#rrggbb`. On a `shade: "move"` slot it is also the recolour's lightness reference. |
+| `slots[j].shade` | `"move"` | no | Companion-lanes round 4. A look that names a colour for this slot moves its lightness as well as its hue: each pixel's HSL lightness goes through (0,0) - (L(hex), L(target)) - (1,1), both ends clamped to [1/256, 1 - 1/256], so the painted colour lands on the target's lightness and the shading keeps its order (`packages/avatar/src/render/recolour.ts`). For a slot that is one material (a jacket, hair). Omitted (never `null`) = the art's lightness is kept, the rule for the forge's slots, which are lightness bands of one material; any other value is `bad_shape`. |
 
 Shape faults are `bad_shape` at `$.layers[i].regions...` (`map`, `slots` with fewer than 1 or more
 than 4 entries, a bad or repeated `id`, an empty `name`); a `hex` that is not `#rrggbb` is

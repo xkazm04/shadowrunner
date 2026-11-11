@@ -119,6 +119,23 @@ describe("validateRig: variants and regions", () => {
     expect(paths(errorsOf(base([head({ regions: "m.png" })])))).toEqual(["bad_shape $.layers[0].regions"]);
   });
 
+  it("a slot's shade is \"move\" or absent: kept and round-tripped when \"move\", omitted when absent, anything else bad_shape", () => {
+    const slots = [
+      { id: "r1", name: "a", hex: "#101010", shade: "move" },
+      { id: "r2", name: "b", hex: "#202020" },
+    ];
+    const read = validateRig(base([head({ regions: { map: "m.png", slots } })]));
+    if (!read.ok) throw new Error(JSON.stringify(read.errors));
+    expect(read.value.layers[0]?.regions?.slots).toEqual(slots);
+    expect(read.value.layers[0]?.regions?.slots[1]).not.toHaveProperty("shade");
+    const wire = JSON.parse(serializeRig(read.value)) as Rig;
+    expect(wire.layers[0]?.regions?.slots).toEqual(slots);
+    expect(JSON.stringify(wire.layers[0]?.regions?.slots[1])).not.toContain("shade");
+    for (const shade of [null, "keep", true]) {
+      expect(paths(errorsOf(base([head({ regions: { map: "m.png", slots: [{ id: "r1", name: "a", hex: "#000000", shade }] } })])))).toEqual(["bad_shape $.layers[0].regions.slots[0].shade"]);
+    }
+  });
+
   it("reports a slot hex that is not #rrggbb as bad_color, every one", () => {
     const regions = { map: "m.png", slots: [{ id: "r1", name: "a", hex: "red" }, { id: "r2", name: "b", hex: "#12345" }] };
     expect(paths(errorsOf(base([head({ regions })])))).toEqual(["bad_color $.layers[0].regions.slots[0].hex", "bad_color $.layers[0].regions.slots[1].hex"]);

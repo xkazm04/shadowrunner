@@ -5,7 +5,7 @@
 // adds the iris twin of the base program: the same pass with the eye's socket masks (gl/iris.ts).
 // Companion-lanes adds the morph twin (gl/morph.ts), linked on first need: the warp twin's vertex
 // stage and the base fragment with its texture read replaced by `LayerSample` (`baseFs`'s third arg).
-import { GLOW_SATURATION, S_FLOOR, S_KEEP } from "../render/recolour.js";
+import { GLOW_SATURATION, L_EPS, S_FLOOR, S_KEEP } from "../render/recolour.js";
 import { MAW_DARK_LUMA, MAW_TAPS } from "../mouth/warp.js";
 import { createTurnGrid, TURN_FS, TURN_LIGHT_STEP, TURN_UNIFORMS, TURN_VS } from "./turn.js";
 import { WARP_GLSL, WARP_UNIFORMS } from "./warp.js";
@@ -32,9 +32,15 @@ vec3 hsl2rgb(vec3 hsl) {
   vec3 x = mod(hsl.x * 6.0 + vec3(0.0, 4.0, 2.0), 6.0);
   return hsl.z + c * (clamp(abs(x - 3.0) - 1.0, 0.0, 1.0) - 0.5);
 }
-vec3 recolour(vec3 src, vec3 target) {
+float mapL(float l, float lr, float lt) {
+  if (lr < 0.0) return l;
+  float r = clamp(lr, L_EPS, 1.0 - L_EPS);
+  float t = clamp(lt, L_EPS, 1.0 - L_EPS);
+  return l <= r ? l * t / r : t + (l - r) * (1.0 - t) / (1.0 - r);
+}
+vec3 recolour(vec3 src, vec3 target, float ref) {
   float s = max(target.y * S_KEEP + src.y * (1.0 - S_KEEP), S_FLOOR * target.y);
-  return hsl2rgb(vec3(target.x, s, src.z));
+  return hsl2rgb(vec3(target.x, s, mapL(src.z, ref, target.z)));
 }`;
 
 const QUAD_VS = `#version 300 es
@@ -87,7 +93,8 @@ ${
 // the rig never takes it): the straight colour's HSL; the layer light (u_light.xyz, an HSL target)
 // on every pixel (u_light.w 1) or on pixels with s > GLOW_SAT (u_light.w 2); a region slot's
 // target (u_slots, enabled by u_slotOn) wins on the pixels whose index map (nearest, R = slot + 1)
-// names it. The rule is render/recolour.ts's `recolourHsl`, expression for expression.
+// names it, and maps lightness from that slot's reference (u_slotRef; -1 keeps it, as a light does).
+// The rule is render/recolour.ts's `recolourHsl` and `mapLightness`, expression for expression.
 // The warp twin (the art mouth, gl/warp.ts; only the head and the jaw of a talking warp rig use it,
 // so every other quad runs the plain program at today's cost): the sample point is unwarped first
 // (texels outside the layer are transparent), and where the lips have parted both layers show the
@@ -153,13 +160,15 @@ uniform float u_recolour;
 uniform vec4 u_light;
 uniform vec4 u_mapRect;
 uniform vec4 u_slotOn;
-uniform vec3 u_slots[4];${warp || own !== undefined ? `
+uniform vec3 u_slots[4];
+uniform vec4 u_slotRef;${warp || own !== undefined ? `
 uniform vec4 u_rect;` : ""}
 const float BRIGHT_LO = 0.3;
 const float BRIGHT_HI = 0.7;
 const float S_KEEP = ${S_KEEP.toFixed(4)};
 const float S_FLOOR = ${S_FLOOR.toFixed(4)};
 const float GLOW_SAT = ${GLOW_SATURATION.toFixed(4)};
+const float L_EPS = ${L_EPS.toFixed(8)};
 layout(location = 0) out vec4 o_color;
 layout(location = 1) out vec4 o_glow;
 ${RECOLOUR_GLSL}
@@ -185,14 +194,15 @@ ${own !== undefined ? own.sample : warp ? WARP_SAMPLE : `  vec2 uv = v_uv;
   if (u_recolour > 0.5 && tex.a > 0.0) {
     vec3 hsl = rgb2hsl(tex.rgb / tex.a);
     vec3 target = vec3(0.0);
+    float ref = -1.0;
     bool on = false;
     if (u_light.w > 0.5 && (u_light.w < 1.5 || hsl.y > GLOW_SAT)) { target = u_light.xyz; on = true; }
     bool inside = muv.x >= 0.0 && muv.x <= 1.0 && muv.y >= 0.0 && muv.y <= 1.0;
     int idx = int(floor(slot * 255.0 + 0.5)) - 1;
     for (int i = 0; i < 4; i++) {
-      if (inside && i == idx && u_slotOn[i] > 0.5) { target = u_slots[i]; on = true; }
+      if (inside && i == idx && u_slotOn[i] > 0.5) { target = u_slots[i]; ref = u_slotRef[i]; on = true; }
     }
-    if (on) rgb = recolour(hsl, target) * tex.a;
+    if (on) rgb = recolour(hsl, target, ref) * tex.a;
   }
 ${TURN_LIGHT_STEP}  float alpha = tex.a;
 ${warp ? WARP_INTERIOR : ""}  vec4 color = vec4(rgb * u_gain + u_rim * rim * alpha, alpha) * u_opacity;${mask ? `
@@ -252,7 +262,7 @@ export interface Program<K extends string> {
 
 export const BASE_UNIFORMS = [
   "u_rect", "u_m", "u_res", "u_tex", "u_map", "u_texel", "u_opacity", "u_gain", "u_rim", "u_emissive",
-  "u_recolour", "u_light", "u_mapRect", "u_slotOn", "u_slots", ...TURN_UNIFORMS,
+  "u_recolour", "u_light", "u_mapRect", "u_slotOn", "u_slots", "u_slotRef", ...TURN_UNIFORMS,
 ] as const;
 export type BaseUniform = (typeof BASE_UNIFORMS)[number];
 const WARP_PROGRAM_UNIFORMS = [...BASE_UNIFORMS, ...WARP_UNIFORMS] as const;

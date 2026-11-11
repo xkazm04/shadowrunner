@@ -90,6 +90,9 @@ def index_map(rgba: np.ndarray, slots: list[dict]) -> tuple[np.ndarray, list[dic
         px = (taken == i + 1) & (rgba[..., 3] > 0.9)
         med = np.median(rgba[..., :3][px], axis=0) if px.any() else np.zeros(3)
         hexv = "#" + "".join(f"{int(round(float(v) * 255)):02x}" for v in med)
-        rig_slots.append({"id": slot["id"], "name": slot["name"], "hex": hexv})
+        rig_slot = {"id": slot["id"], "name": slot["name"], "hex": hexv}
+        if "shade" in slot:
+            rig_slot["shade"] = slot["shade"]  # round 4: "move" = the recolour maps lightness too
+        rig_slots.append(rig_slot)
         fig[slot["id"]] = {"px": int((taken == i + 1).sum()), "hex": hexv}
     return out, rig_slots, fig

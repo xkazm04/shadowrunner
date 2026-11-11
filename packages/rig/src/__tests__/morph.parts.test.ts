@@ -72,6 +72,16 @@ describe("colour and motion", () => {
     expect(plan(PARTS, { emotion: "amused", mood: { from: "neutral", mix: 0.5 }, gaze: { x: 1, y: 0 } }).of("look_r")).toEqual({ w: 0.5, colour: 0.5, active: true });
   });
 
+  it("a blink stop below the half yields to a held expression like gaze; the half and later stops do not", () => {
+    const STOPS = [box("b_q", "blink", { at: 0.25 }), box("b_h", "blink", { at: 0.5 }), box("b_3q", "blink", { at: 0.75 }), box("b", "blink")];
+    expect(plan(STOPS, { blink: 0.25 }).of("b_q")).toEqual({ w: 1, colour: 1, active: true });
+    expect(plan(STOPS, { emotion: "furious", blink: 0.25 }).of("b_q")).toEqual({ w: 0, colour: 0, active: false });
+    const mid = plan(STOPS, { emotion: "furious", blink: 0.375 });
+    expect(mid.of("b_q")).toEqual({ w: 0, colour: 0, active: false });
+    expect(mid.of("b_h")).toEqual({ w: 0.5, colour: 1, active: true });
+    expect(plan(STOPS, { emotion: "furious", blink: 0.75 }).of("b_3q")).toEqual({ w: 1, colour: 1, active: true });
+  });
+
   it("every other key shows its colour in full, speaking or not", () => {
     const { of } = plan(PARTS, { emotion: "amused", blink: 1, shapes: { openMid: 0.7 }, speak: 1 });
     expect(of("open")).toEqual({ w: 0.7, colour: 1, active: true });
