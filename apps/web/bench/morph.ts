@@ -11,7 +11,10 @@
 // shapes=openWide:0.5,round:0.5 (a caller's viseme mix; the rest is `rest`); level=0..1 (the speech
 // level, used when no shapes); sway=x,y (the lag L, overriding the frozen frame's 0); key=<id>:<w>[,...]
 // (those keys at those weights, bypassing the tracks); bg=<css colour> (default transparent);
-// size=<px> (the square canvas, default 512); mode=2d forces the canvas2D fallback.
+// size=<px> (the square canvas, default 512); mode=2d forces the canvas2D fallback;
+// regions=<layer>/<slot>:<rrggbb>[,...] sets Look.regions (the region recolour, `#` optional);
+// hidden=<layer>[,...] adds to Look.hidden; backdrop=1 shows the `background` layer (default: the
+// player's cutout, hidden).
 import { createCanvas2dRenderer, createFrameBody, createRenderer, cutoutLook, type FrameClock, type Renderer, type RigAssets } from "@sr/avatar";
 import { decodePackImages, loadPack } from "@sr/pack";
 import { defaultLook, EMOTION_TABLE, emptyMorphPlan, selectMorphKeys, validateRig, type Drive, type Emotion, type Look, type Rig } from "@sr/rig";
@@ -92,7 +95,14 @@ async function main(): Promise<void> {
   canvas.height = size;
   const { rig, look: saved, assets } = await load();
   const emotion = params.get("emotion");
-  const look: Look = cutoutLook(emotion !== null && emotion in EMOTION_TABLE ? { ...saved, emotion: emotion as Emotion } : saved);
+  const regions: Record<string, string> = { ...saved.regions };
+  for (const part of (params.get("regions") ?? "").split(",")) {
+    const [key, hex] = part.split(":");
+    if (key !== undefined && key !== "" && hex !== undefined && /^#?[0-9a-f]{6}$/i.test(hex)) regions[key] = hex.startsWith("#") ? hex : `#${hex}`;
+  }
+  const hidden = [...saved.hidden, ...(params.get("hidden") ?? "").split(",").filter((h) => h !== "")];
+  const dressed: Look = { ...saved, hidden, ...(Object.keys(regions).length > 0 ? { regions } : {}), ...(emotion !== null && emotion in EMOTION_TABLE ? { emotion: emotion as Emotion } : {}) };
+  const look: Look = cutoutLook(dressed, params.get("backdrop") === "1");
   const renderer: Renderer = params.get("mode") === "2d" ? createCanvas2dRenderer(canvas, canvas.getContext("2d"), rig, assets) : createRenderer(canvas, rig, assets);
   renderer.resize(size, size, 1);
 

@@ -9,7 +9,12 @@ import sharp from "sharp";
 const SHIFT = 4;
 const FEATHER = 12;
 const HEAD = [56, 56, 400, 400];
-const KEYS = { shift: [156, 156, 160, 120], solid: [176, 316, 120, 80], lid: [226, 176, 120, 80] };
+const KEYS = { shift: [156, 156, 160, 120], solid: [176, 316, 120, 80], lid: [226, 176, 120, 80], big: [120, 300, 240, 120], stretch: [320, 100, 120, 120] };
+// Round 2 (morphFields.ts): `big` moves the head BIG px with a back cell; `stretch` opens a gap of
+// INTERIOR (reveal 1) about its middle row in its left half, and is the head inverted, unmoved, from
+// 3/4 of its width on.
+const BIG = 42;
+const INTERIOR = [120, 20, 40];
 const RED = [230, 40, 40];
 const BLUE = [40, 60, 230];
 const YELLOW = [250, 210, 20];
@@ -126,6 +131,10 @@ export async function runProof({ out, port, headed, open, board }) {
     ["lid_front", "key=lid:1"],
     ["lid_yaw", "yaw=22&key=lid:1"],
     ["yaw", "yaw=22"],
+    ["big_1", "key=big:1"],
+    ["big_05", "key=big:0.5"],
+    ["stretch_03", "key=stretch:0.3"],
+    ["stretch_1", "key=stretch:1"],
   ];
   const capture = await open({ port, headed });
   const shots = {};
@@ -198,6 +207,33 @@ export async function runProof({ out, port, headed, open, board }) {
     rightEdgeVsBend: mean(rows.right),
     unbentPanDx: Math.round(0.04 * 512 * 0.6 * 100) / 100,
   };
+  // Round 2: a large shift with a back cell, exact at weight 1 and halfway at 0.5.
+  r.big_w1_vs_cell_core = error(img("big_1"), core(KEYS.big), (x, y) => headAt(x - BIG, y));
+  r.big_w05_bestShift = bestShift(img("big_05"), core(KEYS.big), 0, 48, 0.5);
+  r.big_w05_errorAtHalf = error(img("big_05"), core(KEYS.big), (x, y) => headAt(x - BIG / 2, y));
+  r.big_w05_contrastRatio = contrast(img("big_05"), core(KEYS.big)) / contrast(img("base"), core(KEYS.big));
+  // The stretch at 0.3: the share of key colour on the gap's middle rows (new surface, reveal 1)
+  // and on the unmoved, unrevealed flank (head inverted), each against the base render there.
+  const [tx, ty] = KEYS.stretch;
+  const share = (box, key) => {
+    let num = 0;
+    let den = 0;
+    for (let y = box[1]; y < box[3]; y += 1) {
+      for (let x = box[0]; x < box[2]; x += 1) {
+        const got = img("stretch_03").at(x, y);
+        const base = img("base").at(x, y);
+        const want = key(base);
+        for (let c = 0; c < 3; c += 1) {
+          num += (got[c] - base[c]) * (want[c] - base[c]);
+          den += (want[c] - base[c]) ** 2;
+        }
+      }
+    }
+    return Math.round((num / den) * 1000) / 1000;
+  };
+  r.stretch_w03_gapShare = share([tx + 14, ty + 58, tx + 57, ty + 62], () => INTERIOR);
+  r.stretch_w03_flankShare = share([tx + 92, ty + 14, tx + 107, ty + 107], (base) => base.map((v, c) => (c < 3 ? 255 - v : v)));
+  r.stretch_w1_gapVsInterior = error(img("stretch_1"), [tx + 14, ty + 46, tx + 57, ty + 74], () => INTERIOR);
   writeFileSync(join(dir, "proof.json"), `${JSON.stringify(r, null, 2)}\n`);
   console.log(JSON.stringify(r, null, 2));
 }

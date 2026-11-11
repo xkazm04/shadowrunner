@@ -5,14 +5,14 @@
 //   (faded with the coverage), so at weight w the checker sits at w x SHIFT;
 // - `solid_r`, `solid_b` (openWide, round: one mouth group, one box): solid red and blue, no flow;
 // - `lid` (blink, the last group): solid yellow, over part of `shift`'s box;
+// - round 2 (morphFields.ts): `big` (gloom) the head moved BIG px with a back cell, `stretch`
+//   (openMid) a stretch that opens a gap of new surface with reveal 1 there;
 // - a sway map: 0 in the head's top half, rising to 1 at its bottom.
 // Every key's coverage is 1 inside and feathers to 0 over FEATHER px at its cell's edge.
 import type { MorphKey, Rig } from "@sr/rig";
+import { coverageAt, moving } from "./morphFields";
 
 export const SYNTH_SIZE = 512;
-/** The `shift` key's move, canvas px, and its flowMax (code 255 = SHIFT). */
-export const SHIFT: readonly [number, number] = [4, 0];
-export const FEATHER = 12;
 export const CHECKER = 4;
 export const HEAD_BOX: [number, number, number, number] = [56, 56, 400, 400];
 export const SWAY_AMP = 20;
@@ -22,6 +22,8 @@ export const SYNTH_KEYS: MorphKey[] = [
   { id: "solid_r", track: "openWide", bbox: [176, 316, 120, 80], cell: [166, 2, 120, 80] },
   { id: "solid_b", track: "round", bbox: [176, 316, 120, 80], cell: [290, 2, 120, 80] },
   { id: "lid", track: "blink", bbox: [226, 176, 120, 80], cell: [166, 86, 120, 80] },
+  { id: "big", track: "gloom", bbox: [120, 300, 240, 120], cell: [2, 170, 240, 120], flowCell: [43, 1, 60, 30], flowMax: 42, backCell: [105, 1, 60, 30] },
+  { id: "stretch", track: "openMid", bbox: [320, 100, 120, 120], cell: [246, 170, 120, 120], flowCell: [167, 1, 30, 30], flowMax: 16, backCell: [199, 1, 30, 30] },
 ];
 
 export const SOLID: Readonly<Record<string, readonly [number, number, number]>> = { solid_r: [230, 40, 40], solid_b: [40, 60, 230], lid: [250, 210, 20] };
@@ -33,12 +35,6 @@ export function headAt(x: number, y: number): [number, number, number] {
   if (Math.hypot(gx - 32, gy - 32) < 5) return [40 + ((x * 3) & 127), 180, 90 + ((y * 5) & 127)];
   const on = (Math.floor(x / CHECKER) + Math.floor(y / CHECKER)) % 2 === 0;
   return on ? [215, 215, 215] : [60, 60, 60];
-}
-
-/** Coverage of a cell pixel (u, v) of a w x h cell: 1 inside, feathered to 0 at the edge. */
-export function coverageAt(u: number, v: number, w: number, h: number): number {
-  const d = Math.min(u + 0.5, v + 0.5, w - u - 0.5, h - v - 0.5);
-  return Math.min(1, Math.max(0, d / FEATHER));
 }
 
 export function synthRig(): Rig {
@@ -81,44 +77,60 @@ function imageData(w: number, h: number, paint: Paint): ImageData {
   return data;
 }
 
-/** The key's colour at canvas px (x, y) inside its box. */
-function keyAt(key: MorphKey, x: number, y: number): [number, number, number] {
+/** The key's colour at its bbox px (u, v). */
+function keyAt(key: MorphKey, u: number, v: number): [number, number, number] {
   const solid = SOLID[key.id];
   if (solid !== undefined) return [solid[0], solid[1], solid[2]];
-  return headAt(x - SHIFT[0], y - SHIFT[1]);
+  return moving(key.id, key.bbox)?.colour(headAt, u, v) ?? [0, 0, 0];
 }
 
 /** The atlas: each key's cell (colour + coverage) at its `cell`; transparent elsewhere. */
 function atlasData(): ImageData {
   const cells = SYNTH_KEYS.map((key) => ({ key, cx: key.cell[0], cy: key.cell[1], w: key.cell[2], h: key.cell[3] }));
-  return imageData(SYNTH_SIZE, 256, (x, y) => {
+  return imageData(SYNTH_SIZE, SYNTH_SIZE, (x, y) => {
     for (const { key, cx, cy, w, h } of cells) {
       const u = x - cx;
       const v = y - cy;
       if (u < 0 || v < 0 || u >= w || v >= h) continue;
-      const [r, g, b] = keyAt(key, key.bbox[0] + u, key.bbox[1] + v);
+      const [r, g, b] = keyAt(key, u, v);
       return [r, g, b, Math.round(255 * coverageAt(u, v, w, h))];
     }
     return [0, 0, 0, 0];
   });
 }
 
-/** The motion image: 128 everywhere; `shift`'s cell holds SHIFT times the coverage at that point. */
+/**
+ * The motion image: 128 everywhere; each moving key's flow cell holds F and its back cell G and r,
+ * sampled at the centre of the bbox block each cell px covers (the 1 px gutter repeats the edge).
+ */
 function flowData(): ImageData {
-  const key = SYNTH_KEYS[0];
-  const fc = key?.flowCell ?? [0, 0, 1, 1];
-  const max = key?.flowMax ?? 1;
-  return imageData(64, 64, (x, y) => {
-    const u = x - fc[0];
-    const v = y - fc[1];
-    const inside = u >= -1 && v >= -1 && u <= fc[2] && v <= fc[3];
-    if (!inside || key === undefined) return [128, 128, 128, 255];
-    // The flow cell's pixel (u, v) covers the bbox's 4 x 4 block about its centre (the gutter repeats the edge).
-    const bu = (Math.min(fc[2] - 1, Math.max(0, u)) + 0.5) * (key.bbox[2] / fc[2]);
-    const bv = (Math.min(fc[3] - 1, Math.max(0, v)) + 0.5) * (key.bbox[3] / fc[3]);
-    const k = coverageAt(bu - 0.5, bv - 0.5, key.bbox[2], key.bbox[3]);
-    const code = (d: number): number => Math.round(128 + (127 * d * k) / max);
-    return [code(SHIFT[0]), code(SHIFT[1]), 128, 255];
+  const code = (d: number, max: number): number => Math.max(0, Math.min(255, Math.round(128 + (127 * d) / max)));
+  const cells = SYNTH_KEYS.flatMap((key) => {
+    const field = moving(key.id, key.bbox);
+    if (field === undefined || key.flowCell === undefined) return [];
+    const out = [{ key, box: key.flowCell, at: (u: number, v: number): [number, number, number] => {
+      const [dx, dy] = field.f(u, v);
+      return [code(dx, field.flowMax), code(dy, field.flowMax), 128];
+    } }];
+    if (key.backCell !== undefined && field.g !== undefined) {
+      const g = field.g;
+      out.push({ key, box: key.backCell, at: (u, v) => {
+        const [dx, dy] = g(u, v);
+        return [code(dx, field.flowMax), code(dy, field.flowMax), Math.round(255 * (field.r?.(u, v) ?? 0))];
+      } });
+    }
+    return out;
+  });
+  return imageData(256, 64, (x, y) => {
+    for (const { key, box, at } of cells) {
+      const u = x - box[0];
+      const v = y - box[1];
+      if (u < -1 || v < -1 || u > box[2] || v > box[3]) continue;
+      const bu = (Math.min(box[2] - 1, Math.max(0, u)) + 0.5) * (key.bbox[2] / box[2]);
+      const bv = (Math.min(box[3] - 1, Math.max(0, v)) + 0.5) * (key.bbox[3] / box[3]);
+      return [...at(bu, bv), 255];
+    }
+    return [128, 128, 128, 255];
   });
 }
 

@@ -6,7 +6,7 @@ import type { RigAssets } from "../render/types.js";
 
 export const KEYS: MorphKey[] = [
   { id: "blink", track: "blink", bbox: [80, 90, 100, 30], cell: [0, 34, 100, 30] },
-  { id: "open_mid", track: "openMid", bbox: [100, 150, 60, 40], cell: [104, 0, 60, 40], flowCell: [27, 0, 15, 10], flowMax: 6 },
+  { id: "open_mid", track: "openMid", bbox: [100, 150, 60, 40], cell: [104, 0, 60, 40], flowCell: [27, 0, 15, 10], flowMax: 6, backCell: [27, 12, 15, 10] },
   { id: "round", track: "round", bbox: [100, 150, 60, 40], cell: [104, 44, 60, 40] },
   { id: "joy", track: "joy", bbox: [70, 70, 120, 130], cell: [0, 88, 120, 130], flowCell: [44, 0, 30, 33], flowMax: 2 },
   { id: "look_l", track: "gazeL", bbox: [80, 90, 100, 30], cell: [124, 88, 100, 30] },

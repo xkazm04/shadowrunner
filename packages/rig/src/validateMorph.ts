@@ -7,7 +7,7 @@
 //   of 1..MORPH_MAX_KEYS keys, `eyes` two [x, y] pairs of finite numbers; per key an id matching
 //   ^[a-z0-9_]+$, a known track, `at` in (0, 1], integer `bbox` and `cell` tuples with w, h > 0 and
 //   x, y >= 0, `flowCell` (integers, as `cell`) only with `flowMax` in (0, 256] and with `flow`, and
-//   `flowMax` only with `flowCell`; at most MORPH_MAX_STOPS keys on a track and no two at one stop
+//   `flowMax` only with `flowCell`, `backCell` (round 2; integers, as `cell`) only with `flowCell`; at most MORPH_MAX_STOPS keys on a track and no two at one stop
 //   (the stop rule divides by the gap); `flow` only when some key has a `flowCell` (the wire rule:
 //   a rig whose keys all lack motion has no flow); `sway` an object of a `map` file and `amp` in
 //   (0, 0.05 x width].
@@ -82,12 +82,14 @@ class MorphReader {
     const bbox = this.box(value.bbox, `${path}.bbox`);
     const cell = this.box(value.cell, `${path}.cell`);
     const flowCell = value.flowCell === undefined ? undefined : this.box(value.flowCell, `${path}.flowCell`);
+    const backCell = value.backCell === undefined ? undefined : this.box(value.backCell, `${path}.backCell`);
+    if (value.backCell !== undefined && value.flowCell === undefined) this.fail(`${path}.flowCell`, "required with backCell");
     if (flowMax !== undefined && !(isFiniteNumber(flowMax) && flowMax > 0 && flowMax <= MORPH_FLOW_MAX)) this.fail(`${path}.flowMax`, `when present, expected a number in (0, ${MORPH_FLOW_MAX}], got ${describe(flowMax)}`);
     if (value.flowCell !== undefined && flowMax === undefined) this.fail(`${path}.flowMax`, "required with flowCell");
     if (value.flowCell === undefined && flowMax !== undefined) this.fail(`${path}.flowCell`, "required with flowMax (omit both for a key without motion)");
     if (this.problems.length > before || typeof id !== "string" || !isMorphTrack(track) || bbox === undefined || cell === undefined) return undefined;
     const moving = flowCell !== undefined && isFiniteNumber(flowMax);
-    return { id, track, ...(isFiniteNumber(at) ? { at } : {}), bbox, cell, ...(moving ? { flowCell, flowMax } : {}) };
+    return { id, track, ...(isFiniteNumber(at) ? { at } : {}), bbox, cell, ...(moving ? { flowCell, flowMax } : {}), ...(moving && backCell !== undefined ? { backCell } : {}) };
   }
 
   eyes(value: unknown, path: string): RigMorph["eyes"] | undefined {

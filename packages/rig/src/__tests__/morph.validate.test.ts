@@ -27,9 +27,11 @@ describe("validateRig: morph accepted", () => {
       for (const x of k) {
         delete x.flowCell;
         delete x.flowMax;
+        delete x.backCell;
       }
     }],
     ["no sway", (_r, m) => void delete m.sway],
+    ["a back cell with a flow cell", (_r, _m, k) => void ((k[0] as Record<string, unknown>).backCell = [30, 0, 25, 8])],
     ["at 1 written out, a single key without motion, no flow", (_r, m) => {
       m.keys = [key({ id: "solo", at: 1 })];
       delete m.flow;
@@ -60,6 +62,9 @@ describe("validateRig: morph refused, the field named", () => {
     ["a fractional cell", (_r, _m, k) => void ((k[3] as Record<string, unknown>).cell = [0.5, 0, 10, 10]), "bad_shape", "$.morph.keys[3].cell"],
     ["flowCell without flowMax", (_r, _m, k) => void delete (k[0] as Record<string, unknown>).flowMax, "bad_shape", "$.morph.keys[0].flowMax"],
     ["flowMax without flowCell", (_r, _m, k) => void delete (k[0] as Record<string, unknown>).flowCell, "bad_shape", "$.morph.keys[0].flowCell"],
+    ["a back cell without a flow cell", (_r, _m, k) => void ((k[1] as Record<string, unknown>).backCell = [30, 0, 25, 8]), "bad_shape", "$.morph.keys[1].flowCell"],
+    ["a negative back cell", (_r, _m, k) => void ((k[0] as Record<string, unknown>).backCell = [-1, 0, 25, 8]), "bad_shape", "$.morph.keys[0].backCell"],
+    ["an empty back cell", (_r, _m, k) => void ((k[0] as Record<string, unknown>).backCell = [0, 0, 0, 8]), "bad_shape", "$.morph.keys[0].backCell"],
     ["flowMax 0", (_r, _m, k) => void ((k[0] as Record<string, unknown>).flowMax = 0), "bad_shape", "$.morph.keys[0].flowMax"],
     ["flowCell without flow", (_r, m) => void delete m.flow, "bad_shape", "$.morph.flow"],
     ["flow when no key moves", (_r, m) => void (m.keys = [key({})]), "bad_shape", "$.morph.flow"],
@@ -93,6 +98,7 @@ describe("serializeRig: morph", () => {
     expect(Object.keys(wire.morph)).toEqual(["layer", "atlas", "flow", "keys", "eyes", "sway"]);
     expect(Object.keys(wire.morph.keys[0] ?? {})).toEqual(["id", "track", "at", "bbox", "cell", "flowCell", "flowMax"]);
     expect(Object.keys(wire.morph.keys[1] ?? {})).toEqual(["id", "track", "bbox", "cell"]);
+    expect(Object.keys(wire.morph.keys[2] ?? {})).toEqual(["id", "track", "bbox", "cell", "flowCell", "flowMax", "backCell"]);
   });
 
   it("drops fields outside the contract and writes no morph key for a rig without one", () => {

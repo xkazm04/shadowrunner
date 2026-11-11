@@ -130,7 +130,7 @@ each with an optional motion field from the layer's own pixels to the key. Decla
 | `eyes` | `[[x, y], [x, y]]` | yes | The two eye centres, canvas px, the picture's left first: the turn's face and the gaze. Off the canvas is `bbox_out_of_bounds` at `$.morph.eyes[i]`. |
 | `sway` | `{ map, amp }` | no | Soft secondary motion inside the layer (hair ends, ears): `map` a greyscale image stretched over the layer's bbox (R = how loosely that pixel hangs, 0..1), `amp` the canvas px a weight-1 pixel lags at full deflection, in (0, 0.05 x width]. Omitted: no sway. |
 
-A **MorphKey** is `{ id, track, at?, bbox, cell, flowCell?, flowMax? }`. `id` matches `^[a-z0-9_]+$`
+A **MorphKey** is `{ id, track, at?, bbox, cell, flowCell?, flowMax?, backCell? }`. `id` matches `^[a-z0-9_]+$`
 and is unique in the rig (`duplicate_name` at `$.morph.keys[i].id`). `track` is one of the 18
 tracks below (`bad_shape` otherwise). `at`, the key's stop on its track, is in (0, 1]; omitted means
 1. `bbox` is the canvas box the key repaints and `cell` its colour cell in the atlas (RGB the
@@ -141,8 +141,13 @@ cell in `flow` (the bbox at 1/4 size rounded up, a 1 px gutter, stretched over `
 the displacement from a layer pixel to the same feature in the key, `(code - 128) / 127 * flowMax`
 canvas px (x right, y down; code 128 is exactly 0), already faded to 0 where the coverage is.
 `flowMax` is in (0, 256] and comes with `flowCell`, never alone (`bad_shape` at the missing one). A
-key without motion has neither: it is a plain cross-fade. A track holds at most 4 keys and no two
-at one stop (`bad_shape`). Omitted fields are omitted, never null or 0.
+key without motion has neither: it is a plain cross-fade. `backCell` (round 2; integers as `cell`,
+`bad_shape` otherwise, and only with `flowCell`, else `bad_shape` at `flowCell`) is a second cell in
+`flow`, stretched over `bbox` and read in the KEY's frame: R and G the displacement from a key pixel
+back to the same feature in the layer (same code and `flowMax`), B how much that key pixel is new
+surface the layer does not have (teeth, a mouth's inside, a lowered lid), `code / 255`. Omitted: the
+forward motion alone, no reveal. A track holds at most 4 keys and no two at one stop (`bad_shape`).
+Omitted fields are omitted, never null or 0.
 
 **Tracks** (each a value v in [0, 1] per frame, `morph.ts`):
 
@@ -162,18 +167,24 @@ dropped (a tie drops the key that composites later). They composite by group, `f
 `mouth` < `blink` (a later group covers an earlier one), then in `keys` order.
 
 **The shader** (WebGL2, `gl/morph.ts`), in canvas px of the layer's rest frame, before its pose and
-the turn's bend: the sway first moves the sample point by `- s(x) * amp * L`; the displacement field
-is the weighted sum of the active keys' motion, and the point the layer is read at solves
-`p = x - D(p)` by two fixed-point steps (so a key at weight 1 reads the layer where its feature came
-from, and at weight 0.5 halfway: no double image). Then per group, the keys' colours at
-`q_i = p + F_i(p)` are averaged by weight times coverage and mixed over the layer's colour by the
-group's total coverage (at most 1), at the layer's own alpha (a key never adds coverage). Recolour
+the turn's bend (round 2, design "Round 2 amendment"; no inversion, exact at weight 0 and 1 for any
+motion): the sway first moves the point x by `- s(x) * amp * L`. Each active key's field at x is
+`Fh_i = mix(F_i, -G_i, w_i)` (F the flow cell, G the back cell's R, G, both at x and 0 outside the
+key's bbox; a key without a back cell has `Fh_i = F_i`); the layer is read at `p = x - sum w_i Fh_i`
+and key i at `q_i = p + Fh_i`, where its colour, coverage m_i and reveal r_i (back cell B; 0 without
+one) are read. A key's share is `a_i = mix(w_i, smoothstep(0, 0.4, w_i), r_i)`: new surface is
+mostly there by weight 0.4, uncovered by the motion rather than faded in. One key at weight 1 reads
+the layer where each key pixel's feature came from and the key at x: its cell exactly; a pure shift
+d at weight w moves the layer w d and the key meets it (no double image). Then per group, the keys'
+colours are averaged by share times coverage and mixed over the layer's colour by the group's total
+(at most 1), at the layer's own alpha (a key never adds coverage); a later key without motion moves
+with the earlier keys' displacement. Recolour
 regions, the light gain, rim, the turn's bend and light, the dim and the glow source then run on
 that colour as on any layer; the rim's taps and the region map are read about `p`. At weight 1 of
 one key its cell is reproduced inside its coverage; a frame with no active key and no sway draws
 the layer with the base program, exactly as without `morph`. The atlas is uploaded premultiplied
-with mipmaps, the motion image and the sway map as stored (no premultiply, no colour-space
-conversion), linear; the morph program is linked only on a frame that needs it.
+with mipmaps, the motion image (all three channels data) and the sway map as stored (no
+premultiply, no colour-space conversion), linear; the morph program is linked only on a frame that needs it.
 
 **Sway.** L, per axis in [-1, 1], is the head group's spring lag (`Drive.spring`, see Pose
 "Secondary motion"): the yaw and roll lags sideways, the pitch and lift lags up and down, each over

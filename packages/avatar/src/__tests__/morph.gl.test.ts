@@ -73,6 +73,8 @@ describe("the morph program", () => {
     expect(uniform(log, "u_kBox")).toEqual([[pad([[70, 70, 120, 130], [100, 150, 60, 40], [100, 150, 60, 40], [80, 90, 100, 30]])]]);
     expect(uniform(log, "u_kCell")).toEqual([[pad([[0, 88, 120, 130], [104, 0, 60, 40], [104, 44, 60, 40], [0, 34, 100, 30]])]]);
     expect(uniform(log, "u_kFlow")).toEqual([[pad([[44, 0, 30, 33], [27, 0, 15, 10], [0, 0, 0, 0], [0, 0, 0, 0]])]]);
+    // Round 2: the back cell of the key that has one (joy has none: the forward motion alone).
+    expect(uniform(log, "u_kBack")).toEqual([[pad([[0, 0, 0, 0], [27, 12, 15, 10], [0, 0, 0, 0], [0, 0, 0, 0]])]]);
     expect(uniform(log, "u_kParam")).toEqual([[pad([[1, 2, 0, 0], [Math.fround(0.6), 6, 2, 0], [Math.fround(0.2), 0, 2, 0], [1, 0, 3, 0]])]]);
     expect(uniform(log, "u_swayK")).toEqual([[0, 0, 0, 0]]);
     expect(uniform(log, "u_atlasTexel")).toEqual([[1 / 256, 1 / 256]]);

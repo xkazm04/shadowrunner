@@ -192,11 +192,14 @@ Both arms share one driver body (`src/page/lip/mouth/driver.ts`). Neither attach
 to the player: they hand the player a shape mix (`player.setMouthShapes(weights, { jaw, drawn? })`)
 and `@sr/avatar` moves the mouth itself, on `Rig.mouth`, with the character's emotion (main.ts
 hands it over with `setEmotion`). What the player does with the mix depends on the rig
-(`player.mouthMode()`, from `mouthMode(rig.mouth)` in `@sr/avatar`):
+(`player.mouthMode()`, from `mouthMode(rig.mouth, rig.morph)` in `@sr/avatar`):
 
 - `"warp"` (the default for a measured mouth): the GL renderer bends the character's own painted
   lips (corners, opening over a dark interior; spark art-mouth). The Canvas2D fallback slides the jaw.
 - `"drawn"` (`Rig.mouth.render: "drawn"`, the Tallyman): the player paints its procedural mouth.
+- `"morph"` (companion-lanes: a `Rig.morph` with a key on a mouth track, Iris and Bun): the mix
+  drives the mouth keys (docs/rig-format.md "Morph keys"); no mouth is drawn, so no lip art is
+  painted over it.
 - `"still"` (`render: "still"`), or no `Rig.mouth`: shapes are not sent; the driver opens only the
   jaw, through `player.setLevel`, and warns once at creation.
 

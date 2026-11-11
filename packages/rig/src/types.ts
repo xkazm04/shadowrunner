@@ -207,18 +207,9 @@ export interface Rig {
  */
 export type MorphTrack =
   | "blink"
-  | "openWide"
-  | "openMid"
-  | "round"
-  | "closed"
-  | "teeth"
-  | "tongue"
-  | "narrow"
+  | "openWide" | "openMid" | "round" | "closed" | "teeth" | "tongue" | "narrow"
   | ExpressionFamily
-  | "gazeL"
-  | "gazeR"
-  | "gazeU"
-  | "gazeD";
+  | "gazeL" | "gazeR" | "gazeU" | "gazeD";
 
 /**
  * One morph key: an aligned repaint of part of the morph layer (an image edit of the portrait with

@@ -7,10 +7,13 @@
 //
 // The math, in canvas px of the layer's rest frame (before its pose and the turn's bend):
 //   x' = x - s(x) * amp * L                      sway: s the sway map at x, L the frame's lag
-//   D(p) = sum_i w_i F_i(p)                       F_i key i's decoded flow, 0 outside its bbox
-//   p = x' - D(x' - D(x'))                        two fixed-point steps of p = x' - D(p)
-//   c = layer(p); per group g in order: S = sum w_i m_i, C = sum w_i m_i rgb_i / max(S, 1e-4)
-//   at q_i = p + F_i(p); c.rgb = mix(c.rgb, C * c.a, min(1, S))
+//   Fh_i(x) = mix(F_i(x), -G_i(x), w_i)          round 2 (design "Round 2 amendment"): F_i the flow
+//                                                 cell, G_i the back cell's R, G, both at x and 0
+//                                                 outside the bbox; no back cell: Fh_i = F_i
+//   D(x) = sum_i w_i Fh_i(x);  p = x' - D(x')      no inversion: exact at weight 0 and 1 for any field
+//   q_i = p + Fh_i(x');  r_i = back cell B at q_i (0 without one);  a_i = mix(w_i, smoothstep(0, .4, w_i), r_i)
+//   c = layer(p); per group g in order: S = sum a_i m_i, C = sum a_i m_i rgb_i / max(S, 1e-4)
+//   at q_i; c.rgb = mix(c.rgb, C * c.a, min(1, S))
 // The layer's 4 rim taps and the region map are read about p (the rim and the turn light's bump
 // see the layer's own pixels there, not the keys'). The layer and atlas reads take the gradients of
 // x (textureGrad), so a displaced read keeps the base pass's level of detail.
@@ -43,25 +46,23 @@ uniform int u_kCount;
 uniform vec4 u_kBox[${N}];
 uniform vec4 u_kCell[${N}];
 uniform vec4 u_kFlow[${N}];
+uniform vec4 u_kBack[${N}];
 uniform vec4 u_kParam[${N}];
 float inLayer(vec2 uv) { return uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0 ? 1.0 : 0.0; }
 vec2 kAt(int i, vec2 p) { return (p - u_kBox[i].xy) / u_kBox[i].zw; }
 bool kIn(vec2 k) { return k.x >= 0.0 && k.x <= 1.0 && k.y >= 0.0 && k.y <= 1.0; }
-vec2 kFlow(int i, vec2 p) {
-  if (u_kParam[i].y <= 0.0) return vec2(0.0);
-  vec2 k = kAt(i, p);
+vec3 kCode(vec4 cell, vec2 k) { return textureLod(u_flow, (cell.xy + k * cell.zw) * u_flowTexel, 0.0).rgb; }
+vec2 kVec(vec3 code, float fm) { return (code.rg * 255.0 - 128.0) / 127.0 * fm; }
+vec2 kFh(int i, vec2 x) {
+  float fm = u_kParam[i].y;
+  if (fm <= 0.0) return vec2(0.0);
+  vec2 k = kAt(i, x);
   if (!kIn(k)) return vec2(0.0);
-  vec2 code = textureLod(u_flow, (u_kFlow[i].xy + k * u_kFlow[i].zw) * u_flowTexel, 0.0).rg;
-  return (code * 255.0 - 128.0) / 127.0 * u_kParam[i].y;
+  vec2 f = kVec(kCode(u_kFlow[i], k), fm);
+  if (u_kBack[i].z <= 0.0) return f;
+  return mix(f, -kVec(kCode(u_kBack[i], k), fm), u_kParam[i].x);
 }
-vec2 mDisp(vec2 p) {
-  vec2 d = vec2(0.0);
-  for (int i = 0; i < ${N}; i++) {
-    if (i >= u_kCount) break;
-    d += u_kParam[i].x * kFlow(i, p);
-  }
-  return d;
-}`;
+float kReveal(int i, vec2 k) { return u_kParam[i].y > 0.0 && u_kBack[i].z > 0.0 ? kCode(u_kBack[i], k).b : 0.0; }`;
 
 const MORPH_SAMPLE = `  vec2 x = u_rect.xy + v_uv * u_rect.zw;
   vec2 gdx = dFdx(x);
@@ -70,8 +71,13 @@ const MORPH_SAMPLE = `  vec2 x = u_rect.xy + v_uv * u_rect.zw;
     vec2 su = (x - u_swayBox.xy) / u_swayBox.zw;
     x -= inLayer(su) * textureLod(u_sway, su, 0.0).r * u_swayK.xy;
   }
-  vec2 p = x - mDisp(x);
-  p = x - mDisp(p);
+  vec2 fh[${N}];
+  vec2 disp = vec2(0.0);
+  for (int i = 0; i < ${N}; i++) {
+    fh[i] = i < u_kCount ? kFh(i, x) : vec2(0.0);
+    disp += u_kParam[i].x * fh[i];
+  }
+  vec2 p = x - disp;
   vec2 uv = (p - u_rect.xy) / u_rect.zw;
   vec4 tex = textureGrad(u_tex, uv, gdx / u_rect.zw, gdy / u_rect.zw) * inLayer(uv);
   for (int g = 0; g < 4; g++) {
@@ -80,12 +86,14 @@ const MORPH_SAMPLE = `  vec2 x = u_rect.xy + v_uv * u_rect.zw;
     for (int i = 0; i < ${N}; i++) {
       if (i >= u_kCount) break;
       if (int(u_kParam[i].z + 0.5) != g) continue;
-      vec2 k = kAt(i, p + kFlow(i, p));
+      vec2 k = kAt(i, p + fh[i]);
       if (!kIn(k)) continue;
       vec2 r = u_kCell[i].zw / u_kBox[i].zw * u_atlasTexel;
       vec4 t = textureGrad(u_atlas, (u_kCell[i].xy + k * u_kCell[i].zw) * u_atlasTexel, gdx * r, gdy * r);
-      s += u_kParam[i].x * t.a;
-      c += u_kParam[i].x * t.rgb;
+      float w = u_kParam[i].x;
+      float a = mix(w, smoothstep(0.0, 0.4, w), kReveal(i, k));
+      s += a * t.a;
+      c += a * t.rgb;
     }
     if (s > 0.0) tex.rgb = mix(tex.rgb, c / max(s, 1e-4) * tex.a, min(1.0, s));
   }`;
@@ -95,7 +103,7 @@ export const MORPH_LAYER_SAMPLE: LayerSample = { decl: MORPH_DECL, sample: MORPH
 
 export const MORPH_UNIFORMS = [
   ...BASE_UNIFORMS, "u_draw", "u_atlas", "u_flow", "u_sway", "u_atlasTexel", "u_flowTexel", "u_swayK", "u_swayBox",
-  "u_kCount", "u_kBox", "u_kCell", "u_kFlow", "u_kParam",
+  "u_kCount", "u_kBox", "u_kCell", "u_kFlow", "u_kBack", "u_kParam",
 ] as const;
 export type MorphUniform = (typeof MORPH_UNIFORMS)[number];
 
@@ -127,6 +135,7 @@ export function createMorphGl(gl: WebGL2RenderingContext): MorphGl {
   const box = new Float32Array(4 * N);
   const cell = new Float32Array(4 * N);
   const flowCell = new Float32Array(4 * N);
+  const backCell = new Float32Array(4 * N);
   const param = new Float32Array(4 * N);
   let count = 0;
   let reach = 0;
@@ -159,6 +168,7 @@ export function createMorphGl(gl: WebGL2RenderingContext): MorphGl {
       gl.uniform4fv(u.u_kBox, box);
       gl.uniform4fv(u.u_kCell, cell);
       gl.uniform4fv(u.u_kFlow, flowCell);
+      gl.uniform4fv(u.u_kBack, backCell);
       gl.uniform4fv(u.u_kParam, param);
     },
     rect(_gl: WebGL2RenderingContext, rect: readonly number[]): void {
@@ -194,6 +204,7 @@ export function createMorphGl(gl: WebGL2RenderingContext): MorphGl {
       box.fill(0);
       cell.fill(0);
       flowCell.fill(0);
+      backCell.fill(0);
       param.fill(0);
       for (let n = 0; n < count; n += 1) {
         const key = morph.keys[plan.active[n] ?? 0];
@@ -202,6 +213,7 @@ export function createMorphGl(gl: WebGL2RenderingContext): MorphGl {
           box[4 * n + c] = key.bbox[c] ?? 0;
           cell[4 * n + c] = key.cell[c] ?? 0;
           flowCell[4 * n + c] = key.flowCell?.[c] ?? 0;
+          backCell[4 * n + c] = key.flowCell === undefined ? 0 : (key.backCell?.[c] ?? 0);
         }
         param[4 * n] = plan.weights[plan.active[n] ?? 0] ?? 0;
         param[4 * n + 1] = flow !== undefined && key.flowCell !== undefined ? (key.flowMax ?? 0) : 0;
