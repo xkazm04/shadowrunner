@@ -82,6 +82,26 @@ the head's channels, plus a slow idle drift of at most 0.15). `still` (reduced m
 
 Canvas 2D: the layer, then each active key's cell drawn over its bbox with `globalAlpha = w`.
 
+### Round 2 amendment (2026-11-11): no fixed point, a back cell, reveal
+Measured in round 1: two fixed-point steps of `p = x - D(p)` only invert gentle fields, so the
+builder had to scale every field down until the inversion held (`open_wide` kept 0.23 of its
+motion, the gaze 0.4-0.9) and the wide mouth faded in instead of parting. The shader math above is
+replaced by a scheme that needs no inversion and is exact at both ends for any motion:
+
+```
+Fh_i(x) = mix(F_i(x), -G_i(x), w_i)        F_i: flowCell at x (layer frame); G_i: backCell R,G at x
+                                           (key frame); no backCell: Fh_i = F_i
+D(x)    = sum_i w_i * Fh_i(x)
+p       = x - D(x)                         the layer is read at p (also the region map, the rim taps)
+q_i     = p + Fh_i(x)                      key i's colour, coverage m_i and reveal r_i are read at q_i
+a_i     = mix(w_i, smoothstep(0, 0.4, w_i), r_i)      r_i = backCell B at q_i; no backCell: 0
+groups:  S = sum a_i m_i;  C = sum a_i m_i rgb_i / max(S, 1e-4);  c.rgb = mix(c.rgb, C * c.a, min(1, S))
+```
+One key at weight 1: `p = x - (-G)`, `q = x`, so the key's cell is reproduced exactly. Weight 0:
+the layer. A pure shift `d` (F = d, G = -d): the layer moves `w d` and the key meets it. Sway is
+applied to `x` first, as before. The builder writes F and G unscaled (both faded to 0 with
+coverage), and `r` from where the key does not match the layer it was warped from.
+
 ## Builder
 `tools/portrait-keys/build.py` (Python 3.12: numpy, opencv-python, pillow; `requirements.txt`).
 `python tools/portrait-keys/build.py <character dir> --out <built dir> [--sheets <dir>]`.

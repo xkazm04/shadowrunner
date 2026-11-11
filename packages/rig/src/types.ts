@@ -250,6 +250,15 @@ export interface MorphKey {
   flowCell?: [x: number, y: number, w: number, h: number];
   /** Canvas px of displacement at code 255, in (0, 256]; required with `flowCell`. */
   flowMax?: number;
+  /**
+   * The key's back cell in `RigMorph.flow` (companion-lanes round 2), stretched over `bbox`, read in
+   * the KEY's frame: R and G hold the displacement from a key pixel back to the same feature in the
+   * layer (same code and `flowMax` as `flowCell`), B how much that key pixel is new surface the
+   * layer does not have (teeth, the inside of a mouth, a lowered lid), `code / 255`. With it the
+   * morph is exact at weight 1 for any motion and new surface is uncovered by the motion instead of
+   * faded in. Requires `flowCell`. Omitted: the forward motion alone, no reveal.
+   */
+  backCell?: [x: number, y: number, w: number, h: number];
 }
 
 /** Soft secondary motion inside the morph layer (hair ends, ears): a weight map and its reach. */
