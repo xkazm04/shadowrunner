@@ -92,7 +92,8 @@
       "at": 0.25,
       "edit": "blink_quarter",
       "region": "eyes",
-      "flow": "lid"
+      "flow": "lid",
+      "residual": "clean"
     },
     {
       "id": "blink_half",
@@ -100,7 +101,8 @@
       "at": 0.5,
       "edit": "blink_half",
       "region": "eyes",
-      "flow": "lid"
+      "flow": "lid",
+      "residual": "clean"
     },
     {
       "id": "blink_3q",
@@ -108,21 +110,24 @@
       "at": 0.75,
       "edit": "blink_3q",
       "region": "eyes",
-      "flow": "lid"
+      "flow": "lid",
+      "residual": "clean"
     },
     {
       "id": "blink",
       "track": "blink",
       "edit": "blink",
       "region": "eyes",
-      "flow": "lid"
+      "flow": "lid",
+      "residual": "clean"
     },
     {
       "id": "open_mid",
       "track": "openMid",
       "edit": "openMid",
       "region": "mouth",
-      "flow": "optical"
+      "flow": "optical",
+      "residual": "clean"
     },
     {
       "id": "open_wide_half",
@@ -130,7 +135,8 @@
       "at": 0.5,
       "edit": "openWide_half",
       "region": "mouthWide",
-      "flow": "optical"
+      "flow": "optical",
+      "residual": "clean"
     },
     {
       "id": "open_wide",
@@ -145,105 +151,120 @@
       "track": "round",
       "edit": "round",
       "region": "mouth",
-      "flow": "optical"
+      "flow": "optical",
+      "residual": "clean"
     },
     {
       "id": "closed",
       "track": "closed",
       "edit": "closed",
       "region": "mouth",
-      "flow": "optical"
+      "flow": "optical",
+      "residual": "clean"
     },
     {
       "id": "teeth",
       "track": "teeth",
       "edit": "teeth",
       "region": "mouth",
-      "flow": "optical"
+      "flow": "optical",
+      "residual": "clean"
     },
     {
       "id": "tongue",
       "track": "tongue",
       "edit": "tongue",
       "region": "mouth",
-      "flow": "optical"
+      "flow": "optical",
+      "residual": "clean"
     },
     {
       "id": "narrow",
       "track": "narrow",
       "edit": "narrow",
       "region": "mouth",
-      "flow": "optical"
+      "flow": "optical",
+      "residual": "clean"
     },
     {
       "id": "gaze_l",
       "track": "gazeL",
       "edit": "gazeL",
       "region": "gaze",
-      "flow": "iris"
+      "flow": "iris",
+      "residual": "clean"
     },
     {
       "id": "gaze_r",
       "track": "gazeR",
       "edit": "gazeR",
       "region": "gaze",
-      "flow": "iris"
+      "flow": "iris",
+      "residual": "clean"
     },
     {
       "id": "gaze_u",
       "track": "gazeU",
       "edit": "gazeU",
       "region": "gaze",
-      "flow": "iris"
+      "flow": "iris",
+      "residual": "clean"
     },
     {
       "id": "gaze_d",
       "track": "gazeD",
       "edit": "gazeD",
       "region": "gaze",
-      "flow": "iris"
+      "flow": "iris",
+      "residual": "clean"
     },
     {
       "id": "joy",
       "track": "joy",
       "edit": "joy",
       "region": "face",
-      "flow": "optical"
+      "flow": "optical",
+      "residual": "clean"
     },
     {
       "id": "showman",
       "track": "showman",
       "edit": "showman",
       "region": "face",
-      "flow": "optical"
+      "flow": "optical",
+      "residual": "clean"
     },
     {
       "id": "anger",
       "track": "anger",
       "edit": "anger",
       "region": "face",
-      "flow": "optical"
+      "flow": "optical",
+      "residual": "clean"
     },
     {
       "id": "gloom",
       "track": "gloom",
       "edit": "gloom",
       "region": "face",
-      "flow": "optical"
+      "flow": "optical",
+      "residual": "clean"
     },
     {
       "id": "smug",
       "track": "smug",
       "edit": "smug",
       "region": "face",
-      "flow": "optical"
+      "flow": "optical",
+      "residual": "clean"
     },
     {
       "id": "suspicion",
       "track": "suspicion",
       "edit": "suspicion",
       "region": "face",
-      "flow": "optical"
+      "flow": "optical",
+      "residual": "clean"
     }
   ],
   "mouthGain": {
@@ -563,13 +584,15 @@
                     530,
                     40,
                     25
-                  ]
+                  ],
+                  [414, 418, 58, 34],
+                  [616, 418, 58, 34]
                 ]
               }
             ]
           }
         ],
-        "soft": {"band": 6, "dead": [0.35, 0.9]},
+        "soft": {"band": 6, "dead": [0.35, 0.9], "levels": 32},
         "shade": "move"
       }
     ],

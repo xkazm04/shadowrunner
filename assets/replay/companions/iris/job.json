@@ -78,7 +78,7 @@
             {
               "id": "hair",
               "name": "hair",
-              "hex": "#5e6e78",
+              "hex": "#5e6d78",
               "shade": "move"
             }
           ],
@@ -575,7 +575,7 @@
             78,
             26
           ],
-          "flowMax": 22,
+          "flowMax": 23,
           "backCell": [
             553,
             202,
@@ -963,7 +963,7 @@
         "openMid": 0.7,
         "round": 0.6,
         "tongue": 0.7,
-        "narrow": 0.6
+        "narrow": 0.75
       }
     }
   },
@@ -980,12 +980,12 @@
       230
     ],
     "bytes": {
-      "atlas.webp": 415360,
+      "atlas.webp": 415540,
       "background.webp": 5372,
       "body.regions.png": 2465,
       "body.webp": 89294,
-      "flow.png": 114316,
-      "head.regions.png": 60528,
+      "flow.png": 114644,
+      "head.regions.png": 43898,
       "head.webp": 112696,
       "sway.webp": 2708
     }

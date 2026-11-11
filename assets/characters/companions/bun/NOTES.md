@@ -85,12 +85,31 @@ shapes keep gain 1 (0.36-0.65 of the mouth width, right for the style).
   no step. On the track above 0.5 (reached only with `mouth.size` above 1) the wide key still fades
   in as a cross-fade between two drawn mouths (`board-bun-track-eighths.jpg`, 5/8-7/8), as before.
 
+## Round 7 (polish, 2026-11-11)
+Boards (before | after, the real renderer at 1024 px): `var/companion-lanes/round7/keys/board-*.jpg`;
+strips in `round7/keys/sheets-{before,after}/bun/`.
+- Hair slot: the sclera's shadow is pink (hue 0.95, inside the hair test), so the old map called
+  both eye whites' corners hair: at rest a recoloured hair greyed the sclera, under a glance the
+  displaced map read blackened it. The hair part's `without` now holds each eye white
+  ([414, 418, 58, 34], [616, 418, 58, 34]); iris, sclera, lashes and lids carry no hair coverage and
+  the fringe strands crossing the inner corners keep theirs, soft (`board-hair-slot-eyes.jpg`). Two
+  small lash-tip ellipses were tried and dropped (they cut a side strand at the right eye's outer
+  corner). Under a glance with recoloured hair the dark blotches on the whites are gone; the eye's
+  outer ends still show the key's own pink strand where the displaced map read lands off the hair,
+  a runtime matter (`board-item1-bun-gaze-hair.jpg`).
+- Purple line under the lower lash at blink .75 / 1 (also over held expressions): the lid field's
+  vertical blur reaches below the `eyes` prior, so the key was thin there and the pressed iris showed.
+  `lid` keys now cover their whole field below the eyes' centres. Gone (`board-item4-bun-blink.jpg`).
+- `residual: "clean"` on every key: strips equal (codec noise, mean 0.01-0.07/255 on the mouth keys)
+  or a hair lower in colour shift (showman 1.30 -> 1.01, anger 0.30 -> 0.28, smug 1.45 -> 1.43);
+  blink_quarter 1.86 -> 1.92 with an identical strip. Kept on all.
+- `soft.levels` 32: head.regions.png 78139 -> 63578 bytes; no banding at 2x (`board-item8-bun-fringe-2x.jpg`).
+- Pack 937045 bytes. 16 keys plus 6 families x 2 parts, all gates pass (weight 1 at 0.73-1.82/255).
+
 ## Known
-- At blink 0.75 and 1 a faint purple line can show just under the lower lash (the pressed iris at
-  the bottom of the lid field).
-- Recolour reads the region map at the displaced point: under a gaze key, eye-white pixels whose
-  back motion lands on a strand take a faint hair tint at the eye corners. "Black" hoodie reads light
-  grey (the rule keeps lightness).
+- Recolour reads the region map at the displaced point: under a glance the eye's outer ends show
+  the key's unrecoloured pink strand (or a hair tint) where the read lands off (or on) a strand.
+  "Black" hoodie reads light grey (the rule keeps lightness).
 
 ## Refused keys
 None: 16 keys plus 6 families x 2 parts pass every gate (round 6).

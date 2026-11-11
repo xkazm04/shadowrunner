@@ -12,6 +12,8 @@
     "revealRamp": 3.0,
     "flowFrom": "back",
     "gazeReach": 2.5,
+    "gazeAhead": false,
+    "gazeLid": false,
     "weight1": 2.5,
     "lidSigma": 16,
     "lidReach": 1.6,
@@ -20,14 +22,14 @@
   "figures": {
     "sharpness": {
       "head": 0.971,
-      "keysMin": 0.981
+      "keysMin": 0.98
     },
     "regions": {
       "head": {
         "soft": {
           "hair": {
-            "claimed": 11714,
-            "partial": 27786
+            "claimed": 10694,
+            "partial": 25785
           }
         },
         "headphones": {
@@ -35,8 +37,8 @@
           "hex": "#fcdade"
         },
         "hair": {
-          "px": 224476,
-          "hex": "#fc99b9"
+          "px": 222446,
+          "hex": "#fc99b8"
         }
       },
       "body": {
@@ -139,12 +141,12 @@
       266
     ],
     "bytes": {
-      "atlas.webp": 491114,
+      "atlas.webp": 492318,
       "background.webp": 4104,
       "body.regions.png": 3240,
       "body.webp": 60718,
-      "flow.png": 134249,
-      "head.regions.png": 78139,
+      "flow.png": 135280,
+      "head.regions.png": 63578,
       "head.webp": 154168,
       "sway.webp": 5790
     }
@@ -169,7 +171,7 @@
       "floor": 3.263,
       "outsidePrior": 3.815,
       "supportPx": 26457,
-      "colourShift": 1.863,
+      "colourShift": 1.92,
       "lid": [
         {
           "travel": 28.34,
@@ -194,12 +196,12 @@
       ],
       "flowMax": 24,
       "flowP99": 20.452,
-      "revealMean": 0.41,
+      "revealMean": 0.379,
       "medianMotion": 5.802,
       "verdict": "ok",
       "track": "blink",
       "flow": "lid",
-      "weight1": 1.816,
+      "weight1": 1.668,
       "sharpness": 0.997
     },
     {
@@ -246,13 +248,13 @@
       ],
       "flowMax": 36,
       "flowP99": 34.172,
-      "revealMean": 0.444,
+      "revealMean": 0.404,
       "medianMotion": 8.224,
       "verdict": "ok",
       "track": "blink",
       "flow": "lid",
-      "weight1": 1.893,
-      "sharpness": 0.989
+      "weight1": 1.643,
+      "sharpness": 0.991
     },
     {
       "id": "blink_3q",
@@ -273,7 +275,7 @@
       "floor": 3.263,
       "outsidePrior": 3.486,
       "supportPx": 27931,
-      "colourShift": 1.495,
+      "colourShift": 1.496,
       "lid": [
         {
           "travel": 51.19,
@@ -298,13 +300,13 @@
       ],
       "flowMax": 39,
       "flowP99": 36.744,
-      "revealMean": 0.498,
+      "revealMean": 0.445,
       "medianMotion": 14.441,
       "verdict": "ok",
       "track": "blink",
       "flow": "lid",
-      "weight1": 1.893,
-      "sharpness": 0.994
+      "weight1": 1.574,
+      "sharpness": 0.995
     },
     {
       "id": "blink",
@@ -350,13 +352,13 @@
       ],
       "flowMax": 44,
       "flowP99": 41.154,
-      "revealMean": 0.486,
+      "revealMean": 0.437,
       "medianMotion": 27.237,
       "verdict": "ok",
       "track": "blink",
       "flow": "lid",
-      "weight1": 1.851,
-      "sharpness": 0.985
+      "weight1": 1.515,
+      "sharpness": 0.986
     },
     {
       "id": "open_mid",
@@ -391,8 +393,8 @@
       "verdict": "ok",
       "track": "openMid",
       "flow": "optical",
-      "weight1": 0.904,
-      "sharpness": 1.007
+      "weight1": 0.908,
+      "sharpness": 1.011
     },
     {
       "id": "open_wide_half",
@@ -427,8 +429,8 @@
       "verdict": "ok",
       "track": "openWide",
       "flow": "optical",
-      "weight1": 0.935,
-      "sharpness": 0.988
+      "weight1": 0.927,
+      "sharpness": 0.991
     },
     {
       "id": "open_wide",
@@ -463,8 +465,8 @@
       "verdict": "ok",
       "track": "openWide",
       "flow": "optical",
-      "weight1": 1.523,
-      "sharpness": 0.999
+      "weight1": 1.528,
+      "sharpness": 1.003
     },
     {
       "id": "round",
@@ -499,8 +501,8 @@
       "verdict": "ok",
       "track": "round",
       "flow": "optical",
-      "weight1": 0.746,
-      "sharpness": 1.006
+      "weight1": 0.749,
+      "sharpness": 1.035
     },
     {
       "id": "closed",
@@ -535,8 +537,8 @@
       "verdict": "ok",
       "track": "closed",
       "flow": "optical",
-      "weight1": 0.752,
-      "sharpness": 0.987
+      "weight1": 0.731,
+      "sharpness": 0.989
     },
     {
       "id": "teeth",
@@ -571,8 +573,8 @@
       "verdict": "ok",
       "track": "teeth",
       "flow": "optical",
-      "weight1": 0.964,
-      "sharpness": 1.011
+      "weight1": 0.969,
+      "sharpness": 1.007
     },
     {
       "id": "tongue",
@@ -608,7 +610,7 @@
       "track": "tongue",
       "flow": "optical",
       "weight1": 1.016,
-      "sharpness": 1.02
+      "sharpness": 1.014
     },
     {
       "id": "narrow",
@@ -643,7 +645,7 @@
       "verdict": "ok",
       "track": "narrow",
       "flow": "optical",
-      "weight1": 1.002,
+      "weight1": 0.999,
       "sharpness": 1.001
     },
     {
@@ -689,8 +691,8 @@
       "verdict": "ok",
       "track": "gazeL",
       "flow": "iris",
-      "weight1": 1.554,
-      "sharpness": 1.004
+      "weight1": 1.557,
+      "sharpness": 1.005
     },
     {
       "id": "gaze_r",
@@ -711,7 +713,7 @@
       "floor": 3.237,
       "outsidePrior": 3.657,
       "supportPx": 19422,
-      "colourShift": 1.489,
+      "colourShift": 1.488,
       "irisMove": [
         [
           32.8,
@@ -735,8 +737,8 @@
       "verdict": "ok",
       "track": "gazeR",
       "flow": "iris",
-      "weight1": 1.423,
-      "sharpness": 1.005
+      "weight1": 1.419,
+      "sharpness": 1.0
     },
     {
       "id": "gaze_u",
@@ -781,8 +783,8 @@
       "verdict": "ok",
       "track": "gazeU",
       "flow": "iris",
-      "weight1": 1.565,
-      "sharpness": 1.002
+      "weight1": 1.564,
+      "sharpness": 1.001
     },
     {
       "id": "gaze_d",
@@ -827,7 +829,7 @@
       "verdict": "ok",
       "track": "gazeD",
       "flow": "iris",
-      "weight1": 1.563,
+      "weight1": 1.564,
       "sharpness": 0.995
     },
     {
@@ -901,9 +903,9 @@
       "flowMax": 18,
       "part": "upper",
       "of": "joy",
-      "weight1": 1.408,
+      "weight1": 1.396,
       "sharpness": 0.981,
-      "composedWeight1": 1.314
+      "composedWeight1": 1.305
     },
     {
       "id": "joy_lower",
@@ -938,9 +940,9 @@
       "flowMax": 9,
       "part": "lower",
       "of": "joy",
-      "weight1": 1.199,
-      "sharpness": 0.991,
-      "composedWeight1": 1.314
+      "weight1": 1.195,
+      "sharpness": 0.99,
+      "composedWeight1": 1.305
     },
     {
       "id": "showman",
@@ -961,7 +963,7 @@
       "floor": 3.31,
       "outsidePrior": 4.422,
       "supportPx": 97214,
-      "colourShift": 1.302,
+      "colourShift": 1.01,
       "bbox": [
         306,
         255,
@@ -970,7 +972,7 @@
       ],
       "flowMax": 25,
       "flowP99": 18.107,
-      "revealMean": 0.136,
+      "revealMean": 0.134,
       "medianMotion": 5.983,
       "verdict": "split",
       "track": "showman",
@@ -998,7 +1000,7 @@
       "cornerShift": 0.5,
       "floor": 3.31,
       "outsidePrior": 4.422,
-      "colourShift": 1.302,
+      "colourShift": 1.01,
       "medianMotion": 5.983,
       "verdict": "ok",
       "track": "showman",
@@ -1013,9 +1015,9 @@
       "flowMax": 25,
       "part": "upper",
       "of": "showman",
-      "weight1": 1.81,
-      "sharpness": 0.988,
-      "composedWeight1": 1.703
+      "weight1": 1.818,
+      "sharpness": 0.989,
+      "composedWeight1": 1.713
     },
     {
       "id": "showman_lower",
@@ -1035,7 +1037,7 @@
       "cornerShift": 0.5,
       "floor": 3.31,
       "outsidePrior": 4.422,
-      "colourShift": 1.302,
+      "colourShift": 1.01,
       "medianMotion": 5.983,
       "verdict": "ok",
       "track": "showman",
@@ -1050,9 +1052,9 @@
       "flowMax": 10,
       "part": "lower",
       "of": "showman",
-      "weight1": 1.334,
-      "sharpness": 0.989,
-      "composedWeight1": 1.703
+      "weight1": 1.341,
+      "sharpness": 0.99,
+      "composedWeight1": 1.713
     },
     {
       "id": "anger",
@@ -1073,7 +1075,7 @@
       "floor": 3.31,
       "outsidePrior": 3.142,
       "supportPx": 69441,
-      "colourShift": 0.299,
+      "colourShift": 0.281,
       "bbox": [
         324,
         270,
@@ -1110,7 +1112,7 @@
       "cornerShift": 0.338,
       "floor": 3.31,
       "outsidePrior": 3.142,
-      "colourShift": 0.299,
+      "colourShift": 0.281,
       "medianMotion": 1.587,
       "verdict": "ok",
       "track": "anger",
@@ -1125,9 +1127,9 @@
       "flowMax": 12,
       "part": "upper",
       "of": "anger",
-      "weight1": 1.493,
-      "sharpness": 0.995,
-      "composedWeight1": 1.242
+      "weight1": 1.482,
+      "sharpness": 0.996,
+      "composedWeight1": 1.232
     },
     {
       "id": "anger_lower",
@@ -1147,7 +1149,7 @@
       "cornerShift": 0.338,
       "floor": 3.31,
       "outsidePrior": 3.142,
-      "colourShift": 0.299,
+      "colourShift": 0.281,
       "medianMotion": 1.587,
       "verdict": "ok",
       "track": "anger",
@@ -1162,9 +1164,9 @@
       "flowMax": 5,
       "part": "lower",
       "of": "anger",
-      "weight1": 0.768,
+      "weight1": 0.762,
       "sharpness": 0.992,
-      "composedWeight1": 1.242
+      "composedWeight1": 1.232
     },
     {
       "id": "gloom",
@@ -1237,9 +1239,9 @@
       "flowMax": 28,
       "part": "upper",
       "of": "gloom",
-      "weight1": 1.611,
-      "sharpness": 0.998,
-      "composedWeight1": 1.414
+      "weight1": 1.61,
+      "sharpness": 1.002,
+      "composedWeight1": 1.411
     },
     {
       "id": "gloom_lower",
@@ -1274,9 +1276,9 @@
       "flowMax": 6,
       "part": "lower",
       "of": "gloom",
-      "weight1": 1.131,
-      "sharpness": 0.985,
-      "composedWeight1": 1.414
+      "weight1": 1.128,
+      "sharpness": 0.987,
+      "composedWeight1": 1.411
     },
     {
       "id": "smug",
@@ -1297,7 +1299,7 @@
       "floor": 3.31,
       "outsidePrior": 3.513,
       "supportPx": 71253,
-      "colourShift": 1.448,
+      "colourShift": 1.428,
       "bbox": [
         319,
         257,
@@ -1334,7 +1336,7 @@
       "cornerShift": 0.38,
       "floor": 3.31,
       "outsidePrior": 3.513,
-      "colourShift": 1.448,
+      "colourShift": 1.428,
       "medianMotion": 3.185,
       "verdict": "ok",
       "track": "smug",
@@ -1349,9 +1351,9 @@
       "flowMax": 19,
       "part": "upper",
       "of": "smug",
-      "weight1": 1.591,
+      "weight1": 1.597,
       "sharpness": 0.991,
-      "composedWeight1": 1.363
+      "composedWeight1": 1.367
     },
     {
       "id": "smug_lower",
@@ -1371,7 +1373,7 @@
       "cornerShift": 0.38,
       "floor": 3.31,
       "outsidePrior": 3.513,
-      "colourShift": 1.448,
+      "colourShift": 1.428,
       "medianMotion": 3.185,
       "verdict": "ok",
       "track": "smug",
@@ -1386,9 +1388,9 @@
       "flowMax": 9,
       "part": "lower",
       "of": "smug",
-      "weight1": 0.931,
-      "sharpness": 0.986,
-      "composedWeight1": 1.363
+      "weight1": 0.932,
+      "sharpness": 0.98,
+      "composedWeight1": 1.367
     },
     {
       "id": "suspicion",
@@ -1461,9 +1463,9 @@
       "flowMax": 17,
       "part": "upper",
       "of": "suspicion",
-      "weight1": 1.588,
-      "sharpness": 0.989,
-      "composedWeight1": 1.358
+      "weight1": 1.583,
+      "sharpness": 0.991,
+      "composedWeight1": 1.356
     },
     {
       "id": "suspicion_lower",
@@ -1500,7 +1502,7 @@
       "of": "suspicion",
       "weight1": 0.959,
       "sharpness": 0.992,
-      "composedWeight1": 1.358
+      "composedWeight1": 1.356
     }
   ],
   "refused": []

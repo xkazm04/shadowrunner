@@ -90,7 +90,7 @@
             {
               "id": "hair",
               "name": "hair",
-              "hex": "#fc99b9",
+              "hex": "#fc99b8",
               "shade": "move"
             }
           ],
@@ -988,12 +988,12 @@
       266
     ],
     "bytes": {
-      "atlas.webp": 491114,
+      "atlas.webp": 492318,
       "background.webp": 4104,
       "body.regions.png": 3240,
       "body.webp": 60718,
-      "flow.png": 134249,
-      "head.regions.png": 78139,
+      "flow.png": 135280,
+      "head.regions.png": 63578,
       "head.webp": 154168,
       "sway.webp": 5790
     }

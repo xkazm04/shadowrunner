@@ -24,6 +24,8 @@ DEFAULT_GATES = {
     "revealRamp": 3.0,  # ...and is full this many levels further on
     "flowFrom": "back",  # "back": F is the inverse of G (one motion, both ways); "forward"; "both"
     "gazeReach": 1.6,  # how far (x the opening's half height) a vertical gaze field may reach: the iris's travel vs the brows
+    "gazeAhead": False,  # round 7: a vertical gaze field grows only on the side the iris travels to
+    "gazeLid": False,  # round 7: past the iris translation a gaze key moves by the edit's own (DIS) motion
     "weight1": 2.5,
     "lidSigma": 8.0,  # px, the vertical Gaussian on a lid field
     "lidReach": 1.6,
@@ -106,7 +108,8 @@ def dis_pair(a: np.ndarray, b: np.ndarray, box: tuple[int, int, int, int]) -> tu
 GAZE_AXIS = {"gazeL": (-1, 0), "gazeR": (1, 0), "gazeU": (0, -1), "gazeD": (0, 1)}
 
 
-def iris_flow(a: np.ndarray, b: np.ndarray, eyes: list[list[float]], radius: float, ellipses: list[list[float]], track: str, reach: float = 1.6) -> tuple[np.ndarray, list[list[float]]]:
+def iris_flow(a: np.ndarray, b: np.ndarray, eyes: list[list[float]], radius: float, ellipses: list[list[float]], track: str, reach: float = 1.6,
+              ahead: bool = False) -> tuple[np.ndarray, list[list[float]]]:
     """A gaze key's motion as one translation per eye: the iris disc of `a` found in `b` by
     masked template matching along the track's direction, spread over that eye's opening. DIS
     misses an iris that travels its own width; a translation does not."""
@@ -155,7 +158,15 @@ def iris_flow(a: np.ndarray, b: np.ndarray, eyes: list[list[float]], radius: flo
             # A vertical move is along the opening's short axis: the field must hold the iris
             # over its whole travel, or the part beyond the ramp stays behind (a split iris).
             erx = max(erx, 1.3 * radius)
-            ery = max(ery, min(1.1 * (radius + abs(dy)), reach * ery))
+            grown = max(ery, min(1.1 * (radius + abs(dy)), reach * ery))
+            if ahead:
+                # Round 7 (`gazeAhead`): grow only on the side the iris travels to; the far edge
+                # stays the opening's, so the liner past it does not ride with the iris (Iris
+                # gaze_d at 0.5 showed a second eyeliner wing).
+                ecy += ay * (grown - ery) / 2.0
+                ery = (grown + ery) / 2.0
+            else:
+                ery = grown
         m = 1.0 - smoothstep(0.85, 1.0, np.sqrt(((xx - ecx) / erx) ** 2 + ((yy - ecy) / ery) ** 2))
         out[..., 0] += dx * m
         out[..., 1] += dy * m
@@ -188,7 +199,7 @@ def box_of(mask: np.ndarray, pad: int, shape: tuple[int, int]) -> tuple[int, int
 def build_key(spec: dict, portrait: np.ndarray, edit: np.ndarray, noop_reg: np.ndarray, floor: np.ndarray,
               head_alpha: np.ndarray, figure: np.ndarray, region: dict, gates: dict, face: dict) -> dict:
     """Everything about one key: the record for the report and, when it passes, the arrays."""
-    g = {**DEFAULT_GATES, **gates}
+    g = {**DEFAULT_GATES, **gates, **spec.get("gates", {})}  # round 7: a key may override a gate
     shape = portrait.shape[:2]
     prior_bin = region_mask(region, shape)
     prior = feather(prior_bin, 10)
@@ -251,9 +262,19 @@ def build_key(spec: dict, portrait: np.ndarray, edit: np.ndarray, noop_reg: np.n
             gb = cv2.GaussianBlur(gb, (0, 0), sigmaX=1.5, sigmaY=g["lidSigma"])
             f = invert_field(gb)
         elif kind == "iris":
-            f, moves = iris_flow(portrait, reg, face["eyes"], face["irisRadius"], face["openings"], spec["track"], g["gazeReach"])
+            f, moves = iris_flow(portrait, reg, face["eyes"], face["irisRadius"], face["openings"], spec["track"], g["gazeReach"], bool(g["gazeAhead"]))
             gb = -f
             rec["irisMove"] = moves
+            if g["gazeLid"]:
+                # Round 7 (`gazeLid`, a downward gaze): the upper lid and its liner move as the edit
+                # moved them (lid.py: the lash line found per column, the lid stretched down to it),
+                # the iris below by its translation, so a liner the edit dragged down slides instead
+                # of fading in as a second wing (Iris gaze_d at 0.5).
+                upper = np.zeros(shape, np.float32)
+                gl, rec["lid"] = lid_back(portrait, reg, face["openings"], reach=g["lidReach"], hold=g["lidHold"], upper=upper)
+                share = gauss(upper, 2.0)[..., None]
+                gb = cv2.GaussianBlur(share * gl + (1.0 - share) * gb, (0, 0), 1.5)
+                f = invert_field(gb)
         else:
             f, gb = gauss(flow, g["flowSigma"]), gauss(back, g["flowSigma"])
             if g["flowFrom"] == "back":
@@ -268,6 +289,12 @@ def build_key(spec: dict, portrait: np.ndarray, edit: np.ndarray, noop_reg: np.n
         # A gaze field reaches past its region prior (the whole iris travels): the key covers all of
         # it, or the layer's moved iris shows through a thin key as a ring (round 4, Bun gaze_d).
         reach_prior = np.maximum(prior, (moving > 0.05).astype(np.float32)) if kind == "iris" else prior
+        if kind == "lid":
+            # Round 7: below the eyes' centres a lid field reaches past the prior (its vertical blur
+            # carries the pressed eye under the lower lash); the key covers it there, or the pressed
+            # iris shows through a thin key as a purple line under the lash at blink 0.75 and 1.
+            below = np.arange(shape[0], dtype=np.float32)[:, None] > min(o[1] for o in face["openings"])
+            reach_prior = np.maximum(prior, ((moving > 0.05) & below).astype(np.float32))
         coverage = np.maximum(coverage, np.clip(moving * 1.5, 0.0, 1.0) * reach_prior * head_alpha).astype(np.float32)
         # ...and to 0 at the head's silhouette: the key takes the layer's alpha, so a motion there
         # would drag the outline (a chin pulled up off the neck).

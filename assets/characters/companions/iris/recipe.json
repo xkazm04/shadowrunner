@@ -76,7 +76,8 @@
       "at": 0.25,
       "edit": "blink_quarter",
       "region": "eyes",
-      "flow": "optical"
+      "flow": "optical",
+      "residual": "clean"
     },
     {
       "id": "blink_half",
@@ -84,7 +85,8 @@
       "at": 0.5,
       "edit": "blink_half",
       "region": "eyes",
-      "flow": "optical"
+      "flow": "optical",
+      "residual": "clean"
     },
     {
       "id": "blink_3q",
@@ -92,21 +94,24 @@
       "at": 0.75,
       "edit": "blink_3q",
       "region": "eyes",
-      "flow": "optical"
+      "flow": "optical",
+      "residual": "clean"
     },
     {
       "id": "blink",
       "track": "blink",
       "edit": "blink",
       "region": "eyes",
-      "flow": "optical"
+      "flow": "optical",
+      "residual": "clean"
     },
     {
       "id": "open_mid",
       "track": "openMid",
       "edit": "openMid",
       "region": "mouth",
-      "flow": "optical"
+      "flow": "optical",
+      "residual": "clean"
     },
     {
       "id": "open_wide_half",
@@ -114,119 +119,137 @@
       "at": 0.5,
       "edit": "openWide_half",
       "region": "mouthWide",
-      "flow": "optical"
+      "flow": "optical",
+      "residual": "clean"
     },
     {
       "id": "open_wide",
       "track": "openWide",
       "edit": "openWide",
       "region": "mouthWide",
-      "flow": "optical"
+      "flow": "optical",
+      "residual": "clean"
     },
     {
       "id": "round",
       "track": "round",
       "edit": "round",
       "region": "mouth",
-      "flow": "optical"
+      "flow": "optical",
+      "residual": "clean"
     },
     {
       "id": "closed",
       "track": "closed",
       "edit": "closed",
       "region": "mouth",
-      "flow": "optical"
+      "flow": "optical",
+      "residual": "clean"
     },
     {
       "id": "teeth",
       "track": "teeth",
       "edit": "teeth",
       "region": "mouth",
-      "flow": "optical"
+      "flow": "optical",
+      "residual": "clean"
     },
     {
       "id": "tongue",
       "track": "tongue",
       "edit": "tongue",
       "region": "mouth",
-      "flow": "optical"
+      "flow": "optical",
+      "residual": "clean"
     },
     {
       "id": "narrow",
       "track": "narrow",
       "edit": "narrow",
       "region": "mouth",
-      "flow": "optical"
+      "flow": "optical",
+      "residual": "clean"
     },
     {
       "id": "gaze_l",
       "track": "gazeL",
       "edit": "gazeL",
       "region": "eyes",
-      "flow": "iris"
+      "flow": "iris",
+      "residual": "clean"
     },
     {
       "id": "gaze_r",
       "track": "gazeR",
       "edit": "gazeR",
       "region": "eyes",
-      "flow": "iris"
+      "flow": "iris",
+      "residual": "clean"
     },
     {
       "id": "gaze_u",
       "track": "gazeU",
       "edit": "gazeU",
       "region": "eyes",
-      "flow": "iris"
+      "flow": "iris",
+      "residual": "clean"
     },
     {
       "id": "gaze_d",
       "track": "gazeD",
       "edit": "gazeD",
       "region": "eyes",
-      "flow": "iris"
+      "flow": "iris",
+      "residual": "clean",
+      "gates": {"gazeLid": true}
     },
     {
       "id": "joy",
       "track": "joy",
       "edit": "joy",
       "region": "face",
-      "flow": "optical"
+      "flow": "optical",
+      "residual": "clean"
     },
     {
       "id": "showman",
       "track": "showman",
       "edit": "showman",
       "region": "face",
-      "flow": "optical"
+      "flow": "optical",
+      "residual": "clean"
     },
     {
       "id": "anger",
       "track": "anger",
       "edit": "anger",
       "region": "face",
-      "flow": "optical"
+      "flow": "optical",
+      "residual": "clean"
     },
     {
       "id": "gloom",
       "track": "gloom",
       "edit": "gloom",
       "region": "face",
-      "flow": "optical"
+      "flow": "optical",
+      "residual": "clean"
     },
     {
       "id": "smug",
       "track": "smug",
       "edit": "smug",
       "region": "face",
-      "flow": "optical"
+      "flow": "optical",
+      "residual": "clean"
     },
     {
       "id": "suspicion",
       "track": "suspicion",
       "edit": "suspicion",
       "region": "face",
-      "flow": "optical"
+      "flow": "optical",
+      "residual": "clean"
     }
   ],
   "mouthGain": {
@@ -234,7 +257,7 @@
     "openMid": 0.7,
     "round": 0.6,
     "tongue": 0.7,
-    "narrow": 0.6
+    "narrow": 0.75
   },
   "sway": {
     "amp": 8,
@@ -372,7 +395,8 @@
   ],
   "gates": {
     "flowSigma": 12,
-    "flowFrom": "back"
+    "flowFrom": "back",
+    "gazeAhead": true
   },
   "irisRadius": 21,
   "openings": [
@@ -480,14 +504,17 @@
                     446,
                     9,
                     9
-                  ]
+                  ],
+                  [655, 414, 9, 26],
+                  [380, 340, 6, 5],
+                  [645, 339, 6, 5]
                 ]
               }
             ]
           }
         ],
         "minArea": 150,
-        "soft": {"band": 24, "dead": [0.3, 0.85], "pocket": 48, "pocketWithin": [{"box": [320, 100, 390, 200]}]},
+        "soft": {"band": 24, "dead": [0.3, 0.85], "pocket": 48, "pocketWithin": [{"box": [320, 100, 390, 200]}], "levels": 32},
         "shade": "move"
       }
     ],

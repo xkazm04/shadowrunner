@@ -6,7 +6,7 @@
 // region maps the size of their layer. Round 3: each expression family is an upper and a lower key.
 // Round 4: four blink stops (.25 .5 .75 1) on both, Iris's openWide at .5 and 1, every region slot
 // `shade: "move"`. Round 6: openWide at .5 and 1 on both (Bun's `open_wide_half`), and each
-// character's `mouthGain` as the Director chose it on the strength strips.
+// character's `mouthGain` as the Director chose it on the strength strips (round 7: Iris narrow 0.75).
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -25,7 +25,7 @@ const TRACKS = {
   gazeL: 1, gazeR: 1, gazeU: 1, gazeD: 1,
 };
 const MOUTH_GAIN = {
-  iris: { openWide: 0.45, openMid: 0.7, round: 0.6, tongue: 0.7, narrow: 0.6 },
+  iris: { openWide: 0.45, openMid: 0.7, round: 0.6, tongue: 0.7, narrow: 0.75 },
   bun: { openWide: 0.5 },
 };
 const slugs = readdirSync(BUILT, { withFileTypes: true })

@@ -51,7 +51,7 @@ def lash_lines(a: np.ndarray, b: np.ndarray, opening: list[float], lift: float, 
 
 def lid_back(a: np.ndarray, b: np.ndarray, openings: list[list[float]], lift: float = 1.3,
              reach: float = 1.6, search: float = 2.2, low: float = 1.05,
-             hold: float = 0.7) -> tuple[np.ndarray, list[dict]]:
+             hold: float = 0.7, upper: np.ndarray | None = None) -> tuple[np.ndarray, list[dict]]:
     """The back field G (key frame -> layer) of a lid that slides, as one monotone remap per column
     with no fold: the lid's top (`reach` x ry above the portrait's lash line) and the lower lash
     (`low` x ry below the opening's centre) stay; the lash line moves down by its travel, the lid
@@ -83,4 +83,6 @@ def lid_back(a: np.ndarray, b: np.ndarray, openings: list[list[float]], lift: fl
             mid = new + hold * (bottom - new)
             src = np.interp(q, [top, new, mid, bottom], [top, l0, l0 + (mid - new), bottom])
             g[ys, x, 1] = np.where((q >= top) & (q <= bottom), src - q, 0.0)
+            if upper is not None:  # round 7: the rows from the lid's top to the new lash (key frame)
+                upper[ys, x] = ((q >= top) & (q <= new)).astype(upper.dtype)
     return g, info

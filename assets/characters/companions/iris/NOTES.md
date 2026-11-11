@@ -66,8 +66,36 @@ key never reached in speech at the default `mouth.size`). `closed` and `teeth` a
 No key's bytes changed (only `job.json`). Boards: `var/companion-lanes/round6/board-iris.jpg`
 (every shape at weight 1, before | after).
 
+## Round 7 (polish, 2026-11-11)
+Boards (before | after, the real renderer at 1024 px): `var/companion-lanes/round7/keys/board-*.jpg`;
+strips in `round7/keys/sheets-{before,after}/iris/`.
+- Haze beside the left ear (picture right) with white hair: soft coverage claimed the skin with a
+  few fine strands in front of the ear (x 646-664, y 388-440). The hair part's `without` gains
+  [655, 414, 9, 26]: haze gone; the strands there keep the art's silver, and a small step remains
+  where the white meets the face ellipse's cut at about (654, 440) (`board-item2-iris-ear-haze.jpg`).
+- The liner's wing tips (cyan, inside the rim-light hair test) were hair: `without` [380, 340, 6, 5],
+  [645, 339, 6, 5]. No eye pixel is hair now (`board-hair-slot-eyes.jpg`).
+- gaze_d's second liner wing: the iris translation dragged the lid margin and liner 21 px while the
+  edit moves them less, so two liners cross-faded. `gaze_d` sets `gates: {gazeLid: true}`: the upper
+  lid moves by the lash line's measured travel (lid.py, 24-28 px at weight 1) and the iris below by
+  its translation; the recipe sets `gazeAhead` (the vertical field grows only toward its motion).
+  At 0.5 the second wing is down to a small loop at the outer tip and the doubled iris is gone
+  (`board-item3-iris-gaze-d.jpg`). gaze_u changes by a few px at the lower lid, no visible change.
+- Blink fade between stops (.375, .625): blink keys at field sigma 8 instead of 12 looked the same
+  on the strip and in the renderer (`board-item5-iris-blink.jpg`); reverted, not fixed.
+- `mouthGain.narrow` 0.6 -> 0.75 (`board-item6-narrow-strength.jpg`, forced weights .6-1 beside
+  teeth): at 0.75 the mouth stretches sideways to nearly its full width with both rows of teeth and a
+  modest gap; 0.8 already reads as the full grin.
+- `residual: "clean"` on every key: every strip equal (re-encode noise, mean 0.1-0.5/255; the drift
+  mask removed almost nothing on this face; showman 4.40 -> 4.43, anger 2.62 -> 2.62). Kept on all.
+- `soft.levels` 32: head.regions.png 60528 -> 43898 bytes; no banding at 2x on the fringe or the bob
+  edge (`board-item8-fringe-2x.jpg`, `board-item8-bob-edge-2x.jpg`).
+- Pack 804261 bytes. 16 keys plus 6 families x 2 parts, all gates pass (weight 1 at 1.13-1.74/255).
+
 ## Known
-- gaze_d at 0.5 shows a second, faint eyeliner wing below the first (as before round 4).
+- gaze_d at 0.5: a small loop of the second wing remains at each outer tip (past the opening, where
+  the lid travel fades out).
+- Blink: a little dissolve remains between stops (.375, .625).
 - Recolour keeps the art's lightness (the renderer's rule): "black" hair reads dark grey-silver,
   not black; the fringe's very tips (mixed with forehead skin) stay silver-grey.
 

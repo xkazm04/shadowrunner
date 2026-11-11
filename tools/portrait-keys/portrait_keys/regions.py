@@ -13,7 +13,8 @@ where the colour test flips on the un-mixed colour (a strand's soft edge keeps t
 because its colour is the strand's, not the ground's), then small specks are removed and the map
 is carried 4 px past the layer's alpha so a displaced read at an edge stays in its slot.
 
-A slot with `soft` (companion-lanes round 5; `soft: { band?, sigma?, dead? }` or true) also gets a
+A slot with `soft` (companion-lanes round 5; `soft: { band?, sigma?, dead?, pocket?, pocketWithin?,
+levels? }` or true; `levels` (round 7) rounds the coverage to that many steps, 0..1) also gets a
 coverage, written to the map's G (the rig's `regions.soft`): a strand tip over skin is part hair,
 and no colour threshold separates it from skin. About the slot's binary edge, `band` px each side,
 each pixel is unmixed between the slot's local colour and the local colour of what lies outside
@@ -166,6 +167,11 @@ def index_map(rgba: np.ndarray, slots: list[dict]) -> tuple[np.ndarray, list[dic
             continue
         opts = slot["soft"] if isinstance(slot["soft"], dict) else {}
         c, claim = soft_coverage(rgba[..., :3], alive, masks[i], (labels == 0) & _places(slot, shape), opts)
+        if int(opts.get("levels", 0)) >= 2:
+            # Round 7: `levels` steps of coverage (the map's PNG shrinks; no banding at 32 seen at 2x).
+            n = int(opts["levels"]) - 1
+            c = np.round(c * n) / n
+            claim &= (c > 0) | masks[i]
         labels[claim] = i + 1
         cover[claim] = c[claim]
         fig.setdefault("soft", {})[slot["id"]] = {"claimed": int((claim & ~masks[i]).sum()), "partial": int((claim & (c < 1)).sum())}

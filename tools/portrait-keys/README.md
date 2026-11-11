@@ -43,12 +43,12 @@ written either way.
   mouth: { cx, lineY, width },        // Rig.mouth
   regions: { <name>: { ellipses: [[cx, cy, rx, ry], ...] } | { box: [x, y, w, h] } },
   mattes: { figure: "matte", head: "head" }, floor: "noop",
-  keys: [{ id, track, at?, edit, region, flow: "optical" | "iris" | "lid" | "none", optional?, residual?: "clean" }],
+  keys: [{ id, track, at?, edit, region, flow: "optical" | "iris" | "lid" | "none", optional?, residual?: "clean", gates?: {..} }],
   mouthGain?: { openWide?, openMid?, round?, tongue?, narrow? },  // round 6: each in (0, 1], copied to morph.mouthGain
   sway?: { amp, inner: [cx, cy, rx, ry], reach, gamma, zero?: [region], cap?: [region + max], boost?: [region + min], margin? },
-  gates?: { cornerShift, outsideMargin, floorTimes, floorMin, moves, flowSigma, flowFrom, revealTimes, revealRamp, gazeReach, weight1, lidSigma, lidReach, lidHold },
+  gates?: { cornerShift, outsideMargin, floorTimes, floorMin, moves, flowSigma, flowFrom, revealTimes, revealRamp, gazeReach, gazeAhead, gazeLid, weight1, lidSigma, lidReach, lidHold },
   matte?: { lo, hi, core, nearBody, under, groundCheck, headOnly: [region] },
-  recolour?: { <layer>: [{ id, name, minArea?, shade?: "move", soft?: { band?, sigma?, dead?, pocket?, pocketWithin? }, parts: [{ within?, without?, colour?, except? }] }] },  // see regions.py; shade is copied to the rig slot; soft writes coverage to the map's G (rig `regions.soft`)
+  recolour?: { <layer>: [{ id, name, minArea?, shade?: "move", soft?: { band?, sigma?, dead?, pocket?, pocketWithin?, levels? }, parts: [{ within?, without?, colour?, except? }] }] },  // see regions.py; shade is copied to the rig slot; soft writes coverage to the map's G (rig `regions.soft`)
   layerQuality?, atlasQuality?,       // WebP quality, default 95
   rig: { palette, anchors: { head: [x, y], body: [x, y] }, face, turn },
   inspect: [[x, y, w, h], ...],       // 2x zoom boxes on the layer sheets (hair ends, jaw, headgear)
@@ -75,7 +75,21 @@ strips (the shape at 0.4 .. 1 through the real renderer), so speech lands on a c
 `residual: "clean"` (round 6, per key): the colour match's drift is sampled only where the edit is
 within twice the support level of the portrait, so a real change past the region prior is not
 blurred into the key (Bun's wide "ah" drops the chin line; without it, grey smudges either side of
-the mouth). Omitted: the drift is sampled everywhere outside the coverage, as before.
+the mouth). Omitted: the drift is sampled everywhere outside the coverage, as before. Round 7: both
+companions set it on every key (the strips were equal or better on all of them).
+
+Round 7:
+- A key's `gates` overrides the recipe's gates for that key alone.
+- `gazeLid` (gate, a downward gaze key): the upper lid and its liner move as the edit moved them
+  (lid.py finds the lash line per column, the lid stretched down to it) and the iris below by its
+  translation, joined over a few px; Iris `gaze_d` uses it (a liner the edit dragged down fades in
+  as a second wing otherwise). `gazeAhead` (gate): a vertical gaze field grows only toward its
+  motion (the far edge stays the opening's).
+- `flow: "lid"` keys cover their whole field below the eyes' centres (the vertical blur carries the
+  pressed eye under the lower lash; a thin key there showed it as a purple line, Bun blink .75/1).
+- `soft.levels`: the coverage rounded to that many steps (32 on both; see the NOTES for sizes).
+- An eye is never hair: the hair slot's `without` holds each eye whole (Iris: the openings and the
+  liner's wing tips; Bun: the sclera, whose shadow is pink); strands crossing the eye stay in.
 
 ## Steps and gates (report.json)
 1. Mattes: soft alpha from the green edits (a projection keyer, pockets filled, then a ground check
