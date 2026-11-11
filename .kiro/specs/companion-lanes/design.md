@@ -134,6 +134,23 @@ The declaration moved to `packages/rig/src/morphTypes.ts` (re-exported from `typ
 - Where nothing moves and the edit is within the editor's noise, the key's colour is the
   portrait's own (removes a grey halo around Bun's widest mouth).
 
+### Round 4 amendment (2026-11-11): the defect round
+Six defects named on the owner's verdict page. Five new Codex edits (same prompt scheme) give the
+tracks more stops: Iris `openWide_half` (an even oval halfway to the wide "ah"), and
+`blink_quarter`, `blink_3q` on both characters.
+
+- Iris `openWide` has two stops: `open_wide_half` at 0.5, `open_wide` at 1 (the lower lip skewed
+  near a quarter weight when one field carried the whole 45 px travel).
+- `blink` has four stops on both: `blink_quarter` 0.25, `blink_half` 0.5, `blink_3q` 0.75, `blink`
+  1. Motion or cross-fade per character, chosen on the strips; the target is a lid that reads as
+  sliding, with no doubled lid or iris smudge at any in-between weight, also over a held expression.
+- Bun `gaze_d`: no ring of the old iris; Bun gazes: hair strands crossing the eye do not move with
+  the iris (the head's `hair` region is excluded from the gaze fields).
+- Region recolour moves lightness as well as hue. The rule (shared with the Halloween cast,
+  character-control "Recolour") keeps the art's shading but maps the slot's reference lightness
+  `lr` (from the slot's `hex`) to the target's `lt` through the piecewise-linear curve
+  `(0,0) - (lr,lt) - (1,1)`; `lt = lr` is the identity. Lights (glow, eye, mouth) keep the old rule.
+
 ## Builder
 `tools/portrait-keys/build.py` (Python 3.12: numpy, opencv-python, pillow; `requirements.txt`).
 `python tools/portrait-keys/build.py <character dir> --out <built dir> [--sheets <dir>]`.
