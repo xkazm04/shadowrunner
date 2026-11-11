@@ -202,6 +202,27 @@ the lips 7-9 px), so scaling cannot shrink it.
   (except closed, teeth), clamped to 1 after gain; read only by the morph plan, so the cast's
   drawn mouths are unchanged. The creator's Face tab shows it only on a morph rig.
 
+### Round 7 (2026-11-11): polish
+Render rules (`packages/avatar`; unflagged slots and lights byte-for-byte unchanged, proven on two
+cast characters):
+- The `shade: "move"` lightness curve keeps the round-4 line where its slope is at most
+  `L_SLOPE` = 3 and bends into a power curve beyond (`curveL`), so a black jacket made cream no
+  longer reads as satin; black, white, `lr -> lt` and the identity hold.
+- The saturation carry on move slots fades for grey, black and white targets
+  (`CARRY_S` = `CARRY_C` = 0.25): `#101010` reads neutral, not brown.
+- The morph program reads the region map at `mix(p, x, K)`, K the share the keys paint, so a key's
+  pixel takes the slot of the art it was painted from (removed pink and grey slabs over Bun's eyes
+  with recoloured hair on a glance). Other programs read at `uv`.
+Character keys (`tools/portrait-keys`): no eye pixel is hair on either character (Bun's sclera
+shadow is pink); an exclusion before Iris's left ear; Iris's `gaze_d` moves the lid by its measured
+lash travel (`gazeLid`, `gazeAhead`); blink coverage reaches below the eye (Bun's purple line);
+`residual: "clean"` on every key; soft coverage rounded to 32 levels (maps 44-64 KB); Iris
+`mouthGain.narrow` 0.75 (0.6 read like `teeth`).
+Left open: Bun's fringe strands bend with the iris on a glance (holding hair still in the gaze
+field was tried twice and tore the lash line at the outer eye ends); Iris's blink keeps a little
+fade between stops; Iris's `gaze_d` keeps a faint doubled liner tip mid-way; a thin pink sliver at
+Bun's outer eye end with recoloured hair on a full glance.
+
 ## Builder
 `tools/portrait-keys/build.py` (Python 3.12: numpy, opencv-python, pillow; `requirements.txt`).
 `python tools/portrait-keys/build.py <character dir> --out <built dir> [--sheets <dir>]`.
