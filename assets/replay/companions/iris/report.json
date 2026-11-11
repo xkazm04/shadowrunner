@@ -24,6 +24,12 @@
     },
     "regions": {
       "head": {
+        "soft": {
+          "hair": {
+            "claimed": 14331,
+            "partial": 34517
+          }
+        },
         "hair": {
           "px": 131687,
           "hex": "#5e6e78"
@@ -130,7 +136,7 @@
       "body.regions.png": 2465,
       "body.webp": 89294,
       "flow.png": 114316,
-      "head.regions.png": 5414,
+      "head.regions.png": 60528,
       "head.webp": 112696,
       "sway.webp": 2708
     }

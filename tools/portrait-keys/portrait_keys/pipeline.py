@@ -72,7 +72,8 @@ def build(char_dir: Path, out_dir: Path, sheet_dir: Path | None) -> bool:
         imap, rig_slots, fig = index_map(L[name], slots)
         x, y, w, h = boxes[name]
         files[f"{name}.regions.png"] = png_bytes(imap[y:y + h, x:x + w])
-        region_maps[name] = {"map": f"{name}.regions.png", "slots": rig_slots, "figures": fig, "canvas": imap}
+        soft = imap.ndim == 3  # round 5: G = coverage (`regions.soft`)
+        region_maps[name] = {"map": f"{name}.regions.png", "slots": rig_slots, "figures": fig, "canvas": imap[..., 0] if soft else imap, "soft": soft}
     files["background.webp"] = webp_bytes(L["background"], quality=92)
     background = decode(files["background.webp"], "RGB")
     head_a = decoded["head"][..., 3]
@@ -218,7 +219,8 @@ def build(char_dir: Path, out_dir: Path, sheet_dir: Path | None) -> bool:
     }
     for layer in rig["layers"]:
         if layer["name"] in region_maps:
-            layer["regions"] = {"map": region_maps[layer["name"]]["map"], "slots": region_maps[layer["name"]]["slots"]}
+            layer["regions"] = {"map": region_maps[layer["name"]]["map"], "slots": region_maps[layer["name"]]["slots"],
+                                **({"soft": True} if region_maps[layer["name"]]["soft"] else {})}
     fx, fy, fw, fh = recipe.get("faceBox", [300, 200, 424, 460])
     face_in = head_a[fy:fy + fh, fx:fx + fw] > 0.99
     figures_sharp = {"head": sharpness(decoded["head"][fy:fy + fh, fx:fx + fw, :3], portrait[fy:fy + fh, fx:fx + fw], face_in),

@@ -125,6 +125,12 @@ export interface RegionSlot {
 export interface LayerRegions {
   map: string;
   slots: RegionSlot[];
+  /**
+   * companion-lanes round 5: the map's G channel is the pixel's coverage (0..255) of the slot R
+   * names, and a recolour mixes the art toward the slot's colour by it. Omitted = binary: every
+   * pixel of a slot is fully its slot, G is ignored (the forge writes 0, a grey map R).
+   */
+  soft?: true;
 }
 
 /** A part's reshape (character-control design "Reshape"); ranges in `SHAPE_LIMITS`. */

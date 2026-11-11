@@ -16,6 +16,10 @@
 // [L_EPS, 1 - L_EPS] first (no division by ~0 on a pure black or white reference), so lt == lr is
 // exactly the identity and a black or white target is off by at most L_EPS.
 //
+// Soft edges (companion-lanes round 5, `LayerRegions.soft`): the map's G is the pixel's coverage of
+// its slot, and the slot's result is mixed over the pixel without it by that coverage (`softMix`);
+// a layer without `soft` reads coverage 1, the old path exactly.
+//
 // Decisions the spec leaves open:
 // - Per light, not per look: a light recolours only when the look's colour differs from the rig's
 //   palette (case-insensitive hex), and a region only when `look.regions` has its key. So a look
@@ -128,6 +132,12 @@ export interface LayerRecolour {
    * otherwise (no flag, the mouth light on a cavity, off). Length MAX_REGION_SLOTS.
    */
   refs: readonly number[];
+  /**
+   * companion-lanes round 5 (`LayerRegions.soft`): the map's G is the pixel's coverage of its slot,
+   * and a slot's colour is mixed over what the pixel would be without it by that coverage. Absent =
+   * coverage 1 on every slot pixel (the old path, exactly).
+   */
+  soft?: true;
 }
 
 const same = (a: string, b: string): boolean => a.toLowerCase() === b.toLowerCase();
@@ -171,7 +181,8 @@ export function layerRecolour(rig: Pick<Rig, "palette">, layer: Layer, look: Pic
   });
   if (light === undefined && keys.length === 0) return undefined;
   const lightKey = light === undefined ? "-" : `${light.name}${look.palette[light.name].toLowerCase()}`;
-  return { key: `${lightKey}|${keys.join(",")}`, ...(light === undefined ? {} : { light }), slots, refs };
+  const soft = layer.regions?.soft === true && keys.length > 0;
+  return { key: `${lightKey}|${keys.join(",")}${soft ? "|s" : ""}`, ...(light === undefined ? {} : { light }), slots, refs, ...(soft ? { soft: true as const } : {}) };
 }
 
 /** Every layer's recolour for `look`, by layer name (layers drawn as painted are absent). */
@@ -197,7 +208,7 @@ export function mapRect(layerBbox: readonly number[], patchBbox: readonly number
   return [(px - lx) / lw, (py - ly) / lh, pw / lw, ph / lh];
 }
 
-/** The index map read for a canvas2d recolour: straight RGBA, R = slot index + 1. */
+/** The index map read for a canvas2d recolour: straight RGBA, R = slot index + 1 (G = coverage on a soft layer). */
 export interface IndexMap {
   data: Uint8ClampedArray;
   width: number;
@@ -206,14 +217,30 @@ export interface IndexMap {
   rect: readonly [number, number, number, number];
 }
 
-/** The slot index (0 none, 1..4) under pixel (x, y) of a `w` x `h` image, nearest map texel. */
-export function slotAt(map: IndexMap, x: number, y: number, w: number, h: number): number {
+/** The byte offset of the nearest map texel under pixel (x, y) of a `w` x `h` image; -1 outside the map. */
+function texelAt(map: IndexMap, x: number, y: number, w: number, h: number): number {
   const u = map.rect[0] + ((x + 0.5) / w) * map.rect[2];
   const v = map.rect[1] + ((y + 0.5) / h) * map.rect[3];
-  if (!(u >= 0 && u <= 1 && v >= 0 && v <= 1)) return 0;
+  if (!(u >= 0 && u <= 1 && v >= 0 && v <= 1)) return -1;
   const mx = Math.min(map.width - 1, Math.floor(u * map.width));
   const my = Math.min(map.height - 1, Math.floor(v * map.height));
-  return map.data[(my * map.width + mx) * 4] ?? 0;
+  return (my * map.width + mx) * 4;
+}
+
+/** The slot index (0 none, 1..4) under pixel (x, y) of a `w` x `h` image, nearest map texel. */
+export function slotAt(map: IndexMap, x: number, y: number, w: number, h: number): number {
+  const at = texelAt(map, x, y, w, h);
+  return at < 0 ? 0 : (map.data[at] ?? 0);
+}
+
+/**
+ * A soft slot's mix (round 5): `over` (the slot's recolour) on `under` (the pixel without the slot:
+ * the light's result, or the art) by coverage `c` 0..1; c >= 1 is `over` itself, the binary path.
+ * GLSL: `mix(under, over, c)` (programs.ts), the same expression per channel.
+ */
+export function softMix(under: Rgb, over: Rgb, c: number): Rgb {
+  if (c >= 1) return over;
+  return [under[0] * (1 - c) + over[0] * c, under[1] * (1 - c) + over[1] * c, under[2] * (1 - c) + over[2] * c];
 }
 
 /**
@@ -230,17 +257,23 @@ export function recolourPixels(data: Uint8ClampedArray, w: number, h: number, pl
       const hsl = rgbToHsl([(data[i] ?? 0) / 255, (data[i + 1] ?? 0) / 255, (data[i + 2] ?? 0) / 255]);
       let target: Hsl | undefined;
       let ref = KEEP_L;
-      if (light !== undefined && (light.mode === "all" || hsl[1] > GLOW_SATURATION)) target = light.target;
+      let cover = 1;
+      let lit: Hsl | undefined;
+      if (light !== undefined && (light.mode === "all" || hsl[1] > GLOW_SATURATION)) target = lit = light.target;
       if (useMap) {
-        const slot = slotAt(map, x, y, w, h);
+        const at = texelAt(map, x, y, w, h);
+        const slot = at < 0 ? 0 : (map.data[at] ?? 0);
         const own = slot >= 1 && slot <= MAX_REGION_SLOTS ? plan.slots[slot - 1] : undefined;
         if (own !== undefined) {
           target = own;
           ref = plan.refs[slot - 1] ?? KEEP_L;
+          if (plan.soft === true) cover = (map.data[at + 1] ?? 0) / 255;
         }
       }
       if (target === undefined) continue;
-      const [r, g, b] = recolourHsl(hsl, target, ref);
+      const over = recolourHsl(hsl, target, ref);
+      // Soft (round 5): the slot's colour over the pixel without it (the light's result, or the art).
+      const [r, g, b] = cover >= 1 ? over : softMix(lit === undefined ? [(data[i] ?? 0) / 255, (data[i + 1] ?? 0) / 255, (data[i + 2] ?? 0) / 255] : recolourHsl(hsl, lit), over, cover);
       data[i] = Math.round(r * 255);
       data[i + 1] = Math.round(g * 255);
       data[i + 2] = Math.round(b * 255);

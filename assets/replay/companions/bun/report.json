@@ -24,6 +24,12 @@
     },
     "regions": {
       "head": {
+        "soft": {
+          "hair": {
+            "claimed": 11714,
+            "partial": 27786
+          }
+        },
         "headphones": {
           "px": 60823,
           "hex": "#fcdade"
@@ -138,7 +144,7 @@
       "body.regions.png": 3240,
       "body.webp": 60718,
       "flow.png": 132575,
-      "head.regions.png": 10488,
+      "head.regions.png": 78139,
       "head.webp": 154168,
       "sway.webp": 5790
     }

@@ -47,7 +47,7 @@ written either way.
   sway?: { amp, inner: [cx, cy, rx, ry], reach, gamma, zero?: [region], cap?: [region + max], boost?: [region + min], margin? },
   gates?: { cornerShift, outsideMargin, floorTimes, floorMin, moves, flowSigma, flowFrom, revealTimes, revealRamp, gazeReach, weight1, lidSigma, lidReach, lidHold },
   matte?: { lo, hi, core, nearBody, under, groundCheck, headOnly: [region] },
-  recolour?: { <layer>: [{ id, name, minArea?, shade?: "move", parts: [{ within?, without?, colour?, except? }] }] },  // see regions.py; shade is copied to the rig slot
+  recolour?: { <layer>: [{ id, name, minArea?, shade?: "move", soft?: { band?, sigma?, dead?, pocket?, pocketWithin? }, parts: [{ within?, without?, colour?, except? }] }] },  // see regions.py; shade is copied to the rig slot; soft writes coverage to the map's G (rig `regions.soft`)
   layerQuality?, atlasQuality?,       // WebP quality, default 95
   rig: { palette, anchors: { head: [x, y], body: [x, y] }, face, turn },
   inspect: [[x, y, w, h], ...],       // 2x zoom boxes on the layer sheets (hair ends, jaw, headgear)

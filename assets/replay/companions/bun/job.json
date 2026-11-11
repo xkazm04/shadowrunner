@@ -93,7 +93,8 @@
               "hex": "#fc99b9",
               "shade": "move"
             }
-          ]
+          ],
+          "soft": true
         }
       }
     ],
@@ -959,7 +960,7 @@
       "body.regions.png": 3240,
       "body.webp": 60718,
       "flow.png": 132575,
-      "head.regions.png": 10488,
+      "head.regions.png": 78139,
       "head.webp": 154168,
       "sway.webp": 5790
     }

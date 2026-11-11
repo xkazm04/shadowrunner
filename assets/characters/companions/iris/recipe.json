@@ -480,6 +480,7 @@
           }
         ],
         "minArea": 150,
+        "soft": {"band": 24, "dead": [0.3, 0.85], "pocket": 48, "pocketWithin": [{"box": [320, 100, 390, 200]}]},
         "shade": "move"
       }
     ],

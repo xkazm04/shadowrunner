@@ -94,6 +94,8 @@ ${
 // on every pixel (u_light.w 1) or on pixels with s > GLOW_SAT (u_light.w 2); a region slot's
 // target (u_slots, enabled by u_slotOn) wins on the pixels whose index map (nearest, R = slot + 1)
 // names it, and maps lightness from that slot's reference (u_slotRef; -1 keeps it, as a light does).
+// A soft layer (u_soft, companion-lanes round 5) reads the same nearest texel's G as the coverage of
+// that slot and mixes the slot's result over the pixel without it (the light's, or the art) by it.
 // The rule is render/recolour.ts's `recolourHsl` and `mapLightness`, expression for expression.
 // The warp twin (the art mouth, gl/warp.ts; only the head and the jaw of a talking warp rig use it,
 // so every other quad runs the plain program at today's cost): the sample point is unwarped first
@@ -161,7 +163,8 @@ uniform vec4 u_light;
 uniform vec4 u_mapRect;
 uniform vec4 u_slotOn;
 uniform vec3 u_slots[4];
-uniform vec4 u_slotRef;${warp || own !== undefined ? `
+uniform vec4 u_slotRef;
+uniform float u_soft;${warp || own !== undefined ? `
 uniform vec4 u_rect;` : ""}
 const float BRIGHT_LO = 0.3;
 const float BRIGHT_HI = 0.7;
@@ -187,7 +190,8 @@ ${own !== undefined ? own.sample : warp ? WARP_SAMPLE : `  vec2 uv = v_uv;
   float gx = tR.a - tL.a;
   float gy = tD.a - tU.a;
   vec2 muv = u_mapRect.xy + uv * u_mapRect.zw;
-  float slot = texture(u_map, clamp(muv, 0.0, 1.0)).r;
+  vec4 texel = texture(u_map, clamp(muv, 0.0, 1.0));
+  float slot = texel.r;
   float albedo = tex.a > 0.0 ? max(tex.r, max(tex.g, tex.b)) / tex.a : 0.0;
   float rim = smoothstep(0.15, 0.7, length(vec2(gx, gy))) * smoothstep(0.08, 0.4, albedo);
   vec3 rgb = tex.rgb;
@@ -196,13 +200,19 @@ ${own !== undefined ? own.sample : warp ? WARP_SAMPLE : `  vec2 uv = v_uv;
     vec3 target = vec3(0.0);
     float ref = -1.0;
     bool on = false;
-    if (u_light.w > 0.5 && (u_light.w < 1.5 || hsl.y > GLOW_SAT)) { target = u_light.xyz; on = true; }
+    bool lit = u_light.w > 0.5 && (u_light.w < 1.5 || hsl.y > GLOW_SAT);
+    if (lit) { target = u_light.xyz; on = true; }
     bool inside = muv.x >= 0.0 && muv.x <= 1.0 && muv.y >= 0.0 && muv.y <= 1.0;
     int idx = int(floor(slot * 255.0 + 0.5)) - 1;
+    float cover = 1.0;
     for (int i = 0; i < 4; i++) {
-      if (inside && i == idx && u_slotOn[i] > 0.5) { target = u_slots[i]; ref = u_slotRef[i]; on = true; }
+      if (inside && i == idx && u_slotOn[i] > 0.5) { target = u_slots[i]; ref = u_slotRef[i]; on = true; if (u_soft > 0.5) cover = texel.g; }
     }
-    if (on) rgb = recolour(hsl, target, ref) * tex.a;
+    if (on) {
+      vec3 over = recolour(hsl, target, ref);
+      if (cover < 1.0) over = mix(lit ? recolour(hsl, u_light.xyz, -1.0) : tex.rgb / tex.a, over, cover);
+      rgb = over * tex.a;
+    }
   }
 ${TURN_LIGHT_STEP}  float alpha = tex.a;
 ${warp ? WARP_INTERIOR : ""}  vec4 color = vec4(rgb * u_gain + u_rim * rim * alpha, alpha) * u_opacity;${mask ? `
@@ -262,7 +272,7 @@ export interface Program<K extends string> {
 
 export const BASE_UNIFORMS = [
   "u_rect", "u_m", "u_res", "u_tex", "u_map", "u_texel", "u_opacity", "u_gain", "u_rim", "u_emissive",
-  "u_recolour", "u_light", "u_mapRect", "u_slotOn", "u_slots", "u_slotRef", ...TURN_UNIFORMS,
+  "u_recolour", "u_light", "u_mapRect", "u_slotOn", "u_slots", "u_slotRef", "u_soft", ...TURN_UNIFORMS,
 ] as const;
 export type BaseUniform = (typeof BASE_UNIFORMS)[number];
 const WARP_PROGRAM_UNIFORMS = [...BASE_UNIFORMS, ...WARP_UNIFORMS] as const;

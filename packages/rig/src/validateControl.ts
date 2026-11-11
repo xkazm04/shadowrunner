@@ -109,6 +109,9 @@ class ControlReader {
   regions(value: unknown, path: string): LayerRegions | undefined {
     if (!isRecord(value)) return this.fail(path, `when present, expected a regions object, got ${describe(value)}`);
     const map = this.file(value.map, `${path}.map`);
+    // companion-lanes round 5: G = coverage of the slot R names.
+    const soft = value.soft;
+    if (soft !== undefined && soft !== true) this.fail(`${path}.soft`, `expected true (omit the field otherwise), got ${describe(soft)}`);
     const raw = value.slots;
     if (!Array.isArray(raw) || raw.length < 1 || raw.length > MAX_REGION_SLOTS) {
       const count = Array.isArray(raw) ? `${raw.length} slots` : describe(raw);
@@ -121,7 +124,8 @@ class ControlReader {
       const slot = this.slot(item, `${path}.slots[${j}]`, seen);
       if (slot !== undefined) slots.push(slot);
     });
-    return map === undefined || slots.length !== items.length ? undefined : { map, slots };
+    if (soft !== undefined && soft !== true) return undefined;
+    return map === undefined || slots.length !== items.length ? undefined : { map, slots, ...(soft === true ? { soft } : {}) };
   }
 }
 

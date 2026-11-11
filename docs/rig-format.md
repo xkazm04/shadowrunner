@@ -361,7 +361,7 @@ is reported. The serializer writes families in the order above.
 
 ### Regions
 
-Amended by character-control (design.md "Regions"). `regions` is `{ map, slots }`:
+Amended by character-control (design.md "Regions"). `regions` is `{ map, slots, soft? }`:
 
 | field | type | required | meaning |
 |---|---|---|---|
@@ -371,6 +371,7 @@ Amended by character-control (design.md "Regions"). `regions` is `{ map, slots }
 | `slots[j].name` | string | yes | Non-empty display name (`robe`, `robe 2`, `mouth`). |
 | `slots[j].hex` | string | yes | The region's colour as painted, `#rrggbb`. On a `shade: "move"` slot it is also the recolour's lightness reference. |
 | `slots[j].shade` | `"move"` | no | Companion-lanes round 4. A look that names a colour for this slot moves its lightness as well as its hue: each pixel's HSL lightness goes through (0,0) - (L(hex), L(target)) - (1,1), both ends clamped to [1/256, 1 - 1/256], so the painted colour lands on the target's lightness and the shading keeps its order (`packages/avatar/src/render/recolour.ts`). For a slot that is one material (a jacket, hair). Omitted (never `null`) = the art's lightness is kept, the rule for the forge's slots, which are lightness bands of one material; any other value is `bad_shape`. |
+| `soft` | `true` | no | Companion-lanes round 5. The map's G channel is the pixel's coverage, 0..255, of the slot its R names (a strand tip half over skin is part hair). A recolour of that slot gives `mix(without, recoloured, G / 255)` per channel, `without` being what the pixel shows without the slot (the layer's light's result, or the art). The map is still read nearest and both channels come from the same texel; G is ignored where R is 0 or the slot is off. Omitted (never `null` or `false`) = binary: coverage 1 on every pixel of a slot, G ignored (the forge writes G = 0, a grey map has G = R); any other value is `bad_shape`. B and A are unused. |
 
 Shape faults are `bad_shape` at `$.layers[i].regions...` (`map`, `slots` with fewer than 1 or more
 than 4 entries, a bad or repeated `id`, an empty `name`); a `hex` that is not `#rrggbb` is
