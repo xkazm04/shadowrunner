@@ -1,4 +1,4 @@
-"""The design's "Shader" section in numpy, read from the files as written (atlas, flow image, head
+"""The design's "Shader" section (with its round 2 amendment: back cell and reveal) in numpy, read from the files as written (atlas, flow image, head
 layer), so a review strip shows what the renderer will draw.
 
 Sampling convention (the same as a GL texture with linear filtering): canvas pixel centres sit at
@@ -35,16 +35,26 @@ class Morph:
         x, y, w, h = k["bbox"]
         return (px >= x) & (px <= x + w) & (py >= y) & (py <= y + h)
 
-    def motion(self, k: dict, px: np.ndarray, py: np.ndarray) -> np.ndarray:
-        if "flowCell" not in k or self.flow is None:
-            return np.zeros(px.shape + (2,), np.float32)
+    def _flow_read(self, k: dict, name: str, px: np.ndarray, py: np.ndarray) -> np.ndarray:
+        """The raw RGB of a key's motion-image cell (`flowCell` or `backCell`) at canvas points."""
         x, y, w, h = k["bbox"]
-        cx, cy, cw, ch = k["flowCell"]
+        cx, cy, cw, ch = k[name]
         u = cx + np.clip((px - x) * cw / w, 0.5, cw - 0.5)
         v = cy + np.clip((py - y) * ch / h, 0.5, ch - 0.5)
-        code = _sample(self.flow, u, v)[..., :2]
+        return _sample(self.flow, u, v)
+
+    def motion(self, k: dict, px: np.ndarray, py: np.ndarray, name: str = "flowCell") -> np.ndarray:
+        """F (flowCell, layer frame) or G (backCell, key frame) in canvas px; 0 outside the bbox."""
+        if name not in k or self.flow is None:
+            return np.zeros(px.shape + (2,), np.float32)
+        code = self._flow_read(k, name, px, py)[..., :2]
         f = (code * 255.0 - 128.0) / 127.0 * k["flowMax"]
         return np.where(self._in_box(k, px, py)[..., None], f, 0.0).astype(np.float32)
+
+    def reveal(self, k: dict, px: np.ndarray, py: np.ndarray) -> np.ndarray:
+        if "backCell" not in k or self.flow is None:
+            return np.zeros(px.shape, np.float32)
+        return np.where(self._in_box(k, px, py), self._flow_read(k, "backCell", px, py)[..., 2], 0.0).astype(np.float32)
 
     def colour(self, k: dict, px: np.ndarray, py: np.ndarray) -> np.ndarray:
         x, y, w, h = k["bbox"]
@@ -62,27 +72,32 @@ class Morph:
         gx, gy = np.meshgrid(np.arange(bx, bx + bw, dtype=np.float32) + 0.5, np.arange(by, by + bh, dtype=np.float32) + 0.5)
         active = [(k, weights[k["id"]]) for k in self.keys if weights.get(k["id"], 0.0) > 0.002]
 
-        def D(px: np.ndarray, py: np.ndarray) -> np.ndarray:
-            d = np.zeros(px.shape + (2,), np.float32)
-            for k, w in active:
-                d += w * self.motion(k, px, py)
-            return d
-
-        d0 = D(gx, gy)
-        d1 = D(gx - d0[..., 0], gy - d0[..., 1])
-        px, py = gx - d1[..., 0], gy - d1[..., 1]
+        # Round 2 amendment: no fixed point. Fh_i(x) = mix(F_i(x), -G_i(x), w_i), all at x.
+        fh = []
+        for k, w in active:
+            f = self.motion(k, gx, gy)
+            if "backCell" in k:
+                f = (1.0 - w) * f + w * (-self.motion(k, gx, gy, "backCell"))
+            fh.append(f)
+        d = np.zeros(gx.shape + (2,), np.float32)
+        for (k, w), f in zip(active, fh):
+            d += w * f
+        px, py = gx - d[..., 0], gy - d[..., 1]
         c = _sample(self.head, px, py)
         for group in range(4):
-            members = [(k, w) for k, w in active if GROUPS[k["track"]] == group]
+            members = [(k, w, f) for (k, w), f in zip(active, fh) if GROUPS[k["track"]] == group]
             if not members:
                 continue
             S = np.zeros(px.shape, np.float32)
             C = np.zeros(px.shape + (3,), np.float32)
-            for k, w in members:
-                f = self.motion(k, px, py)
-                kc = self.colour(k, px + f[..., 0], py + f[..., 1])
-                S += w * kc[..., 3]
-                C += (w * kc[..., 3])[..., None] * kc[..., :3]
+            for k, w, f in members:
+                qx, qy = px + f[..., 0], py + f[..., 1]
+                kc = self.colour(k, qx, qy)
+                r = self.reveal(k, qx, qy)
+                t = min(1.0, max(0.0, w / 0.4))
+                a = (1.0 - r) * w + r * (t * t * (3.0 - 2.0 * t))
+                S += a * kc[..., 3]
+                C += (a * kc[..., 3])[..., None] * kc[..., :3]
             C /= np.maximum(S, 1e-4)[..., None]
             t = np.minimum(1.0, S)[..., None]
             c[..., :3] = (1.0 - t) * c[..., :3] + t * C * c[..., 3:4]

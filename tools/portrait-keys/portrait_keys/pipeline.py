@@ -1,6 +1,7 @@
 """`build`: a character dir -> a built dir (design "Builder" steps 1-6)."""
 from __future__ import annotations
 
+import os
 import re
 from pathlib import Path
 
@@ -8,16 +9,24 @@ import cv2
 import numpy as np
 
 from . import sheets
-from .common import (SIZE, alpha_box, decode, dilate, feather, gauss, json_bytes, png_bytes, read_json, read_rgb,
+from .common import (SIZE, alpha_box, grey, decode, dilate, feather, gauss, json_bytes, png_bytes, read_json, read_rgb,
                      region_mask, webp_bytes, write_bytes)
-from .keys import DEFAULT_GATES, build_key, floor_map
+from .keys import DEFAULT_GATES, FAMILIES, build_key, floor_map, split_parts
 from .matte import layers
 from .pack import atlas, flow_image
+from .regions import index_map
 from .register import register
 from .shade import Morph, place
 
 LAYER_PAD = 4
 SWAY_SCALE = 4
+
+
+def sharpness(a: np.ndarray, b: np.ndarray, mask: np.ndarray) -> float:
+    """Laplacian variance of `a` over that of `b` inside `mask` (1 = as sharp; below 1 = softer)."""
+    la = cv2.Laplacian(grey(a), cv2.CV_32F)[mask]
+    lb = cv2.Laplacian(grey(b), cv2.CV_32F)[mask]
+    return round(float(la.var() / max(lb.var(), 1e-12)), 3) if mask.any() else 1.0
 
 
 def sway_map(rule: dict, head_a: np.ndarray, shape: tuple[int, int]) -> np.ndarray:
@@ -56,8 +65,14 @@ def build(char_dir: Path, out_dir: Path, sheet_dir: Path | None) -> bool:
     for name in ("body", "head"):
         x, y, w, h = alpha_box(L[name][..., 3], LAYER_PAD)
         boxes[name] = [x, y, w, h]
-        files[f"{name}.webp"] = webp_bytes(L[name][y:y + h, x:x + w], quality=92)
+        files[f"{name}.webp"] = webp_bytes(L[name][y:y + h, x:x + w], quality=recipe.get("layerQuality", 95))
         decoded[name] = place(decode(files[f"{name}.webp"], "RGBA"), boxes[name], SIZE)
+    region_maps: dict[str, dict] = {}
+    for name, slots in recipe.get("recolour", {}).items():
+        imap, rig_slots, fig = index_map(L[name], slots)
+        x, y, w, h = boxes[name]
+        files[f"{name}.regions.png"] = png_bytes(imap[y:y + h, x:x + w])
+        region_maps[name] = {"map": f"{name}.regions.png", "slots": rig_slots, "figures": fig, "canvas": imap}
     files["background.webp"] = webp_bytes(L["background"], quality=92)
     background = decode(files["background.webp"], "RGB")
     head_a = decoded["head"][..., 3]
@@ -72,12 +87,25 @@ def build(char_dir: Path, out_dir: Path, sheet_dir: Path | None) -> bool:
     for spec in recipe["keys"]:
         k = build_key(spec, portrait, read_rgb(edits[spec["edit"]]), noop_reg, floor, head_a, L["figure"],
                       recipe["regions"][spec["region"]], recipe.get("gates", {}),
-                      {"eyes": recipe["eyes"], "irisRadius": recipe.get("irisRadius", 20)})
+                      {"eyes": recipe["eyes"], "irisRadius": recipe.get("irisRadius", 20), "openings": recipe.get("openings", [])})
         rec = k["record"]
         rec["track"], rec["flow"] = spec["track"], spec.get("flow", "none")
         records.append(rec)
         if rec["verdict"] != "ok":
             refused.append({"id": spec["id"], "optional": bool(spec.get("optional")), "reasons": rec.get("reasons", [])})
+            continue
+        if spec["track"] in FAMILIES and "faceSplitY" in recipe:
+            # Round 3: an upper (brows, eyes, upper cheeks) and a lower (mouth, creases, jaw) key,
+            # a partition of the whole key by a soft band at the character's cheek line.
+            rec["verdict"] = "split"
+            rec["parts"] = [f"{spec['id']}_upper", f"{spec['id']}_lower"]
+            for part, pk in split_parts(k, recipe["faceSplitY"], recipe.get("faceSplitBand", 24)):
+                prec = pk["record"]
+                prec["track"], prec["flow"], prec["part"], prec["of"] = spec["track"], spec.get("flow", "none"), part, spec["id"]
+                prec["verdict"] = "ok"
+                prec.pop("parts", None)
+                records.append(prec)
+                built.append(({**spec, "id": prec["id"], "part": part}, pk))
             continue
         built.append((spec, k))
     fatal = [r for r in refused if not r["optional"]]
@@ -88,28 +116,33 @@ def build(char_dir: Path, out_dir: Path, sheet_dir: Path | None) -> bool:
         x, y, w, h = k["record"]["bbox"]
         cells.append(np.dstack([k["colour"][y:y + h, x:x + w], k["coverage"][y:y + h, x:x + w]]))
         if k["flow"] is not None:
-            fields.append(k["flow"][y:y + h, x:x + w])
+            fields.append((k["flow"][y:y + h, x:x + w], k["back"][y:y + h, x:x + w], k["reveal"][y:y + h, x:x + w]))
             maxes.append(float(k["record"]["flowMax"]))
             flow_keys.append(spec["id"])
     atlas_img, rects = atlas(cells)
-    files["atlas.webp"] = webp_bytes(atlas_img, quality=recipe.get("atlasQuality", 92))
+    files["atlas.webp"] = webp_bytes(atlas_img, quality=recipe.get("atlasQuality", 95))
     flow_rects: dict[str, list[int]] = {}
+    back_rects: dict[str, list[int]] = {}
     flow_codes = None
     if fields:
-        flow_codes, frects = flow_image(fields, maxes)
+        flow_codes, frects, brects = flow_image(fields, maxes)
         files["flow.png"] = png_bytes(flow_codes)
         flow_rects = dict(zip(flow_keys, frects))
+        back_rects = dict(zip(flow_keys, brects))
 
     keys = []
     for (spec, k), cell in zip(built, rects):
         key = {"id": spec["id"], "track": spec["track"]}
         if "at" in spec:
             key["at"] = spec["at"]
+        if "part" in spec:
+            key["part"] = spec["part"]
         key["bbox"] = k["record"]["bbox"]
         key["cell"] = cell
         if spec["id"] in flow_rects:
             key["flowCell"] = flow_rects[spec["id"]]
             key["flowMax"] = k["record"]["flowMax"]
+            key["backCell"] = back_rects[spec["id"]]
         keys.append(key)
 
     # The shader's fixed point at weight 1 (requirement 3.1), on the files as written.
@@ -124,10 +157,36 @@ def build(char_dir: Path, out_dir: Path, sheet_dir: Path | None) -> bool:
         err = float(np.abs(got[..., :3] - want).mean(-1)[inside].mean() * 255) if inside.any() else 0.0
         rec = by_id[spec["id"]]
         rec["weight1"] = round(err, 3)
+        # Sharpness: the key as the renderer gets it (decoded cell) against the colour it was cut from.
+        cx, cy, cw, ch = key["cell"]
+        cell = mo.atlas[cy:cy + ch, cx:cx + cw, :3]
+        rec["sharpness"] = sharpness(cell, k["colour"][y:y + h, x:x + w], inside)
+        if os.environ.get("PK_DEBUG") and sheet_dir is not None:
+            e = np.abs(got[..., :3] - want).mean(-1) * inside
+            dbg = np.hstack([got[..., :3], want, np.repeat(np.clip(e * 8, 0, 1)[..., None], 3, 2)])
+            sheets.jpg(sheet_dir / f"debug-w1-{spec['id']}.jpg", dbg)
         if err > gates["weight1"]:
             rec["verdict"] = "refused"
             rec.setdefault("reasons", []).append(f"at weight 1 the render misses the key by {err:.2f}/255 (gate {gates['weight1']})")
             refused.append({"id": spec["id"], "optional": bool(spec.get("optional")), "reasons": rec["reasons"]})
+    # The two parts together at weight 1 against the whole key (round 3: a partition of unity).
+    for fam in FAMILIES:
+        pair = [(spec, k) for spec, k in built if spec["track"] == fam and "part" in spec]
+        if len(pair) != 2:
+            continue
+        cov = pair[0][1]["coverage"] + pair[1][1]["coverage"]
+        x0 = min(k["record"]["bbox"][0] for _, k in pair)
+        y0 = min(k["record"]["bbox"][1] for _, k in pair)
+        x1 = max(k["record"]["bbox"][0] + k["record"]["bbox"][2] for _, k in pair)
+        y1 = max(k["record"]["bbox"][1] + k["record"]["bbox"][3] for _, k in pair)
+        got = mo.render({spec["id"]: 1.0 for spec, _ in pair}, (x0, y0, x1 - x0, y1 - y0))
+        want = pair[0][1]["colour"][y0:y1, x0:x1] * head_a[y0:y1, x0:x1, None]
+        inside = cov[y0:y1, x0:x1] > 0.5
+        err = float(np.abs(got[..., :3] - want).mean(-1)[inside].mean() * 255) if inside.any() else 0.0
+        for spec, _ in pair:
+            by_id[spec["id"]]["composedWeight1"] = round(err, 3)
+        if err > gates["weight1"]:
+            refused.append({"id": fam, "optional": False, "reasons": [f"upper + lower at weight 1 miss the whole key by {err:.2f}/255"]})
     fatal = [r for r in refused if not r["optional"]]
 
     morph = {"layer": "head", "atlas": "atlas.webp"}
@@ -157,7 +216,16 @@ def build(char_dir: Path, out_dir: Path, sheet_dir: Path | None) -> bool:
         "turn": r["turn"],
         "morph": morph,
     }
+    for layer in rig["layers"]:
+        if layer["name"] in region_maps:
+            layer["regions"] = {"map": region_maps[layer["name"]]["map"], "slots": region_maps[layer["name"]]["slots"]}
+    fx, fy, fw, fh = recipe.get("faceBox", [300, 200, 424, 460])
+    face_in = head_a[fy:fy + fh, fx:fx + fw] > 0.99
+    figures_sharp = {"head": sharpness(decoded["head"][fy:fy + fh, fx:fx + fw, :3], portrait[fy:fy + fh, fx:fx + fw], face_in),
+                     "keysMin": min((r["sharpness"] for r in records if "sharpness" in r), default=None)}
     figures = {
+        "sharpness": figures_sharp,
+        "regions": {name: m["figures"] for name, m in region_maps.items()},
         "mattes": L["figures"],
         "floor": {"cornerShift": round(noop_shift, 3), "affine": np.round(noop_warp, 5).tolist(), "meanAbs": round(float(np.abs(noop_reg - portrait).mean() * 255), 3)},
         "layers": {n: boxes[n] for n in boxes},
@@ -169,16 +237,7 @@ def build(char_dir: Path, out_dir: Path, sheet_dir: Path | None) -> bool:
               "figures": figures, "keys": records, "refused": refused}
     out_dir.mkdir(parents=True, exist_ok=True)
     write_bytes(out_dir / "report.json", json_bytes(report))
-    if fatal:
-        print(f"build: {slug}: refused {[r['id'] for r in fatal]}; see {out_dir / 'report.json'}")
-        return False
-    for name, data in files.items():
-        write_bytes(out_dir / name, data)
-    write_bytes(out_dir / "job.json", json_bytes({"rig": rig, "built": {"tool": "tools/portrait-keys", "keys": len(keys),
-                                                                        "refused": [r["id"] for r in refused], **{k: figures[k] for k in ("atlas", "flow", "bytes")}}}))
-    print(f"build: {slug}: {len(keys)} keys, atlas {figures['atlas']}, flow {figures['flow']} -> {out_dir}")
-
-    # 6. Sheets.
+    # 6. Sheets (also for a refused build: they show why).
     if sheet_dir is not None:
         atlas_dec = decode(files["atlas.webp"], "RGBA")
         flow_dec = decode(files["flow.png"], "RGB") if "flow.png" in files else None
@@ -190,5 +249,16 @@ def build(char_dir: Path, out_dir: Path, sheet_dir: Path | None) -> bool:
         sheets.contact(sheet_dir, mo, under, recipe.get("faceBox", [300, 200, 424, 460]), recipe["name"])
         if sway is not None:
             sheets.sway_sheet(sheet_dir, decoded["head"], sway)
+        for name, m in region_maps.items():
+            sheets.region_sheet(sheet_dir, name, decoded[name], m["canvas"], recipe.get("inspect", []))
         print(f"build: {slug}: sheets -> {sheet_dir}")
+    if fatal:
+        print(f"build: {slug}: refused {[r['id'] for r in fatal]}; see {out_dir / 'report.json'}")
+        return False
+    for name, data in files.items():
+        write_bytes(out_dir / name, data)
+    write_bytes(out_dir / "job.json", json_bytes({"rig": rig, "built": {"tool": "tools/portrait-keys", "keys": len(keys),
+                                                                        "refused": [r["id"] for r in refused], **{k: figures[k] for k in ("atlas", "flow", "bytes")}}}))
+    print(f"build: {slug}: {len(keys)} keys, atlas {figures['atlas']}, flow {figures['flow']} -> {out_dir}")
+
     return True

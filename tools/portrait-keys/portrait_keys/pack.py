@@ -71,15 +71,18 @@ def encode_flow(f: np.ndarray, flow_max: float) -> np.ndarray:
     return code.astype(np.uint8)
 
 
-def flow_image(fields: list[np.ndarray], maxes: list[float]) -> tuple[np.ndarray, list[list[int]]]:
-    """Motion fields at bbox size -> the RGB code image (B = 128) and each cell's [x, y, w, h]."""
+def flow_image(fields: list[tuple[np.ndarray, np.ndarray, np.ndarray]], maxes: list[float]) -> tuple[np.ndarray, list[list[int]], list[list[int]]]:
+    """Per key (F, G, reveal) at bbox size -> the RGB code image and each key's forward cell
+    (R, G = F, B = 128) and back cell (R, G = G, B = reveal * 255), [x, y, w, h] at 1/4 size."""
     g = FLOW_GUTTER
     cells = []
-    for f, m in zip(fields, maxes):
+    for (f, gb, rv), m in zip(fields, maxes):
         cw, ch = flow_cell_size(f.shape[1], f.shape[0])
-        small = cv2.resize(f, (cw, ch), interpolation=cv2.INTER_AREA)
-        code = encode_flow(small, m)
-        cells.append(np.dstack([code, np.full(code.shape[:2], 128, np.uint8)]))
+        fwd = encode_flow(cv2.resize(f, (cw, ch), interpolation=cv2.INTER_AREA), m)
+        bck = encode_flow(cv2.resize(gb, (cw, ch), interpolation=cv2.INTER_AREA), m)
+        rv8 = np.clip(np.rint(cv2.resize(rv, (cw, ch), interpolation=cv2.INTER_AREA) * 255.0), 0, 255).astype(np.uint8)
+        cells.append(np.dstack([fwd, np.full((ch, cw), 128, np.uint8)]))
+        cells.append(np.dstack([bck, rv8]))
     padded = [cv2.copyMakeBorder(c, g, g, g, g, cv2.BORDER_REPLICATE) for c in cells]
     places, w, h = pack([(p.shape[1], p.shape[0]) for p in padded], ATLAS_MAX)
     img = np.full((h, w, 3), 128, np.uint8)
@@ -87,4 +90,4 @@ def flow_image(fields: list[np.ndarray], maxes: list[float]) -> tuple[np.ndarray
     for (x, y), p, c in zip(places, padded, cells):
         img[y:y + p.shape[0], x:x + p.shape[1]] = p
         rects.append([x + g, y + g, c.shape[1], c.shape[0]])
-    return img, rects
+    return img, rects[0::2], rects[1::2]

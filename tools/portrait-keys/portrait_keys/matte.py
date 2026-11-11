@@ -9,7 +9,7 @@ from __future__ import annotations
 import cv2
 import numpy as np
 
-from .common import dilate, distance_from, erode, feather, gauss, nblur, pushpull, smoothstep
+from .common import dilate, distance_from, erode, feather, gauss, nblur, pushpull, region_mask, smoothstep
 from .register import register
 
 
@@ -121,6 +121,9 @@ def layers(portrait: np.ndarray, matte_edit: np.ndarray, head_edit: np.ndarray, 
     # figure; away from it (hair, ears, headgear over the ground) the figure's alpha is the head's.
     body_solid = erode((fig > 0.9) & (head0 < 0.1), 2)
     near_body = feather(dilate(body_solid, cfg.get("nearBody", 16)), 8)
+    # Recipe `headOnly` regions (a boom mic that hangs by the collar): all figure alpha is the head's.
+    for r in cfg.get("headOnly", []):
+        near_body = near_body * (1.0 - feather(region_mask(r, fig.shape), 8))
     head_a = near_body * np.minimum(fig, head0) + (1.0 - near_body) * fig
     head_a = np.where(head_a < 1.0 / 255.0, 0.0, head_a).astype(np.float32)
     body_raw = np.clip((fig - head_a) / np.maximum(1.0 - head_a, 1e-3), 0.0, 1.0)
@@ -134,11 +137,21 @@ def layers(portrait: np.ndarray, matte_edit: np.ndarray, head_edit: np.ndarray, 
     ext_a, depth = nearest_extend(body_raw, shows)
     ext_a = gauss(ext_a, 3.0)
     hidden = smoothstep(0.2, 0.8, head_a)
-    body_a = ((1.0 - hidden) * body_raw + hidden * ext_a * np.clip(1.0 - depth / under, 0.0, 1.0)).astype(np.float32)
+    pushed = ext_a * np.clip(1.0 - depth / under, 0.0, 1.0)
+    body_a = (1.0 - hidden) * body_raw + hidden * pushed
+    # Under a strand's soft edge the split alpha is noise; the pushed body wins there (no thin hole
+    # beside the hair when the head moves).
+    body_a = np.maximum(body_a, pushed * smoothstep(0.1, 0.5, head_a)).astype(np.float32)
     body_a = np.where(body_a < 1.0 / 255.0, 0.0, body_a).astype(np.float32)
 
     body_known = (head_a < 0.05)
     body_rgb = unmix(portrait, np.where(body_known, body_raw, 0.0).astype(np.float32), ground)
+    # Under the head the body's colour is pushed in only from pixels a few px clear of the hair
+    # (an edge pixel carries a trace of the strand above it), each pixel from the nearest such one:
+    # an average from further off is the lit side of the neck, a light sliver when the head moves.
+    clear = body_known & ~dilate(head_a > 0.02, 3) & (body_raw > 0.7)
+    near_rgb = np.dstack([gauss(nearest_extend(body_rgb[..., c], clear)[0], 2.0) for c in range(3)])
+    body_rgb = np.where((head_a >= 0.5)[..., None], near_rgb, body_rgb).astype(np.float32)
     behind = body_a[..., None] * body_rgb + (1.0 - body_a[..., None]) * ground
     head_rgb = unmix(portrait, head_a, behind)
 

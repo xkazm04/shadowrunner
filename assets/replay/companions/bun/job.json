@@ -44,7 +44,22 @@
         "anchor": [
           512,
           1024
-        ]
+        ],
+        "regions": {
+          "map": "body.regions.png",
+          "slots": [
+            {
+              "id": "strings",
+              "name": "strings",
+              "hex": "#b6edd1"
+            },
+            {
+              "id": "hoodie",
+              "name": "hoodie",
+              "hex": "#f7e4d8"
+            }
+          ]
+        }
       },
       {
         "name": "head",
@@ -60,7 +75,22 @@
         "anchor": [
           515,
           600
-        ]
+        ],
+        "regions": {
+          "map": "head.regions.png",
+          "slots": [
+            {
+              "id": "headphones",
+              "name": "headphones",
+              "hex": "#fcdade"
+            },
+            {
+              "id": "hair",
+              "name": "hair",
+              "hex": "#fc99b9"
+            }
+          ]
+        }
       }
     ],
     "mouth": {
@@ -103,8 +133,8 @@
             131
           ],
           "cell": [
-            2,
-            865,
+            361,
+            1321,
             397,
             131
           ]
@@ -119,8 +149,8 @@
             131
           ],
           "cell": [
-            403,
-            865,
+            2,
+            1460,
             397,
             131
           ]
@@ -129,300 +159,679 @@
           "id": "open_mid",
           "track": "openMid",
           "bbox": [
-            446,
-            478,
-            137,
-            106
+            437,
+            468,
+            157,
+            125
           ],
           "cell": [
-            1023,
-            1000,
-            137,
-            106
+            2,
+            1595,
+            157,
+            125
+          ],
+          "flowCell": [
+            379,
+            251,
+            40,
+            32
+          ],
+          "flowMax": 9,
+          "backCell": [
+            421,
+            251,
+            40,
+            32
           ]
         },
         {
           "id": "open_wide",
           "track": "openWide",
           "bbox": [
-            438,
-            474,
-            155,
-            133
+            429,
+            465,
+            173,
+            152
           ],
           "cell": [
-            880,
-            726,
-            155,
-            133
+            314,
+            1165,
+            173,
+            152
+          ],
+          "flowCell": [
+            443,
+            207,
+            44,
+            38
+          ],
+          "flowMax": 9,
+          "backCell": [
+            489,
+            207,
+            44,
+            38
           ]
         },
         {
           "id": "round",
           "track": "round",
           "bbox": [
-            446,
-            478,
-            139,
-            106
+            437,
+            468,
+            157,
+            125
           ],
           "cell": [
-            737,
-            1000,
-            139,
-            106
+            163,
+            1595,
+            157,
+            125
+          ],
+          "flowCell": [
+            463,
+            251,
+            40,
+            32
+          ],
+          "flowMax": 6,
+          "backCell": [
+            505,
+            251,
+            40,
+            32
           ]
         },
         {
           "id": "closed",
           "track": "closed",
           "bbox": [
-            446,
-            478,
-            139,
-            85
+            437,
+            469,
+            157,
+            94
           ],
           "cell": [
-            1164,
-            1000,
-            139,
-            85
+            363,
+            1724,
+            157,
+            94
+          ],
+          "flowCell": [
+            431,
+            287,
+            40,
+            24
+          ],
+          "flowMax": 2,
+          "backCell": [
+            473,
+            287,
+            40,
+            24
           ]
         },
         {
           "id": "teeth",
           "track": "teeth",
           "bbox": [
-            446,
-            477,
-            139,
-            107
+            437,
+            468,
+            157,
+            125
           ],
           "cell": [
-            451,
-            1000,
-            139,
-            107
+            324,
+            1595,
+            157,
+            125
+          ],
+          "flowCell": [
+            1,
+            287,
+            40,
+            32
+          ],
+          "flowMax": 5,
+          "backCell": [
+            43,
+            287,
+            40,
+            32
           ]
         },
         {
           "id": "tongue",
           "track": "tongue",
           "bbox": [
-            446,
-            478,
-            139,
-            106
+            437,
+            468,
+            148,
+            125
           ],
           "cell": [
-            880,
-            1000,
-            139,
-            106
+            485,
+            1595,
+            148,
+            125
+          ],
+          "flowCell": [
+            85,
+            287,
+            37,
+            32
+          ],
+          "flowMax": 9,
+          "backCell": [
+            124,
+            287,
+            37,
+            32
           ]
         },
         {
           "id": "narrow",
           "track": "narrow",
           "bbox": [
-            446,
-            477,
-            139,
-            107
+            437,
+            471,
+            157,
+            122
           ],
           "cell": [
-            594,
-            1000,
-            139,
-            107
+            637,
+            1595,
+            157,
+            122
+          ],
+          "flowCell": [
+            163,
+            287,
+            40,
+            31
+          ],
+          "flowMax": 7,
+          "backCell": [
+            205,
+            287,
+            40,
+            31
           ]
         },
         {
           "id": "gaze_l",
           "track": "gazeL",
           "bbox": [
-            292,
+            318,
             355,
-            446,
+            384,
             125
           ],
           "cell": [
-            804,
-            865,
-            446,
+            403,
+            1460,
+            384,
             125
           ],
           "flowCell": [
-            1,
-            73,
-            112,
+            183,
+            251,
+            96,
             32
           ],
-          "flowMax": 21
+          "flowMax": 46,
+          "backCell": [
+            281,
+            251,
+            96,
+            32
+          ]
         },
         {
           "id": "gaze_r",
           "track": "gazeR",
           "bbox": [
-            293,
-            360,
-            445,
-            120
+            337,
+            362,
+            357,
+            118
           ],
           "cell": [
             2,
-            1000,
-            445,
-            120
+            1724,
+            357,
+            118
           ],
           "flowCell": [
-            1,
-            107,
-            112,
+            247,
+            287,
+            90,
             30
           ],
-          "flowMax": 21
+          "flowMax": 44,
+          "backCell": [
+            339,
+            287,
+            90,
+            30
+          ]
         },
         {
           "id": "gaze_u",
           "track": "gazeU",
           "bbox": [
-            298,
+            338,
             345,
-            435,
+            355,
             135
           ],
           "cell": [
             2,
-            726,
-            435,
+            1321,
+            355,
             135
           ],
           "flowCell": [
             1,
-            1,
-            109,
+            251,
+            89,
             34
           ],
-          "flowMax": 13
+          "flowMax": 14,
+          "backCell": [
+            92,
+            251,
+            89,
+            34
+          ]
         },
         {
           "id": "gaze_d",
           "track": "gazeD",
           "bbox": [
-            298,
-            345,
-            435,
-            135
+            314,
+            336,
+            398,
+            153
           ],
           "cell": [
-            441,
-            726,
-            435,
-            135
+            316,
+            994,
+            398,
+            153
           ],
           "flowCell": [
-            1,
-            37,
-            109,
-            34
+            81,
+            207,
+            100,
+            39
           ],
-          "flowMax": 13
+          "flowMax": 34,
+          "backCell": [
+            183,
+            207,
+            100,
+            39
+          ]
         },
         {
-          "id": "joy",
+          "id": "joy_upper",
           "track": "joy",
+          "part": "upper",
           "bbox": [
             319,
             266,
             390,
-            363
+            211
           ],
           "cell": [
-            403,
+            407,
             2,
             390,
-            363
+            211
+          ],
+          "flowCell": [
+            207,
+            1,
+            98,
+            53
+          ],
+          "flowMax": 18,
+          "backCell": [
+            307,
+            1,
+            98,
+            53
           ]
         },
         {
-          "id": "showman",
+          "id": "joy_lower",
+          "track": "joy",
+          "part": "lower",
+          "bbox": [
+            345,
+            455,
+            353,
+            175
+          ],
+          "cell": [
+            2,
+            637,
+            353,
+            175
+          ],
+          "flowCell": [
+            399,
+            112,
+            89,
+            44
+          ],
+          "flowMax": 9,
+          "backCell": [
+            1,
+            161,
+            89,
+            44
+          ]
+        },
+        {
+          "id": "showman_upper",
           "track": "showman",
+          "part": "upper",
           "bbox": [
             315,
-            264,
-            397,
-            365
+            262,
+            401,
+            215
           ],
           "cell": [
             2,
             2,
-            397,
-            365
+            401,
+            215
+          ],
+          "flowCell": [
+            1,
+            1,
+            101,
+            54
+          ],
+          "flowMax": 25,
+          "backCell": [
+            104,
+            1,
+            101,
+            54
           ]
         },
         {
-          "id": "anger",
+          "id": "showman_lower",
+          "track": "showman",
+          "part": "lower",
+          "bbox": [
+            322,
+            455,
+            389,
+            174
+          ],
+          "cell": [
+            2,
+            816,
+            389,
+            174
+          ],
+          "flowCell": [
+            199,
+            112,
+            98,
+            44
+          ],
+          "flowMax": 10,
+          "backCell": [
+            299,
+            112,
+            98,
+            44
+          ]
+        },
+        {
+          "id": "anger_upper",
           "track": "anger",
+          "part": "upper",
           "bbox": [
             324,
             270,
             381,
-            358
+            207
           ],
           "cell": [
-            797,
-            2,
+            393,
+            221,
             381,
-            358
+            207
+          ],
+          "flowCell": [
+            100,
+            57,
+            96,
+            52
+          ],
+          "flowMax": 12,
+          "backCell": [
+            198,
+            57,
+            96,
+            52
           ]
         },
         {
-          "id": "gloom",
+          "id": "anger_lower",
+          "track": "anger",
+          "part": "lower",
+          "bbox": [
+            368,
+            455,
+            300,
+            173
+          ],
+          "cell": [
+            395,
+            816,
+            300,
+            173
+          ],
+          "flowCell": [
+            272,
+            161,
+            75,
+            44
+          ],
+          "flowMax": 5,
+          "backCell": [
+            349,
+            161,
+            75,
+            44
+          ]
+        },
+        {
+          "id": "gloom_upper",
           "track": "gloom",
+          "part": "upper",
           "bbox": [
             318,
             279,
             392,
-            351
+            198
           ],
           "cell": [
             2,
-            371,
+            435,
             392,
-            351
+            198
+          ],
+          "flowCell": [
+            296,
+            57,
+            98,
+            50
+          ],
+          "flowMax": 28,
+          "backCell": [
+            396,
+            57,
+            98,
+            50
           ]
         },
         {
-          "id": "smug",
+          "id": "gloom_lower",
+          "track": "gloom",
+          "part": "lower",
+          "bbox": [
+            343,
+            455,
+            352,
+            175
+          ],
+          "cell": [
+            359,
+            637,
+            352,
+            175
+          ],
+          "flowCell": [
+            92,
+            161,
+            88,
+            44
+          ],
+          "flowMax": 6,
+          "backCell": [
+            182,
+            161,
+            88,
+            44
+          ]
+        },
+        {
+          "id": "smug_upper",
           "track": "smug",
+          "part": "upper",
           "bbox": [
             319,
             267,
             387,
-            340
+            210
           ],
           "cell": [
-            398,
-            371,
+            2,
+            221,
             387,
-            340
+            210
+          ],
+          "flowCell": [
+            407,
+            1,
+            97,
+            53
+          ],
+          "flowMax": 19,
+          "backCell": [
+            1,
+            57,
+            97,
+            53
           ]
         },
         {
-          "id": "suspicion",
+          "id": "smug_lower",
+          "track": "smug",
+          "part": "lower",
+          "bbox": [
+            364,
+            455,
+            308,
+            152
+          ],
+          "cell": [
+            2,
+            1165,
+            308,
+            152
+          ],
+          "flowCell": [
+            285,
+            207,
+            77,
+            38
+          ],
+          "flowMax": 9,
+          "backCell": [
+            364,
+            207,
+            77,
+            38
+          ]
+        },
+        {
+          "id": "suspicion_upper",
           "track": "suspicion",
+          "part": "upper",
           "bbox": [
             320,
             289,
             386,
-            333
+            188
           ],
           "cell": [
-            789,
-            371,
+            398,
+            435,
             386,
-            333
+            188
+          ],
+          "flowCell": [
+            1,
+            112,
+            97,
+            47
+          ],
+          "flowMax": 17,
+          "backCell": [
+            100,
+            112,
+            97,
+            47
+          ]
+        },
+        {
+          "id": "suspicion_lower",
+          "track": "suspicion",
+          "part": "lower",
+          "bbox": [
+            359,
+            455,
+            310,
+            167
+          ],
+          "cell": [
+            2,
+            994,
+            310,
+            167
+          ],
+          "flowCell": [
+            426,
+            161,
+            78,
+            42
+          ],
+          "flowMax": 14,
+          "backCell": [
+            1,
+            207,
+            78,
+            42
           ]
         }
       ],
@@ -444,22 +853,24 @@
   },
   "built": {
     "tool": "tools/portrait-keys",
-    "keys": 19,
+    "keys": 25,
     "refused": [],
     "atlas": [
-      1305,
-      1122
+      799,
+      1844
     ],
     "flow": [
-      114,
-      138
+      546,
+      320
     ],
     "bytes": {
-      "atlas.webp": 356850,
+      "atlas.webp": 444244,
       "background.webp": 4104,
-      "body.webp": 46954,
-      "flow.png": 3427,
-      "head.webp": 128652,
+      "body.regions.png": 3240,
+      "body.webp": 60718,
+      "flow.png": 110499,
+      "head.regions.png": 10488,
+      "head.webp": 154168,
       "sway.webp": 5790
     }
   }

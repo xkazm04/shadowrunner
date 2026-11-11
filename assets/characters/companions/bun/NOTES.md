@@ -1,46 +1,45 @@
 # Bun: notes
 
 Anime streamer (pink hair, side ponytail, cream cat-ear headphones, sky-blue ground). Built by
-`tools/portrait-keys` from `portrait.png`, `recipe.json` and `edits/*.webp`; see `report.json` in
-`assets/replay/companions/bun/` for every gate figure.
+`tools/portrait-keys`; gate figures in `assets/replay/companions/bun/report.json`, sheets in
+`var/companion-lanes/sheets/bun/`.
 
 ## Measured layout (1024 px)
-- Pupils (the morph's `eyes`): (432, 417) and (598, 417). Iris radius about 40 px (big anime eyes).
-- Eye openings x 347-472 and 560-680, y 367-450. Mouth: x 489-542 (width 54), line y 527, centre
-  515. Chin point about y 602.
-- Regions: `eyes` two ellipses 82 x 54; `gaze` the same widened to 120 x 56 (room for a gentle
-  motion ramp); `mouth` 58 x 42 about (515, 530); `mouthWide` 66 x 60 about (515, 545); `face`
-  190 x 175 about (515, 450), fringe to chin (the face edits redraw fringe strands over the brows).
+- Pupils (the morph's `eyes`): (432, 417) and (598, 417). Iris radius about 40 px. Eye openings:
+  ellipses 74 x 34 about (410, 414) and (620, 414); the iris is taller than its opening.
+- Mouth: x 489-542 (width 54), line y 527, centre 515. Chin point about y 602.
+- Regions: `eyes` 82 x 54; `gaze` 120 x 56; `mouth` 58 x 42; `mouthWide` 66 x 60; `face` 190 x 175
+  about (515, 450), fringe to chin.
+- Cheek line (`faceSplitY`): y 466, a 24 px band (454-478), below the lower lashes (about 450) and
+  above the mouth (527); there are no creases in this style.
 
-## Recipe decisions
-- Mattes: as Iris. The ground check (pink against sky blue) lowers 1.1 % of the figure's pixels:
-  gaps between strands that the matte edit painted over now show the ground, with no blue inside the
-  layer. Recomposed vs the portrait: mean 0.27/255, p99 4.6/255.
-- Head anchor (515, 600), body anchor (512, 1024).
-- Flow per key, judged on the strips:
-  - blink, mouth keys, face families: `none` (cross-fade). Flat fills give DIS nothing to follow
-    (the prototype's smear); on the strips a cross-fade of flat anime art reads as a quick dissolve.
-  - gaze: `iris` (translation per eye, L/R 39-46 px, U 13 px, D 33 px). Better than the cross-fade
-    (one iris travels further before the second appears), but the shader's two-step inversion holds
-    only 0.37-0.92 of the move, so gaze_l / gaze_r still show a second, fainter iris at 0.5-0.75.
-    See "Open" below.
-- Blink: two stops, `blink_half` at 0.5 and `blink` at 1.
-- Face profile: lively (gaze range 0.7, 1.6 saccades/s, drift and tilt 1.3, gesture 1.4, breath 0.4,
-  expression strength 1).
-- Turn: warp 0.5, light 0.3.
-- Sway: amp 9 px; hair ends and the ponytail (boosted to at least 0.8), cat ears capped at 0.3,
-  headphone cups and the face/jaw held at 0.
+## Recipe decisions (round 2)
+- Mattes as Iris, plus the ground check (pink on sky blue). The neck under the hair takes its colour
+  from the nearest clear neck pixel: the light sliver at the right of the neck when the head moves
+  is down to a faint line. Keys snap to the portrait where nothing moves and the edit is within
+  the editor's noise: the grey halo round `open_wide` is gone.
+- Motion: mouth keys and the six families `optical` (sigma 12, F from G); on the strips they beat
+  the cross-fade (one mouth shape, one pair of eyes, no double outlines). Blink and blink_half stay
+  `none`: optical blink smeared the iris under the lid (a purple crescent at 0.75-1.0). Gaze `iris`
+  (L/R 39-46 px, U 13, D 33); a vertical field may reach 2.5 times the opening's half height
+  (`gazeReach`) so the whole iris travels.
+- Weight 1 at codec error (0.7-2.2/255); upper + lower 1.3-1.7/255.
+- Recolour: head `headphones` (cat ears whole; cream, mint and outline pixels above y 300 and in
+  the cups), `hair` (pink, hue 0.86-0.985, lightness 0.36-0.97; lips left out); body `strings`
+  (mint drawstrings and grommets), `hoodie` (all but pink hair bits and the neck skin).
+- Face profile lively; turn warp 0.5, light 0.3; sway amp 9 px.
+- WebP q95: head sharpness 0.971 of the portrait, keys 0.98-1.02.
 
-## What the sheets show
-- Layers: clean pink edges over all three grounds; thin strands keep a little lilac where they are
-  semi-transparent. Hoodie bits visible between hair strands at the shoulders are in the art.
-- Seam: no line under the chin with the head moved 6, 4 px; a 1-2 px light sliver shows at the right
-  side of the neck where hair meets neck (the body colour pushed under the hair edge).
-- open_wide: a faint grey halo round the open mouth at weight 1 (the edit's own shading).
+## What the strips show
+- gaze_l/r: one iris travels; strands crossing the eye bend with it at 0.25-0.75 and the lash line
+  slides a little. gaze_d: the iris moves down whole; its lower part is a shade lighter mid-way.
+- open_wide / open_mid / round: the mouth opens as one shape (reveal brings the inside in early).
+- blink: a cross-fade through the half stop, short enough not to read as a ghost.
 
-## Open
-- The anime gaze would be clean with half-way gaze edits as extra stops (gaze_l_half at 0.5, the
-  design's "extra stop" fallback) or with more fixed-point steps in the shader.
+## Known
+- Recolour reads the region map at the displaced point: under a gaze key, eye-white pixels whose
+  back motion lands on a strand take a faint hair tint at the eye corners. "Black" hoodie reads light
+  grey (the rule keeps lightness).
 
 ## Refused keys
-None: all 19 keys pass every gate.
+None: 13 keys plus 6 families x 2 parts pass every gate.

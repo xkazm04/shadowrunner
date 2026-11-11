@@ -106,49 +106,49 @@
       "track": "openMid",
       "edit": "openMid",
       "region": "mouth",
-      "flow": "none"
+      "flow": "optical"
     },
     {
       "id": "open_wide",
       "track": "openWide",
       "edit": "openWide",
       "region": "mouthWide",
-      "flow": "none"
+      "flow": "optical"
     },
     {
       "id": "round",
       "track": "round",
       "edit": "round",
       "region": "mouth",
-      "flow": "none"
+      "flow": "optical"
     },
     {
       "id": "closed",
       "track": "closed",
       "edit": "closed",
       "region": "mouth",
-      "flow": "none"
+      "flow": "optical"
     },
     {
       "id": "teeth",
       "track": "teeth",
       "edit": "teeth",
       "region": "mouth",
-      "flow": "none"
+      "flow": "optical"
     },
     {
       "id": "tongue",
       "track": "tongue",
       "edit": "tongue",
       "region": "mouth",
-      "flow": "none"
+      "flow": "optical"
     },
     {
       "id": "narrow",
       "track": "narrow",
       "edit": "narrow",
       "region": "mouth",
-      "flow": "none"
+      "flow": "optical"
     },
     {
       "id": "gaze_l",
@@ -183,42 +183,42 @@
       "track": "joy",
       "edit": "joy",
       "region": "face",
-      "flow": "none"
+      "flow": "optical"
     },
     {
       "id": "showman",
       "track": "showman",
       "edit": "showman",
       "region": "face",
-      "flow": "none"
+      "flow": "optical"
     },
     {
       "id": "anger",
       "track": "anger",
       "edit": "anger",
       "region": "face",
-      "flow": "none"
+      "flow": "optical"
     },
     {
       "id": "gloom",
       "track": "gloom",
       "edit": "gloom",
       "region": "face",
-      "flow": "none"
+      "flow": "optical"
     },
     {
       "id": "smug",
       "track": "smug",
       "edit": "smug",
       "region": "face",
-      "flow": "none"
+      "flow": "optical"
     },
     {
       "id": "suspicion",
       "track": "suspicion",
       "edit": "suspicion",
       "region": "face",
-      "flow": "none"
+      "flow": "optical"
     }
   ],
   "sway": {
@@ -381,6 +381,302 @@
   ],
   "irisRadius": 40,
   "gates": {
-    "invertPx": 1.5
-  }
+    "flowSigma": 12,
+    "flowFrom": "back",
+    "gazeReach": 2.5
+  },
+  "openings": [
+    [
+      410,
+      414,
+      74,
+      34
+    ],
+    [
+      620,
+      414,
+      74,
+      34
+    ]
+  ],
+  "recolour": {
+    "head": [
+      {
+        "id": "headphones",
+        "name": "headphones",
+        "parts": [
+          {
+            "within": [
+              {
+                "ellipses": [
+                  [
+                    310,
+                    105,
+                    68,
+                    78
+                  ],
+                  [
+                    715,
+                    105,
+                    68,
+                    78
+                  ]
+                ]
+              }
+            ]
+          },
+          {
+            "within": [
+              {
+                "box": [
+                  0,
+                  0,
+                  1024,
+                  300
+                ]
+              },
+              {
+                "ellipses": [
+                  [
+                    262,
+                    415,
+                    48,
+                    95
+                  ],
+                  [
+                    752,
+                    415,
+                    48,
+                    95
+                  ]
+                ]
+              }
+            ],
+            "colour": [
+              {
+                "hue": [
+                  [
+                    0.04,
+                    0.22
+                  ]
+                ],
+                "light": [
+                  0.35,
+                  1.0
+                ]
+              },
+              {
+                "hue": [
+                  [
+                    0.25,
+                    0.6
+                  ]
+                ]
+              },
+              {
+                "light": [
+                  0.0,
+                  0.35
+                ]
+              }
+            ],
+            "except": [
+              {
+                "hue": [
+                  [
+                    0.86,
+                    0.985
+                  ]
+                ],
+                "sat": [
+                  0.2,
+                  1.0
+                ],
+                "light": [
+                  0.2,
+                  0.97
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "hair",
+        "name": "hair",
+        "parts": [
+          {
+            "colour": [
+              {
+                "hue": [
+                  [
+                    0.86,
+                    0.985
+                  ]
+                ],
+                "sat": [
+                  0.2,
+                  1.0
+                ],
+                "light": [
+                  0.36,
+                  0.97
+                ]
+              }
+            ],
+            "without": [
+              {
+                "ellipses": [
+                  [
+                    515,
+                    530,
+                    40,
+                    25
+                  ]
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "body": [
+      {
+        "id": "strings",
+        "name": "strings",
+        "parts": [
+          {
+            "colour": [
+              {
+                "hue": [
+                  [
+                    0.28,
+                    0.56
+                  ]
+                ],
+                "sat": [
+                  0.12,
+                  1.0
+                ]
+              }
+            ],
+            "within": [
+              {
+                "box": [
+                  380,
+                  740,
+                  260,
+                  280
+                ]
+              }
+            ]
+          },
+          {
+            "within": [
+              {
+                "ellipses": [
+                  [
+                    430,
+                    772,
+                    18,
+                    16
+                  ],
+                  [
+                    597,
+                    772,
+                    18,
+                    16
+                  ]
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "hoodie",
+        "name": "hoodie",
+        "parts": [
+          {
+            "except": [
+              {
+                "hue": [
+                  [
+                    0.86,
+                    0.985
+                  ]
+                ],
+                "sat": [
+                  0.2,
+                  1.0
+                ],
+                "light": [
+                  0.2,
+                  0.97
+                ]
+              },
+              {
+                "hue": [
+                  [
+                    0.0,
+                    0.085
+                  ],
+                  [
+                    0.985,
+                    1.0
+                  ]
+                ],
+                "sat": [
+                  0.25,
+                  1.0
+                ],
+                "light": [
+                  0.55,
+                  1.0
+                ]
+              }
+            ]
+          },
+          {
+            "colour": [
+              {
+                "hue": [
+                  [
+                    0.0,
+                    0.085
+                  ],
+                  [
+                    0.985,
+                    1.0
+                  ]
+                ],
+                "sat": [
+                  0.25,
+                  1.0
+                ],
+                "light": [
+                  0.55,
+                  1.0
+                ]
+              }
+            ],
+            "without": [
+              {
+                "ellipses": [
+                  [
+                    512,
+                    650,
+                    78,
+                    108
+                  ]
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "faceSplitY": 466,
+  "faceSplitBand": 24
 }

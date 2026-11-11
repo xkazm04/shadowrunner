@@ -96,7 +96,7 @@ def key_strips(out: Path, morph: Morph, under: np.ndarray, size: int) -> None:
         if "flowCell" in k:
             plain = Morph.__new__(Morph)
             plain.head, plain.atlas, plain.flow = morph.head, morph.atlas, None
-            plain.keys = [{kk: vv for kk, vv in k.items() if kk not in ("flowCell", "flowMax")}]
+            plain.keys = [{kk: vv for kk, vv in k.items() if kk not in ("flowCell", "flowMax", "backCell")}]
             rows.append(hcat([label(zoom(_frame(plain, under, {k["id"]: t}, box), f), f"fade {t:.2f}") for t in (0, 0.25, 0.5, 0.75, 1.0)]))
         jpg(out / f"key-{k['id']}.jpg", vcat(rows))
     tracks = sorted({k["track"] for k in morph.keys if sum(1 for j in morph.keys if j["track"] == k["track"]) > 1})
@@ -125,3 +125,21 @@ def sway_sheet(out: Path, head: np.ndarray, sway: np.ndarray) -> None:
     g = head[..., :3].mean(-1, keepdims=True) * head[..., 3:4]
     img = np.concatenate([np.maximum(g[..., 0], sway)[..., None], g, g], axis=-1)
     jpg(out / "sway.jpg", cv2.resize(img, None, fx=0.5, fy=0.5, interpolation=cv2.INTER_AREA))
+
+
+SLOT_TINTS = np.array([[1.0, 0.2, 0.2], [0.2, 0.5, 1.0], [0.2, 0.9, 0.3], [1.0, 0.8, 0.1]], np.float32)
+
+
+def region_sheet(out: Path, name: str, rgba: np.ndarray, imap: np.ndarray, inspect: list[list[int]]) -> None:
+    """The layer with each slot tinted (red, blue, green, yellow; untinted = no slot), over grey, and
+    the inspect boxes at 2x: where each boundary sits."""
+    base = straight_over(rgba, np.full(3, 0.5, np.float32))
+    tint = base.copy()
+    for i in range(4):
+        m = (imap == i + 1) & (rgba[..., 3] > 0)
+        tint[m] = 0.45 * base[m] + 0.55 * SLOT_TINTS[i]
+    rows = [hcat([label(cv2.resize(base, None, fx=0.5, fy=0.5, interpolation=cv2.INTER_AREA), f"{name}"),
+                  label(cv2.resize(tint, None, fx=0.5, fy=0.5, interpolation=cv2.INTER_AREA), f"{name} regions")])]
+    for x, y, w, h in inspect:
+        rows.append(hcat([label(zoom(base[y:y + h, x:x + w], 2), f"{x},{y}"), label(zoom(tint[y:y + h, x:x + w], 2), "regions")]))
+    jpg(out / f"regions-{name}.jpg", vcat(rows))
