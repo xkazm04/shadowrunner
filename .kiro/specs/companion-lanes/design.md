@@ -146,10 +146,15 @@ tracks more stops: Iris `openWide_half` (an even oval halfway to the wide "ah"),
   sliding, with no doubled lid or iris smudge at any in-between weight, also over a held expression.
 - Bun `gaze_d`: no ring of the old iris; Bun gazes: hair strands crossing the eye do not move with
   the iris (the head's `hair` region is excluded from the gaze fields).
-- Region recolour moves lightness as well as hue. The rule (shared with the Halloween cast,
-  character-control "Recolour") keeps the art's shading but maps the slot's reference lightness
-  `lr` (from the slot's `hex`) to the target's `lt` through the piecewise-linear curve
-  `(0,0) - (lr,lt) - (1,1)`; `lt = lr` is the identity. Lights (glow, eye, mouth) keep the old rule.
+- Region recolour can move lightness as well as hue, opt-in per slot: `RegionSlot.shade?: "move"`
+  (omitted when absent). On such a slot the pixel's lightness goes through the piecewise-linear
+  curve `(0,0) - (lr,lt) - (1,1)`, `lr` the lightness of the slot's `hex`, `lt` the target's, both
+  clamped to [1/256, 1 - 1/256] (so `lt = lr` is the identity). Every other slot, and the lights
+  (glow, eye, mouth), keep character-control's rule unchanged. Why opt-in: the forge splits
+  near-grey pixels into lightness bands (`packages/forge/src/regions.ts`); moving one band's
+  lightness tore it from its neighbours on Sister Vesper (posterised strands, a lit backdrop
+  trapezoid), while material slots (the companions', Lot Ninety's suit) map cleanly. The portrait
+  builder writes `shade: "move"` on every companion slot; the cast is byte-for-byte as before.
 
 ## Builder
 `tools/portrait-keys/build.py` (Python 3.12: numpy, opencv-python, pillow; `requirements.txt`).
