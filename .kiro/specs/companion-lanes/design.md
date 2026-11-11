@@ -170,6 +170,18 @@ tracks more stops: Iris `openWide_half` (an even oval halfway to the wide "ah"),
   region still tore the lash line and the iris at each strand's edge (worse than the bend); a real
   fix draws the strands over the moved eye (a strand layer, or a hair region read unmoved).
 
+### Round 5 (2026-11-11): soft region edges
+Seen once recolour could reach white and black: a binary region map leaves part-hair, part-skin
+pixels (Iris's fringe tips, the bob's rim) untouched, a jagged silver band. `LayerRegions.soft?: true`
+(omitted when absent): the map's G channel is the pixel's coverage 0..255 of the slot R names, and
+both renderers draw `mix(without, slot result, coverage)` (R and G from one nearest texel). Without
+the flag G is ignored (the forge writes G = 0; the companions' old maps were greyscale), so the cast
+is unchanged. `regions.py` computes coverage by unmixing chroma between the local hair colour and
+the local outside colour in a band about the binary edge, fades it outward only where the slot's
+own `within`/`without` shapes allow, and fills "pockets" (free pixels between two hair pixels on a
+row, Iris's fringe notches, whose chroma is skin's). Clothes slots stay binary. Left: a faint haze
+beside Iris's left ear with white hair; Bun's eye-corner specks under a recoloured gaze.
+
 ## Builder
 `tools/portrait-keys/build.py` (Python 3.12: numpy, opencv-python, pillow; `requirements.txt`).
 `python tools/portrait-keys/build.py <character dir> --out <built dir> [--sheets <dir>]`.
