@@ -3,6 +3,9 @@
 websockets>=13,<16
 anthropic>=0.60
 Pillow>=10
+# BiRefNet matting (th/live/matte): its remote code imports timm and kornia at load.
+timm>=1.0
+kornia>=0.7
 # FlashHead imports mediapipe 0.10.9 (a numpy 1 build) at load; kokoro-onnx needs numpy 2, so Kokoro runs
 # in a worker in the core th env (th/live/tts.py), never in this env.
 numpy<2
