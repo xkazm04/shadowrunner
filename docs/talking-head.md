@@ -588,3 +588,105 @@ Reading it:
 - The lab's own `avOffsetMs` (mouth-ROI motion against loudness, `pnpm lab th-import` + `measure`) came
   out low or medium confidence on these runs (z 1.6-2.4) and disagrees with SyncNet on a2f-keys, dub-ls
   and diffusion-sa; SyncNet is the sync measure of record here.
+
+## Live (`th live`, spec `flashhead-live`)
+
+Live Iris on SoulX-FlashHead Lite: a local WebSocket server streams her face and voice on one clock
+(protocol `fhl/1`, `.kiro/specs/flashhead-live/design.md`); the web app's `/live` drives it and
+`/live?out=1` shows it.
+
+```
+uv run th fetch realtime-fh             # once: FlashHead repo, env and weights
+uv run th live [--port 8765] [--upscale maxine|none|realesrgan] [--allow-origin <origin>]...
+uv run th live --fake                   # synthetic face and voice, no GPU (UI work)
+uv run th live-bench --script pitch-45s --upscale none
+uv run th live-bench --idle-s 20 --upscale none
+```
+
+- `th live` (core env) installs `th/live/requirements.txt` into the FlashHead env once (the marker
+  `$TH_HOME/envs/realtime-fh/.th-live-requirements` holds the list's hash), fetches NVIDIA's
+  `nvidia-vfx` wheel when the upscaler is `maxine` (the default; idempotent), then runs
+  `python -m th.live serve` in the FlashHead env with tools/talking-head on `PYTHONPATH`. The child
+  exits when `th live` exits, however it ends.
+- If the upscaler cannot load (or fails on a chunk), the stream carries on with `none`: one `error`
+  event names the reason and `state` says `upscale: "none"`.
+- Bound to 127.0.0.1 only. `GET /health` answers `{"ok":true,"proto":"fhl/1"}` (with CORS for allowed
+  origins). Browser origins other than `http://localhost:*`, `http://127.0.0.1:*` and each
+  `--allow-origin` are closed with code 4403. A client that sends no Origin is a local process and
+  is accepted.
+
+### How it runs
+
+- **Input**: Iris's portrait cropped to the bust, box (192,140)-(832,780) of the 1024 portrait,
+  written to `$TH_HOME/live/iris-bust.png` and passed with `use_face_crop` off.
+- **Engine** (`th/live/engine.py`): one GPU thread turns each 0.96 s slice of 16 kHz audio into 24
+  frames, forever. Stream clock: ms since streaming began; frame i has pts i*40. A FIFO of audio
+  segments (say/chat sentences, mic packets) feeds the slices, padded with silence. The audio each
+  chunk consumed is the audio sent for it, at the pts of its first sample, so lip-sync holds by
+  construction. Silence is fed to the model, never sent.
+- **Pacing and queue bound**: a chunk starts computing at most 2 chunks (1.92 s) before its pts when
+  a full slice of speech is waiting, and 1 chunk before when idle or starved (so a new line still
+  makes the next chunk). The encode/emit queue holds 2 chunks and blocks the GPU thread beyond that.
+  A chunk that would start a whole chunk late is skipped (`droppedChunks`), never drifted.
+- **Frames**: upscaled on the GPU, JPEG-encoded (quality 90) on a 4-thread pool, so the GPU loop
+  never waits on encoding; an emitter thread sends finished chunks in order. Each client has its own
+  send queue; a viewer more than 300 messages behind loses binary messages, never JSON.
+- **Voice** (`th/live/tts.py`): Kokoro (`af_heart`, as `th audio`) sentence by sentence. kokoro-onnx
+  needs numpy 2 and the FlashHead env is pinned to numpy 1 (mediapipe), so Kokoro runs in ONE worker
+  process in the core env (`python -m th.live.tts_worker`), started with the server (model load plus
+  one warm-up sentence, ~1.5 s, while FlashHead loads) and reused for every sentence. Audio is
+  resampled to 16 kHz for FlashHead and played at 24 kHz.
+- **Lines** (`th/live/speaker.py`): `say` lines are FIFO. A `chat` turn is one line whose id is the
+  chat message id: `line-start`, one `reply-text` per sentence (at that sentence's first sample),
+  `line-end`. A new chat or `stop` cancels the reply task (which closes the LLM stream) and drops
+  its unsent audio.
+- **Stop**: cut lines get `line-end` with `text: "stopped"`. Audio not yet sent is dropped at once;
+  frames keep flowing (the stream never stops). The out client may still hold up to its playout
+  buffer of speech it already received.
+- **Puppet**: binary 0x10 PCM16 16 kHz is fed to FlashHead as is and echoed as 0x02 at its pts; the
+  mic backlog is capped at 2 slices (oldest dropped). `say`/`chat` are refused while the source is
+  `mic`.
+- **Slides**: `slide` + one 0x13 is relayed as 0x03 to every `out` client plus an `event` `slide`
+  (index in `text`); an empty image clears the slide (empty 0x03, `text: null`).
+- **`state.delayMs`**: median over the last 5 lines of (line-start pts - stream ms at the command's
+  receipt) plus the out client's 250 ms playout buffer; before any line, 1.69 s.
+- **`timing.firstFrameMs`**: command receipt to the first video frame of that line leaving the
+  server (handed to the client queues).
+
+### live-bench
+
+`th live-bench` takes the GPU lock and runs the same engine headless in the FlashHead env. A script's
+paragraphs are said one line at a time (each 0.6 s after the previous `line-end`, after 2 s of idle),
+so every line's `firstFrameMs` is a cold command. The run dir holds `raw.mp4` (output size),
+`speech.wav` (the sent audio placed at its pts), `video.mp4` (normalised as `th render`),
+`run.json` (`arm: "live-fh"`), `bench.json` (raw per-chunk figures) and `live.json` (`th-live/1`):
+`fps` (frames sent before their pts per stream second: 25.0 exactly when nothing was late or
+dropped), `capacityFps` (24 / chunk compute s, p50 and p95), `chunkMs`, `upscaleMs`, `droppedChunks`,
+`lateChunks`, `slackMs` (pts minus emission time), per-line `firstFrameMs`/`ttsFirstMs`,
+`sharpness` (mean variance of the Laplacian on the face crop of video.mp4, grey, 1 frame/s), SyncNet,
+identity and the GPU co-tenants. `--idle-s N` streams N s of silence and adds `idle-sheet.png`
+(6 frames), `idle-5s.mp4` and `idle.json`.
+
+### Measured (RTX 4090, 2026-11-16, upscale none)
+
+pitch-45s, seed 1116, with World of Warcraft on the GPU (3.85 GB):
+
+| figure | value |
+| --- | --- |
+| delivered | 25.0 fps: 0 late, 0 dropped of 50 chunks; slack min 277 ms |
+| capacity | 35.4 fps (chunk p50 679 ms, p95 701 ms, max 721 ms) |
+| SyncNet conf (offset) | 8.33 (-1) |
+| identity mean / min / p5 | 0.974 / 0.949 / 0.959 (0.889 / 0.782 for the wide portrait, `realtime-fh`) |
+| firstFrameMs per line | 805, 1065, 1185, 1299 (Kokoro first sentence 376-602 ms) |
+| VRAM | 6.1 GB; model load 10.7 s; Kokoro worker ready 1.4 s |
+
+Through the server (a WebSocket client on 127.0.0.1): a `say` line's first sample sits 1.76-1.80 s
+after the command on the stream clock (`delayMs` 2.0 s with the playout buffer), firstFrameMs
+0.79-1.1 s. A `chat` turn (claude CLI) gave its first sentence after 2.4-2.5 s and its first frame
+after 4.7-4.8 s. After `stop`, no speech audio was sent at all.
+
+Idle (20 s of silence): Iris is effectively still. Head shift under 0.06 px, no blink in the eye
+crops, mouth range 3.9/255; only texture shimmer (frame step 0.52/255) and a small step at every chunk
+seam (1.34/255, every 0.96 s). Pink noise fed as idle input at -50 and -40 dBFS changed none of these
+figures (head shift 0.06 px, mouth range 3.8 and 4.0, seam step 1.36), so that is not the fix. The
+seam step is there in speech as well (2.21 vs 1.37 elsewhere).

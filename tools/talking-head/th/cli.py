@@ -12,7 +12,7 @@ from .schema import ARM_IDS
 def _parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="th", description="talking-head: alternative avatar arms on the local GPU "
                                 "(spec .kiro/specs/talking-head, docs/talking-head.md).")
-    sub = p.add_subparsers(dest="cmd", required=True, metavar="{fetch,audio,render,board}")
+    sub = p.add_subparsers(dest="cmd", required=True, metavar="{fetch,audio,render,board,live,live-bench}")
 
     f = sub.add_parser("fetch", help="download weights into $TH_HOME/models/<name>/ with licence.json")
     f.add_argument("target", help="metrics (all post-processing models), birefnet, dinov2, mediapipe, "
@@ -36,6 +36,23 @@ def _parser() -> argparse.ArgumentParser:
     b.add_argument("--runs", required=True, help="comma-separated run dirs (the first one's audio plays)")
     b.add_argument("--seed", type=int, default=1116)
     b.add_argument("--out", type=Path, required=True)
+
+    from .live.upscale import KINDS
+
+    lv = sub.add_parser("live", help="live Iris: the fhl/1 server (FlashHead Lite) on ws://127.0.0.1:<port>/live")
+    lv.add_argument("--port", type=int, default=8765)
+    lv.add_argument("--upscale", choices=KINDS, default="maxine",
+                    help="maxine (default; falls back to none, with an error event, if it cannot load)")
+    lv.add_argument("--allow-origin", action="append", default=[], metavar="ORIGIN",
+                    help="also accept this browser origin (repeatable); localhost/127.0.0.1 always pass")
+    lv.add_argument("--fake", action="store_true", help="synthetic face and voice, no GPU (UI work)")
+
+    lb = sub.add_parser("live-bench", help="the live engine headless: run dir + live.json")
+    lb.add_argument("--script", default=None, help="a script id; each paragraph is one line")
+    lb.add_argument("--idle-s", type=float, default=0.0, help="instead: N s of silence (idle look)")
+    lb.add_argument("--upscale", choices=KINDS, default="none")
+    lb.add_argument("--seed", type=int, default=1116)
+    lb.add_argument("--no-metrics", action="store_true", help="skip SyncNet/identity")
     return p
 
 
@@ -65,6 +82,18 @@ def main(argv: list[str] | None = None) -> int:
 
         runs = [Path(r.strip()) for r in args.runs.split(",") if r.strip()]
         print(build(runs, args.seed, args.out))
+    elif args.cmd == "live":
+        from .live.env import run_live
+
+        # --fake has no GPU frames to upscale
+        extra = ["--port", str(args.port), "--upscale", "none" if args.fake else args.upscale]
+        for o in args.allow_origin:
+            extra += ["--allow-origin", o]
+        return run_live(extra + (["--fake"] if args.fake else []))
+    elif args.cmd == "live-bench":
+        from .live.bench import bench
+
+        print(bench(args.script, args.upscale, args.seed, args.idle_s, metrics=not args.no_metrics))
     return 0
 
 
