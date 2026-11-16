@@ -26,7 +26,7 @@ Client to server, JSON text frames:
 - `{"type":"stop"}`: drop queued speech and frames not yet emitted; return to idle.
 - `{"type":"source","source":"text"|"mic"}`: puppet mode on (`mic`) or off. While `mic`, control sends binary audio (below) and say/chat are refused with an `error` event.
 - `{"type":"upscale","kind":"none"|"realesrgan"|"maxine"}`: switch the upscaler at the next chunk.
-- `{"type":"slide","index":<int>}` followed by ONE binary slide message: relayed to every `out` client.
+- `{"type":"slide","index":<int>}` followed by ONE binary slide message: relayed to every `out` client. An EMPTY image (0x13 with no bytes) clears the slide: the server relays it as an empty 0x03 and an `event` `slide` with `text: null` (amendment, 2026-11-16).
 
 Client to server, binary:
 - Mic PCM: tag byte `0x10`, then PCM16LE mono 16 kHz samples.

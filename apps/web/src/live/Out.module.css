@@ -1,0 +1,98 @@
+/* The out stream (OutView.tsx). On the OBS view the stage is the viewport on a transparent page;
+   as the preview it is a 16:9 box on a checkerboard of two surface roles (transparency shown).
+   Iris is a centred square; with a slide the slide fills the frame and Iris sits in a corner.
+   Nothing here animates, so there is no reduced-motion twin. */
+
+.page,
+.preview {
+  container-type: size;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.page {
+  position: fixed;
+  inset: 0;
+}
+
+.preview {
+  position: relative;
+  inline-size: 100%;
+  aspect-ratio: 16 / 9;
+  border: 0.0625rem solid var(--sr-line);
+  border-radius: var(--sr-radius-1);
+  background-color: var(--sr-surface-1);
+  background-image: repeating-conic-gradient(var(--sr-surface-1) 0 25%, var(--sr-surface-2) 0 50%);
+  background-size: 1rem 1rem;
+}
+
+.iris {
+  display: block;
+  inline-size: min(100cqi, 100cqb);
+  block-size: min(100cqi, 100cqb);
+}
+
+.slide {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: contain;
+}
+
+.cornered {
+  position: absolute;
+  z-index: 1;
+  inline-size: min(32cqi, 42cqb);
+  block-size: min(32cqi, 42cqb);
+}
+
+.br {
+  inset-block-end: var(--sr-space-4);
+  inset-inline-end: var(--sr-space-4);
+}
+
+.bl {
+  inset-block-end: var(--sr-space-4);
+  inset-inline-start: var(--sr-space-4);
+}
+
+.tr {
+  inset-block-start: var(--sr-space-4);
+  inset-inline-end: var(--sr-space-4);
+}
+
+.tl {
+  inset-block-start: var(--sr-space-4);
+  inset-inline-start: var(--sr-space-4);
+}
+
+.gesture {
+  position: absolute;
+  z-index: 2;
+  inset-block-end: var(--sr-space-3);
+  inset-inline-start: var(--sr-space-3);
+  padding: var(--sr-space-1) var(--sr-space-2);
+  border: thin solid var(--sr-line);
+  border-radius: var(--sr-radius-1);
+  background-color: var(--sr-surface-1);
+  color: var(--sr-text-strong);
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text-sm);
+  cursor: pointer;
+}
+
+.gesture:focus-visible {
+  outline: medium solid var(--sr-accent);
+  outline-offset: var(--sr-space-1);
+}
+
+.hidden {
+  position: absolute;
+  inline-size: 0.0625rem;
+  block-size: 0.0625rem;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

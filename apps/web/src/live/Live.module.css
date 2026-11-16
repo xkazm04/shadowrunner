@@ -1,0 +1,327 @@
+/* /live, the control page (ControlPage.tsx and its tabs): the controls beside the preview, stacked
+   on a phone, in the studio's idiom (Studio.module.css). Colours are roles. The only motion is the
+   buttons' and the lamp's transitions; both have reduced-motion twins below. */
+
+.live {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(16rem, 26rem);
+  gap: var(--sr-space-4);
+  padding: var(--sr-space-4);
+  color: var(--sr-text);
+  font-family: var(--sr-font-body);
+}
+
+.main,
+.side,
+.tabBody,
+.compose,
+.field {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+}
+
+.main {
+  gap: var(--sr-space-3);
+}
+
+.side {
+  gap: var(--sr-space-2);
+}
+
+.tabBody {
+  gap: var(--sr-space-3);
+}
+
+.compose {
+  gap: var(--sr-space-2);
+}
+
+.field {
+  gap: var(--sr-space-1);
+  font-size: var(--sr-size-text-sm);
+}
+
+.heading {
+  margin: 0;
+  color: var(--sr-text-strong);
+  font-family: var(--sr-font-display);
+  font-size: var(--sr-size-text-lg);
+}
+
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sr-space-1) var(--sr-space-4);
+}
+
+.connection {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sr-space-2);
+  margin: 0;
+  color: var(--sr-text-strong);
+}
+
+.lamp {
+  inline-size: 0.625rem;
+  block-size: 0.625rem;
+  border-radius: var(--sr-radius-pill);
+  background-color: var(--sr-signal-offline);
+  transition: background-color 0.2s ease-out;
+}
+
+.lamp[data-on="true"] {
+  background-color: var(--sr-signal-ok);
+}
+
+.stateLine {
+  margin: 0;
+  color: var(--sr-text);
+  font-family: var(--sr-font-mono);
+  font-size: var(--sr-size-text-sm);
+}
+
+.hint {
+  margin: 0;
+  color: var(--sr-text-muted);
+  font-size: var(--sr-size-text-sm);
+  overflow-wrap: anywhere;
+}
+
+.code {
+  padding: 0 var(--sr-space-1);
+  border-radius: var(--sr-radius-1);
+  background-color: var(--sr-surface-2);
+  color: var(--sr-text-strong);
+  font-family: var(--sr-font-mono);
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sr-space-2);
+  padding: var(--sr-space-4);
+  border: 0.0625rem dashed var(--sr-line);
+  border-radius: var(--sr-radius-1);
+  background-color: var(--sr-surface-1);
+}
+
+.command {
+  margin: 0;
+  color: var(--sr-text-strong);
+}
+
+.toolbar,
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sr-space-2);
+}
+
+.toolbar {
+  justify-content: space-between;
+}
+
+.segmented {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.legend {
+  float: inline-start;
+  margin-inline-end: var(--sr-space-2);
+  padding: 0;
+  color: var(--sr-text-muted);
+  font-size: var(--sr-size-text-sm);
+}
+
+.segment {
+  position: relative;
+  cursor: pointer;
+}
+
+.segment input {
+  position: absolute;
+  opacity: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  margin: 0;
+  cursor: pointer;
+}
+
+.segment span {
+  display: block;
+  padding: var(--sr-space-1) var(--sr-space-3);
+  border: 0.0625rem solid var(--sr-line);
+  background-color: var(--sr-surface-2);
+  color: var(--sr-text);
+  font-size: var(--sr-size-text-sm);
+}
+
+.segment:first-of-type span {
+  border-start-start-radius: var(--sr-radius-pill);
+  border-end-start-radius: var(--sr-radius-pill);
+}
+
+.segment:last-of-type span {
+  border-start-end-radius: var(--sr-radius-pill);
+  border-end-end-radius: var(--sr-radius-pill);
+}
+
+.segment input:checked + span {
+  border-color: var(--sr-accent);
+  background-color: var(--sr-accent);
+  color: var(--sr-surface-0);
+}
+
+.segment input:focus-visible + span {
+  outline: 0.125rem solid var(--sr-accent);
+  outline-offset: 0.125rem;
+}
+
+.segmented:disabled .segment {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.tabs {
+  display: flex;
+  gap: var(--sr-space-1);
+  border-block-end: 0.0625rem solid var(--sr-line);
+}
+
+.tab {
+  padding: var(--sr-space-2) var(--sr-space-3);
+  border: 0;
+  border-block-end: 0.125rem solid transparent;
+  background: none;
+  color: var(--sr-text-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.tab[aria-selected="true"] {
+  border-block-end-color: var(--sr-accent);
+  color: var(--sr-text-strong);
+}
+
+.panel {
+  min-block-size: 12rem;
+}
+
+.text,
+.file {
+  font: inherit;
+  padding: var(--sr-space-1) var(--sr-space-2);
+  border: 0.0625rem solid var(--sr-line);
+  border-radius: var(--sr-radius-1);
+  background: var(--sr-surface-2);
+  color: var(--sr-text-strong);
+}
+
+.text {
+  resize: vertical;
+  font-size: var(--sr-size-text);
+}
+
+.button,
+.stop,
+.small {
+  font: inherit;
+  cursor: pointer;
+  transition: opacity 0.15s ease-out;
+}
+
+.button,
+.stop {
+  padding: var(--sr-space-2) var(--sr-space-4);
+  border: 0;
+  border-radius: var(--sr-radius-pill);
+  color: var(--sr-surface-0);
+}
+
+.button {
+  background: var(--sr-accent);
+}
+
+.stop {
+  background: var(--sr-signal-warn);
+}
+
+.small {
+  padding: var(--sr-space-1) var(--sr-space-2);
+  border: 0.0625rem solid var(--sr-line);
+  border-radius: var(--sr-radius-1);
+  background: var(--sr-surface-2);
+  color: var(--sr-text-strong);
+  font-size: var(--sr-size-text-sm);
+}
+
+.button:disabled,
+.stop:disabled,
+.small:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.tab:focus-visible,
+.button:focus-visible,
+.stop:focus-visible,
+.small:focus-visible,
+.text:focus-visible,
+.file:focus-visible,
+.link:focus-visible {
+  outline: 0.125rem solid var(--sr-accent);
+  outline-offset: 0.125rem;
+}
+
+.error {
+  margin: 0;
+  color: var(--sr-signal-warn);
+}
+
+.link {
+  color: var(--sr-accent);
+}
+
+.hidden {
+  position: absolute;
+  inline-size: 0.0625rem;
+  block-size: 0.0625rem;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (max-width: 56rem) {
+  .live {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .side {
+    order: -1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lamp,
+  .button,
+  .stop,
+  .small {
+    transition: none;
+  }
+}
+
+:global([data-motion="reduced"]) .lamp,
+:global([data-motion="reduced"]) .button,
+:global([data-motion="reduced"]) .stop,
+:global([data-motion="reduced"]) .small {
+  transition: none;
+}

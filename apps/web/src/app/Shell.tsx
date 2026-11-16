@@ -12,6 +12,7 @@ import { Listings } from "../channels/Listings";
 import { Sealed } from "../channels/Sealed";
 import { LandingPage } from "../landing/LandingPage";
 import { daemonOf } from "../landing/StatusBar";
+import { isOutView } from "../live/params";
 import { channelPages, PAGES, type PageDef } from "./pages";
 import { useHealth, usePlane, type Health, type Plane } from "./plane";
 import { handleLinkClick, navigate, useRoute } from "./router";
@@ -24,6 +25,8 @@ const AirPage = lazy(() => import("../air/AirPage"));
 const EmbedPage = lazy(() => import("../reach/embed/EmbedPage"));
 const OverlayPage = lazy(() => import("../reach/overlay/OverlayPage"));
 const StudioPage = lazy(() => import("../reach/studio/StudioPage"));
+/** Live Iris (spec flashhead-live): its own chunk; `/live?out=1` is the bare OBS view. */
+const LivePage = lazy(() => import("../live/LivePage"));
 /** CH 3, the creator (spec creator): its own chunk, so the set does not carry it. */
 const CreatorPage = lazy(() => import("../creator/CreatorPage").then((m) => ({ default: m.CreatorPage })));
 /** Forge new, the rite (costume 3.2): its own chunk too. */
@@ -114,8 +117,8 @@ function ChannelBody({ page, plane, health, lost }: { page: PageDef; plane: Plan
     );
   }
   if (page.id === "daemon") return <Daemon health={health} plane={plane} lost={lost} />;
-  if (page.id === "embed" || page.id === "studio") {
-    const Page = page.id === "embed" ? EmbedPage : StudioPage;
+  if (page.id === "embed" || page.id === "studio" || page.id === "live") {
+    const Page = page.id === "embed" ? EmbedPage : page.id === "studio" ? StudioPage : LivePage;
     return (
       <Suspense fallback={<p data-page={page.id}>Tuning in…</p>}>
         <Page plane={plane} />
@@ -227,6 +230,16 @@ export function ShellView({
       <div data-shell data-motion={motion} data-plane={plane}>
         <Suspense fallback={<section data-page="overlay" aria-label={page.title} />}>
           <OverlayPage plane={plane} />
+        </Suspense>
+      </div>
+    );
+  }
+  // So is live's out view (`/live?out=1`, flashhead-live): the stream alone, no chrome.
+  if (page?.id === "live" && isOutView()) {
+    return (
+      <div data-shell data-motion={motion} data-plane={plane}>
+        <Suspense fallback={<section data-page="live" aria-label={page.title} />}>
+          <LivePage plane={plane} />
         </Suspense>
       </div>
     );

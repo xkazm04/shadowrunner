@@ -3,7 +3,7 @@
 // subtitles follow the landing verdict, The Harvest Floor (spec landing, design.md).
 export type PageStatus = "live" | "sealed";
 
-export type PageId = "landing" | "creator" | "forge-new" | "air" | "characters" | "daemon" | "sealed" | "embed" | "overlay" | "studio";
+export type PageId = "landing" | "creator" | "forge-new" | "air" | "characters" | "daemon" | "sealed" | "embed" | "overlay" | "studio" | "live";
 
 export interface PageDef {
   id: PageId;
@@ -19,7 +19,7 @@ export interface PageDef {
   subtitle?: string;
   /** The frame's bar keeps the breadcrumb for screen readers only; the room goes to the page. */
   bareBar?: true;
-  /** Not on the channel strip (avatar-reach: the embed, overlay and studio pages). */
+  /** Not on the channel strip (avatar-reach: the embed, overlay and studio pages; flashhead-live: /live). */
   offStrip?: true;
 }
 
@@ -74,6 +74,8 @@ export const PAGES: readonly PageDef[] = [
   { id: "embed", title: "Embed", path: "/embed", hotkey: "E", status: "live", subtitle: "a character on any site", offStrip: true },
   { id: "overlay", title: "Overlay", path: "/overlay", hotkey: "B", status: "live", subtitle: "a character for OBS", offStrip: true },
   { id: "studio", title: "Studio", path: "/studio", hotkey: "V", status: "live", subtitle: "a character on video", offStrip: true },
+  // flashhead-live: Iris live on FlashHead; `/live?out=1` is its OBS view (Shell.tsx).
+  { id: "live", title: "Live", path: "/live", hotkey: "L", status: "live", subtitle: "Iris, live on FlashHead", offStrip: true },
 ];
 
 /** Pages on the dial, in ascending channel order. */
