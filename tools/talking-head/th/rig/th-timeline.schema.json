@@ -1,0 +1,184 @@
+{
+  "$defs": {
+    "Expression": {
+      "additionalProperties": false,
+      "properties": {
+        "family": {
+          "enum": [
+            "joy",
+            "showman",
+            "anger",
+            "gloom",
+            "smug",
+            "suspicion"
+          ],
+          "title": "Family",
+          "type": "string"
+        },
+        "w": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "W",
+          "type": "number"
+        }
+      },
+      "required": [
+        "family",
+        "w"
+      ],
+      "title": "Expression",
+      "type": "object"
+    },
+    "Frame": {
+      "additionalProperties": false,
+      "properties": {
+        "t": {
+          "minimum": 0,
+          "title": "T",
+          "type": "number"
+        },
+        "mouth": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "propertyNames": {
+                "enum": [
+                  "rest",
+                  "openWide",
+                  "openMid",
+                  "round",
+                  "closed",
+                  "teeth",
+                  "tongue",
+                  "narrow"
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Mouth"
+        },
+        "mouthGain": {
+          "anyOf": [
+            {
+              "maximum": 1.5,
+              "minimum": 0.3,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Mouthgain"
+        },
+        "expression": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Expression"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "gesture": {
+          "anyOf": [
+            {
+              "enum": [
+                "nod",
+                "tilt",
+                "lean_in",
+                "recoil",
+                "glare",
+                "flare"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Gesture"
+        },
+        "blink": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Blink"
+        },
+        "gaze": {
+          "anyOf": [
+            {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Gaze"
+        }
+      },
+      "required": [
+        "t",
+        "mouth",
+        "mouthGain",
+        "expression",
+        "gesture",
+        "blink",
+        "gaze"
+      ],
+      "title": "Frame",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "const": "th-timeline/1",
+      "title": "Schema",
+      "type": "string"
+    },
+    "fps": {
+      "const": 30,
+      "title": "Fps",
+      "type": "integer"
+    },
+    "frames": {
+      "items": {
+        "$ref": "#/$defs/Frame"
+      },
+      "minItems": 1,
+      "title": "Frames",
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema",
+    "fps",
+    "frames"
+  ],
+  "title": "Timeline",
+  "type": "object"
+}
