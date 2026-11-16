@@ -59,7 +59,7 @@ export type ControlArmId = "C0" | "C1" | "C2";
 export type LipArmId = "L0" | "L1" | "L2";
 export type SceneArmId = "S0" | "S1";
 export type OutputArmId = "O0" | "O1";
-export type ExternalArmId = "overlord";
+export type ExternalArmId = "overlord" | "talking-head";
 
 export interface RunConfig {
   control: ControlArmId;

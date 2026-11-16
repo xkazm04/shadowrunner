@@ -24,6 +24,7 @@ import { measureCommand } from "./measure/measure.js";
 import { synthCommand } from "./measure/synthCommand.js";
 import { mouthsCommand } from "./mouths/command.js";
 import { overlordCommand } from "./overlord/run.js";
+import { thImportCommand } from "./talkingHead/import.js";
 
 const log = (line: string): void => {
   process.stderr.write(`${line}\n`);
@@ -79,6 +80,7 @@ const TOOLS: Readonly<Record<string, (argv: readonly string[], log: (line: strin
   loop: loopCommand,
   overlord: overlordCommand,
   board: boardCommand,
+  "th-import": thImportCommand,
 };
 
 async function main(argv: readonly string[]): Promise<void> {

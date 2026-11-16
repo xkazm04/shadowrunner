@@ -33,7 +33,7 @@ function configSource(spec: string): JsonRecord {
 /** Arms from `spec` over BASELINE, plus the scenario and seed of this run. */
 export function resolveConfig(spec: string, scenario: string, seed: number): RunConfig {
   const fields: JsonRecord = spec === "baseline" ? {} : configSource(spec);
-  if (fields.external !== undefined) throw new Error("External pipeline runs (config.external) start with `pnpm lab overlord`, not `pnpm lab run`.");
+  if (fields.external !== undefined) throw new Error("External pipeline runs (config.external) start with `pnpm lab overlord` or `pnpm lab th-import`, not `pnpm lab run`.");
   const character = fields.character;
   if (character !== undefined && (typeof character !== "string" || character === "")) {
     throw new Error("config.character must be a non-empty pack id.");
@@ -64,7 +64,7 @@ export function parseRunConfig(value: unknown): RunConfig {
     ...(typeof character === "string" ? { character } : {}),
     seed,
     ...(typeof replayOf === "string" ? { replayOf } : {}),
-    ...(external === "overlord" ? { external } : {}),
+    ...(external === "overlord" || external === "talking-head" ? { external } : {}),
   };
 }
 

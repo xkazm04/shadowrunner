@@ -23,6 +23,7 @@ export const USAGE = `Avatar Lab (docs/lab.md)
   pnpm lab synth [...]                   synthetic clip with a known A/V offset (measure check)
   pnpm lab loop <runId> [...]            a looped replay source for long O1 runs
   pnpm lab overlord [...]                Overlord external baseline run (docs/lab.md runbook)
+  pnpm lab th-import <th run dir>        import a tools/talking-head render as an external run
   pnpm lab board --pairs a:b,... [...]   anonymised A/B clips + manifest for the verdict board`;
 
 export interface RunCommand {
