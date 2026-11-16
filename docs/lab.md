@@ -434,6 +434,18 @@ This writes `var/lab/board/<boardId>/`, containing `p<n>-x.mp4`, `p<n>-y.mp4` an
   names the arm keys that differ (`lip`, `control+scene`, `external`, `same`).
 - The seed defaults to a hash of the pairs, so the same command gives the same board.
 
+## Talking-head runs (`src/talkingHead/`)
+
+```
+pnpm lab th-import <tools/talking-head run dir>
+```
+
+Turns a `th render` output (`run.json` schema `th-run/1`, see `docs/talking-head.md`) into a lab run:
+`run.mp4` (the run's 1080x1080 `video.mp4`), `th-run.json`, `config.json` with `external:
+"talking-head"` and `thArm`, and a one-line `timeline.jsonl` (the script as a `say` at t=0, so `board`
+pairs runs by first line). It prints the `measure` command with the run's `faceRoi` (mouth box in
+video.mp4 pixels). Measure and board then treat it like any external run.
+
 ## Page query parameters
 
 `ws=<port>` (set by the director), `run=<runId>`, `debug=1` (live event list; its fade honours

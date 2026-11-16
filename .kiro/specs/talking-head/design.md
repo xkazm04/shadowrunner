@@ -90,3 +90,10 @@ None (no product UI).
 - Heavy arms never add dependencies to `tools/talking-head/pyproject.toml`. Each clones its upstream repo to `$TH_HOME/repos/<arm>` with its own venv `$TH_HOME/envs/<arm>` (or a Docker image) and runs it as a subprocess through `ArmEnv` (`th/arms/base.py`). The upstream projects pin mutually incompatible torch/diffusers stacks; isolation is the only way they share one machine.
 - `faceRoi` is in video.mp4 pixels: the mouth box (lips + ~25% margin, jaw drop included) over the clip, or null.
 - Lab seam (done, 59a8d5f): `pnpm lab th-import <run dir>` -> lab run with `external: "talking-head"`, `thArm`, `run.mp4`, one `say` line at t=0.
+
+## As built (2026-11-16)
+- Builders were Claude Opus subagents (Kiro out of quota). Owner rulings during the build: OpenRAIL-family weights accepted; InfiniteTalk dropped after it measured ~20 h per 45 s on Windows and froze the machine.
+- `dub-ls` uses a MediaPipe face adapter instead of LatentSync's InsightFace detector (non-commercial), and pastes back only the feathered lower face (`TH_DUB_PASTE=mouth`).
+- `a2f-keys` runs only with `--runtime docker` (the SDK needs CUDA >= 12.8). Channels are calibrated against each clip's own rest and range. Expression stays null without Audio2Emotion (gated).
+- Tests lock `TH_GPU_LOCK` (a temp file), never `$TH_HOME/gpu.lock`.
+- Results, the board path and the reading of them: `docs/talking-head.md` "Results, pitch-45s".
