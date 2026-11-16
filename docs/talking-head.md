@@ -970,3 +970,195 @@ reply.
 - **Setup.** `anthropic` is in `th/live/requirements.txt`, installed into the FlashHead env by
   `th live`. The module imports it lazily, so `uv run pytest` runs the chat tests (a fake streaming
   client) without the SDK.
+
+### Matting (`th live --matte`, `th/live/matte/`)
+
+`get_matte(kind)` returns a Matte. Its input is uint8 CUDA frames (N,512,512,3) and its output is a uint8 CUDA alpha (N,512,512), where 255 means opaque. It runs on the 512 frame before upscaling. Every kind shares one pipeline (`base.py`):
+
+1. The network runs at the kind's own resolution, area-downsampled.
+2. A **colour-guided filter** brings the alpha back to 512 (`refine.guided_upsample`, He and Sun's fast guided filter on the RGB frame). The edge follows the hair strands in the colour frame instead of the blur of a low-res mask.
+3. **Temporal smoothing** gated by the colour frame (`refine.TemporalSmoother`):
+   - Where the picture stands still, the alpha takes only 35% of each new value (an EMA), which removes edge flicker.
+   - Where a pixel's colour changed by 6/255 or more (the head moved), it takes the new alpha at once, so moving edges do not lag.
+   - The state carries across chunks. `reset()` clears it at a cut.
+4. The BiRefNet kinds run the network on **every 2nd frame** (stride 2, plus the chunk's last frame) and interpolate linearly in time between those frames. The guided filter then snaps each frame's edge to that frame's own colour.
+
+| kind | model (licence) | net res | notes |
+|---|---|---|---|
+| `birefnet-lite-matting` **(default)** | ZhengPeng7/BiRefNet_lite-matting, Swin-T 44 M (MIT) | 384, stride 2 | trained for soft alpha on people; best edge, lowest flicker |
+| `birefnet-lite-matting-fast` | same weights | 320, stride 2 | 17-27% less GPU time; slightly softer edge (budget fallback) |
+| `birefnet-lite` | ZhengPeng7/BiRefNet_lite, Swin-T (MIT) | 384, stride 2 | general segmentation weights; harder, notched hair edge |
+| `mediapipe` | MediaPipe Selfie Segmentation 256 (Apache-2.0) | 256, CPU | costs no GPU time, but leaves grey halos at shoulders and jaw and 2-3x the flicker |
+| `birefnet` | ZhengPeng7/BiRefNet, Swin-L 220 M (MIT) | 384, stride 2 | the offline matte's weights; over budget, kept for the A/B only |
+
+**Weights.**
+- `birefnet-lite-matting` and `birefnet-lite` are pinned snapshots under `$TH_HOME/models/live-matte/<kind>/`. They are 89 MB and 178 MB, fetched on first use by `weights.fetch_birefnet`.
+- `birefnet` reuses the offline download in `$TH_HOME/models/birefnet/`.
+- `mediapipe` uses the `.tflite` inside the mediapipe 0.10.9 wheel (the legacy `solutions.selfie_segmentation`, which only the FlashHead env still has).
+- `licence.json` in `live-matte/` has one row per kind.
+
+The cards were read on 2026-11-16:
+- The BiRefNet cards say `license: mit`, and the code repo is MIT. The training sets carry their own research terms: DIS5K for the general weights; P3M-10k, AM-2k, AIM-500 and others for the matting weights. The offline matte in `th/post/alpha.py` already accepts the same caveat.
+- The Selfie Segmentation model card says "LICENSED UNDER Apache License, Version 2.0".
+
+**FlashHead env.** BiRefNet's remote code imports `timm` and `kornia`. Kornia is only used by the training-time Laplacian. Both have to be in `th/live/requirements.txt`.
+
+**Measured.**
+- Clips: live-bench output at 512 with no upscaling, the first 480 frames of `20261116T183338Z-live-fh-pitch-45s` and `20261116T184247Z-live-fh-idle-20s`.
+- Command: `python -m th.live.matte.bench` in the FlashHead env, under the GPU lock.
+- Flicker is the mean |alpha_t - alpha_t-1| on the 0-255 scale, in the alpha's edge band. "Static" counts only band pixels whose colour did not change (max channel step 2/255 or less), so it measures flicker alone.
+- The reference row is the offline matte's grade: BiRefNet at 1024, no smoothing.
+- "Ref diff" is the mean |alpha - ref| over the reference's band. The reference is a hard-edged segmenter, so this column favours hard edges. It is a sanity check, not a quality score.
+
+| config | static flicker pitch / idle | flicker pitch / idle | ref diff | VRAM peak |
+|---|---|---|---|---|
+| reference: BiRefNet 1024, unsmoothed | 2.45 / 1.79 | 3.69 / 2.07 | 0 | 3.7 GB (batch 2) |
+| mediapipe | 2.36 / 1.52 | 2.79 / 1.67 | 47.2 | 0.4 GB (CPU net) |
+| birefnet-lite 384 s2 | 0.93 / 0.60 | 1.53 / 0.68 | 42.4 | 1.6 GB |
+| **birefnet-lite-matting 384 s2** | **0.70 / 0.45** | **1.23 / 0.56** | 33.8 | 1.6 GB |
+| birefnet-lite-matting 320 s2 (fast) | 0.67 / 0.43 | 1.18 / 0.54 | 37.0 | 1.2 GB |
+| birefnet-lite-matting 384 s2, no smoothing | 1.12 / 0.84 | 1.95 / 1.10 | 33.8 | 1.6 GB |
+| birefnet-lite-matting 384 s1 (every frame) | 0.75 / 0.49 | 1.29 / 0.61 | 33.8 | 2.7 GB |
+| birefnet (Swin-L) 384 s2 | 0.74 / 0.48 | 1.37 / 0.60 | 34.4 | 3.3 GB |
+
+**Smoothing.** Smoothing cuts static flicker by about 40% (1.12 to 0.70 on the pitch clip). The live matte flickers about 3x less than the offline matte.
+
+**Stride 2.** Measured against the every-frame matte on the pitch clip:
+- The interpolated frames differ by 0.53/255 on average in the edge band (p99 4/255, worst frame 1.5/255). On the fastest 5% of motion frames the difference is 0.60/255.
+- The step into key frames is 1.31/255 against 1.15/255 into interpolated frames. Stride 1 shows 1.34 and 1.26 on the same measure. The alternation stride 2 adds is about 0.1/255, below one grey level, so the smoothing hides it.
+- Stride 2 also lowers flicker slightly, from 1.29 to 1.23.
+
+**Edge sheets.** `sheet-<clip>-f<frame>.png` from the bench shows 3 frames per clip, each over a checkerboard and over a bright slide, with x2.7 zooms on the hair edge and the headset edge.
+- BiRefNet-lite-matting follows the silver strands with a soft edge.
+- The DIS weights (`birefnet-lite` and the offline reference) cut notches into the hair.
+- MediaPipe smears grey halos onto the slide around the shoulders and jaw.
+- Remaining limitation: there is no foreground colour estimation. Over a white slide, semi-transparent hair keeps a faint tint of the dark studio background.
+
+**Time.**
+- All timings so far are contended. The 4090 was shared with World of Warcraft (3.6-3.9 GB), up to two Iris-sharpener trainers (2.2-4.1 GB each, running outside the GPU lock until 00:30) and at times the engine's make-idle FlashHead render (6.1 GB).
+- Clean end-to-end figures with matte on come from the engine's live-bench after the trainers stop.
+
+ms per 24-frame chunk, p50 / p95, synced:
+
+| config | WoW + 1 trainer (run1) | interleaved, WoW + 2 trainers + make-idle at start | sequential, heavy (final) |
+|---|---|---|---|
+| mediapipe (CPU) | 151 / 159 | 117 / 135 | 152 / 182 |
+| birefnet-lite-matting 384 s1 | 131 / 133 | 247 / 264 | n/a |
+| **birefnet-lite-matting 384 s2** | **107 / 116** | **126 / 146** | 287 / 301 |
+| birefnet-lite-matting 320 s2 | n/a | 92 / 100 | 238 / 261 |
+| birefnet (Swin-L) 384 s1 | 273 / 356 | n/a | 532 / 582 (s2) |
+
+- The network alone (BiRefNet-lite at 384, batch 24, fp16, WoW only) took 112 ms per chunk. At 512 it took 182 ms.
+- The guided filter adds about 13 ms and the smoother about 6 ms per chunk.
+- The default fits the ~250 ms headroom at about 110-130 ms with one co-tenant. Under the heavy multi-trainer load nothing BiRefNet-based fits. If live-bench shows late chunks, switch to `birefnet-lite-matting-fast` first.
+
+<!-- Round 2, web: additions to docs/talking-head.md "The web pages: `/live` and `/live?out=1`". Each block names where it goes. -->
+
+<!-- Control page list: replace the state-line bullet with this one. -->
+  - Connection lamp and the server's `state` line: ready, fps, upscale, delay, queue, size, source, matte (`on`/`off`) and idle (`loop`/`live`; left out when an older server sends no `idle`).
+
+<!-- Control page list: replace the Upscaler bullet, and add Matte after it. -->
+  - **Upscaler**: a segmented switch (None / Real-ESRGAN / Maxine / Iris). It shows the requested kind until the server's `state` confirms it. A server `error` event that no line claims shows inline under the toolbar.
+  - **Matte**: Off / On sends `{"type":"matte","on":…}`. Like the upscaler, it shows the request until `state.matte` confirms it.
+
+<!-- Control page list: replace the Stop bullet. -->
+  - **Stop** sends `stop`, ends a running slide deck where it is, and clears the slide this page put up. It also flushes the page's own preview at once, without waiting for the server's marker.
+
+<!-- OBS list: add after the Playout block. -->
+  - **Matted frames (`0x04`)**: the colour JPEG and the greyscale alpha JPEG are decoded in parallel (`createImageBitmap`). A small WebGL shader (`src/live/composite.ts`) turns the alpha's luminance into the canvas alpha, so the page stays transparent wherever the matte says background. Without WebGL, a CPU pass over the pixels does the same job.
+    - Both paths snap the JPEG noise floor: alpha 2 or less is fully clear, 253 or more is fully opaque, and values in between are stretched linearly. Compression ringing never leaves a faint veil over the background, and hair edges keep their soft values.
+    - A `0x04` frame with an empty alpha draws opaque.
+    - Measured on the e2e fake (1024 px matted frames at 25 fps, 4 s window): 25 fps drawn, 0 dropped. With the GPU (`--use-angle=d3d11`, a training run on the same 4090 at 100 % util), draw p50 2.0 ms / p95 3.9 ms and decode p95 4.0 ms. On SwiftShader (the suite's default headless GL, software), draw p50 10 ms / p95 12.6 ms and decode p95 12.4 ms. Draw time is main-thread time per frame, compositing included; decoding runs off the main thread.
+  - **Stop flush**: a `line-end` whose text is `"stopped"` (the server's stop marker) makes every out client drop every audio chunk it has scheduled (playing or not yet started) and every frame it has queued or is still decoding. The clock is kept, so the frames that follow play on the same timeline. The control page's preview also flushes on the page's own Stop.
+    - A flush can hold the last drawn frame until the next frame's pts comes up: at most the queued span, which is the 250 ms delay plus whatever part of a 0.96 s chunk arrived ahead.
+
+<!-- OBS list: replace the data-attribute bullet. -->
+  - The page writes its figures to data attributes on `[data-live-out]`:
+    - `data-drawn`, `data-dropped`, `data-chunks` and `data-size`;
+    - `data-flushes` and `data-audio-ahead` (ms of audio scheduled past the audio clock now);
+    - `data-draw-p50`, `data-draw-p95` and `data-decode-p95` (ms, over the last 120 frames);
+    - `data-composite` (`webgl` or `cpu`, once a matted frame has been drawn).
+
+<!-- Replace the "Without the GPU" bullet. -->
+- **Without the GPU**: run `node apps/web/e2e/fakeLive.ts [port]` for a fake `fhl/1` server, then open `/live?server=ws://127.0.0.1:8790/live`. The fake does the following:
+  - It streams synthetic 25 fps JPEG frames.
+  - With `matte` on, it streams `0x04` frames at 1024 px instead: a colour frame plus a circular alpha with a soft edge.
+  - Each `say` plays a 1 s 440 Hz tone with its `line-start`, `timing` and `line-end` messages. `state.idle` is `live` while a line plays and `loop` otherwise.
+  - `stop` cuts the playing line with a `line-end` `"stopped"`.
+
+<!-- Replace the Tests bullet. -->
+- **Tests**:
+  - Unit tests live in `src/live/*.test.ts`. They cover the codec (`0x04` included), client, clock, slides, PCM, history, the alpha rule (`composite.test.ts`) and the player's matted draw and flush (`player.test.ts`).
+  - The e2e test is `apps/web/e2e/live.e2e.spec.ts`, with five cases. One checks matte on: pixels outside the alpha circle have alpha 0 and pixels inside have alpha above 0, and it also checks keep-up and draw time. Another checks Stop: the scheduled tone is dropped and nothing is scheduled past the flush.
+  - Run the e2e test after building, with `SR_E2E_PORT=5320 pnpm --filter ./apps/web exec playwright test -c playwright.e2e.config.ts live.e2e.spec.ts`.
+- **Two 404s under `vite preview`**: a browser shows two 404s on `/live` and `/live?out=1`, and on every other page too. Neither comes from the live code.
+  - `GET /api/health` is the shell's plane read. `vite preview` has no API functions, so the page falls back to replay by design (see `app/plane.ts`). Under the deployment it answers.
+  - `GET /favicon.ico` is the browser's default icon request. The app declares no icon, and `vite preview` has none to serve.
+
+#### `iris`: a sharpener trained on Iris (round 2)
+
+`--upscale iris` is the project's own 2x model. It is trained from scratch on Iris's art only: no
+pretrained weights and no third-party data, so its only provenance is the project's own images.
+Code lives in `th/live/upscale/`: `iris.py` (net and upscaler), `iris_data.py` (pairs), `train_iris.py`, `iris_gan.py` (an optional texture critic) and `iris_eval.py`.
+
+```
+# FlashHead env, tools/talking-head on PYTHONPATH (the data step needs FlashHead's own VAE)
+python -m th.live.upscale.train_iris data [--clips 12]      # -> $TH_HOME/live/iris-train/ (1.9 GB)
+python -m th.live.upscale.train_iris train [--until HH:MM] [--resume]
+# core env; takes the GPU lock
+uv run python -m th.live.upscale.iris_eval holdout --out <dir> [--arms bicubic,iris]
+uv run python -m th.live.upscale.iris_eval live --video <live-bench raw.mp4> --out <dir> [--audio <wav>] [--clip-start S]
+```
+
+- **Data.**
+  - The sources are `portrait.png` and the edits in `assets/characters/companions/iris/edits/`. `head` and `matte` are left out: they are green-screen cut-outs, not faces on her ground.
+  - `joy`, `teeth` and `gazeL` are held out for validation, so 21 images train.
+  - Each source gives 12 clips of 9 frames. Clip 0 is the exact live bust box, (192,140)-(832,780) resized to 1024. The other clips drift smoothly: up to +-24 px of shift and +-6 % of scale, with a horizontal flip on half of them.
+- **Degradation, matched to FlashHead.** The input is the 1024 target, area-downsampled to 512 and Gaussian-blurred, then encoded and decoded as one 9-frame clip by FlashHead Lite's own `VAE_LTX`, loaded as its pipeline does (bf16, 1.1 GB).
+  - The VAE alone leaves the face too clean. Laplacian variance on the grey face box, live-bench `none` frames against the VAE round trip:
+
+    | frames | Laplacian variance |
+    | --- | --- |
+    | VAE round trip alone | about 145 |
+    | live-bench speech (p10-p90) | 57-83 (mean 70) |
+    | live-bench idle | 84 |
+    | VAE round trip after a sigma-0.5 pre-blur | about 78 |
+
+  - So the blur sigma is drawn from 0.40-0.62 (0.5 for the still clip).
+  - The dataset's inputs measure 43-92 (p10-p90, mean 65), which brackets real output.
+  - Training adds a light blur (p 0.3), noise (p 0.5, up to 1.5/255) and a +-3 % gain on top.
+- **Net.** It has SRVGGNetCompact's shape (32 features, 16 conv + PReLU layers, pixel shuffle) on a bilinear base, 0.6 MB.
+  - It uses He init with a zero last layer, so the untrained net is a plain bilinear 2x. PyTorch's default init shrinks the signal about 3x per layer: with it, this 17-conv plain stack could not overfit even one batch.
+  - It runs in fp16, channels-last, 4 frames per call. That is as fast as 12 per call, with a 0.75 GB peak instead of 1.9 GB.
+- **Loss.**
+  - L1.
+  - 0.05 x L1 of the 2D FFT magnitude.
+  - 0.2 x L1 between the outputs for two noise draws of the same patch, so detail cannot follow input noise from frame to frame.
+  - No perceptual network. torchvision's VGG weights are ImageNet-trained, which would bring in outside data.
+- **Training.**
+  - Adam 1e-3 with a cosine to 2e-5, bf16 autocast and EMA 0.999.
+  - 128 px input patches, 60 % of them on the face. Batch 16, as two noise draws each.
+  - 1.4 GB of VRAM; the pairs stay on the host.
+  - Training never touches the GPU lock.
+  - The best EMA by held-out face PSNR goes to `$TH_HOME/models/live-upscale/iris-x2.pth`, with a `licence.json` row: "own model, trained on the project's Iris art; see docs/provenance.md".
+  - The shipped weights: 205k steps in 2 h 15 min of GPU time, best at about 185k. Held-out validation PSNR went from 35.12 at 2.5k steps to 35.46 at 22k and 35.53 at the end (bicubic 34.88), so it plateaued after about 70k steps.
+
+**Measured** (RTX 4090, World of Warcraft on the GPU at 2.6 GB and 43 % busy, GPU lock held):
+
+| | none (bicubic) | iris |
+| --- | --- | --- |
+| held-out edits, face PSNR / SSIM vs the true 1024 | 36.17 / 0.928 | **38.32 / 0.955** |
+| held-out per edit, PSNR (joy / teeth / gazeL) | 36.04 / 36.67 / 35.82 | 37.86 / 39.09 / 38.00 |
+| live-bench pitch-45s: sharpness / identity mean / flicker | 7.88 / 0.974 / 1.83 | 12.64 / 0.969 / 1.75 (0.96x) |
+| live-bench idle-20s: sharpness / identity mean / flicker | 9.22 / 0.986 / 0.53 | 14.20 / 0.984 / 0.45 (0.85x) |
+| ms per 24-frame chunk (iris alone) | 3-6 | 62.5 p50, 64.8 p95 |
+
+- **Verdict.** `iris` is the most faithful 2x on Iris by the numbers:
+  - +2.1 dB on edits it never saw;
+  - less flicker than the 512 frame scaled by the browser;
+  - identity within 0.005;
+  - it fits the 25 fps budget alongside FlashHead (about 63 ms of the 960 ms chunk).
+- **What it does not do: skin texture.** By eye it sharpens edges (eyeliner, iris ring, lash line, nostrils) and flattens skin micro-texture: freckles and pores read smoother than bicubic.
+  - The VAE input no longer carries the true pores, so an L1-trained net paints their median.
+  - A GAN fine-tune (`--gan 0.1 --fft 0.5 --init <L1 weights> --lr 1e-4`) brought some grain back (sharpness 14.2 -> 19.2 on the held-out edits). It cost 1.6 dB and drew swirl artefacts on the cheek, and it was stopped after 15 min, so it is not shipped.
+- **Against `maxine`.** The comparison is in the internal note (`var/talking-head/live-upscale-ab/iris/INTERNAL-iris-vs-maxine.md`, SLA 8.9). In short, `iris` wins by the numbers and `maxine` keeps more freckle grain by eye. `maxine` stays the default.

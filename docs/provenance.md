@@ -237,3 +237,5 @@ No generated images or videos from this spec are committed: renders stay in `var
 ## Live Iris (spec `flashhead-live`, 2026-11-16)
 
 No generated media is committed. Runtime components fetched per machine: SoulX-FlashHead Lite (as above), NVIDIA Maxine Video Super Resolution through the public `nvidia-vfx` wheel (NVIDIA Software License Agreement + Product-Specific Terms for NVIDIA AI Products, models under the NVIDIA Open Model License; accepted by the owner on 2026-11-16; not redistributed; performance figures not published, per its clause 8.9), Real-ESRGAN `realesr-general-x4v3` (BSD-3), Kokoro v1.0 (Apache-2.0), and Claude replies through the logged-in `claude` CLI (or the Anthropic API when a key is set).
+
+Round 2 (2026-11-16): `iris-x2.pth`, a 0.6 MB 2x sharpener trained from scratch on this project's own Iris art (her portrait and Codex edits listed above, degraded through FlashHead Lite's VAE); no pretrained weights or outside data. Live matting uses BiRefNet_lite-matting / BiRefNet_lite / BiRefNet (MIT per their cards; their training sets carry research-only terms, as with the offline BiRefNet) and MediaPipe Selfie Segmentation (Apache-2.0).
