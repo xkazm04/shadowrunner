@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from th.arms import REGISTRY, ArmEnv, Job, get_arm
-from th.arms.base import Arm, ArmNotBuilt
+from th.arms.base import Arm, ArmNotBuilt, StubArm
 from th.schema import ARM_IDS
 
 MODULES = {
@@ -29,7 +29,8 @@ def test_registry_covers_arm_ids_one_module_each():
         assert issubclass(cls, Arm) and cls.id == arm_id
 
 
-@pytest.mark.parametrize("arm_id", [a for a in ARM_IDS if a != "noop"])
+# Only arms still stubbed: a built arm (tasks 2-3) replaces its module and leaves this list.
+@pytest.mark.parametrize("arm_id", [a for a in ARM_IDS if issubclass(REGISTRY[a], StubArm)])
 def test_stubs_raise_not_implemented_naming_the_package(tmp_path, arm_id):
     arm = get_arm(arm_id)
     with pytest.raises(NotImplementedError, match=rf"^{arm_id}: WP[23]$"):
@@ -45,8 +46,10 @@ def test_docker_runtime_is_a_clear_error_by_default(tmp_path):
         noop.preflight("docker")  # th render checks this before audio, run dir or GPU lock
     with pytest.raises(ArmNotBuilt, match="docker runtime not implemented for noop"):
         noop.render(job(tmp_path, "noop", runtime="docker"))
-    with pytest.raises(ArmNotBuilt, match="^dub-ls: WP3$"):
-        get_arm("dub-ls").preflight("native")
+    stubs = [a for a in ARM_IDS if issubclass(REGISTRY[a], StubArm)]
+    for arm_id in stubs[:1]:  # empty once every arm is built
+        with pytest.raises(ArmNotBuilt, match=rf"^{arm_id}: WP[23]$"):
+            get_arm(arm_id).preflight("native")
 
 
 def test_render_fails_fast_without_a_run_dir(tmp_path, monkeypatch):
