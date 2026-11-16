@@ -11,5 +11,10 @@ Builder: Kiro CLI, probed once per spark; fallback Claude Opus builders under th
 - [x] 4. Conversation (Python)
   - _Requirements: 2.2_
 
-## Round 2 (open)
-- Idle motion (FlashHead freezes in silence; noise input does not help), the 0.96 s chunk-seam pop, live matting for a transparent Iris, out-client flush on stop.
+## Round 2 (done, 2026-11-16)
+- [x] Idle loop with crossfades, seam blend, adaptive look-ahead, matting hook (d41f4c9)
+- [x] Live matting (903efc9)
+- [x] Web: alpha composite, matte switch, flush on stop (028ae37)
+- [x] Iris-trained sharpener, an option; Maxine stays the default (d80d398)
+
+Open follow-ups: small colour step between chunks in speech; foreground colour estimation for semi-transparent hair over bright slides; idle loop is calm (one blink per 12 s).
