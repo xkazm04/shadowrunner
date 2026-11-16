@@ -136,5 +136,27 @@ Clock and sync: one stream clock (ms since the server started streaming). Frame 
 - Compare with none/maxine on the held-out edits and on live-bench output: freckle/skin texture by eye on a sheet, identity, flicker, ms per chunk.
 - The Director adds `iris` to the registry before the fan-out.
 
+## Round 3 amendment (Director, 2026-11-17): head motion and gaze glances
+Owner verdict on the round 2 review: Maxine and the Iris sharpener look good; the remaining problem is a static head and a direct, fixed gaze.
+- **Procedural head motion** (`th/live/motion.py`): a per-frame 2D similarity transform (dx, dy, rotation, scale) applied on the GPU to the 512 frame, and to its alpha when matting is on, before upscaling. Components:
+  - a slow sway (smoothed noise, 0.1-0.3 Hz);
+  - nods on stressed syllables (energy onsets in the speech audio, refractory about 0.8 s);
+  - tilts eased in at sentence and clause boundaries (the engine knows them from the per-sentence TTS);
+  - a slower, smaller version while idle.
+- Amplitudes are small and natural (degrees, not tens of degrees). Without matting, a slight zoom (about 3-4%) hides the borders.
+- Levels `off` | `natural` | `lively`; default `natural`.
+- **Gaze glances** (`th/live/gaze.py`): bust-cropped references from Iris's Codex gaze edits (`gazeL/R/U/D.webp`), registered as extra FlashHead identities. At some sentence boundaries, and every 6-10 s in idle, the engine switches to a gaze reference for 0.6-1.2 s and back, with a 4-6 frame crossfade.
+  - Measure the jump at each switch (frame step against the median) and the identity. If a crossfade cannot hide the switch, report it instead of shipping it.
+- **Protocol `fhl/1` additions:**
+  - command `{"type":"motion","level":"off"|"natural"|"lively"}`;
+  - `state.motion` (key always present);
+  - glances follow the level (none when `off`).
+- **Web:** a Motion segmented control on `/live` (Lines/Chat/... unchanged), and `state.motion` in the state line.
+- **Acceptance:**
+  - clips of the same line at each level plus a 20 s idle with glances, recorded from the server;
+  - head-motion statistics (rotation and translation range, nod count) against FlashHead's own speech motion;
+  - SyncNet and identity unchanged within noise;
+  - 0 late chunks.
+
 ## Non-goals (v1)
 STT voice input, LiveKit/WebRTC, remote viewers, characters other than Iris, the Iris-trained sharpener (follow-up), the Pro model live.
