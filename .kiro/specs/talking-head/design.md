@@ -84,3 +84,9 @@ None (no product UI).
 - LatentSync at 512 on a 1024 face may soften.
 - GPU contention between WP2 and WP3 (lock).
 - Disk: 350GB free, weights ~100GB worst case.
+
+## Layout amendment (Director, 2026-11-16, before tasks 2-3)
+- One module per arm: `th/arms/{noop,baseline,infinitetalk,stableavatar,flashhead,dub,a2f}.py`; the registry in `th/arms/__init__.py` imports them all and is owned by task 1. Tasks 2 and 3 replace only their own modules.
+- Heavy arms never add dependencies to `tools/talking-head/pyproject.toml`. Each clones its upstream repo to `$TH_HOME/repos/<arm>` with its own venv `$TH_HOME/envs/<arm>` (or a Docker image) and runs it as a subprocess through `ArmEnv` (`th/arms/base.py`). The upstream projects pin mutually incompatible torch/diffusers stacks; isolation is the only way they share one machine.
+- `faceRoi` is in video.mp4 pixels: the mouth box (lips + ~25% margin, jaw drop included) over the clip, or null.
+- Lab seam (done, 59a8d5f): `pnpm lab th-import <run dir>` -> lab run with `external: "talking-head"`, `thArm`, `run.mp4`, one `say` line at t=0.
