@@ -2,6 +2,8 @@
 // JSON messages and its binary frames, typed and codec'd here, pure so the codec is table-tested
 // against hand-built buffers. Every binary number is little-endian.
 //   server -> out:     0x01 video  [tag u8][ptsMs f64][width u16][height u16][JPEG]
+//                      0x04 matted [tag u8][ptsMs f64][width u16][height u16][rgbLength u32]
+//                                  [colour JPEG (rgbLength)][greyscale alpha JPEG (the rest)]
 //                      0x02 audio  [tag u8][ptsMs f64][sampleRate u32][PCM16LE mono]
 //                      0x03 slide  [tag u8][index u32][image bytes]
 //   control -> server: 0x10 mic    [tag u8][PCM16LE mono 16 kHz]
@@ -10,12 +12,16 @@
 export const PROTO = "fhl/1";
 export const DEFAULT_SERVER = "ws://127.0.0.1:8765/live";
 
-export const TAG = { video: 0x01, audio: 0x02, slide: 0x03, mic: 0x10, slideUp: 0x13 } as const;
+export const TAG = { video: 0x01, audio: 0x02, slide: 0x03, matted: 0x04, mic: 0x10, slideUp: 0x13 } as const;
 
 export type Role = "control" | "out";
-export type UpscaleKind = "none" | "realesrgan" | "maxine";
-export const UPSCALE_KINDS: readonly UpscaleKind[] = ["none", "realesrgan", "maxine"];
+export type UpscaleKind = "none" | "realesrgan" | "maxine" | "iris";
+export const UPSCALE_KINDS: readonly UpscaleKind[] = ["none", "realesrgan", "maxine", "iris"];
 export type Source = "text" | "mic";
+/** Which idle the server shows: the pre-rendered loop or the live model (round 2). */
+export type IdleKind = "loop" | "live";
+/** The text of the `line-end` the server sends for a cut line: out clients flush on it. */
+export const STOPPED = "stopped";
 
 export type ClientMessage =
   | { type: "hello"; role: Role }
@@ -24,6 +30,7 @@ export type ClientMessage =
   | { type: "stop" }
   | { type: "source"; source: Source }
   | { type: "upscale"; kind: UpscaleKind }
+  | { type: "matte"; on: boolean }
   | { type: "slide"; index: number };
 
 export interface LiveState {
@@ -36,6 +43,10 @@ export interface LiveState {
   queue: number;
   delayMs: number;
   size: number;
+  /** Matting on (0x04 frames). False from a server that predates it. */
+  matte: boolean;
+  /** Null from a server that predates the idle loop. */
+  idle: IdleKind | null;
 }
 
 export type EventKind = "line-start" | "line-end" | "reply-text" | "slide" | "error";
@@ -66,6 +77,8 @@ export interface VideoFrame {
   height: number;
   /** The JPEG bytes (a view into the received buffer). */
   jpeg: Uint8Array;
+  /** 0x04 only: the greyscale alpha JPEG (255 = opaque), same width and height. */
+  alpha?: Uint8Array;
 }
 
 export interface AudioChunk {
@@ -87,6 +100,7 @@ export type Media = VideoFrame | AudioChunk | SlideImage;
 
 const MEDIA_HEADER = 13; // tag + f64 + (u16 + u16 | u32)
 const SLIDE_HEADER = 5; // tag + u32
+const MATTED_HEADER = 17; // tag + f64 + u16 + u16 + u32
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
 const isNum = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
@@ -115,6 +129,8 @@ export function parseServerMessage(text: string): ServerMessage | undefined {
       queue: v.queue,
       delayMs: v.delayMs,
       size: v.size,
+      matte: v.matte === true,
+      idle: v.idle === "loop" || v.idle === "live" ? v.idle : null,
     };
   }
   if (v.type === "event") {
@@ -145,6 +161,19 @@ export function decodeMedia(buffer: ArrayBuffer): Media | undefined {
       width: view.getUint16(9, true),
       height: view.getUint16(11, true),
       jpeg: new Uint8Array(buffer, MEDIA_HEADER),
+    };
+  }
+  if (tag === TAG.matted) {
+    if (view.byteLength < MATTED_HEADER) return undefined;
+    const rgbLength = view.getUint32(13, true);
+    if (rgbLength > view.byteLength - MATTED_HEADER) return undefined;
+    return {
+      kind: "video",
+      ptsMs: view.getFloat64(1, true),
+      width: view.getUint16(9, true),
+      height: view.getUint16(11, true),
+      jpeg: new Uint8Array(buffer, MATTED_HEADER, rgbLength),
+      alpha: new Uint8Array(buffer, MATTED_HEADER + rgbLength),
     };
   }
   if (tag === TAG.audio) {
@@ -198,6 +227,19 @@ export function encodeVideo(ptsMs: number, width: number, height: number, jpeg: 
   view.setUint16(9, width, true);
   view.setUint16(11, height, true);
   out.set(jpeg, MEDIA_HEADER);
+  return out.buffer;
+}
+
+export function encodeMatted(ptsMs: number, width: number, height: number, jpeg: Uint8Array, alpha: Uint8Array): ArrayBuffer {
+  const out = new Uint8Array(MATTED_HEADER + jpeg.byteLength + alpha.byteLength);
+  const view = new DataView(out.buffer);
+  view.setUint8(0, TAG.matted);
+  view.setFloat64(1, ptsMs, true);
+  view.setUint16(9, width, true);
+  view.setUint16(11, height, true);
+  view.setUint32(13, jpeg.byteLength, true);
+  out.set(jpeg, MATTED_HEADER);
+  out.set(alpha, MATTED_HEADER + jpeg.byteLength);
   return out.buffer;
 }
 

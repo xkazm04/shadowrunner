@@ -4,6 +4,7 @@ import {
   DEFAULT_SERVER,
   encodeAudio,
   encodeMessage,
+  encodeMatted,
   encodeMic,
   encodeSlide,
   encodeSlideOut,
@@ -37,6 +38,27 @@ describe("decodeMedia", () => {
     expect(media?.kind === "video" && [...media.jpeg]).toEqual([0xff, 0xd8, 0xff, 0xd9]);
   });
 
+  it("reads a 0x04 matted frame: f64 pts, u16 width, u16 height, u32 rgbLength, colour JPEG, then the alpha JPEG", () => {
+    const buffer = bytes([0x04], { f64: 4000 }, { u16: 1024 }, { u16: 1024 }, { u32: 3 }, [0xff, 0xd8, 0x01], [0xff, 0xd8, 0x02, 0x03]);
+    const media = decodeMedia(buffer);
+    expect(media).toMatchObject({ kind: "video", ptsMs: 4000, width: 1024, height: 1024 });
+    expect(media?.kind === "video" && [...media.jpeg]).toEqual([0xff, 0xd8, 0x01]);
+    expect(media?.kind === "video" && media.alpha !== undefined && [...media.alpha]).toEqual([0xff, 0xd8, 0x02, 0x03]);
+  });
+
+  it("refuses a 0x04 frame whose rgbLength runs past the message or whose header is cut", () => {
+    expect(decodeMedia(bytes([0x04], { f64: 0 }, { u16: 8 }, { u16: 8 }, { u32: 5 }, [1, 2, 3, 4]))).toBeUndefined();
+    expect(decodeMedia(bytes([0x04], { f64: 0 }, { u16: 8 }, { u16: 8 }, [0, 0]))).toBeUndefined();
+    // rgbLength may take the whole rest: an empty alpha is still a frame (the player draws it opaque).
+    const all = decodeMedia(bytes([0x04], { f64: 0 }, { u16: 8 }, { u16: 8 }, { u32: 2 }, [7, 8]));
+    expect(all?.kind === "video" && all.alpha?.byteLength).toBe(0);
+  });
+
+  it("leaves a 0x01 frame without alpha", () => {
+    const media = decodeMedia(bytes([0x01], { f64: 0 }, { u16: 4 }, { u16: 4 }, [1]));
+    expect(media?.kind === "video" && media.alpha).toBeUndefined();
+  });
+
   it("reads a 0x02 audio chunk: f64 pts, u32 rate, then PCM16LE at an odd offset", () => {
     const buffer = bytes([0x02], { f64: 40.5 }, { u32: 24000 }, { i16: [0, 16384, -32768, 32767] });
     const media = decodeMedia(buffer);
@@ -66,6 +88,9 @@ describe("decodeMedia", () => {
     const audio = decodeMedia(encodeAudio(120, 16000, new Int16Array([-2, 3])));
     expect(audio?.kind === "audio" && [...audio.samples].map((s) => Math.round(s * 32768))).toEqual([-2, 3]);
     expect(new Uint8Array(encodeSlideOut(2, jpeg))).toEqual(new Uint8Array(bytes([0x03], { u32: 2 }, [1, 2, 3])));
+    const matted = decodeMedia(encodeMatted(160, 1024, 1024, jpeg, new Uint8Array([9, 9])));
+    expect(matted).toMatchObject({ kind: "video", ptsMs: 160, width: 1024, height: 1024 });
+    expect(matted?.kind === "video" && [[...matted.jpeg], [...(matted.alpha ?? [])]]).toEqual([[1, 2, 3], [9, 9]]);
   });
 });
 
@@ -85,13 +110,18 @@ describe("client frames", () => {
   it("writes JSON messages as they are", () => {
     expect(JSON.parse(encodeMessage({ type: "hello", role: "out" }))).toEqual({ type: "hello", role: "out" });
     expect(JSON.parse(encodeMessage({ type: "say", id: "a", text: "Hi" }))).toEqual({ type: "say", id: "a", text: "Hi" });
+    expect(JSON.parse(encodeMessage({ type: "matte", on: true }))).toEqual({ type: "matte", on: true });
   });
 });
 
 describe("parseServerMessage", () => {
   it("reads state, event and timing, keeping null values", () => {
-    const state = { type: "state", ready: true, model: "lite", fps: 25, upscale: "none", source: "text", queue: 0, delayMs: 250, size: 512 };
+    const state = { type: "state", ready: true, model: "lite", fps: 25, upscale: "none", source: "text", queue: 0, delayMs: 250, size: 512, matte: true, idle: "loop" };
     expect(parseServerMessage(JSON.stringify(state))).toEqual(state);
+    // A round-1 server sends neither key: matte off, idle unknown.
+    const v1 = { type: "state", ready: true, model: "lite", fps: 25, upscale: "none", source: "text", queue: 0, delayMs: 250, size: 512 };
+    expect(parseServerMessage(JSON.stringify(v1))).toMatchObject({ matte: false, idle: null });
+    expect(parseServerMessage(JSON.stringify({ ...state, idle: "nap" }))).toMatchObject({ idle: null });
     const event = { type: "event", kind: "slide", id: null, text: "2", atMs: 4000 };
     expect(parseServerMessage(JSON.stringify(event))).toEqual(event);
     const timing = { type: "timing", id: "line-1", firstFrameMs: 812, chunkMs: 410, upscaleMs: null };

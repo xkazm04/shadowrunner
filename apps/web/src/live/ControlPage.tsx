@@ -7,7 +7,8 @@
 //   another tab is open.
 // - The upscaler shows the requested kind until the server's `state` confirms it or an `error`
 //   arrives; an error no line or turn claims shows under the toolbar.
-// - Stop also ends the slide deck where it is.
+// - Stop also ends the slide deck where it is, and flushes the preview at once (round 2).
+// - The matte switch, like the upscaler, shows the request until `state.matte` confirms it.
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactElement } from "react";
 import { ChatTab } from "./ChatTab";
 import { EmptyState } from "./EmptyState";
@@ -29,7 +30,11 @@ const TABS = [
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
 
-const UPSCALE_LABEL: Readonly<Record<UpscaleKind, string>> = { none: "None", realesrgan: "Real-ESRGAN", maxine: "Maxine" };
+const UPSCALE_LABEL: Readonly<Record<UpscaleKind, string>> = { none: "None", realesrgan: "Real-ESRGAN", maxine: "Maxine", iris: "Iris" };
+const MATTE_CHOICES = [
+  { on: false, label: "Off" },
+  { on: true, label: "On" },
+] as const;
 export const NOT_CONNECTED = "Not sent: the live server is not connected.";
 export const MIC_ON = "Puppet mode is on: stop the microphone to type lines.";
 
@@ -42,6 +47,8 @@ function stateLine(state: LiveState): string {
     `queue ${state.queue}`,
     `${state.size} px`,
     `source ${state.source}`,
+    `matte ${state.matte ? "on" : "off"}`,
+    ...(state.idle === null ? [] : [`idle ${state.idle}`]),
   ].join(" · ");
 }
 
@@ -54,6 +61,7 @@ export function ControlPage({ server }: { server: string }): ReactElement {
   const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [error, setError] = useState<string | undefined>(undefined);
   const [requested, setRequested] = useState<UpscaleKind | undefined>(undefined);
+  const [matteAsked, setMatteAsked] = useState<boolean | undefined>(undefined);
   const [stops, setStops] = useState(0);
   const known = useRef(new Set<string>());
   const tabRefs = useRef(new Map<TabId, HTMLButtonElement>());
@@ -67,13 +75,15 @@ export function ControlPage({ server }: { server: string }): ReactElement {
         if (loose !== undefined) {
           setError(loose);
           setRequested(undefined);
+          setMatteAsked(undefined);
         }
       }),
     [listen],
   );
   useEffect(() => {
     if (requested !== undefined && state?.upscale === requested) setRequested(undefined);
-  }, [state, requested]);
+    if (matteAsked !== undefined && state?.matte === matteAsked) setMatteAsked(undefined);
+  }, [state, requested, matteAsked]);
 
   const say = useCallback(
     (text: string, origin: LineRecord["origin"], id: string = newId("line")): boolean => {
@@ -106,6 +116,11 @@ export function ControlPage({ server }: { server: string }): ReactElement {
     if (send({ type: "upscale", kind })) setRequested(kind);
   };
 
+  const matte = (on: boolean) => {
+    setError(undefined);
+    if (send({ type: "matte", on })) setMatteAsked(on);
+  };
+
   const onTabKey = (event: KeyboardEvent<HTMLButtonElement>) => {
     const at = TABS.findIndex((t) => t.id === tab);
     const to = { ArrowRight: at + 1, ArrowLeft: at - 1, Home: 0, End: TABS.length - 1 }[event.key];
@@ -120,6 +135,7 @@ export function ControlPage({ server }: { server: string }): ReactElement {
   const mic = state?.source === "mic";
   const blocked = !open ? NOT_CONNECTED : mic ? MIC_ON : undefined;
   const shownUpscale = requested ?? state?.upscale;
+  const shownMatte = matteAsked ?? state?.matte;
   const obs = outUrl(typeof window === "undefined" ? "" : window.location.origin, server, DEFAULT_SERVER);
 
   return (
@@ -145,6 +161,15 @@ export function ControlPage({ server }: { server: string }): ReactElement {
               <label key={kind} className={styles.segment}>
                 <input type="radio" name="upscale" value={kind} checked={shownUpscale === kind} onChange={() => upscale(kind)} />
                 <span>{UPSCALE_LABEL[kind]}</span>
+              </label>
+            ))}
+          </fieldset>
+          <fieldset className={styles.segmented} disabled={!open} data-live="matte">
+            <legend className={styles.legend}>Matte</legend>
+            {MATTE_CHOICES.map(({ on, label }) => (
+              <label key={label} className={styles.segment}>
+                <input type="radio" name="matte" value={label.toLowerCase()} checked={shownMatte === on} onChange={() => matte(on)} />
+                <span>{label}</span>
               </label>
             ))}
           </fieldset>
@@ -193,7 +218,7 @@ export function ControlPage({ server }: { server: string }): ReactElement {
       </div>
       <aside className={styles.side} aria-label="Preview">
         <h2 className={styles.heading}>Preview</h2>
-        <OutView server={server} audio={false} corner="br" showSlides variant="preview" />
+        <OutView server={server} audio={false} corner="br" showSlides variant="preview" flushes={stops} />
         <p className={styles.hint}>
           OBS browser source:{" "}
           <a className={styles.link} href={obs} target="_blank" rel="noreferrer">
