@@ -89,5 +89,52 @@ Clock and sync: one stream clock (ms since the server started streaming). Frame 
      - No key in any client payload.
    - Doc section to scratch.
 
+## Round 2 amendment (Director, 2026-11-16, owner-chosen scope)
+
+### Protocol `fhl/1` additions (backward compatible)
+- Video frame with alpha: `0x04`, float64 ptsMs, uint16 width, uint16 height, uint32 rgbLength, then the colour JPEG (rgbLength bytes), then a greyscale JPEG of the alpha (rest of the message, same width/height; 255 = opaque). The server sends `0x04` instead of `0x01` while matting is on.
+- Command `{"type":"matte","on":true|false}`; `state` gains `"matte":true|false` (key always present).
+- `state` gains `"idle":"loop"|"live"` (which idle the server is showing; key always present).
+- Out clients flush everything not yet played when a `line-end` with `text:"stopped"` arrives (the server's stop marker) or when the control page sends `stop`.
+
+### Idle loop (engine)
+- `th live make-idle [--seconds 12]` renders FlashHead Lite offline on an idle-performance audio (pauses, soft breaths, a few closed-mouth "mm" sounds); the builder chooses and measures the audio.
+- It keeps the frames whose mouth region stays closed, picks a loop span whose end matches its start (minimal frame difference), and writes `$TH_HOME/live/idle/iris/` (`loop.npz` uint8 frames at 512, `loop.json` {fps, frames, sourceAudio, seamDiff}).
+- The engine plays the loop whenever nothing is spoken, then crossfades loop to live over 6 frames (240 ms) at line start and live to loop at line end.
+- The live model keeps its motion state (it is still fed silence underneath), so the crossfade lands on a coherent live frame.
+- `state.idle` reports which is showing.
+- Acceptance:
+  - a sheet of loop frames;
+  - head motion and blink counts measured over the loop;
+  - a clip of idle, then speech, then idle with the crossfades;
+  - no visible seam at the loop wrap (frame difference at the wrap no larger than the loop's median step).
+
+### Seam blend (engine)
+- Hold the last 3 frames of each chunk and blend them with the next chunk's corresponding motion frames (weights 0.25/0.5/0.75), after verifying the frames cover the same instants.
+- Measure the seam step against the non-seam step, before and after, in speech and in idle.
+
+### Faster first word (engine)
+- Idle look-ahead 960 to about 750 ms; keep the Kokoro and FlashHead paths warm.
+- Report firstFrameMs before and after on live-bench, with a GPU co-tenant noted.
+- Accept only if late chunks stay at 0 with the co-tenant present.
+
+### Matting
+- `th/live/matte/` with `get_matte(kind) -> Matte` (`__call__(frames uint8 CUDA (N,H,W,3)) -> alpha uint8 CUDA (N,H,W)`).
+- Candidates must be licence-clean on code AND weights (read the cards): MediaPipe selfie segmentation (Apache), BiRefNet / BiRefNet-lite (MIT; we already use BiRefNet offline), others the builder finds.
+- Runs on the 512 frame before upscaling, alpha upscaled alongside.
+- Temporal smoothing of the alpha to stop edge flicker.
+- Must fit the 25 fps budget with Maxine and a GPU co-tenant.
+- Measure hair-edge quality on a sheet over a checkerboard, ms per chunk, and flicker.
+- Default off; `th live --matte` turns it on.
+
+### Iris-trained sharpener (`--upscale iris`)
+- Training data: Iris's 1024 portrait and her 26 Codex edits (`assets/characters/companions/iris/edits/*.webp`), bust-cropped like the live input.
+- Degrade each crop the way the live path does: resize to 512, encode and decode with FlashHead Lite's own VAE (VAE_LTX), plus mild noise and blur augmentation. Pairs are (degraded 512, original 1024).
+- Train a compact SRVGG-style 2x network from scratch (inline arch, no pretrained weights) on the GPU at low priority.
+  - Hold out 3 edits for validation.
+- Ship as `th/live/upscale/iris.py` with weights in `$TH_HOME/models/live-upscale/iris-x2.pth` and a training script `th/live/upscale/train_iris.py`.
+- Compare with none/maxine on the held-out edits and on live-bench output: freckle/skin texture by eye on a sheet, identity, flicker, ms per chunk.
+- The Director adds `iris` to the registry before the fan-out.
+
 ## Non-goals (v1)
 STT voice input, LiveKit/WebRTC, remote viewers, characters other than Iris, the Iris-trained sharpener (follow-up), the Pro model live.

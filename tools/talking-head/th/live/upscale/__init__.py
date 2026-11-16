@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Protocol
 if TYPE_CHECKING:
     import torch
 
-KINDS = ("none", "realesrgan", "maxine")
+KINDS = ("none", "realesrgan", "maxine", "iris")
 
 
 class Upscaler(Protocol):
@@ -46,4 +46,8 @@ def get_upscaler(kind: str) -> Upscaler:
         from .maxine import MaxineUpscaler
 
         return MaxineUpscaler()
+    if kind == "iris":
+        from .iris import IrisUpscaler
+
+        return IrisUpscaler()
     raise ValueError(f"unknown upscaler {kind!r}; expected one of {KINDS}")
