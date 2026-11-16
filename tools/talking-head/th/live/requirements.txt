@@ -1,0 +1,7 @@
+# Installed into the FlashHead env ($TH_HOME/envs/realtime-fh) by `th live` (Director-owned list;
+# builders report additions instead of editing it).
+websockets>=13,<16
+anthropic>=0.60
+kokoro-onnx>=0.4
+Pillow>=10
+numpy
