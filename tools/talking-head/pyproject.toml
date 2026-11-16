@@ -1,0 +1,51 @@
+[project]
+name = "talking-head"
+version = "0.1.0"
+description = "Alternative human avatar arms: render the Iris portrait speaking a script, measure, board."
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "torch==2.6.0",
+  "torchvision==0.21.0",
+  "transformers==4.49.0",
+  "timm>=1.0",
+  "kornia>=0.7",
+  "einops>=0.8",
+  "huggingface-hub>=0.26",
+  "mediapipe>=0.10.18",
+  "kokoro-onnx==0.6.1",
+  "soundfile>=0.12",
+  "python-speech-features==0.6",
+  "scipy>=1.13",
+  "numpy>=1.26",
+  "pillow>=10",
+  "pydantic>=2.8",
+  "filelock>=3.15",
+]
+
+[project.scripts]
+th = "th.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["uv_build>=0.9,<0.10"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "th"
+module-root = ""
+
+[tool.uv]
+# CUDA wheels for torch/torchvision only; everything else from PyPI.
+[[tool.uv.index]]
+name = "pytorch-cu124"
+url = "https://download.pytorch.org/whl/cu124"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu124" }
+torchvision = { index = "pytorch-cu124" }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

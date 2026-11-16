@@ -66,6 +66,7 @@ export default tseslint.config(
     // assets/ is committed art (including reference prototypes), not workspace source.
     ignores: [
       "**/node_modules/**",
+      "**/.venv/**", // Python venvs (tools/*) ship third-party JS
       "**/dist/**",
       "var/**",
       ".vercel/**",

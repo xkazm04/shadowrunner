@@ -1,0 +1,22 @@
+# long-180s: Iris, a calm explainer for a YouTube audience. Target 170-190 s.
+# Comment lines (#) are not spoken.
+
+Hi, I'm Iris. In this video I'd like to take a few quiet minutes and walk you through how Hearth works, from the moment you unbox it to the first week of living with it. No hype, just how it behaves in an ordinary home.
+
+Hearth is a small hub that sits on a shelf in your kitchen or hallway. Its one job is to hold your household calendar: school pickups, dentist visits, bin days, birthdays, and the little promises people make to each other at breakfast and then forget by lunch.
+
+Setting it up takes about five minutes. You plug it in, choose a language, and add the people who live with you. Each person gets a colour and a short name. That's it. There is no account to create and nothing is sent to a server. Everything stays on the device, and you can export a full copy of your calendar whenever you like.
+
+Adding plans is meant to feel natural. You can type on the companion app, scan a school letter with your phone, or simply say it out loud. For example, you might say, swimming on Tuesday at five for Maya. Hearth repeats it back once, in plain words, so you can correct it before it saves anything.
+
+The part people notice first is how it handles clashes. If two plans need the same car, or the same adult, at the same time, Hearth doesn't just flash a warning. It shows both plans side by side and suggests one or two simple ways to fix it, like moving the earlier one or asking someone else to drive.
+
+Reminders are gentle by design. Instead of a loud alarm for everyone, Hearth reminds the one person who needs to act, a little before they need to act. A light on the hub glows in their colour, and their phone gets a short message. When the task is done, they tap it once and the light goes out.
+
+Over the first week, Hearth learns the shape of your days. It notices that Mondays are busy and Sundays are slow, and it stops suggesting plans at times your family is never free. You can see everything it has learned on one page, and you can clear any of it with a single tap.
+
+Sharing works the same quiet way. Grandparents, a babysitter, or a neighbour who helps with the school run can be given a small window into the calendar. They see only the plans you choose, for as long as you choose, and the window closes by itself when the week is over. Nobody has to install anything, and nobody has to remember a password. If you change your mind, you can close it early from the hub with one tap.
+
+A few honest limits. Hearth is only as good as what you tell it. It can't read your email, and it won't invent plans for you. It works best when one or two people in the house take a minute each evening to look at tomorrow.
+
+That's really the whole idea. One calm place, a few small reminders, and fewer surprises. If you have questions, leave them below, and I'll answer as many as I can. Thanks for watching.
