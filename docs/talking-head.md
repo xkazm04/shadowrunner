@@ -690,3 +690,130 @@ crops, mouth range 3.9/255; only texture shimmer (frame step 0.52/255) and a sma
 seam (1.34/255, every 0.96 s). Pink noise fed as idle input at -50 and -40 dBFS changed none of these
 figures (head shift 0.06 px, mouth range 3.8 and 4.0, seam step 1.36), so that is not the fix. The
 seam step is there in speech as well (2.21 vs 1.37 elsewhere).
+
+### Upscalers (`--upscale none|realesrgan|maxine`)
+
+FlashHead Lite renders 512x512. An upscaler takes each 24-frame chunk on the GPU (uint8 `(24,512,512,3)`)
+and returns `(24,1024,1024,3)` before JPEG encoding. `none` sends 512 and lets the browser scale it.
+Code: `th/live/upscale/` (`realesrgan.py`, `maxine.py`, `weights.py`, and `ab.py`, the A/B tool).
+
+| kind | what | weights / package | licence |
+| --- | --- | --- | --- |
+| `realesrgan` | SRVGGNetCompact `realesr-general-x4v3`, fp16 CUDA, channels-last, one 24-frame batch: 512 -> 2048, then an exact 2x2 area average to 1024. The arch is inlined (no basicsr). | `$TH_HOME/models/live-upscale/realesr-general-x4v3.pth` (4.9 MB, sha256-pinned), fetched on first use | BSD-3-Clause (xinntao/Real-ESRGAN `LICENSE`; the weights are its release assets) |
+| `maxine` | NVIDIA Video Super Resolution (Maxine VFX SDK 1.3) through NVIDIA's `nvidia-vfx` 0.2.0.0 Python bindings, quality `HIGHBITRATE_HIGH`, one SDK call per frame (DLPack, no copies to the host) | wheel from `pypi.nvidia.com` (436 MB), unpacked to `$TH_HOME/models/live-upscale/nvvfx-cp310/` (FlashHead env) or `nvvfx-cp312/` (th env) by `python -m th.live.upscale.maxine fetch` | NVIDIA Software License Agreement + Product-Specific Terms for NVIDIA AI Products; models under the NVIDIA Open Model License (below) |
+
+`$TH_HOME/models/live-upscale/licence.json` carries one row per weight file and wheel, in the `th fetch` shape.
+A native x2 compact model exists in the same release (`RealESRGANv2-animevideo-xsx2`, BSD-3), but it is
+trained on anime. It is measured below and not shipped. Real-ESRGAN publishes no photo-trained compact x2.
+`RealESRGAN_x2plus` is the heavy RRDBNet (67 MB), so it is out of the live budget.
+
+**Maxine terms, read before building.** The terms are in the wheel's `dist-info/licenses/`: `NVIDIA-Software-License-Agreement-2025.05.05.pdf`, `product-specific-terms-for-nvidia-ai-products-2025.05.05.pdf` and `NVIDIA-Open-Model-License-Agreements-24-10-2025.pdf`.
+- **Access.** No NVIDIA account is needed. The wheels are public on https://pypi.nvidia.com/nvidia-vfx/ for Windows and Linux (cp310 and cp312, plus win_arm64). The NGC SDK download does need a developer-program login. That path is not used.
+- **Commercial use.** The NGC VSR collection (https://catalog.ngc.nvidia.com/orgs/nvidia/maxine/collections/nvvfxvideosuperres) says: "This feature is available for commercial/non-commercial use". It also says the effect "is governed by the NVIDIA SOFTWARE LICENSE AGREEMENT", and "Use of the models is governed by the NVIDIA Open Model License" ("Models are commercially usable").
+- **Binding limits.**
+  - SLA 8.4: no reverse engineering.
+  - SLA 8.5: no redistribution, except inside a Customer Product. We do not ship the wheel: each machine downloads it from NVIDIA.
+  - SLA/PST 8.9: "Customer may not distribute or disclose to third parties the results of benchmarking, competitive analysis, regression or performance data relating to the Software without the prior written permission from NVIDIA". **So Maxine performance figures stay out of this repo; they live in the gitignored internal note named under "Verdict".**
+  - PST 8.17: not for emotion recognition.
+- **Status.** On PyPI the package is "Development Status :: 3 - Alpha". SLA section 3 lets Pre-Release software be used "at Customer's risk".
+
+#### Verdict (figures internal)
+
+The A/B figures live in `var/talking-head/live-upscale-ab/INTERNAL-benchmarks.md` (gitignored) and are not
+published, per SLA 8.9. In short: `maxine` keeps Iris's skin texture and identity, adds a small amount of
+sharpness, and holds 25 fps with another app on the GPU, so it is the default (owner-accepted licence,
+2026-11-16). `realesrgan` (BSD-3) is the open-licence fallback: sharper, but it repaints the face (smooth,
+painterly skin, freckles lost) and misses real time when the GPU is shared.
+
+### The web pages: `/live` and `/live?out=1`
+
+The app (`apps/web/src/live/`) drives the live server over `fhl/1`. Start the server first (`uv run th live` in `tools/talking-head`), then open the app (`pnpm dev`).
+
+- **`/live`, the control page** (hotkey `L`, off the dial and off the strip). It sits in the app's frame, like the studio.
+  - Connection lamp and the server's `state` line: ready, fps, upscale, delay, queue, size and source.
+  - With no server, a designed empty state shows the command to run (`uv run th live`, plus `--port` when `?server=` names another port, plus `--allow-origin <this origin>` after a 4403 refusal), with a Copy button. The page retries with a backoff of 0.5, 1, 2, 4 and then 8 s, and connects by itself once the server is up.
+  - **Upscaler**: a segmented switch (None / Real-ESRGAN / Maxine). It shows the requested kind until the server's `state` confirms it. A server `error` event that no line claims shows inline under the toolbar.
+  - **Stop** sends `stop`, ends a running slide deck where it is, and clears the slide this page put up.
+  - **Tabs** (arrow keys, Home and End move between them). All tabs stay mounted, so a running deck or mic keeps going in the background.
+    - **Lines**: type a line and press Speak (or Enter). The history lists every line sent, slide lines included, with its status (queued, speaking, done, not spoken) and the server's `timing`: first frame, chunk and upscale ms, plus the spoken length from `line-start` to `line-end`.
+    - **Chat**: the message goes as `chat`. The thread shows Iris's `reply-text` sentence by sentence as she speaks them. The LLM key never reaches the page.
+    - **Puppet**: Start the microphone sends `source: mic`, then streams 0x10 frames: getUserMedia, then an AudioWorklet, then resampling to 16 kHz with a box-filter and linear interpolation, then 640-sample (40 ms) PCM16 chunks. A level meter shows the input. Stop sends `source: text`. The mic stops by itself if the connection drops. Lines and Chat are disabled while the server's source is `mic`.
+    - **Slides**: pick a folder. Its images (PNG, JPEG or WebP) play in natural name order, so `2` comes before `10`.
+      - `script.md` in the folder holds the lines: `## 1`, `## 2`... sections, one line per paragraph. Wrapped lines are joined, and text before the first section is ignored.
+      - Start sends `slide` plus its 0x13 image, then each line as `say` with the id `slide-<index>-<line>` (both 0-based). The deck moves on when the last line's `line-end` arrives.
+      - A slide with no lines holds for 4 s.
+      - Previous and Next send `stop` first.
+      - Pause lets the current line finish, then holds the slide.
+      - Clear slide sends `slide` with the shown index followed by an empty `0x13`; the server relays it as an empty `0x03`, and the out view puts Iris back in the centre. The page sends the same clear when the deck ends and on Stop (when it has a slide up).
+  - **Preview**: a small, silent `out` client of the same stream, on a checkerboard, with the OBS URL to copy.
+- **`/live?out=1`, the OBS browser source**: the stream alone on a transparent page, with no chrome.
+  - Iris is centred and as large as the viewport allows.
+  - While a slide is active, the slide fills the frame and Iris sits in a corner: `?corner=br|bl|tr|tl`, default `br`. `?slides=0` ignores slides.
+  - `?server=ws://host:port/live` points either page at another server. The default is `ws://127.0.0.1:8765/live`.
+  - Playout: audio chunks are scheduled on a WebAudio clock at `pts + 250 ms`, measured from the first pts received. JPEG frames are decoded with `createImageBitmap` and drawn when their pts comes up on the same clock.
+    - Late frames are dropped.
+    - A late audio chunk starts at once with its late part skipped, so audio is never stretched and never drifts.
+    - If the browser keeps the AudioContext suspended, frames run on the wall clock and a "Click to start the sound." button shows. The playhead carries over when the audio clock starts. OBS does not suspend audio.
+    - A reconnect, or a pts that jumps back by more than 1 s or ahead by more than 5 s, re-anchors the clock.
+  - The page writes its figures to data attributes on `[data-live-out]`: `data-drawn`, `data-dropped`, `data-chunks` and `data-size`.
+- **Without the GPU**: run `node apps/web/e2e/fakeLive.ts [port]` for a fake `fhl/1` server, then open `/live?server=ws://127.0.0.1:8790/live`. The fake streams synthetic 25 fps JPEG frames, and each `say` plays a 1 s 440 Hz tone with its `line-start`, `timing` and `line-end` messages.
+- **Tests**: unit tests for the codec, client, clock, slides, PCM and history live in `src/live/*.test.ts`. The e2e test is `apps/web/e2e/live.e2e.spec.ts`. Run it after building, with `SR_E2E_PORT=5320 pnpm --filter ./apps/web exec playwright test -c playwright.e2e.config.ts live.e2e.spec.ts`.
+
+### Conversation (`th/live/chat.py`, task 4)
+
+A `chat` command turns into one streamed reply. `reply_sentences(text, history)` yields Iris's
+reply one speakable sentence at a time while it streams, and the engine sends each sentence to
+Kokoro as soon as it arrives, so she starts talking after the first sentence, not after the whole
+reply.
+
+- **Transport.** `TH_LIVE_LLM=cli` (the default) or `api`.
+  - `cli` runs the locally logged-in `claude` CLI, one process per turn (`th/live/chat_cli.py`,
+    the same shape as the lab's `apps/lab/src/director/llm/cliTransport.ts`): `claude -p
+    --output-format stream-json --include-partial-messages --verbose --model <model> --effort low
+    --tools "" --system-prompt <persona> --no-session-persistence --setting-sources ""
+    --strict-mcp-config --disable-slash-commands`, prompt on stdin, in the empty folder
+    `$TH_HOME/live/cli-cwd`, so no CLAUDE.md, settings, MCP servers or tools reach it.
+    `TH_LIVE_CLAUDE` points at another executable. Each call is a fresh process, so the capped
+    history goes into the prompt as `<history><turn role="...">` blocks. The child gets no API key
+    (`ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_KEY_LANE_*` are removed) and none of a
+    parent Claude Code session's variables (`CLAUDECODE`, `CLAUDE_CODE_*`), so it uses the owner's
+    login. Text deltas come from the `stream_event` lines; the `result` line ends the last
+    sentence at once, before the process exits. One call times out after 60 s.
+  - Cancelling (a new chat, `stop`, `aclose()`) kills the CLI and its children (`taskkill /T /F`
+    on Windows, the process group elsewhere) and reaps it.
+  - Measured once (2026-11-16, `claude-haiku-5-5` via Claude Code 2.1.325, "Introduce yourself in
+    one sentence."): first sentence 3030 ms, total 3030 ms (a one-sentence reply), including
+    process start.
+  - `api` is the Messages API path below; the hackathon account has no credit at the moment.
+- **Key (`api` only).** Read by the Python server only, from `ANTHROPIC_KEY_LANE_HACKATHON` (else
+  `ANTHROPIC_API_KEY`). It goes into the SDK client and nowhere else: never into a WebSocket
+  frame, an event, a log line or a return value. Error log lines replace the key with `***`.
+- **Model.** `claude-haiku-5-5` by default; `TH_LIVE_MODEL` overrides. Haiku runs with thinking
+  off at effort `low` and `max_tokens` 300 (the same settings `packages/engine` uses for one-line
+  replies). Any other model keeps its default adaptive thinking (Opus 5.5 and Sonnet 5.5 refuse
+  `thinking: disabled`) at effort `low` with `max_tokens` 1024. The client has a 20 s timeout and
+  one retry; one client is kept per event loop, so turns after the first reuse the connection.
+- **Persona.** `th/live/persona.md` is the system prompt: Iris, the photoreal cyber-streamer
+  companion (silver bob, headset with boom mic; calm, warm and close, the "velvet" voice of her
+  pack), a fictional AI character who never claims to be human. Spoken rules: one to three
+  sentences unless asked for more, no markdown, no emoji, no stage directions, numbers and
+  abbreviations as they are said, no URLs.
+- **Sentences.** A terminator (`.`, `!`, `?`, an ellipsis) ends a sentence once the next non-space
+  character has arrived and does not continue it, so `3.5`, `Dr. Lee`, `e.g. this` and `well...
+  maybe` stay whole; a newline always ends one. A run-on with no terminator is cut at a comma past
+  220 characters. Each sentence is cleaned before it is yielded: markdown (emphasis, headings,
+  bullets, numbered markers, code ticks, links to their text), URLs, `[bracketed asides]`, emoji
+  and emoticons are removed; a sentence with nothing speakable left is dropped.
+- **History.** The caller owns a list of `{role, content}`. After a turn it holds the user line and
+  the reply as spoken, capped in place to the last 12 exchanges (24 messages), always starting on
+  a user turn. A cancelled reply records only the sentences yielded before the cut; a turn that
+  yielded nothing records nothing.
+- **Cancellation.** A new chat or `stop` cancels the task iterating the generator (or calls
+  `aclose()`); the SDK stream is closed at once, so no tokens keep flowing for a reply nobody hears.
+- **Errors.** A missing key or a missing `claude` executable yields "Sorry, I can't chat right now, my conversation link isn't set
+  up."; an API, network or CLI error (not logged in, non-zero exit, timeout) yields "Sorry, I lost my train of thought there, could you say that
+  again?" (after whatever was already said). A refusal with nothing said yields one short decline.
+  The cause is logged on the server (`th.live.chat`: error type, status, request id).
+- **Setup.** `anthropic` is in `th/live/requirements.txt`, installed into the FlashHead env by
+  `th live`. The module imports it lazily, so `uv run pytest` runs the chat tests (a fake streaming
+  client) without the SDK.
