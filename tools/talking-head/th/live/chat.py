@@ -1,19 +1,22 @@
-"""Conversation for live Iris (flashhead-live task 4): one streamed Anthropic Messages call per chat
-turn, cut into speakable sentences as the text arrives.
+"""Conversation for live Iris (flashhead-live task 4): one streamed reply per chat turn, cut into
+speakable sentences as the text arrives.
 
 Contract (design "Interfaces"): `reply_sentences(text, history)` yields each sentence as soon as its
 terminator is confirmed, with markdown and emoji stripped so the TTS never reads a symbol. The
 caller owns `history` (a list of `{role, content}`) and cancellation: closing the generator
-(`aclose()`) or cancelling the task that iterates it closes the HTTP stream at once.
+(`aclose()`) or cancelling the task that iterates it ends the reply at once.
 
-The key is read here, in the server process, from `ANTHROPIC_KEY_LANE_HACKATHON` (else
-`ANTHROPIC_API_KEY`). It goes only into the SDK client; it is never logged, yielded or returned.
-`anthropic` is imported lazily, so the module (and its tests) load without the SDK installed.
+Transport (`TH_LIVE_LLM`): `cli` (default, owner ruling 2026-11-16) runs the logged-in `claude` CLI
+per turn (`chat_cli.py`; cancelling kills the process tree); `api` streams the Anthropic Messages
+API with the key from `ANTHROPIC_KEY_LANE_HACKATHON` (else `ANTHROPIC_API_KEY`), read here in the
+server process and never logged, yielded or returned. `anthropic` is imported lazily, so the
+module (and its tests) load without the SDK installed.
 """
 
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import functools
 import logging
 import os
@@ -23,6 +26,8 @@ from typing import Any, AsyncIterator
 
 log = logging.getLogger("th.live.chat")
 
+TRANSPORT_ENV = "TH_LIVE_LLM"
+TRANSPORTS = ("cli", "api")
 KEY_ENVS = ("ANTHROPIC_KEY_LANE_HACKATHON", "ANTHROPIC_API_KEY")
 MODEL_ENV = "TH_LIVE_MODEL"
 DEFAULT_MODEL = "claude-haiku-5-5"
@@ -55,6 +60,14 @@ def persona() -> str:
 
 def model_id() -> str:
     return os.environ.get(MODEL_ENV, "").strip() or DEFAULT_MODEL
+
+
+def transport() -> str:
+    """`cli` or `api` from TH_LIVE_LLM; default (and anything unknown) `cli`."""
+    value = os.environ.get(TRANSPORT_ENV, "").strip().lower()
+    if value and value not in TRANSPORTS:
+        log.warning("chat: unknown %s=%r; using cli", TRANSPORT_ENV, value)
+    return value if value in TRANSPORTS else "cli"
 
 
 def api_key() -> str | None:
@@ -276,53 +289,90 @@ def _describe(err: BaseException) -> str:
 
 # ---------------------------------------------------------------- the turn
 
+class Unavailable(Exception):
+    """The transport cannot run at all (no key, no SDK, no CLI): one apology, one log line."""
+
+    def __init__(self, apology: str, why: str) -> None:
+        super().__init__(why)
+        self.apology = apology
+
+
+class Refused(Exception):
+    """The model declined before saying anything."""
+
+
+async def _api_deltas(client: Any, params: dict[str, Any]) -> AsyncIterator[str]:
+    said = False
+    async with client.messages.stream(**params) as stream:
+        async for delta in stream.text_stream:
+            said = said or bool(delta.strip())
+            yield delta
+        final = await stream.get_final_message()
+    stop = getattr(final, "stop_reason", None)
+    if stop == "refusal":
+        log.info("chat: the model declined (%s)", getattr(final, "stop_details", None))
+        if not said:
+            raise Refused()
+    elif stop == "max_tokens":
+        log.warning("chat: reply hit max_tokens=%s", params["max_tokens"])
+
+
+def _source(text: str, history: list[dict]) -> AsyncIterator[str]:
+    """The reply's raw text deltas from the selected transport. Raises Unavailable."""
+    if transport() == "api":
+        try:
+            client = get_client()
+        except ImportError as err:  # the SDK is missing from this env
+            raise Unavailable(API_APOLOGY, f"cannot load the anthropic SDK ({err})") from err
+        if client is None:
+            raise Unavailable(NO_KEY_APOLOGY, f"no API key (set {KEY_ENVS[0]})")
+        return _api_deltas(client, request_params([*history, {"role": "user", "content": text}]))
+    from . import chat_cli
+
+    try:
+        cmd = chat_cli.command()
+    except chat_cli.CliMissing as err:
+        raise Unavailable(NO_KEY_APOLOGY, str(err)) from err
+    return chat_cli.text_deltas(cmd, persona(), history, text, model_id())
+
+
 async def reply_sentences(text: str, history: list[dict]) -> AsyncIterator[str]:
     """Iris's reply to `text`, one speakable sentence at a time, as the reply streams.
 
     On completion, `history` gains the user turn and the reply as spoken (the joined sentences),
     capped to the last 12 exchanges. A cancelled reply records what was yielded before the cut; a
-    turn that yielded nothing records nothing. A missing key or an API error yields one short
-    apology sentence and logs the cause server-side.
+    turn that yielded nothing records nothing. A missing key or CLI, or a failed call, yields one
+    short apology sentence and logs the cause server-side.
     """
     text = " ".join(text.split())[:MAX_USER_CHARS]
     if not text:
         return
     try:
-        client = get_client()
-    except ImportError as err:  # the SDK is missing from this env
-        log.error("chat: cannot load the anthropic SDK (%s); replying with the apology", err)
-        yield API_APOLOGY
-        return
-    if client is None:
-        log.warning("chat: no API key (set %s); replying with the apology", KEY_ENVS[0])
-        yield NO_KEY_APOLOGY
+        source = _source(text, capped(history))
+    except Unavailable as err:
+        log.warning("chat: %s; replying with the apology", err)
+        yield err.apology
         return
 
-    params = request_params([*capped(history), {"role": "user", "content": text}])
     splitter = SentenceSplitter()
     spoken: list[str] = []
     try:
-        async with client.messages.stream(**params) as stream:
-            async for delta in stream.text_stream:
+        async with contextlib.aclosing(source) as deltas:  # closing us closes the stream/process
+            async for delta in deltas:
                 for raw in splitter.feed(delta):
                     sentence = speakable(raw)
                     if sentence:
                         spoken.append(sentence)
                         yield sentence
-            for raw in splitter.flush():
-                sentence = speakable(raw)
-                if sentence:
-                    spoken.append(sentence)
-                    yield sentence
-            final = await stream.get_final_message()
-            stop = getattr(final, "stop_reason", None)
-            if stop == "refusal":
-                log.info("chat: the model declined (%s)", getattr(final, "stop_details", None))
-                if not spoken:
-                    yield REFUSAL_LINE
-            elif stop == "max_tokens":
-                log.warning("chat: reply hit max_tokens=%s", params["max_tokens"])
-    except Exception as err:  # SDK and network errors; cancellation is not an Exception
+        for raw in splitter.flush():
+            sentence = speakable(raw)
+            if sentence:
+                spoken.append(sentence)
+                yield sentence
+    except Refused:
+        if not spoken:
+            yield REFUSAL_LINE
+    except Exception as err:  # SDK, CLI and network errors; cancellation is not an Exception
         log.error("chat: %s", _describe(err))
         yield API_APOLOGY
     finally:

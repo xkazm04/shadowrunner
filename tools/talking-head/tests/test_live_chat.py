@@ -1,4 +1,4 @@
-"""th.live.chat against a fake streaming client: sentence splitting, markdown stripping, cancellation
+"""th.live.chat (the `api` transport) against a fake streaming client: sentence splitting, markdown stripping, cancellation
 closes the stream, history capping, the missing-key and API-error apologies. No network."""
 
 from __future__ import annotations
@@ -67,6 +67,7 @@ class FakeClient:
 @pytest.fixture
 def fake(monkeypatch):
     def install(stream: FakeStream) -> FakeClient:
+        monkeypatch.setenv(chat.TRANSPORT_ENV, "api")
         client = FakeClient(stream)
         monkeypatch.setattr(chat, "get_client", lambda: client)
         return client
@@ -235,6 +236,7 @@ def test_capped_drops_a_leading_assistant_message():
 # ---------------------------------------------------------------- errors and key
 
 def test_missing_key_yields_one_apology(monkeypatch, caplog):
+    monkeypatch.setenv(chat.TRANSPORT_ENV, "api")
     for name in chat.KEY_ENVS:
         monkeypatch.delenv(name, raising=False)
     history: list[dict] = []
@@ -288,6 +290,15 @@ def test_persona_says_ai_character_and_spoken_rules():
     assert text.startswith("You are Iris")
     for needle in ("AI character", "not a real person", "No markdown", "No emoji", "stage directions"):
         assert needle in text
+
+
+def test_transport_defaults_to_cli(monkeypatch):
+    monkeypatch.delenv(chat.TRANSPORT_ENV, raising=False)
+    assert chat.transport() == "cli"
+    monkeypatch.setenv(chat.TRANSPORT_ENV, "API")
+    assert chat.transport() == "api"
+    monkeypatch.setenv(chat.TRANSPORT_ENV, "carrier-pigeon")
+    assert chat.transport() == "cli"
 
 
 def test_blank_input_yields_nothing(fake):
