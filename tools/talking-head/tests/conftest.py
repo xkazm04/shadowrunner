@@ -49,3 +49,10 @@ def make_clip(path: Path, seconds: float = 2.0, size: int = 320, freq: int = 440
         "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest", str(path),
     ], check=True)
     return path
+
+
+@pytest.fixture(autouse=True)
+def _private_gpu_lock(tmp_path, monkeypatch):
+    """Tests take their own lock file, never $TH_HOME/gpu.lock: a production render holding the real
+    lock for hours must not hang the suite, and a test must not delay a render."""
+    monkeypatch.setenv("TH_GPU_LOCK", str(tmp_path / "gpu.lock"))

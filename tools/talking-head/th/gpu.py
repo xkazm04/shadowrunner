@@ -35,7 +35,9 @@ _PID_RE = re.compile(r"pid_(\d+)_")
 @contextmanager
 def gpu_lock(wait_s: float | None = None) -> Iterator[None]:
     """Hold $TH_HOME/gpu.lock for the duration; waits (forever by default) for another holder."""
-    lock = FileLock(str(th_home() / "gpu.lock"))
+    # TH_GPU_LOCK overrides the path: the test suite points it at a temp file so tests never queue
+    # behind (or block) a real render.
+    lock = FileLock(os.environ.get("TH_GPU_LOCK") or str(th_home() / "gpu.lock"))
     try:
         lock.acquire(timeout=1)
     except Timeout:
