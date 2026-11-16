@@ -38,10 +38,10 @@ async def fake_chat(text: str, history: list[dict]):
 
 
 @contextlib.asynccontextmanager
-async def live_server():
+async def live_server(**engine_kw):
     set_backend(FakeTts(ms_per_char=40))
     server = LiveServer(["http://allowed.example"])
-    engine = Engine(FakeModel(size=32, compute_s=0.02), server.sink)
+    engine = Engine(FakeModel(size=32, compute_s=0.02), server.sink, **engine_kw)
     server.attach(engine, speak, fake_chat)
     started, stop = asyncio.Event(), asyncio.Event()
     task = asyncio.create_task(run(server, engine, PORT, started=started, stop=stop))
@@ -239,3 +239,115 @@ def test_chat_reply_text_at_sentence_pts_and_new_chat_cancels():
     starts = {round(a["pts"], 3) for a in audio}
     assert all(r["atMs"] in starts for r in c2)  # each sentence's text lands on its first sample
     assert [m["role"] for m in history] == ["user", "assistant", "user", "assistant"]
+
+
+# ---- round 2: matte (0x04), state.matte / state.idle, the stop marker ---------------------------
+
+
+class HalfMatte:
+    """Registered for these tests only: the left half of the frame is opaque."""
+
+    kind = "fake-ws"
+
+    def warmup(self) -> None:
+        return None
+
+    def __call__(self, frames):
+        a = np.zeros(frames.shape[:3], np.uint8)
+        a[:, :, : frames.shape[2] // 2] = 255
+        return a
+
+
+def test_matte_command_switches_to_0x04_with_exact_layout_and_back(monkeypatch):
+    from th.live import stages
+    from th.live.matte import kinds
+
+    monkeypatch.setitem(kinds.KINDS, "fake-ws", HalfMatte)
+    monkeypatch.setattr(stages, "MATTE_KIND", "fake-ws")
+
+    async def go():
+        async with live_server():
+            ctl, cin, out, oin = await clients()
+            first = await oin.until(type="state", ready=True)
+            await ctl.send(json.dumps({"type": "matte", "on": True}))
+            on = await cin.until(type="state", matte=True)
+            await asyncio.sleep(1.5)
+            n_alpha = len(oin.binary(P.TAG_VIDEO_ALPHA))
+            await ctl.send(json.dumps({"type": "matte", "on": False}))
+            await cin.until(type="state", matte=False, ready=True)
+            t_off = time.perf_counter()
+            await asyncio.sleep(1.5)
+            raw = [d for t, d in oin.items if t > t_off + 0.5 and "tag" in d]
+            await ctl.close()
+            await out.close()
+            return first, on, n_alpha, oin, raw
+
+    first, on, n_alpha, oin, after = asyncio.run(go())
+    assert first["matte"] is False and first["idle"] == "live"  # keys always present
+    assert on["matte"] is True and n_alpha >= 20
+    msgs = oin.binary(P.TAG_VIDEO_ALPHA)
+    m = msgs[0]
+    assert (m["width"], m["height"]) == (32, 32)
+    rgb = Image.open(io.BytesIO(m["jpeg"]))
+    alpha = Image.open(io.BytesIO(m["alpha"]))
+    assert rgb.mode == "RGB" and rgb.size == (32, 32)
+    assert alpha.mode == "L" and alpha.size == (32, 32)
+    a = np.asarray(alpha, np.float32)
+    assert a[:, :12].mean() > 240 and a[:, 20:].mean() < 15
+    # the wire bytes: tag, float64 pts, uint16 w, uint16 h, uint32 rgbLength, rgb JPEG, alpha JPEG
+    wire = P.video_alpha(m["pts"], 32, 32, m["jpeg"], m["alpha"])
+    assert wire[0] == 0x04 and int.from_bytes(wire[13:17], "little") == len(m["jpeg"])
+    assert wire[17:17 + len(m["jpeg"])][:2] == b"\xff\xd8" and wire[17 + len(m["jpeg"]):][:2] == b"\xff\xd8"
+    pts = sorted(v["pts"] for v in oin.binary(P.TAG_VIDEO) + msgs)
+    assert pts == [pts[0] + 40.0 * i for i in range(len(pts))]  # one stream, no gap or repeat
+    assert after and all(d["tag"] != P.TAG_VIDEO_ALPHA for d in after)
+
+
+def test_missing_matte_kind_one_error_and_matte_stays_false(monkeypatch):
+    from th.live import stages
+
+    monkeypatch.setattr(stages, "MATTE_KIND", "absent-kind")
+
+    async def go():
+        async with live_server():
+            ctl, cin, out, oin = await clients()
+            await oin.until(type="state", ready=True)
+            await ctl.send(json.dumps({"type": "matte", "on": True}))
+            err = await cin.until(type="event", kind="error")
+            await asyncio.sleep(1.2)
+            states = cin.json(type="state")
+            errors = cin.json(type="event", kind="error")
+            await ctl.close()
+            await out.close()
+            return err, states, errors, oin.binary(P.TAG_VIDEO_ALPHA)
+
+    err, states, errors, alpha = asyncio.run(go())
+    assert "absent-kind" in err["text"] and len(errors) == 1
+    assert all(s["matte"] is False for s in states) and alpha == []
+
+
+def test_idle_loop_state_and_stop_marker():
+    loop = np.zeros((10, 32, 32, 3), np.uint8)  # a black idle loop
+
+    async def go():
+        async with live_server(loop=loop):
+            ctl, cin, out, oin = await clients()
+            first = await oin.until(type="state", ready=True)
+            await asyncio.sleep(0.5)
+            await ctl.send(json.dumps({"type": "say", "id": "s1", "text": "word " * 40 + "end."}))
+            live = await cin.until(type="state", idle="live")
+            await asyncio.sleep(1.0)
+            await ctl.send(json.dumps({"type": "stop"}))
+            end = await oin.until(type="event", kind="line-end", id="s1")
+            back = await cin.until(type="state", idle="loop", queue=0)
+            await asyncio.sleep(0.3)
+            await ctl.close()
+            await out.close()
+            return first, live, end, back, oin.binary(P.TAG_VIDEO)
+
+    first, live, end, back, video = asyncio.run(go())
+    assert first["idle"] == "loop"
+    assert live["idle"] == "live" and back["idle"] == "loop"
+    assert end["text"] == "stopped"  # the out clients' flush signal
+    lum = [float(np.asarray(Image.open(io.BytesIO(v["jpeg"])).convert("L")).mean()) for v in video]
+    assert min(lum[:5]) < 5 and max(lum) > 50  # the loop (black) first, the live face (grey) later

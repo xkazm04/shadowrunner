@@ -31,10 +31,24 @@ def test_binary_layouts_byte_for_byte():
         P.parse_binary(b"\x7f")
 
 
+def test_video_alpha_layout_byte_for_byte():
+    m = P.video_alpha(120.0, 1024, 1024, b"RGBJPEG", b"AJPG")
+    assert m == (b"\x04" + struct.pack("<d", 120.0) + struct.pack("<HH", 1024, 1024)
+                 + struct.pack("<I", 7) + b"RGBJPEG" + b"AJPG")
+    assert len(m) == 1 + 8 + 2 + 2 + 4 + 7 + 4
+    d = P.parse_binary(m)
+    assert (d["tag"], d["pts"], d["width"], d["height"]) == (4, 120.0, 1024, 1024)
+    assert d["jpeg"] == b"RGBJPEG" and d["alpha"] == b"AJPG"
+
+
 def test_json_messages_keep_every_key():
     st = P.state(ready=False, upscale="none", source="text", queue=0, delay_ms=None, size=512)
-    assert set(st) == {"type", "ready", "model", "fps", "upscale", "source", "queue", "delayMs", "size"}
+    assert set(st) == {"type", "ready", "model", "fps", "upscale", "source", "queue", "delayMs", "size",
+                       "matte", "idle"}
     assert st["delayMs"] is None and st["fps"] == 25
+    assert st["matte"] is False and st["idle"] == "live"  # round 2 keys, always present
+    assert P.state(ready=True, upscale="none", source="text", queue=0, delay_ms=1, size=512,
+                   matte=True, idle="loop")["idle"] == "loop"
     ev = P.event("line-start", 960.0, "a")
     assert ev == {"type": "event", "kind": "line-start", "id": "a", "text": None, "atMs": 960.0}
     t = P.timing("a", 1234.56, 650.04, None)
@@ -53,7 +67,9 @@ def test_origin_rule(origin, ok):
 
 def test_commands_validated():
     assert P.parse_command('{"type":"say","id":"1","text":"hi"}')["text"] == "hi"
-    for bad in ('nope', '[]', '{"type":"say","id":1,"text":"x"}', '{"type":"say","id":"1","text":" "}',
+    assert P.parse_command('{"type":"matte","on":true}')["on"] is True
+    for bad in ('{"type":"matte"}', '{"type":"matte","on":1}', '{"type":"matte","on":"yes"}',
+                'nope', '[]', '{"type":"say","id":1,"text":"x"}', '{"type":"say","id":"1","text":" "}',
                 '{"type":"hello","role":"admin"}', '{"type":"slide","index":-1}',
                 '{"type":"slide","index":true}', '{"type":"source","source":"camera"}', '{"type":"dance"}'):
         with pytest.raises(P.BadCommand):
@@ -134,7 +150,7 @@ def test_mic_backlog_is_bounded():
 
 
 def test_upscaler_that_fails_to_load_or_run_falls_back_to_none(monkeypatch):
-    import th.live.engine as eng
+    import th.live.stages as eng
 
     real = eng.get_upscaler
 

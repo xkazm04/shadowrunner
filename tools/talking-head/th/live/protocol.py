@@ -5,6 +5,8 @@ Binary is little-endian:
 - 0x01 video:  float64 ptsMs, uint16 width, uint16 height, JPEG bytes
 - 0x02 audio:  float64 ptsMs, uint32 sampleRate, PCM16LE mono samples
 - 0x03 slide:  uint32 index, image bytes (none: clear the slide)
+- 0x04 video with alpha (round 2): float64 ptsMs, uint16 width, uint16 height, uint32 rgbLength,
+  colour JPEG (rgbLength bytes), greyscale alpha JPEG (the rest; 255 = opaque)
 - 0x10 mic (client): PCM16LE mono 16 kHz
 - 0x13 slide image (client): image bytes, after a JSON `slide` command; empty clears the slide
 """
@@ -29,6 +31,7 @@ CLOSE_ORIGIN = 4403
 TAG_VIDEO = 0x01
 TAG_AUDIO = 0x02
 TAG_SLIDE = 0x03
+TAG_VIDEO_ALPHA = 0x04
 TAG_MIC = 0x10
 TAG_SLIDE_IN = 0x13
 
@@ -36,10 +39,12 @@ MIC_RATE = 16000
 EVENT_KINDS = ("line-start", "line-end", "reply-text", "slide", "error")
 SOURCES = ("text", "mic")
 ROLES = ("control", "out")
+IDLE_MODES = ("loop", "live")  # state.idle: the pre-rendered idle loop is showing, or the live model
 
 _VIDEO_HEAD = struct.Struct("<BdHH")
 _AUDIO_HEAD = struct.Struct("<BdI")
 _SLIDE_HEAD = struct.Struct("<BI")
+_ALPHA_HEAD = struct.Struct("<BdHHI")
 _LOCAL = re.compile(r"^http://(localhost|127\.0\.0\.1)(:\d+)?$")
 
 
@@ -68,6 +73,10 @@ def audio(pts_ms: float, rate: int, pcm16: bytes) -> bytes:
     return _AUDIO_HEAD.pack(TAG_AUDIO, float(pts_ms), rate) + pcm16
 
 
+def video_alpha(pts_ms: float, width: int, height: int, jpeg: bytes, alpha_jpeg: bytes) -> bytes:
+    return _ALPHA_HEAD.pack(TAG_VIDEO_ALPHA, float(pts_ms), width, height, len(jpeg)) + jpeg + alpha_jpeg
+
+
 def slide(index: int, image: bytes) -> bytes:
     return _SLIDE_HEAD.pack(TAG_SLIDE, index) + image
 
@@ -78,6 +87,11 @@ def parse_binary(msg: bytes) -> dict[str, Any]:
     if tag == TAG_VIDEO:
         _, pts, w, h = _VIDEO_HEAD.unpack_from(msg)
         return {"tag": tag, "pts": pts, "width": w, "height": h, "jpeg": msg[_VIDEO_HEAD.size:]}
+    if tag == TAG_VIDEO_ALPHA:
+        _, pts, w, h, n = _ALPHA_HEAD.unpack_from(msg)
+        rgb = msg[_ALPHA_HEAD.size:_ALPHA_HEAD.size + n]
+        return {"tag": tag, "pts": pts, "width": w, "height": h, "jpeg": rgb,
+                "alpha": msg[_ALPHA_HEAD.size + n:]}
     if tag == TAG_AUDIO:
         _, pts, rate = _AUDIO_HEAD.unpack_from(msg)
         pcm = np.frombuffer(msg[_AUDIO_HEAD.size:], "<i2")
@@ -108,9 +122,11 @@ def dumps(msg: dict[str, Any]) -> str:
 
 
 def state(*, ready: bool, upscale: str, source: str, queue: int, delay_ms: int | None, size: int,
-          model: str = "lite") -> dict[str, Any]:
+          model: str = "lite", matte: bool = False, idle: str = "live") -> dict[str, Any]:
+    assert idle in IDLE_MODES, idle
     return {"type": "state", "ready": ready, "model": model, "fps": FPS, "upscale": upscale,
-            "source": source, "queue": queue, "delayMs": delay_ms, "size": size}
+            "source": source, "queue": queue, "delayMs": delay_ms, "size": size, "matte": matte,
+            "idle": idle}
 
 
 def event(kind: str, at_ms: float, id: str | None = None, text: str | None = None) -> dict[str, Any]:
@@ -155,6 +171,9 @@ def parse_command(text: str) -> dict[str, Any]:
     elif t == "upscale":
         if not isinstance(msg.get("kind"), str):
             raise BadCommand("upscale needs a string 'kind'")
+    elif t == "matte":
+        if not isinstance(msg.get("on"), bool):
+            raise BadCommand("matte needs a boolean 'on'")
     elif t == "slide":
         if not isinstance(msg.get("index"), int) or isinstance(msg.get("index"), bool) or msg["index"] < 0:
             raise BadCommand("slide.index must be a non-negative integer")

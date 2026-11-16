@@ -8,18 +8,22 @@ Audio FIFO: segments (a say/chat line's sentence, or a mic packet) wait in order
 one 15360-sample slice from the front and pads with silence (silence is never sent as audio).
 
 Pacing (bounded queue): chunk k starts computing no earlier than T_k - LEAD_MS when a full slice is
-ready, and at T_k - LATEST_MS when idle or starved (so a fresh line still makes the next chunk). So
-at most ~LEAD_MS (2 chunks) of picture exists ahead of the wall clock; the encode/emit queue holds
-at most EMIT_QUEUE chunks and blocks the GPU thread beyond that. A chunk that would start a whole
+ready, and at T_k - lookahead() when idle or starved (so a fresh line still makes the next chunk;
+stages.py: adaptive 750-960 ms, or TH_LIVE_LOOKAHEAD_MS). So at most ~LEAD_MS (2 chunks) of
+picture exists ahead of the wall clock; the encode/emit queue holds at most EMIT_QUEUE chunks and
+blocks the GPU thread beyond that. A chunk that would start a whole
 chunk late is skipped (`dropped`) and the clock jumps forward instead of drifting.
 
-Frames go through the upscaler on the GPU, then JPEG encoding runs on a thread pool, so the GPU loop
-never waits on encoding; an emitter thread hands finished chunks to `sink` in order.
+Frames go through compose.py (seam blend, idle loop), the matte and the upscaler on the GPU, then
+JPEG encoding runs on a thread pool, so the GPU loop never waits on encoding; an emitter thread
+hands finished chunks to `sink` in order. A chunk's frames start at `pts_ms`, which is HOLD frames
+before its slice while the seam blend holds the previous chunk's last frames.
 """
 
 from __future__ import annotations
 
 import collections
+import os
 import queue
 import threading
 import time
@@ -30,11 +34,14 @@ from typing import Any, Callable
 import numpy as np
 
 from . import protocol as P
+from .compose import HOLD, TAIL_MS, Compositor, load_loop
 from .models import CHUNK_MS, RATE, SLICE_SAMPLES, Model
+from .stages import Stages
 from .upscale import Upscaler, get_upscaler
 
 LEAD_MS = 2 * CHUNK_MS
-LATEST_MS = CHUNK_MS
+LATEST_MS = float(os.environ.get("TH_LIVE_LOOKAHEAD_MS") or CHUNK_MS)  # idle look-ahead: fixed, or the
+LOOKAHEAD_AUTO = not os.environ.get("TH_LIVE_LOOKAHEAD_MS")  # ceiling of the adaptive one (stages.py)
 EMIT_QUEUE = 2
 CLIENT_PLAYOUT_MS = 250
 MIC_MAX_SAMPLES = 2 * SLICE_SAMPLES  # mic backlog beyond this is dropped (oldest first)
@@ -55,6 +62,8 @@ class Line:
     tts_first_ms: float | None = None  # receipt -> first synthesised audio
     kind: str = "say"  # say | chat
     reply_first_ms: float | None = None  # chat: receipt -> first sentence from the LLM
+    done: bool = False  # its line-end is placed (end_ms is final)
+    cut_ms: float | None = None
 
 
 @dataclass(eq=False)
@@ -83,14 +92,16 @@ class Chunk:
     upscale_ms: float | None
     upscale: str
     silent: bool
+    idle: str = "live"  # what shows at the chunk's last frame: live | loop
 
 
 Sink = Callable[[str, Any], None]  # ("chunk", Chunk) | ("event", dict) | ("state", None)
 
 
-class Engine:
+class Engine(Stages):
     def __init__(self, model: Model, sink: Sink, upscale: str = "none", jpeg_workers: int = 4,
-                 raw_frames: bool = False) -> None:
+                 raw_frames: bool = False, matte: bool = False, loop: Any = None) -> None:
+        """`loop`: the idle loop's frames, "auto" ($TH_HOME/live/idle/iris/loop.npz) or None."""
         self.model = model
         self.sink = sink
         self.raw_frames = raw_frames  # bench: keep numpy frames instead of JPEG
@@ -99,6 +110,12 @@ class Engine:
         self.upscaler: Upscaler = get_upscaler("none")  # `upscale` loads on the GPU thread
         self._want_up = upscale
         self._pending_up: Upscaler | None = None
+        self.matte: Any = None  # a th.live.matte Matte while matting is on
+        self._want_matte = matte
+        self._pending_matte: Any = None  # a Matte, or False: switch it off at the next chunk
+        self.post = Compositor(load_loop(model.size) if isinstance(loop, str) else loop)
+        self.idle_mode = "loop" if self.post.has_loop else "live"
+        self._spoken: list[Line] = []  # lines that started: the live/loop weight follows them
         self._lock = threading.Condition()
         self._fifo: collections.deque[Segment] = collections.deque()
         self._open: list[Line] = []  # lines accepted and not yet ended
@@ -111,7 +128,7 @@ class Engine:
         self._threads = [threading.Thread(target=self._gpu_loop, name="gpu", daemon=True),
                          threading.Thread(target=self._emit_loop, name="emit", daemon=True)]
         self.stats: dict[str, Any] = {"chunks": 0, "dropped": 0, "chunkMs": [], "upscaleMs": [],
-                                      "startDelays": []}
+                                      "matteMs": [], "startDelays": [], "lookaheadMs": []}
         self.error: BaseException | None = None
 
     # ---- clock and state -------------------------------------------------------------------------
@@ -132,7 +149,7 @@ class Engine:
         the last lines, plus the out client's playout buffer. Before any line: half a chunk of
         boundary wait plus the idle start lead."""
         d = list(self.stats["startDelays"])[-5:]
-        base = float(np.median(d)) if d else LATEST_MS + CHUNK_MS / 2
+        base = float(np.median(d)) if d else self.lookahead() + CHUNK_MS / 2
         return int(round(base + CLIENT_PLAYOUT_MS))
 
     def start(self) -> None:
@@ -182,6 +199,8 @@ class Engine:
             if ids is None:
                 self._epoch += 1
             at = max(0.0, self.now_ms())
+            for ln in cut:
+                ln.cut_ms = at
         for ln in cut:
             self.sink("event", P.event("line-end", at, ln.id, "stopped"))
         self.sink("state", None)
@@ -193,33 +212,16 @@ class Engine:
             if source == "text":
                 self._fifo = collections.deque(s for s in self._fifo if s.line is not None)
 
-    def set_upscale(self, kind: str) -> None:
-        """Load and warm the upscaler off the GPU thread; it takes over at the next chunk."""
-        def load() -> None:
-            up = self._load_upscaler(kind)
-            if up is not None:
-                with self._lock:
-                    self._pending_up = up
-
-        threading.Thread(target=load, name=f"upscale-{kind}", daemon=True).start()
-
-    def _load_upscaler(self, kind: str) -> Upscaler | None:
-        """The warmed upscaler, or None plus one `error` event naming the reason (unknown kind,
-        weights not fetched, SDK failure); the stream carries on with the current one."""
-        try:
-            up = get_upscaler(kind)
-            up.warmup()
-            return up
-        except Exception as e:
-            self.sink("event", P.event("error", max(0.0, self.now_ms()), None, f"upscale {kind}: {e}"))
-            return None
-
-    def _swap_upscaler(self, up: Upscaler) -> None:
-        old, self.upscaler = self.upscaler, up
-        close = getattr(old, "close", None)  # e.g. Maxine frees its SDK handles
-        if close is not None and old is not up:
-            close()
-        self.sink("state", None)
+    def _live_at(self, pts: float) -> bool:
+        """Whether the live model shows at `pts` (else the idle loop): from HOLD frames before a
+        line's first sample to TAIL_MS after its end (open lines: until they end); always on mic."""
+        if self.source == "mic":
+            return True
+        for ln in self._spoken:
+            end = ln.cut_ms if ln.cut_ms is not None else (ln.end_ms if ln.done else None)
+            if ln.start_ms - HOLD * 40 <= pts and (end is None or pts <= end + TAIL_MS):
+                return True
+        return False
 
     def _trim_mic(self) -> None:
         mic = [s for s in self._fifo if s.line is None]
@@ -236,6 +238,8 @@ class Engine:
             self.model.load()
             if self._want_up != "none":  # a failure here leaves `none` and one error event
                 self.upscaler = self._load_upscaler(self._want_up) or self.upscaler
+            if self._want_matte:  # a failure leaves matting off and one error event
+                self.matte = self._load_matte()
             self._t0 = time.perf_counter() + LATEST_MS / 1000  # chunk 0 starts computing now
             self.ready = True
             self.sink("state", None)
@@ -265,7 +269,7 @@ class Engine:
                 queued = sum(len(s.pcm16k) - s.pos for s in self._fifo)
                 waiting = self.source == "mic" or any(not ln.closed for ln in self._open)
                 full = queued >= SLICE_SAMPLES or (queued > 0 and not waiting)
-                start_at = t - (LEAD_MS if full else LATEST_MS)
+                start_at = t - (LEAD_MS if full else self.lookahead())
                 if now >= start_at:
                     return k
                 self._lock.wait(min(0.05, (start_at - now) / 1000))
@@ -285,6 +289,7 @@ class Engine:
                 ln = s.line
                 if ln is not None and ln.start_ms is None:
                     ln.start_ms = at
+                    self._spoken.append(ln)
                     self.stats["startDelays"].append(at - ln.received_ms)
                     events.append(P.event("line-start", at, ln.id, None))
                     starts.append(ln)
@@ -313,47 +318,40 @@ class Engine:
                         events.append(P.event("line-start", ln.start_ms, ln.id, None))
                         starts.append(ln)
                     events.append(P.event("line-end", ln.end_ms, ln.id, None))
+                    ln.done = True
                     self._open.remove(ln)
                     self._ending.append(ln)
                     ends.append(ln)
         return buf, audio, events, starts, ends
 
     def _compute(self, k: int) -> Chunk:
-        if self._pending_up is not None:
-            with self._lock:
-                up, self._pending_up = self._pending_up, None
-            self._swap_upscaler(up)
+        self._apply_pending()
+        self.stats["lookaheadMs"].append(self.lookahead())
         t_ms = k * CHUNK_MS
         epoch = self._epoch
         buf, audio, events, starts, ends = self._take_slice(t_ms)
         t0 = time.perf_counter()
-        frames = self.model.chunk(buf)
-        up_ms = None
-        if self.upscaler.kind != "none":
-            import torch
-
-            torch.cuda.synchronize()
-            t1 = time.perf_counter()
-            try:
-                frames = self.upscaler(frames)
-                torch.cuda.synchronize()
-                up_ms = (time.perf_counter() - t1) * 1000
-                self.stats["upscaleMs"].append(up_ms)
-            except Exception as e:  # never crash the stream: fall back to none, say why once
-                self.sink("event", P.event("error", max(0.0, self.now_ms()), None,
-                                           f"upscale {self.upscaler.kind} failed, using none: {e}"))
-                self._swap_upscaler(get_upscaler("none"))
+        new = self.model.chunk(buf)
+        first, frames = self.post.seam(k, new, getattr(self.model, "motion_frames", None))
+        frames, idle = self.post.compose(first, frames, self._live_at)
+        self._spoken = [ln for ln in self._spoken if (ln.cut_ms is None and not ln.done)
+                        or (ln.cut_ms if ln.cut_ms is not None else ln.end_ms) + TAIL_MS > t_ms - CHUNK_MS]
+        alpha = self._matte_frames(frames) if self.matte is not None else None
+        frames, alpha, up_ms = self._upscale(frames, alpha)
         arr = frames if isinstance(frames, np.ndarray) else frames.cpu().numpy()
+        al = alpha if alpha is None or isinstance(alpha, np.ndarray) else alpha.cpu().numpy()
         chunk_ms = (time.perf_counter() - t0) * 1000
         self.stats["chunkMs"].append(chunk_ms)
         self.stats["chunks"] += 1
         n, h, w = arr.shape[:3]
         if self.raw_frames:
             out: list = [arr[i] for i in range(n)]
-        else:
+        elif al is None:
             out = [self._pool.submit(_jpeg, arr[i]) for i in range(n)]
-        return Chunk(k, t_ms, epoch, out, w, h, audio, events, starts, ends, chunk_ms, up_ms,
-                     self.upscaler.kind, not audio)
+        else:
+            out = [self._pool.submit(_jpeg_pair, arr[i], al[i]) for i in range(n)]
+        return Chunk(k, first * 40.0, epoch, out, w, h, audio, events, starts, ends, chunk_ms, up_ms,
+                     self.upscaler.kind, not audio, idle)
 
     # ---- the emitter thread ----------------------------------------------------------------------
 
@@ -379,7 +377,9 @@ class Engine:
             c.events = [e for e in c.events if e["id"] not in cut or e["kind"] == "slide"]
             c.starts = [ln for ln in c.starts if not ln.cut]
             self.sink("chunk", c)
-            if c.events and any(e["kind"] in ("line-start", "line-end") for e in c.events):
+            changed = c.idle != self.idle_mode
+            self.idle_mode = c.idle
+            if changed or any(e["kind"] in ("line-start", "line-end") for e in c.events):
                 self.sink("state", None)
 
 
@@ -389,3 +389,8 @@ def _jpeg(frame: np.ndarray) -> bytes:
     bio = __import__("io").BytesIO()
     Image.fromarray(frame).save(bio, "JPEG", quality=P.JPEG_QUALITY)
     return bio.getvalue()
+
+
+def _jpeg_pair(frame: np.ndarray, alpha: np.ndarray) -> tuple[bytes, bytes]:
+    """Colour JPEG plus the alpha as a greyscale JPEG (0x04)."""
+    return _jpeg(frame), _jpeg(alpha)

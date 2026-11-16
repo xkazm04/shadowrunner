@@ -69,7 +69,11 @@ class LiveServer:
         for pts, rate, samples, _line in c.audio:
             self._send_out(P.audio(pts, rate, P.pcm16(samples)))
         for i, jpeg in enumerate(c.frames):
-            self._send_out(P.video(c.pts_ms + i * P.FRAME_MS, c.width, c.height, jpeg))
+            pts = c.pts_ms + i * P.FRAME_MS
+            if isinstance(jpeg, tuple):  # matting on: colour + alpha
+                self._send_out(P.video_alpha(pts, c.width, c.height, jpeg[0], jpeg[1]))
+            else:
+                self._send_out(P.video(pts, c.width, c.height, jpeg))
         now = time.perf_counter()
         for ln in c.starts:
             ln.first_frame_ms = (now - ln.received) * 1000
@@ -83,7 +87,8 @@ class LiveServer:
         e = self.engine
         assert e is not None
         return P.dumps(P.state(ready=e.ready, upscale=e.upscaler.kind, source=e.source,
-                               queue=e.queue_len, delay_ms=e.delay_ms(), size=e.size, model=e.model.name))
+                               queue=e.queue_len, delay_ms=e.delay_ms(), size=e.size, model=e.model.name,
+                               matte=e.matte is not None, idle=e.idle_mode))
 
     def _send_state(self) -> None:
         s = self.state_msg()
@@ -189,6 +194,9 @@ class LiveServer:
                 return self._error(client, f"unknown upscaler {cmd['kind']!r}; one of {KINDS}")
             if cmd["kind"] != e.upscaler.kind:
                 e.set_upscale(cmd["kind"])
+        elif t == "matte":
+            if cmd["on"] != (e.matte is not None):
+                e.set_matte(cmd["on"])
         elif t == "slide":
             client.slide_index = cmd["index"]
 

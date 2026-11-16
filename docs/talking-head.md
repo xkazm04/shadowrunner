@@ -597,11 +597,18 @@ Live Iris on SoulX-FlashHead Lite: a local WebSocket server streams her face and
 
 ```
 uv run th fetch realtime-fh             # once: FlashHead repo, env and weights
-uv run th live [--port 8765] [--upscale maxine|none|realesrgan] [--allow-origin <origin>]...
+uv run th live [--port 8765] [--upscale maxine|none|realesrgan|iris] [--allow-origin <origin>]...
+               [--matte] [--no-idle-loop]
+uv run th live make-idle [--seconds 12] [--pick <track>] [--only a,b]   # once: the idle loop
 uv run th live --fake                   # synthetic face and voice, no GPU (UI work)
 uv run th live-bench --script pitch-45s --upscale none
 uv run th live-bench --idle-s 20 --upscale none
+uv run th live-bench --script smoke-6s --lead-s 5 --tail-s 5   # idle, a line, idle
 ```
+
+Environment switches (read by the server and the bench): `TH_LIVE_LOOKAHEAD_MS` (fixes the idle
+look-ahead, which is otherwise adaptive; see "Round 2"), `TH_LIVE_SEAM=0` (seam blend off),
+`TH_LIVE_IDLE=0` (idle loop off), `TH_LIVE_MATTE=<kind>` (matte kind, default `birefnet-lite-matting`, `th.live.matte.kinds.DEFAULT`).
 
 - `th live` (core env) installs `th/live/requirements.txt` into the FlashHead env once (the marker
   `$TH_HOME/envs/realtime-fh/.th-live-requirements` holds the list's hash), fetches NVIDIA's
@@ -625,12 +632,16 @@ uv run th live-bench --idle-s 20 --upscale none
   chunk consumed is the audio sent for it, at the pts of its first sample, so lip-sync holds by
   construction. Silence is fed to the model, never sent.
 - **Pacing and queue bound**: a chunk starts computing at most 2 chunks (1.92 s) before its pts when
-  a full slice of speech is waiting, and 1 chunk before when idle or starved (so a new line still
-  makes the next chunk). The encode/emit queue holds 2 chunks and blocks the GPU thread beyond that.
-  A chunk that would start a whole chunk late is skipped (`droppedChunks`), never drifted.
-- **Frames**: upscaled on the GPU, JPEG-encoded (quality 90) on a 4-thread pool, so the GPU loop
-  never waits on encoding; an emitter thread sends finished chunks in order. Each client has its own
-  send queue; a viewer more than 300 messages behind loses binary messages, never JSON.
+  a full slice of speech is waiting, and the idle look-ahead (adaptive, 750-960 ms; see "Round 2")
+  before when idle or starved (so a new line still makes the next chunk). The
+  encode/emit queue holds 2 chunks and blocks the GPU thread beyond that. A chunk that would start a
+  whole chunk late is skipped (`droppedChunks`), never drifted.
+- **Frames** (`th/live/compose.py`, `th/live/stages.py`): seam blend, then the idle loop mixed in,
+  then the matte (when on) and the upscaler on the GPU, then JPEG (quality 90) on a 4-thread pool, so
+  the GPU loop never waits on encoding; an emitter thread sends finished chunks in order. With the
+  seam blend a chunk's 24 frames start 3 frames (120 ms) before its audio slice: the previous
+  chunk's last 3. Each client has its own send queue; a viewer more than 300 messages behind loses
+  binary messages, never JSON.
 - **Voice** (`th/live/tts.py`): Kokoro (`af_heart`, as `th audio`) sentence by sentence. kokoro-onnx
   needs numpy 2 and the FlashHead env is pinned to numpy 1 (mediapipe), so Kokoro runs in ONE worker
   process in the core env (`python -m th.live.tts_worker`), started with the server (model load plus
@@ -641,15 +652,16 @@ uv run th live-bench --idle-s 20 --upscale none
   `line-end`. A new chat or `stop` cancels the reply task (which closes the LLM stream) and drops
   its unsent audio.
 - **Stop**: cut lines get `line-end` with `text: "stopped"`. Audio not yet sent is dropped at once;
-  frames keep flowing (the stream never stops). The out client may still hold up to its playout
-  buffer of speech it already received.
+  frames keep flowing (the stream never stops). That `line-end` is the stop marker: out clients
+  flush everything they have not played yet when it arrives.
 - **Puppet**: binary 0x10 PCM16 16 kHz is fed to FlashHead as is and echoed as 0x02 at its pts; the
   mic backlog is capped at 2 slices (oldest dropped). `say`/`chat` are refused while the source is
   `mic`.
 - **Slides**: `slide` + one 0x13 is relayed as 0x03 to every `out` client plus an `event` `slide`
   (index in `text`); an empty image clears the slide (empty 0x03, `text: null`).
 - **`state.delayMs`**: median over the last 5 lines of (line-start pts - stream ms at the command's
-  receipt) plus the out client's 250 ms playout buffer; before any line, 1.69 s.
+  receipt) plus the out client's 250 ms playout buffer; before any line, the idle look-ahead plus
+  0.73 s (1.69 s at 960 ms).
 - **`timing.firstFrameMs`**: command receipt to the first video frame of that line leaving the
   server (handed to the client queues).
 
@@ -665,7 +677,12 @@ dropped), `capacityFps` (24 / chunk compute s, p50 and p95), `chunkMs`, `upscale
 `lateChunks`, `slackMs` (pts minus emission time), per-line `firstFrameMs`/`ttsFirstMs`,
 `sharpness` (mean variance of the Laplacian on the face crop of video.mp4, grey, 1 frame/s), SyncNet,
 identity and the GPU co-tenants. `--idle-s N` streams N s of silence and adds `idle-sheet.png`
-(6 frames), `idle-5s.mp4` and `idle.json`.
+(6 frames), `idle-5s.mp4` and `idle.json`. Round 2 adds `--lead-s` / `--tail-s` (idle before the
+first line and after the last), `--matte` (matting on; frames are recorded without alpha, `matteMs`
+is timed), and to `live.json`: `startDelayMs` per line (line-start pts minus the stream ms at the
+command), `lookaheadMs`, `seamBlend`, `idleLoop`, `matteMs`, and `seam` (`th/live/measure.py`
+`bench_seams`: seam figures inside the lines and outside them). The bench uses the idle loop when
+one exists; `TH_LIVE_IDLE=0` turns it off.
 
 ### Measured (RTX 4090, 2026-11-16, upscale none)
 
@@ -690,6 +707,142 @@ crops, mouth range 3.9/255; only texture shimmer (frame step 0.52/255) and a sma
 seam (1.34/255, every 0.96 s). Pink noise fed as idle input at -50 and -40 dBFS changed none of these
 figures (head shift 0.06 px, mouth range 3.8 and 4.0, seam step 1.36), so that is not the fix. The
 seam step is there in speech as well (2.21 vs 1.37 elsewhere).
+
+### Round 2: idle loop, seam blend, first word, matting (2026-11-16)
+
+**Idle loop** (`th live make-idle`, `th/live/idle.py`). FlashHead moves the head and blinks only
+around voiced sound; on anything else it holds still. Each candidate track below was rendered for 24 s
+through the live model (with the seam blend). Figures are over the frames after a 2-chunk warm-up,
+from MediaPipe landmarks at 512 px. Head = nose-tip p95-p5 range. Mouth = inner-lip gap. Blinks =
+dips of eye openness below 0.6 of the median, cross-checked by eye-region grey changes.
+
+| track | head x / y px | blinks (eye-grey events) | mouth gap max px (closed %) | longest closed span |
+| --- | --- | --- | --- | --- |
+| silence | 0.59-0.61 / 0.85-0.95 | 0 (0) | 0.51 (100 %) | whole clip, still |
+| breaths (band-passed noise, -30 dBFS) | 0.70 / 0.85 | 0 (1) | 0.58 (100 %) | still |
+| hums (synthetic closed-mouth murmur) | 0.63 / 0.78 | 0 (1) | 0.51 (100 %) | still |
+| hummed speech (Kokoro lines low-passed at 300 Hz) | 0.61-0.97 / 0.68-1.42 | 0-1 | 0.63 (100 %) | still |
+| Kokoro "Mm." / "Hmm." every 3 s | 1.72-1.99 / 3.12-4.30 | 3-6 | 15-20 (81-86 %) | under 6 s |
+| Kokoro short phrases every 4.2 s | 1.83-2.05 / 4.46-5.32 | 2-3 | 29-30 (83-85 %) | under 6 s |
+| Kokoro "Mm." every 7 s | 0.84-1.09 / 1.15-2.54 | 1-3 | 12-15 (94-97 %) | 6 s, still |
+
+The ranges span repeated renders, because the sampler's noise differs per run. Breaths and hums
+change nothing: the wav2vec input is normalised, so level does not help. A contiguous closed-mouth
+span of 6 s or more is as still as silence in every track. The loop is therefore spliced: the
+closed-mouth stretches of a lively track (each trimmed by 3 frames, at least 1 s) are joined with
+6-frame crossfades, and every open-mouth frame is cut. The cycle is rotated so that its wrap is a
+plain source step, never a cut. Each track gives two loops (the best contiguous span and the splice),
+measured as played. `make-idle` keeps the best loop with the mouth closed in every frame and a wrap
+step no larger than the median step, ranked by blinks, then head motion.
+
+Chosen (`$TH_HOME/live/idle/iris/loop.json`): **Kokoro short phrases, spliced**. 294 frames
+(11.8 s), mouth gap at most 0.52 px in every frame, head range 0.90 / 1.10 px, 1 blink. Wrap step
+0.81 against a median step of 1.04 (0.78x). 4 cuts; the largest step at any cut is 1.31x the median
+(the loop's p95 step is 1.22x). Sheet: `loop-sheet.png`; the loop played twice: `loop-2x.mp4`; each
+candidate's clip with its audio and its sheet: `work/`. Iris is calmer than she is in speech. The
+loop adds a blink and a slight head drift, not breathing; that is as far as FlashHead goes with a
+closed mouth.
+
+The engine plays the loop whenever no line is showing. The live weight ramps 1/6 per frame toward
+live from 3 frames before a line's first sample, and back toward the loop 200 ms after its end (or
+at the stop). On mic it is always live. When the loop comes back, it resumes at the loop frame
+nearest the live pose (32 px grey thumbnails). `state.idle` is `loop` or `live` (what shows at the
+last frame of the newest chunk). `--no-idle-loop` or `TH_LIVE_IDLE=0` turn it off. A loop rendered
+at another size is ignored.
+
+Idle, a line, idle (`th live-bench --script smoke-6s --lead-s 5 --tail-s 5`, real 25 fps): 25.0 fps,
+0 late, 0 dropped of 16 chunks. The fade-in (from 3 frames before the first sample) steps at most
+1.58, and the fade-out (from 200 ms after the end) at most 0.96. The clip's median step is 0.60 and
+its p95 1.73, so neither fade steps out of the ordinary. `transition-sheet.png` in the run dir shows
+both fades and the whole clip (made by a scratch script, not shipped).
+
+**Seam blend** (`th/live/compose.py`). FlashHead returns 33 frames per chunk. Frames 0-8 decode the
+latents re-encoded from the previous output's last 9 frames, so chunk k+1's motion frame j covers the
+instant of chunk k's new frame 15+j. Measured on pitch-45s (13 chunks, mean abs diff on 128 px
+grey): motion frame j against previous frame 15+j+s is 1.27 at s=0, against 2.29 / 2.24 at s=-1 / +1
+and 3.8 at s=+-3, so the alignment holds. Across the boundary, previous frame 23 to the next new frame
+0 steps 2.35, and motion frame 8 to new frame 0 steps 1.79 (in-chunk step 1.87). The last 3 new frames
+of chunk k (instants 21-23) are held and mixed with chunk k+1's motion frames 6-8 at 0.25 / 0.5 / 0.75.
+They are sent with chunk k+1, 120 ms later. A skipped chunk drops them. `TH_LIVE_SEAM=0` turns the
+blend off.
+
+Measured with live-bench (mean abs diff of consecutive frames, 128 px grey, 0-255). The seam step
+is the step at a chunk boundary (frame 24k-1 to 24k); the non-seam step is the mean step more than 3
+frames from a boundary; "window max" is the largest step within 3 frames of a boundary, which shows
+that the blend spreads the jump and does not just move it. Speech is the frames inside pitch-45s's
+lines. Idle is `--idle-s 20` with the loop off (`TH_LIVE_IDLE=0`), so these are the live model's own
+seams. These runs shared the GPU with a training job (chunk p50 970-1130 ms, so chunks were late),
+which does not change what the frames look like.
+
+| clip | seam step | non-seam step | ratio | window max |
+| --- | --- | --- | --- | --- |
+| speech, blend off (2 runs) | 2.05 / 1.79 | 1.29 / 1.10 | 1.59 / 1.63 | 2.07 / 1.89 |
+| speech, blend on (2 runs) | 1.30 / 1.36 | 1.13 / 1.18 | 1.15 / 1.15 | 1.51 / 1.53 |
+| idle, blend off | 1.13 | 0.44 | 2.58 | 1.17 |
+| idle, blend on | 0.58 | 0.48 | 1.21 | 0.69 |
+
+SyncNet and identity did not move outside run-to-run noise under that load: conf 6.79 / 6.50 with
+the blend off, 6.53 / 7.06 with it on (offset -1 throughout); identity 0.975 / 0.975 against 0.975 /
+0.974. v1's 8.33 was measured on a GPU that was not shared.
+
+**Faster first word.** The idle look-ahead is how long before its pts an idle chunk starts computing.
+A line's audio goes into the next chunk the GPU starts, so a cold line is first heard about
+`look-ahead + Kokoro's first sentence + a uniform 0-960 ms wait for the chunk boundary` after the
+command. Lowering the look-ahead lowers that audible delay (`startDelayMs` in `live.json`, line-start
+pts minus receipt) by 960 - look-ahead on average. `firstFrameMs` (command to first frame sent:
+Kokoro, the wait for the GPU, one chunk of compute) does not depend on it. The limit is lateness.
+With the seam blend, an idle chunk's first frame is 120 ms before its slice, so it is on time only
+if look-ahead > 120 + chunk ms + JPEG and hand-off.
+
+The look-ahead is therefore adaptive (`th/live/stages.py` `lookahead`): 120 ms (with the blend), plus
+the slowest of the last 8 chunks, plus a 150 ms margin, kept between 750 and 960 ms.
+`TH_LIVE_LOOKAHEAD_MS=<ms>` fixes it. It is 960 until 3 chunks have run. It settles at 840-900 ms
+without matting and stays at 960 with matting on, rising within one chunk when a chunk gets slower.
+
+Measured 2026-11-16 21:25-21:50 under the GPU lock, pitch-45s, upscale none. One co-tenant ran
+throughout (pid 24256, 2.16 GB; the GPU was at 57-71 % before each run):
+
+| run | look-ahead | chunk p50 / p95 / max ms | late / dropped | slack min ms | firstFrameMs (4 lines) | SyncNet | identity |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| before: blend and loop off | 960 | 559 / 578 / 606 | 0 / 0 | 377 | 958-1195 | 8.40 | 0.974 |
+| blend + loop | 960 | 589 / 615 / 626 | 0 / 0 | 240 | 972-1283 | 8.50 | 0.974 |
+| blend + loop | 850 | 577 / 602 / 635 | 0 / 0 | 128 | 953-1208 | 8.47 | 0.974 |
+| blend + loop | 750 | 568 / 588 / 616 | 0 / 0 | 45 | 1006-1219 | 8.41 | 0.973 |
+| blend + loop | auto (840-848) | 565 / 578 / 605 | 0 / 0 | 135 | 962-1184 | 8.37 | 0.973 |
+| blend + loop, `--lead-s 6` | auto (861-899) | 566 / 591 / 629 | 0 / 0 | 148 | 969-1172 | 7.77 | 0.973 |
+| before, `--lead-s 6` | 960 | 570 / 585 / 634 | 0 / 0 | 361 | 958-1213 | 7.75 | 0.974 |
+| blend + loop + matte | 960 | 732 / 759 / 769 | 0 / 0 | 64 | 1127-2000 | 8.01 | 0.973 |
+| blend + loop + matte | auto (960) | 710 / 724 / 741 | 0 / 0 | 95 | 1106-1994 | 8.15 | 0.972 |
+
+- **Lateness.** A fixed 750 holds only without matting and with this light co-tenant: its 45 ms
+  slack is gone at v1's WoW chunk times (679-721 ms). With matting, nothing below 960 holds
+  (64 ms slack at 960).
+- **Audible delay.** The bench's first line is its only cold line, and one sample is dominated by the
+  0-960 ms boundary phase. Line 1 measured: before 1767 and 1559 (lead 6), 750 gave 1572, 850 gave
+  1672, auto gave 1737 and 1652 (lead 6). Lines 2-4 arrive while the previous line's chunks are still
+  1.9 s ahead, so they measure the speech lead (1612-1694 in every run), not the look-ahead. So the
+  expected gain is 960 - look-ahead, about 100 ms with auto and none with matting. These runs neither
+  confirm nor refute it.
+- **firstFrameMs** is unchanged, as expected (958-1213 before, 953-1283 after).
+- **Matte cost.** BiRefNet-lite-matting is 146 ms p50 / 152 p95 per chunk (+1.4 GB VRAM peak, 8.1 GB
+  in all). Its first chunk took 1.0 s (cuDNN tuning a new batch shape: the stream's first chunk is 21
+  frames under the blend), which made 4 chunks late. The engine now also warms that shape when the
+  server starts with `--matte`. Rerun: first chunk 715 ms, 0 late.
+- **Warm paths.** Kokoro's worker loads with one warm-up sentence while FlashHead loads, FlashHead
+  runs one warm-up chunk, the upscaler and the matte warm up off the GPU thread, and the stream never
+  stops, so nothing else is cold.
+
+To check a fixed value: `TH_LIVE_SEAM=0 TH_LIVE_IDLE=0 TH_LIVE_LOOKAHEAD_MS=960 uv run th live-bench
+--script pitch-45s` (before), then `TH_LIVE_LOOKAHEAD_MS=<ms> uv run th live-bench --script pitch-45s
+[--matte]` (after), under the usual co-tenant. A look-ahead is acceptable only if `lateChunks` is 0.
+
+**Matting hook.** `th live --matte` (or the command `{"type":"matte","on":true|false}`) loads
+`th.live.matte.get_matte(kind)` for `TH_LIVE_MATTE` (default `birefnet-lite-matting`) off the GPU thread. From
+the next chunk it takes the alpha of the composed 512 frames, upscales it with the frames' factor
+(bilinear), and sends `0x04` (colour JPEG plus greyscale alpha JPEG, quality 90) instead of `0x01`.
+`state.matte` says whether it is on. A kind that is missing or fails to load sends one `error` event
+and matting stays off; a matte that fails on a chunk switches matting off with one `error`.
+`matteMs` per chunk is in `bench.json`.
 
 ### Upscalers (`--upscale none|realesrgan|maxine`)
 

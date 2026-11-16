@@ -25,8 +25,12 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
+
+if TYPE_CHECKING:
+    import torch
 
 from ...ffmpeg import FrameWriter, read_frames
 from ...gpu import VramSampler, gpu_lock, memory_used_mib, others_over_limit

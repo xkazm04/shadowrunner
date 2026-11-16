@@ -100,18 +100,20 @@ class Recorder:
             w.writeframes((np.clip(track, -1, 1) * 32767).astype("<i2").tobytes())
 
 
-def run_headless(script: str | None, idle_s: float, upscale: str, seed: int, out: Path) -> int:
+def run_headless(script: str | None, idle_s: float, upscale: str, seed: int, out: Path,
+                 lead_s: float = LEAD_IDLE_S, tail_s: float = TAIL_S, matte: bool = False) -> int:
     from . import tts
-    from .engine import Engine
+    from .engine import LATEST_MS, LOOKAHEAD_AUTO, Engine
     from .models import FlashHeadModel, bust_crop
 
     out.mkdir(parents=True, exist_ok=True)
     rec = Recorder(out)
-    engine = Engine(FlashHeadModel(bust_crop(), seed=seed), rec.sink, upscale=upscale, raw_frames=True)
+    engine = Engine(FlashHeadModel(bust_crop(), seed=seed), rec.sink, upscale=upscale, raw_frames=True,
+                    loop="auto", matte=matte)
     rec.clock = engine.now_ms
     t0 = time.perf_counter()
     try:
-        lines = asyncio.run(_drive(engine, rec, script, idle_s))
+        lines = asyncio.run(_drive(engine, rec, script, idle_s, lead_s, tail_s))
     finally:
         engine.close()
         rec.close()
@@ -127,7 +129,9 @@ def run_headless(script: str | None, idle_s: float, upscale: str, seed: int, out
         "chunks": st["chunks"], "droppedChunks": st["dropped"],
         "chunkMs": [round(x, 1) for x in st["chunkMs"]], "upscaleMs": [round(x, 1) for x in st["upscaleMs"]],
         "emitWallS": [round(t - rec.emit_wall[0], 3) for t in rec.emit_wall] if rec.emit_wall else [],
-        "slackMs": [round(x, 1) for x in rec.slack],
+        "slackMs": [round(x, 1) for x in rec.slack], "matteMs": [round(x, 1) for x in st["matteMs"]],
+        "lookaheadMs": "auto" if LOOKAHEAD_AUTO else LATEST_MS,
+        "lookaheadUsedMs": [round(x) for x in st["lookaheadMs"]], "seamBlend": engine.post.blend, "idleLoop": engine.post.has_loop,
         "lines": [{"id": ln.id, "text": ln.text, "receivedMs": _r(ln.received_ms), "startMs": _r(ln.start_ms),
                    "endMs": _r(ln.end_ms), "firstFrameMs": _r(ln.first_frame_ms),
                    "ttsFirstMs": _r(ln.tts_first_ms)} for ln in lines],
@@ -137,7 +141,8 @@ def run_headless(script: str | None, idle_s: float, upscale: str, seed: int, out
     return 0
 
 
-async def _drive(engine, rec: Recorder, script: str | None, idle_s: float) -> list:
+async def _drive(engine, rec: Recorder, script: str | None, idle_s: float, lead_s: float,
+                 tail_s: float) -> list:
     from . import tts
     from .speaker import Speaker
 
@@ -155,7 +160,7 @@ async def _drive(engine, rec: Recorder, script: str | None, idle_s: float) -> li
     else:
         from ..audio import paragraphs, read_script
 
-        await asyncio.sleep(LEAD_IDLE_S)
+        await asyncio.sleep(lead_s)
         for i, para in enumerate(paragraphs(read_script(script))):
             line = speaker.say(f"p{i + 1}", " ".join(para))
             while line.id not in rec.ended:
@@ -163,7 +168,7 @@ async def _drive(engine, rec: Recorder, script: str | None, idle_s: float) -> li
                     raise engine.error
                 await asyncio.sleep(0.02)
             await asyncio.sleep(LINE_GAP_S)
-        await asyncio.sleep(TAIL_S)
+        await asyncio.sleep(tail_s)
     await speaker.close()
     return speaker.log
 
@@ -180,7 +185,8 @@ def _pct(xs: list[float], q: float) -> float | None:
 
 
 def bench(script: str | None, upscale: str = "none", seed: int = 1116, idle_s: float = 0.0,
-          metrics: bool = True) -> Path:
+          metrics: bool = True, lead_s: float = LEAD_IDLE_S, tail_s: float = TAIL_S,
+          matte: bool = False) -> Path:
     from ..ffmpeg import duration_s, fps_of, probe, video_stream
     from ..gpu import VramSampler, gpu_lock, memory_used_mib, others_over_limit
     from ..paths import new_run_dir, portrait_path
@@ -193,6 +199,7 @@ def bench(script: str | None, upscale: str = "none", seed: int = 1116, idle_s: f
     log = run_dir / "log.txt"
     args = ["bench", "--upscale", upscale, "--seed", str(seed), "--out", str(run_dir)]
     args += ["--script", script] if script else ["--idle-s", str(idle_s)]
+    args += ["--lead-s", str(lead_s), "--tail-s", str(tail_s)] + (["--matte"] if matte else [])
     co: dict[str, Any] = {}
     with gpu_lock():
         co["start"] = others_over_limit()
@@ -216,7 +223,10 @@ def bench(script: str | None, upscale: str = "none", seed: int = 1116, idle_s: f
         sharp = sharpness(video, m.face_box)
         if not script:
             idle_sheet(run_dir / "raw.mp4", run_dir)
+    from .measure import bench_seams
+
     live = summarise(b, m, sharp, co, vram.peak_delta_mib)
+    live["seam"] = bench_seams(run_dir / "raw.mp4", b["lines"], b["size"])
     (run_dir / "live.json").write_text(json.dumps(live, indent=2) + "\n", encoding="utf-8", newline="\n")
     info = probe(video)
     vs = video_stream(info)
@@ -241,9 +251,13 @@ def summarise(b: dict, m, sharp: float | None, co: dict, vram_mib: int | None) -
                         "p95": None if not _pct(cm, 95) else round(24000 / _pct(cm, 95), 1)},
         "chunkMs": {"p50": p50, "p95": _pct(cm, 95), "max": _pct(cm, 100)},
         "upscaleMs": {"p50": _pct(um, 50), "p95": _pct(um, 95)},
+        "matteMs": {"p50": _pct(b.get("matteMs", []), 50), "p95": _pct(b.get("matteMs", []), 95)},
         "droppedChunks": b["droppedChunks"], "chunks": b["chunks"],
         "slackMs": {"min": _pct(slack, 0), "p5": _pct(slack, 5)},
         "lateChunks": sum(x < 0 for x in slack),
+        "lookaheadMs": b.get("lookaheadMs"), "seamBlend": b.get("seamBlend"), "idleLoop": b.get("idleLoop"),
+        "startDelayMs": [None if ln["startMs"] is None else round(ln["startMs"] - ln["receivedMs"], 1)
+                         for ln in b["lines"]],
         "lines": b["lines"], "firstFrameMs": {"p50": _pct([ln["firstFrameMs"] for ln in b["lines"]
                                                            if ln["firstFrameMs"] is not None], 50)},
         "sharpness": sharp, "sync": {"conf": m.sync_conf, "offsetFrames": m.sync_offset},

@@ -39,13 +39,23 @@ def _parser() -> argparse.ArgumentParser:
 
     from .live.upscale import KINDS
 
-    lv = sub.add_parser("live", help="live Iris: the fhl/1 server (FlashHead Lite) on ws://127.0.0.1:<port>/live")
+    lv = sub.add_parser("live", help="live Iris: the fhl/1 server (FlashHead Lite) on ws://127.0.0.1:<port>/live; "
+                        "`th live make-idle` renders her idle loop")
+    lv.add_argument("action", nargs="?", choices=("serve", "make-idle"), default="serve",
+                    help="serve (default) or make-idle (render the idle loop offline)")
     lv.add_argument("--port", type=int, default=8765)
     lv.add_argument("--upscale", choices=KINDS, default="maxine",
                     help="maxine (default; falls back to none, with an error event, if it cannot load)")
     lv.add_argument("--allow-origin", action="append", default=[], metavar="ORIGIN",
                     help="also accept this browser origin (repeatable); localhost/127.0.0.1 always pass")
     lv.add_argument("--fake", action="store_true", help="synthetic face and voice, no GPU (UI work)")
+    lv.add_argument("--matte", action="store_true", help="start with matting on (TH_LIVE_MATTE kind, "
+                    "default birefnet-lite-matting): frames go out as 0x04 colour + alpha")
+    lv.add_argument("--no-idle-loop", action="store_true", help="show the live model on silence instead "
+                    "of the idle loop")
+    lv.add_argument("--seconds", type=float, default=12.0, help="make-idle: longest loop, seconds")
+    lv.add_argument("--pick", default=None, help="make-idle: use this candidate track (default: best)")
+    lv.add_argument("--only", default=None, help="make-idle: comma-separated candidate tracks to render")
 
     lb = sub.add_parser("live-bench", help="the live engine headless: run dir + live.json")
     lb.add_argument("--script", default=None, help="a script id; each paragraph is one line")
@@ -53,6 +63,9 @@ def _parser() -> argparse.ArgumentParser:
     lb.add_argument("--upscale", choices=KINDS, default="none")
     lb.add_argument("--seed", type=int, default=1116)
     lb.add_argument("--no-metrics", action="store_true", help="skip SyncNet/identity")
+    lb.add_argument("--lead-s", type=float, default=2.0, help="idle before the first line, seconds")
+    lb.add_argument("--tail-s", type=float, default=1.5, help="idle after the last line, seconds")
+    lb.add_argument("--matte", action="store_true", help="matting on (frames still recorded without alpha)")
     return p
 
 
@@ -82,6 +95,10 @@ def main(argv: list[str] | None = None) -> int:
 
         runs = [Path(r.strip()) for r in args.runs.split(",") if r.strip()]
         print(build(runs, args.seed, args.out))
+    elif args.cmd == "live" and args.action == "make-idle":
+        from .live.idle import make_idle
+
+        print(make_idle(args.seconds, args.pick, args.only.split(",") if args.only else None))
     elif args.cmd == "live":
         from .live.env import run_live
 
@@ -89,11 +106,14 @@ def main(argv: list[str] | None = None) -> int:
         extra = ["--port", str(args.port), "--upscale", "none" if args.fake else args.upscale]
         for o in args.allow_origin:
             extra += ["--allow-origin", o]
+        extra += ["--matte"] if args.matte else []
+        extra += ["--no-idle-loop"] if args.no_idle_loop else []
         return run_live(extra + (["--fake"] if args.fake else []))
     elif args.cmd == "live-bench":
         from .live.bench import bench
 
-        print(bench(args.script, args.upscale, args.seed, args.idle_s, metrics=not args.no_metrics))
+        print(bench(args.script, args.upscale, args.seed, args.idle_s, metrics=not args.no_metrics,
+                    lead_s=args.lead_s, tail_s=args.tail_s, matte=args.matte))
     return 0
 
 
