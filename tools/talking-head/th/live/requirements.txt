@@ -2,6 +2,7 @@
 # builders report additions instead of editing it).
 websockets>=13,<16
 anthropic>=0.60
-kokoro-onnx>=0.4
 Pillow>=10
-numpy
+# FlashHead imports mediapipe 0.10.9 (a numpy 1 build) at load; kokoro-onnx needs numpy 2, so Kokoro runs
+# in a worker in the core th env (th/live/tts.py), never in this env.
+numpy<2

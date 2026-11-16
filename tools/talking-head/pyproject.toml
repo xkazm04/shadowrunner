@@ -26,7 +26,7 @@ dependencies = [
 th = "th.cli:main"
 
 [dependency-groups]
-dev = ["pytest>=8"]
+dev = ["pytest>=8", "websockets>=13,<16"]
 
 [build-system]
 requires = ["uv_build>=0.9,<0.10"]
