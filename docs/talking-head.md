@@ -1413,3 +1413,217 @@ map over the bust and side-by-side `off` | moved videos of the whole pitch-45s f
 Not done: the owner's eye. The figures say the shoulders and the backdrop do not move; whether the
 head's motion now reads as a person talking (`natural`) and an animated presenter (`lively`) is the
 review's call.
+
+# Doc text, round 4 P2 (face transplant): for docs/talking-head.md, "Live" section
+
+### Face transplant probe (round 4, P2; `th/experiments/transplant`)
+
+An offline probe of a path to body, hands and natural head motion with FlashHead's lip-sync: paste FlashHead's talking face onto each frame of an EchoMimicV3 (EMV3) gesture clip of the same audio. Nothing in `th` imports it.
+
+```
+uv run python -m th.experiments.transplant crop a c       # bust crop of hands/gen/waist-<v>.png, live framing
+uv run python -m th.experiments.transplant fh a c         # FlashHead Lite on it + hands/line-short.wav (GPU lock)
+uv run python -m th.experiments.transplant paste a c [--no-smooth] [--clip-eyes]   # CPU
+uv run python -m th.experiments.transplant measure a c [--clip-eyes]               # GPU lock for SyncNet/identity
+```
+
+Inputs: `var/talking-head/hands/emv3-<v>8g/clip.mp4` (624x928, 125 frames) and `hands/gen/waist-<v>.png`. Outputs go to `var/talking-head/live-review-r4/p2/<v>/`:
+- `composite.mp4` (with audio);
+- `sbs.mp4` and `sbs-face.mp4` (EMV3 alone | composite, full frame and the face zoomed 2x);
+- `edge-sheet.png` (six frames zoomed 2x, the fastest head move included);
+- `figures.json`;
+- `fh/clip.mp4` (the FlashHead source);
+- `-eyes` variants of the outputs above.
+
+**How it works:**
+- **Face source.** A bust crop of the same waist-up image, framed like the live portrait: MediaPipe's face box sits where it sits in the live crop (x 0.240-0.753, y 0.157-0.737 of the side), resized to 512. FlashHead Lite then runs through the `realtime-fh` streaming driver: 144 frames, 56 fps, 0 slow chunks, 17-32 s with the model load.
+- **Per frame:**
+  - MediaPipe Face Landmarker (VIDEO mode, one instance per stream) on the EMV3 frame and the FlashHead frame.
+  - A least-squares similarity (Umeyama, no reflection) on 20 points that do not move with speech: eye corners, nose, temples, face sides at eye level, glabella.
+  - A causal One-Euro filter on where the transform puts three anchor points (3 Hz, beta 1.0). A frame without landmarks holds the last transform.
+  - The FlashHead frame is area-downscaled, then warped.
+- **Mask:**
+  - Based on the face oval. It is pulled in 2% of face width at the sides, pushed out 4% of face height below the nose line (both jaws covered), and cut just above the brows (the fringe stays EMV3's).
+  - The mask is drawn for both faces and united. A Gaussian feather (sigma 3.5% of face width) lies inside the polygon.
+  - `--clip-eyes` cuts feathered holes over EMV3's eyes, so its blinks and gaze stay.
+- **Colour:** Lab mean/std transfer from a band just inside the mask edge (12% of face width), with the std ratio clamped to 0.75-1.33 and the statistics averaged over time (EMA 0.2).
+
+**Measured (RTX 4090, 2026-11-17; the same `line-short.wav`, 5 s):**
+
+| figure | a: EMV3 alone | a: composite | c: EMV3 alone | c: composite |
+| --- | --- | --- | --- | --- |
+| SyncNet conf (offset) | 5.02 (0) | **9.83 (-1)** | 6.15 (0) | **10.44 (-2)** |
+| identity mean / p5 | 0.828 / 0.776 | 0.858 / 0.802 | 0.864 / 0.835 | 0.879 / 0.840 |
+| composite with `--clip-eyes`: SyncNet, identity mean | | 9.80, 0.834 | | 10.38, 0.887 |
+| FlashHead source: SyncNet, identity mean | | 9.87, 0.942 | | 10.29, 0.936 |
+| landmark misses / held frames | | 0 / 0 | | 0 / 0 |
+
+**Jitter (stable landmarks of the composite against EMV3's, px, face height 158/171 px):**
+
+| figure | a | c |
+| --- | --- | --- |
+| offset (median) | 0.58 | 0.60 |
+| slide (RMS frame-to-frame change of the residual) | 0.38 (0.0024 face heights) | 0.41 (0.0024) |
+| frame-rate high-pass | 0.19 | 0.20 |
+| landmark noise floor (EMV3 head high-pass) | 0.25 | 0.23 |
+| EMV3 head speed: median / max per frame | 0.20 / 3.94 | 0.44 / 2.49 |
+| EMV3 head travel | 16.2 | 15.2 |
+
+- An independent optical-flow check, which does not trust the landmarks, compares the pasted upper face against the hair and ears outside the mask. In px per frame (RMS):
+
+  | clip | EMV3 alone | composite |
+  | --- | --- | --- |
+  | a | 0.64 | 0.68 |
+  | c | 0.55 | 0.58 |
+
+  The paste adds no sliding beyond what EMV3's own hair does against its face.
+- **Filter tuning.**
+
+  | filter | slide (px, a / c) |
+  | --- | --- |
+  | 1 Hz / beta 0.05 | 0.68 / 0.61 |
+  | 3 Hz / beta 1.0 (default) | 0.38 / 0.41 |
+  | unfiltered | 0.31 / 0.33 |
+
+  The heavy filter lagged the head, which doubled the slide. The flow check cannot tell the settings apart.
+- **Cost per frame (CPU, one thread):**
+  - EMV3 landmarks: 6.6-7.8 ms median;
+  - FlashHead landmarks: 6.2-7.5 ms;
+  - warp, mask, colour and blend in the face box: 4.9-6.5 ms.
+
+**Seen in the clips:**
+- No colour seam or edge at the jaw, cheeks or fringe at 2x zoom (`edge-sheet.png`). The face stays on the head through the fastest move (a, f100-107).
+- Honest flaws:
+  - FlashHead does not blink in 5 s (eye aspect ratio never below 78% of its median), but EMV3 blinks twice in each clip. The composite therefore stares. `--clip-eyes` brings the blinks back, but EMV3-a's eyes are darker and less like Iris (identity 0.858 -> 0.834; c: 0.879 -> 0.887).
+  - FlashHead's picture leads its audio by 1-2 frames (live: -1), so the composite inherits that.
+- Identity rises only 0.015-0.03 over EMV3 alone, while FlashHead alone scores 0.94.
+  - Resolution is a small part of the gap: FlashHead downscaled to the composite's face size scores 0.92.
+  - The rest comes from what stays EMV3's in the identity crop (hair, ears, jaw outline) and from the colour pull toward EMV3's skin.
+  - The waist-up stills themselves score 0.927 (a) and 0.901 (c).
+
+#### Path to live (note)
+
+A live version needs:
+1. **A pre-rendered EMV3 gesture-clip library.**
+   - Cost: about 200 s per 5 s clip at 8 steps (18 GB peak, offloaded). Strictly offline, about 40x real time.
+   - Clips start and end in one neutral pose, so they cut together. Speech-agnostic or generic speech drives them, because the face is replaced anyway; the jaw outline is inside the mask.
+   - Each clip has its EMV3 landmarks precomputed. That removes 7 ms per frame live.
+   - The engine selects a clip at sentence boundaries (by length and energy, or a gesture tag), and idle loops when nothing is said.
+2. **FlashHead live on the face, unchanged:** the same bust crop of the same waist-up image as the clips, so lighting and identity match.
+3. **The compositor per frame at 25 fps:** FlashHead landmarks (about 7 ms) plus the paste (about 5-6 ms) is about 12 ms of CPU per frame, a third of the 40 ms budget on one thread.
+   - It fits the existing 4-thread JPEG pool, or a stage before it. The warp and blend could also move to the GPU stage (frames are already there); MediaPipe stays on the CPU.
+   - Must be checked in the FlashHead env: mediapipe 0.10.9 and numpy 1, against 1.2.3 here.
+
+Main risks:
+- **Head turns beyond a 2D similarity.** EMV3 here rolls about 1.6 degrees and travels about 0.1 face heights. A large yaw puts a frontal FlashHead face on a turned head, which gives the "mask" look. Gesture clips would need to be selected or filtered for small yaw, or measured per clip.
+- **Seams between gesture clips:** body jumps at a clip change unless the clips share a pose, or a crossfade hides the change.
+- **Eyes:** FlashHead stares (no blinks), and EMV3's eyes cost likeness. A blink source is needed: clip eyes when their identity is good, or a FlashHead gaze/blink reference.
+- **Resolution:** at 624x928 the face is about 160 px. A bigger output needs a bigger EMV3 render, or upscaling of the body.
+- **Licences:**
+  - The compositor loads only MediaPipe Face Landmarker (Apache-2.0) and uses OpenCV (Apache-2.0, already a mediapipe dependency).
+  - EMV3's licence stands as ruled in iris-hands.
+  - FlashHead's VAE_LTX is OpenRAIL-M (owner-accepted).
+
+### Round 2: better hands for recorded videos (2026-11-17)
+
+Owner verdict on round 1: EchoMimicV3-Flash with the gesture prompt on the open-hands image (`waist-c`) is the promising path, but the right hand deforms at the end of `emv3-c8g`. Round 2 adds a per-frame hand check, sweeps seeds and generator levers against it, and renders 15-20 s passages as continued windows. Outputs: `var/talking-head/live-review-r4/p3/` in the main checkout (picks in `picks/`).
+
+```
+uv run python -m th.experiments.hands check <clip.mp4>...      # hand check: hands.json, hands-worst.png, hands-flagged.png
+uv run python -m th.experiments.hands emv3 --image <waist-c.png> --prompt gesture --seed 1116 --no-teacache \
+    [--audio-cfg 3.0] [--steps 8] [--negative upstream|fingers] [--shift 5.0] [--out <dir>] --name <take>
+uv run python -m th.experiments.hands emv3 ... --long [--overlap 9] [--audio-chunk 113] --wav <15-20 s line.wav>
+                                                                # continued windows; per-chunk audio features
+uv run python -m th.experiments.hands seams <clip.mp4>          # a --long take's joins (seams.json)
+```
+
+`check` refreshes the hand fields of an existing `figures.json`. `finish` (every `emv3`/`sa` render) now also runs the hand check and copies its result into `figures.json` (`handScore`, `handWorst`, `handWorstAt`, `flagKinds`); its SyncNet/identity pass takes the GPU lock like the render. The driver (`flash_driver.py`, copied into the clone as `th_hands_flash.py`) keeps upstream unedited and adds opt-in patches: CPU offload (round 1), TeaCache off, window continuation, per-chunk wav2vec features, and tolerance for a Windows file lock on upstream's temporary mp4 (one take was lost to `WinError 32` before it).
+
+#### Hand check (`handcheck.py`, `handscan.py`, `handsheet.py`)
+
+MediaPipe Hand Landmarker (Apache-2.0, the round-1 task file) runs on every frame in IMAGE mode, so no tracker carries a hand through a frame where it has fallen apart; landmarks are cached beside the clip (`hands.npz`). Two hand tracks are kept by nearest wrist (MediaPipe's handedness label flips). A visible hand is flagged when:
+
+- `conf`: the handedness score is below 0.96 (the model is unsure it sees a hand);
+- `jump`: the hand changes shape between frames beyond its own motion: the RMS residual after the best similarity fit of the previous frame's 21 points onto this frame's, over the hand's 2D size, is above 0.09;
+- `faded`: the hand turns translucent: the luminance under its landmarks falls below 70 % of the track's median (the jacket shows through);
+- `lost`: a hand that was seen is missing while its last position is well inside the frame (melted into the sleeve, smeared away), for as long as it stays missing; not when its last box meets the other hand's (clasped: hidden behind it);
+- `bones` / `shape`: gross geometry only: a phalanx under 0.01 or over 0.75 of the palm length (wrist to middle knuckle), adjacent knuckles closer than 0.02 or further than 0.6 palm lengths.
+
+Clasped hands (both found and overlapping, or one found over the other's last box) are not judged: interlaced fingers turn every signal into noise (clasped hands that look right score 0.93-0.96, jitter, and put landmarks on the dark gaps between fingers). A frame where every hand is clasped is not a hand frame (`claspedFrames` counts them).
+
+A take scores the share of hand frames with no flag (`handScore`) and its worst 0.5 s window (`handWorst`: the lowest share over 13 consecutive frames that hold at least 6 hand frames). Sheets: `hands-worst.png` (every frame of the worst window, both hands, red = flagged, with the reason) and `hands-flagged.png` (a sample of flagged frames).
+
+What it is and is not. MediaPipe fits a plausible skeleton to almost anything, and its world-landmark proportions move with the view: a back-of-hand view puts the ring proximal phalanx at 0.02-0.04 of the palm and swaps the knuckle order on hands that look right, and a turned hand moves a phalanx ratio 2-3x. Anatomical bone-ratio ranges and joint-angle limits were tried first and dropped: they flagged every frame of every clip, rest poses included. The signals that separate good from bad are the score, the shape jump, translucency and the lost hand. Thresholds were set on one clip (`emv3-c8g`: frames 0-60 good by eye, the right hand's collapse at 113-124 bad), then checked by eye on the others:
+
+| round-1 clip | handScore | worst 0.5 s | flagged (judged on the sheets) |
+| --- | --- | --- | --- |
+| emv3-c8g | 0.72 | 0.00 at 4.48 s | the right hand's collapse, 4.48-4.96 s, every frame (conf 0.93-0.96, jumps 0.10-0.15, one fade); fast-motion smears 3.1-4.2 s; the left hand in the same frames passes |
+| sa (StableAvatar) | 0.77 | 0.00 at 3.92 s | the right hand melted into the sleeve 3.9-5.2 s (`lost`), the translucent ghost hands 5.3-5.5 s (`faded` 0.31-0.62); the rest poses before and after pass |
+| emv3-c8g-s2 | 0.81 | 0.17 at 2.64 s | smeared, melting hands in the fast gesture 2.8-3.3 s (some smeared frames in the same stretch pass) |
+| emv3-a8g | 0.78 | 0.00 at 3.68 s | the waist-a fast gestures 3.0-4.3 s |
+| emv3, emv3-c20, emv3-a20 | 1.00 | 1.00 | nothing: these hands barely move |
+
+Validation sheets: `live-review-r4/p3/validation/<clip>-hands-worst.png` and `-hands-flagged.png`. Known limits: recall is partial (a curled but plausible hand passes, and so do some smeared frames next to flagged ones); a confidence dip on a plausible hand is flagged (0.93-0.95 on some clean frames); motion blur is flagged (on a 25 fps generated clip it usually is a smear); a still hand scores 1.0, so `handScore` is read with the wrist travel (`wrist_range`), never alone.
+
+#### Levers (5 s line, `waist-c`, gesture prompt)
+
+Read in the Flash pipeline (`src/pipeline_wan_fun_inpaint_audio_2512.py`) before sweeping, then measured:
+
+- **Negative prompt and text guidance are inert in Flash.** The negative prompt is encoded but never used in denoising: the guided pass is the same text prompt with the audio zeroed, and `--guidance_scale` only switches that pass on (> 1). Seed 1116 with a negative prompt naming deformed, extra and fused fingers plus text CFG 4.0 is bit-identical to round 1's `emv3-c8g` (mean absolute pixel difference 0.000 over 125 frames). The generator is deterministic per seed, so every other difference below is real.
+- **TeaCache off helps.** It is on by default and the flag cannot turn it off (`store_true`, default True); the driver can (`--no-teacache`). In this pipeline it counts the conditional and the audio-free call of one step as two steps, so the audio-free call can reuse the conditional residual and the audio guidance collapses on skipped steps. Off, on three seeds: SyncNet +1.9 to +2.0 every time; on seed 1116 the right-hand collapse at the end is gone (hand score 0.72 to 0.86, worst window 0.00 to 0.38); on seed 2 the score rises 0.81 to 0.87 and the worst window 0.17 to 0.62; on seed 7 (little gesture) it falls 0.87 to 0.82. Identity drops 0.01-0.03. Denoising takes 195 s instead of 134 s for 125 frames.
+- **Audio guidance 4.5** (with TeaCache off): on seed 1116 the best take of the round (SyncNet 9.18, hand score 0.87, more gesture: wrist travel 0.95 face heights, identity 0.853); on seed 42 also good (0.92, worst 0.50, SyncNet 8.34); on seed 2 worse (a hand smears and vanishes at 4.2 s, 0.54). 6.0 lifts SyncNet a little more (9.42) and hurts hands (0.77). In a 17 s passage 4.5 swung the hands out of the frame in the last window, where they turned into stumps (see below). Use 4.5 for single windows only, 3.0 for passages.
+- **Steps 12** (TeaCache off): same hand score as 8, a worse worst window (0.15 vs 0.38), more gesture, SyncNet the same; 1.5x the denoising time. No gain; 16 not run.
+- **Seed** is the biggest lever and it trades against gesture: the cleanest hands come with the smallest movement (seed 42: 0.99 with wrist travel 0.33). Render 3-4 seeds and pick by hand score among the takes that gesture.
+- Resolution: 768x768 area is the Flash card's maximum; not raised.
+
+All on `waist-c`, the gesture prompt and `line-short.wav` (5.0 s); outputs `live-review-r4/p3/<take>/` (clip, sheet, hands sheets, figures.json, hands.json):
+
+| take | seed | steps | audio CFG | TeaCache | hand score | worst 0.5 s | flags | SyncNet | identity | wrist travel |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| emv3-c8g (round 1) | 1116 | 8 | 3.0 | on | 0.72 | 0.00 at 4.48 s | conf 23, jump 15, faded 9, lost 1 | 6.15 | 0.864 | 0.83 |
+| emv3-c8g-s2 (round 1) | 2 | 8 | 3.0 | on | 0.81 | 0.17 at 2.64 s | jump 13, conf 7, lost 4, faded 3, shape 1 | 5.95 | 0.856 | 0.78 |
+| c8-s1116-negtxt, negative 'fingers', text CFG 4.0 | 1116 | 8 | 3.0 | on | 0.72 | 0.00 at 4.48 s | conf 23, jump 15, faded 9, lost 1 | 6.15 | 0.864 | 0.83 |
+| c8-s1116-notc | 1116 | 8 | 3.0 | off | 0.86 | 0.38 at 3.0 s | conf 15, jump 10, faded 1 | 8.15 | 0.834 | 0.79 |
+| c8-s1116-notc-a45 | 1116 | 8 | 4.5 | off | 0.87 | 0.31 at 2.68 s | conf 12, jump 8 | 9.18 | 0.853 | 0.95 |
+| c8-s1116-notc-a60 | 1116 | 8 | 6.0 | off | 0.77 | 0.31 at 2.56 s | conf 20, jump 10, faded 8, lost 1 | 9.42 | 0.854 | 0.77 |
+| c8-s1116-notc-st12 | 1116 | 12 | 3.0 | off | 0.86 | 0.15 at 3.68 s | jump 11, conf 10 | 8.00 | 0.840 | 0.97 |
+| c8-s2-notc | 2 | 8 | 3.0 | off | 0.87 | 0.62 at 3.16 s | jump 10, conf 3 | 7.85 | 0.843 | 0.85 |
+| c8-s2-notc-a45 | 2 | 8 | 4.5 | off | 0.54 | 0.00 at 3.88 s | lost 20, conf 8, jump 7 | 8.56 | 0.861 | 0.59 |
+| c8-s42 | 42 | 8 | 3.0 | on | 0.99 | 0.83 at 3.8 s | conf 1 | 5.02 | 0.860 | 0.33 |
+| c8-s42-notc-a45 | 42 | 8 | 4.5 | off | 0.92 | 0.50 at 2.56 s | jump 9, conf 5 | 8.34 | 0.805 | 0.49 |
+| c8-s7 | 7 | 8 | 3.0 | on | 0.87 | 0.62 at 0.68 s | conf 9, jump 5 | 4.80 | 0.848 | 0.40 |
+| c8-s7-notc | 7 | 8 | 3.0 | off | 0.82 | 0.38 at 1.12 s | conf 16, jump 2 | 6.70 | 0.829 | 0.35 |
+
+#### Long passages: window continuation
+
+`--long` renders the whole line as windows of at most 121 frames (the card caps one window at 137), equal strides on the VAE's 4-frame grid; every window after the first is conditioned on the last 9 frames of the clip so far (the mask keeps them, as upstream's `infer_preview.py` continues a long clip, without its RetinaFace face mask: Flash takes no face mask), the CLIP identity image stays the reference, and the 9 overlapping frames are crossfaded. A 17 s line (`passage.wav`, Kokoro, "Let me show you three reasons ... First ... Second ... And finally ...") is 425 frames in 4 windows of 113; one passage holds the GPU lock 14-16 min (4 x 165 s denoising plus loading), peak 19.9 GB, no driver errors.
+
+Seams (`seams.json`): the frame step (mean absolute RGB change between consecutive frames) over each crossfade, against the clip's median step, and the face-centre step the same way; per window, SyncNet and identity.
+
+| passage (17 s) | seed | audio CFG | overlap | audio features | hand score | worst 0.5 s | SyncNet (per window) | identity (per window) | wrist travel | join step / clip p99 step (x median) | join face step (x median) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| long-s1116-notc | 1116 | 3.0 | 9 | whole line | 0.74 | 0.08 at 1.44 s | 2.88 (2.8 / 2.7 / 2.0 / 3.7) | 0.810 (0.78 / 0.82 / 0.82 / 0.81) | 0.52 | 3.9 / 1.7 / 1.4 / 3.6 | 3.8 / 1.2 / 3.0 |
+| long-s1116-notc-a45 | 1116 | 4.5 | 9 | whole line | 0.66 | 0.00 at 12.24 s | 3.95 (3.5 / 4.0 / 2.7 / 4.9) | 0.781 (0.78 / 0.78 / 0.80 / 0.78) | 0.59 | 4.7 / 1.6 / 4.6 / 4.6 | 4.2 / 1.6 / 4.3 |
+| long-s1116-notc-ac113 | 1116 | 3.0 | 9 | per 113 frames | 0.47 | 0.00 at 5.16 s | 5.72 (4.8 / 6.8 / 5.2 / 5.4) | 0.816 (0.83 / 0.83 / 0.83 / 0.76) | 1.80 | 2.9 / 0.9 / 1.6 / 2.9 | 2.6 / 1.3 / 2.6 |
+| long-s1116-notc-o5 | 1116 | 3.0 | 5 | whole line | 0.66 | 0.00 at 15.72 s | 3.27 (2.7 / 3.8 / 1.8 / 4.0) | 0.790 (0.75 / 0.83 / 0.82 / 0.77) | 0.51 | 4.2 / 1.1 / 1.4 / 3.8 | 4.6 / 1.3 / 2.2 |
+| long-s42-notc-ac113 | 42 | 3.0 | 9 | per 113 frames | 0.80 | 0.11 at 9.2 s | 6.28 (5.6 / 7.2 / 4.2 / 6.5) | 0.813 (0.80 / 0.81 / 0.79 / 0.85) | 0.58 | 2.2 / 4.9 / 1.6 / 4.6 | 3.6 / 5.7 / 4.5 |
+| long-s7-notc | 7 | 3.0 | 9 | whole line | 0.98 | 0.77 at 2.32 s | 2.18 (2.3 / 2.5 / 1.2 / 2.1) | 0.794 (0.75 / 0.83 / 0.81 / 0.78) | 0.31 | 2.7 / 1.6 / 2.3 / 2.6 | 6.7 / 3.3 / 3.8 |
+| long-s7-notc-ac113 | 7 | 3.0 | 9 | per 113 frames | 0.86 | 0.00 at 15.56 s | 5.68 (5.2 / 7.2 / 3.8 / 5.4) | 0.816 (0.78 / 0.84 / 0.78 / 0.77) | 0.37 | 2.1 / 1.0 / 2.2 / 3.2 | 9.2 / 1.6 / 4.2 |
+
+What the passages show:
+
+- **The joins hold.** Every crossfade's largest frame step is at or within the clip's own 99th-percentile step (the ordinary fast-gesture frames); no pop, no double image, no backdrop jump (the top backdrop corners change 0.15-0.24 grey levels per frame on average, at most 1.6, in every passage: no camera motion). The face-centre step peaks at a join at 0.024 face heights per frame in the worst case (seed 7, first join): a short nod over five frames, seen frame by frame on a face crop, not a jump. Identity per window stays 0.75-0.84 with no drift across windows.
+- **Lip-sync across a long line needs per-window audio features.** With upstream's wav2vec pass over the whole 17 s line, SyncNet per window is 1.2-4.9 (whole passage 2.2-3.9). The same audio cut to its first 4.6 s and rendered as one window scores 4.5, and the 5 s test line scores 6.7-9.4. With `--audio-chunk 113` (features per 113-frame chunk with 1 s of context each side) the passage scores 5.68, 5.72 and 6.28 on three seeds (windows 3.8-7.2), up from 2.18 and 2.88 on the two seeds rendered both ways, at no extra cost. Upstream's encoder was trained on few-second clips; a 17 s context changes the features.
+- **The motion-frame prior calms the gestures down.** After the first window, hands tend to settle into a clasped rest (wrist travel 0.31-0.59 face heights over 17 s, against 0.79-0.95 for a gesturing 5 s take). Raising the audio guidance to 4.5 brings big gestures back but swung both hands out of the frame in the last window, where they turned into stumps (hand score 0.66, worst window 0.00 at 12.2 s). Per-chunk audio features also strengthen motion: with seed 1116 the hands flail, smear and grow a dark smudge where they clasp (0.47); with seed 7 they stay calm and clean (0.86) and with seed 42 they gesture more, with a few smeared frames at 8-9.5 s (0.80).
+- **Overlap 5 instead of 9** made no difference to the seams (largest join step 4.2 vs 3.9 x median) and did not help the hands (0.66 vs 0.74; the difference is the seed's noise, the windows differ in length).
+- One passage holds the GPU lock 13-16 min, under the 20-min turn.
+
+#### Picks
+
+- **Best 5 s take: `c8-s1116-notc-a45`** (seed 1116, TeaCache off, audio guidance 4.5): hand score 0.87, worst 0.5 s 0.31 (confidence dips on hands that look right, and motion blur at 3.1 s), SyncNet 9.18, identity 0.853, the most gesture of the round (wrist travel 0.95). Every 5th frame's hands, by eye: no deformed hand (`picks/best5s-hands-every5.png`). Against round 1's `emv3-c8g` (same seed): the right hand no longer collapses at the end, and SyncNet is 9.18 instead of 6.15.
+- **Best 17 s passage: `long-s7-notc-ac113`** (seed 7, TeaCache off, per-chunk audio features, overlap 9): hand score 0.86, SyncNet 5.68, identity 0.816, seams within the clip's own motion. Honest read: the hands are clean but calm; they gesture for the first 7 s, rest clasped from 7.5 to 15 s and open again at the end, where the left hand's fingers look long and curved (the worst 0.5 s, 15.6 s, flagged on confidence 0.93-0.95). The livelier alternative is `long-s42-notc-ac113` (SyncNet 6.28, wrist travel 0.58, hand score 0.80, smeared hands at 8-9.5 s).
+- Files: `live-review-r4/p3/picks/` (`best-5s-*.mp4`, `best-passage-*.mp4`, `alt-passage-livelier-*.mp4`, round 1's `emv3-c8g` for comparison, and the hands sheets of each: worst window, flagged sample, every Nth frame).
+
+Recipe for a recorded line: TeaCache off; one window (up to 5.4 s) at audio guidance 4.5, or a longer line with `--long --audio-chunk 113` at 3.0; 3-4 seeds, then pick by hand score among the takes that gesture, and watch the worst-window sheet before shipping. Still open: the gesture fades after the first window of a passage (a per-window prompt, or a fresh reference pose every window with a longer crossfade, are the next things to try), and the check's recall is partial (it is a screen for the worst frames, not a guarantee).
+
+Cost, measured on the 4090: a 5 s single window 195 s denoising (TeaCache off) plus about 60 s loading and finishing; a 17 s passage 13.5-15.5 min wall, so about 48 GPU-minutes per finished video-minute.
