@@ -598,17 +598,17 @@ Live Iris on SoulX-FlashHead Lite: a local WebSocket server streams her face and
 ```
 uv run th fetch realtime-fh             # once: FlashHead repo, env and weights
 uv run th live [--port 8765] [--upscale maxine|none|realesrgan|iris] [--allow-origin <origin>]...
-               [--matte] [--no-idle-loop]
+               [--matte] [--no-idle-loop] [--motion off|natural|lively] [--no-speech-glances]
 uv run th live make-idle [--seconds 12] [--pick <track>] [--only a,b]   # once: the idle loop
 uv run th live --fake                   # synthetic face and voice, no GPU (UI work)
-uv run th live-bench --script pitch-45s --upscale none
+uv run th live-bench --script pitch-45s --upscale none [--motion off|natural|lively]
 uv run th live-bench --idle-s 20 --upscale none
 uv run th live-bench --script smoke-6s --lead-s 5 --tail-s 5   # idle, a line, idle
 ```
 
 Environment switches (read by the server and the bench): `TH_LIVE_LOOKAHEAD_MS` (fixes the idle
 look-ahead, which is otherwise adaptive; see "Round 2"), `TH_LIVE_SEAM=0` (seam blend off),
-`TH_LIVE_IDLE=0` (idle loop off), `TH_LIVE_MATTE=<kind>` (matte kind, default `birefnet-lite-matting`, `th.live.matte.kinds.DEFAULT`).
+`TH_LIVE_IDLE=0` (idle loop off), `TH_LIVE_SPEECH_GLANCES=0` (gaze glances in idle only), `TH_LIVE_MATTE=<kind>` (matte kind, default `birefnet-lite-matting`, `th.live.matte.kinds.DEFAULT`).
 
 - `th live` (core env) installs `th/live/requirements.txt` into the FlashHead env once (the marker
   `$TH_HOME/envs/realtime-fh/.th-live-requirements` holds the list's hash), fetches NVIDIA's
@@ -637,7 +637,7 @@ look-ahead, which is otherwise adaptive; see "Round 2"), `TH_LIVE_SEAM=0` (seam 
   encode/emit queue holds 2 chunks and blocks the GPU thread beyond that. A chunk that would start a
   whole chunk late is skipped (`droppedChunks`), never drifted.
 - **Frames** (`th/live/compose.py`, `th/live/stages.py`): seam blend, then the idle loop mixed in,
-  then the matte (when on) and the upscaler on the GPU, then JPEG (quality 90) on a 4-thread pool, so
+  then the matte (when on), the head motion (round 3) and the upscaler on the GPU, then JPEG (quality 90) on a 4-thread pool, so
   the GPU loop never waits on encoding; an emitter thread sends finished chunks in order. With the
   seam blend a chunk's 24 frames start 3 frames (120 ms) before its audio slice: the previous
   chunk's last 3. Each client has its own send queue; a viewer more than 300 messages behind loses
@@ -886,6 +886,7 @@ The app (`apps/web/src/live/`) drives the live server over `fhl/1`. Start the se
   - Connection lamp and the server's `state` line: ready, fps, upscale, delay, queue, size and source.
   - With no server, a designed empty state shows the command to run (`uv run th live`, plus `--port` when `?server=` names another port, plus `--allow-origin <this origin>` after a 4403 refusal), with a Copy button. The page retries with a backoff of 0.5, 1, 2, 4 and then 8 s, and connects by itself once the server is up.
   - **Upscaler**: a segmented switch (None / Real-ESRGAN / Maxine). It shows the requested kind until the server's `state` confirms it. A server `error` event that no line claims shows inline under the toolbar.
+  - **Motion** (round 3): a segmented switch (Off / Natural / Lively) that sends `motion` and shows the requested level until `state.motion` confirms it. The state line ends with `motion <level>`; a server older than round 3 sends no `motion`, so the line leaves it out and no level is checked.
   - **Stop** sends `stop`, ends a running slide deck where it is, and clears the slide this page put up.
   - **Tabs** (arrow keys, Home and End move between them). All tabs stay mounted, so a running deck or mic keeps going in the background.
     - **Lines**: type a line and press Speak (or Enter). The history lists every line sent, slide lines included, with its status (queued, speaking, done, not spoken) and the server's `timing`: first frame, chunk and upscale ms, plus the spoken length from `line-start` to `line-end`.
@@ -1162,3 +1163,126 @@ uv run python -m th.live.upscale.iris_eval live --video <live-bench raw.mp4> --o
   - The VAE input no longer carries the true pores, so an L1-trained net paints their median.
   - A GAN fine-tune (`--gan 0.1 --fft 0.5 --init <L1 weights> --lr 1e-4`) brought some grain back (sharpness 14.2 -> 19.2 on the held-out edits). It cost 1.6 dB and drew swirl artefacts on the cheek, and it was stopped after 15 min, so it is not shipped.
 - **Against `maxine`.** The comparison is in the internal note (`var/talking-head/live-upscale-ab/iris/INTERNAL-iris-vs-maxine.md`, SLA 8.9). In short, `iris` wins by the numbers and `maxine` keeps more freckle grain by eye. `maxine` stays the default.
+
+### Round 3: head motion and gaze glances (2026-11-17)
+
+The owner's verdict on round 2: the picture is good, but the head is static and the gaze is fixed.
+Round 3 adds both on top of FlashHead, at a level the control page switches live: `off`, `natural`
+(the default) or `lively`. Protocol: the command `{"type":"motion","level":"off"|"natural"|"lively"}`
+and `state.motion` (key always present; the web client reads a missing key as unknown and leaves it
+out of the state line). `th live --motion <level>`, `th live-bench --motion <level>`.
+
+**FlashHead's own head motion, measured first.** On a round 2 pitch-45s run (20261116T203517Z, 512 px,
+the 1065 speech frames), the rigid shift of the head (phase correlation of the head region against
+the clip's median) is 0.70 / 0.31 px (x / y, p95 - p5) and the roll range (MediaPipe eye-corner line)
+0.77 degrees; the nose tip moves 4.5 / 8.7 px, mostly with the jaw. In idle: 0.16 / 0.13 px, 0.45
+degrees. So the added motion below is sized against a head that, as a rigid body, barely moves.
+
+**Head motion** (`th/live/motion.py`). A per-frame 2D similarity transform (dx, dy, roll, scale),
+deterministic for the seed and the audio fed (however it is split into chunks):
+- **sway**: three sines per axis at 0.1-0.3 Hz with seeded phases (dx 2.6 px, dy 1.6 px, roll
+  0.7 degrees at 512 px, before the sum's peaks);
+- **nods**: an energy onset in the chunk's speech audio (a frame's level 9 dB over the last 0.2 s,
+  while voiced) starts a 0.46 s down-and-back bump: dy up to 3.4 px and a 0.4 % scale-down. At
+  most one per 0.8 s;
+- **tilts**: at each sentence's first sample (the engine knows it from the per-sentence TTS
+  segments) and at clause pauses (voice back after 0.16 s or more of quiet, at least 1.5 s after
+  the last tilt), a smoothstep over 0.7 s to a new roll of 0.6-1.5 degrees (60 % for a clause),
+  usually leaning the other way, with a 1.4 px/degree sideways lean;
+- **idle**: when the audio is quiet (attack 0.25 s, release 1.2 s) the sway shrinks to 45 % and
+  slows to 0.6x, a small tilt comes every 5-9 s, and there are no nods;
+- **levels**: `lively` multiplies all of it by 1.6, and `off` is the identity; a level change eases
+  over 0.5 s.
+
+The transform runs on the GPU after the seam blend, the idle loop and the matte, and before the
+upscaler: one bilinear `affine_grid` / `grid_sample` over the 512 frames, and over the alpha with
+the same grid when matting is on. Rotation and scale pivot on the neck (50 %, 72 % of the frame).
+Without a matte the frame is zoomed 4 % (eased in and out with the level). Each frame's transform
+is then shrunk toward the pure zoom just enough that the four output corners sample at least half a
+pixel inside the source, so no border can show (the test checks every grid coordinate and a constant
+frame through zero padding). With a matte nothing is zoomed: edge pixels are clamped, so the cut
+of the shoulders at the bottom never opens. Applied per frame: `bench.json` `motion.params`; per
+chunk: `motionMs`.
+
+Measured 2026-11-17 00:43-00:51 with `th live-bench --script pitch-45s --motion <level>` (upscale
+none, seed 1116, no game on the GPU; during the first run a test process held 1.3 GB and ran a
+short GPU test, hence its p95). Head figures over the speech frames, p95 - p5:
+
+| figure | `off` (FlashHead alone) | `natural`, measured on the output | `natural`, as applied |
+| --- | --- | --- | --- |
+| roll, degrees | 0.78 | 2.82 | 2.48 |
+| shift x / y, px | 0.69 / 0.30 (phase correlation) | 10.9 / 0.43 (phase correlation) | dx 6.58 / dy 4.37 |
+| nose tip x / y, px | 4.2 / 8.5 | 11.6 / 9.5 | |
+| scale | | | 0.32 % |
+| nods | | | 45 in 42.6 s of speech (the 0.8 s refractory period is the limit) |
+
+Phase correlation reads a rotation about the neck as a sideways shift and misses most of the
+vertical motion, so the applied column is the reference. `lively` is 1.6x `natural` on every axis
+(test). Over the idle frames `natural` applies dx 3.4 / dy 1.7 px and 1.8 degrees.
+
+| run | chunk ms p50 / p95 / max | late / dropped | slack min ms | SyncNet (offset) | identity mean / p5 | warp ms per chunk p50 / p95 | firstFrameMs |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `off` | 406 / 452 / 488 | 0 / 0 | 185 | 8.33 (-1) | 0.974 / 0.960 | | 854-1061 |
+| `natural` | 427 / 697 / 839 | 0 / 0 | 140 | 8.47 (-1) | 0.972 / 0.961 | 7.4 / 24.9 | 819-1415 |
+| `natural`, matte on | 498 / 535 / 594 | 0 / 0 | 147 | 8.39 (-1) | 0.971 / 0.957 | 4.1 / 4.5 | 962-1371 |
+
+- SyncNet and identity stay within round 2's run-to-run spread (8.0-8.5 and 0.972-0.975).
+- The warp costs 4-8 ms per chunk on the GPU. Without a matte most of it is the border fit, which is
+  per-frame numpy on the CPU. With matting, BiRefNet-lite took 83 / 94 ms (p50 / p95).
+- The seam blend still works under motion: the seam step against the non-seam step is 1.14 with
+  `natural` and 1.13 with `off`. Frames step more overall (non-seam step 2.51 against 1.26),
+  because the head now moves.
+- The fake model (`th live --fake`, tests) warps in numpy, not torch. torch's CPU thread pool next to
+  the server's threads made a server test miss its timing after a GPU test in the same process. At
+  256 px it takes 270 ms per chunk.
+
+**Gaze glances** (`th/live/gaze.py`). Iris's Codex gaze edits (`edits/gaze{L,R,U,D}.webp`) are
+bust-cropped with the main box into `$TH_HOME/live/refs/iris/` and encoded as extra FlashHead
+references at load (`FlashHeadModel.add_reference`, exactly as upstream's `prepare_params`). A
+reference applies to a whole 0.96 s chunk, so a glance lasts one chunk.
+
+Upstream's `reset_person_name` also resets the motion latents to the still reference. Our switch
+(`set_reference`) swaps only the reference latent and the colour reference and keeps the motion
+latents, so the next chunk continues from the last frames. Measured before wiring the policy
+(probe: 41 chunks, pitch-45s speech then silence, seam blend on, mean abs step on 128 px grey;
+gaze = iris centre within the eye box, -0.5..0.5, from MediaPipe; the gaze references themselves
+read -0.32 (L) and +0.30 (R)):
+
+| switch (latents kept unless noted) | step at the switch against the median step | gaze (iris offset) | identity (DINOv2 vs the bust) |
+| --- | --- | --- | --- |
+| idle, to L / R | 1.56-1.84 against 0.77 (2.0-2.4x); with a 6-frame dissolve from the held frame 1.08-1.20 (1.4-1.55x) | moves to -0.28 / +0.29 within about 6 frames and holds | 0.977-0.983 (0.982-0.988 without a glance) |
+| idle, back to the main reference | 1.07-1.48; the largest step sits in the seam blend's frames, so a dissolve does not lower it | back within about 6 frames of the next chunk | |
+| idle, a second probe | | gazeR arrived late in its chunk and held through the next one (about 1.2 s); gazeU showed nothing; gazeD drooped the lids for 2 chunks | gazeD 0.92-0.95 |
+| speech, to L / R / U | 0.92-1.73x the median (1.50) | weak: 1 of 5 glances showed within its chunk (gazeR, ramping to +0.21 by the chunk's end); a 2-chunk gazeL showed only in its second chunk | 0.955-0.974 (0.94-0.98 without) |
+| speech, back from U | 4.35 (2.9x) | gazeU read as a half blink | |
+| speech, upstream reset (`reset_person_name`) | to L 1.93 (1.3x); back 3.96 (2.6x), 6.58 (4.4x) in the seam frames, which a dissolve does not hide | immediate and strong (-0.30) | 0.963 |
+
+Built from that (the Director approved it):
+- the switch keeps the motion latents, always;
+- glances go left or right only, because up and down did not read as glances;
+- in idle, one glance every 6-10 s (4-7 s at `lively`). It is planned one chunk ahead, and the live
+  model is shown over the idle loop from 6 frames before the switch until 6 frames after the chunk
+  that follows. That covers the return, then the loop fades back in. The first 6 frames of the
+  glance dissolve from the held frame.
+- in speech, a chunk that holds a sentence start glances with probability 0.3 (0.5 at `lively`),
+  at least 3 s (2 s) after the last glance, with no dissolve: it froze the lips and did not lower
+  the step.
+- speech glances have their own switch, `TH_LIVE_SPEECH_GLANCES=0` or `th live
+  --no-speech-glances`, in case the owner reads them as random eye darts. Idle glances stay.
+
+The server logs each glance (`th live: glance gazeL at <pts> ms (speech|idle)`), and
+`bench.json` `motion.glances` lists `[chunk, reference]`.
+
+In the review clips, measured as an iris offset change above 0.08 within 1.6 s of the switch, speech
+glances showed in 3 of 9 and idle glances in 4 of 5. A speech glance often falls on a line's first
+chunk, because a sentence starts there.
+
+**Review clips** (`var/talking-head/live-review-r3/`, recorded through the server on port 8766 with
+Maxine, the way `/live?out=1` receives the stream):
+- `line-off`, `line-natural` and `line-lively` (the same typed line);
+- `matte-natural` (matte on, composited on a light background);
+- `idle-natural` (20 s);
+- `passage-natural`, `passage2-natural` and `passage-lively` (a 5-sentence passage, for speech glances).
+
+`contact-sheet.jpg` shows 8 frames per clip, `glance-strips.jpg` shows each glance from -0.2 to
++1.8 s, and `glances.json` gives each glance's time, frame, reference and measured gaze.

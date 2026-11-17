@@ -111,16 +111,21 @@ describe("client frames", () => {
     expect(JSON.parse(encodeMessage({ type: "hello", role: "out" }))).toEqual({ type: "hello", role: "out" });
     expect(JSON.parse(encodeMessage({ type: "say", id: "a", text: "Hi" }))).toEqual({ type: "say", id: "a", text: "Hi" });
     expect(JSON.parse(encodeMessage({ type: "matte", on: true }))).toEqual({ type: "matte", on: true });
+    expect(JSON.parse(encodeMessage({ type: "motion", level: "lively" }))).toEqual({ type: "motion", level: "lively" });
   });
 });
 
 describe("parseServerMessage", () => {
   it("reads state, event and timing, keeping null values", () => {
-    const state = { type: "state", ready: true, model: "lite", fps: 25, upscale: "none", source: "text", queue: 0, delayMs: 250, size: 512, matte: true, idle: "loop" };
+    const state = { type: "state", ready: true, model: "lite", fps: 25, upscale: "none", source: "text", queue: 0, delayMs: 250, size: 512, matte: true, idle: "loop", motion: "natural" };
     expect(parseServerMessage(JSON.stringify(state))).toEqual(state);
     // A round-1 server sends neither key: matte off, idle unknown.
     const v1 = { type: "state", ready: true, model: "lite", fps: 25, upscale: "none", source: "text", queue: 0, delayMs: 250, size: 512 };
-    expect(parseServerMessage(JSON.stringify(v1))).toMatchObject({ matte: false, idle: null });
+    expect(parseServerMessage(JSON.stringify(v1))).toMatchObject({ matte: false, idle: null, motion: null });
+    // A round-2 server sends no `motion`; an unknown level reads as missing too.
+    expect(parseServerMessage(JSON.stringify({ ...state, motion: undefined }))).toMatchObject({ motion: null });
+    expect(parseServerMessage(JSON.stringify({ ...state, motion: "wild" }))).toMatchObject({ motion: null });
+    expect(parseServerMessage(JSON.stringify({ ...state, motion: "off" }))).toMatchObject({ motion: "off" });
     expect(parseServerMessage(JSON.stringify({ ...state, idle: "nap" }))).toMatchObject({ idle: null });
     const event = { type: "event", kind: "slide", id: null, text: "2", atMs: 4000 };
     expect(parseServerMessage(JSON.stringify(event))).toEqual(event);

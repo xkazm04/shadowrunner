@@ -1,12 +1,14 @@
 """The upscaler and matte stages of the live engine (a mixin of `Engine`): loading and warming
 them off the GPU thread, swapping them in at a chunk boundary, and running them on a chunk with a
 fallback (an upscaler that fails falls back to `none`, a matte that fails switches matting off; each
-says why once in an `error` event, the stream never stops).
+says why once in an `error` event, the stream never stops). Round 3 adds the gaze glance switch
+(th/live/gaze.py) before FlashHead and the head motion (th/live/motion.py) after the matte.
 """
 
 from __future__ import annotations
 
 import os
+import sys
 import threading
 import time
 from typing import Any
@@ -22,6 +24,7 @@ MATTE_KIND = os.environ.get("TH_LIVE_MATTE") or _MATTE_DEFAULT
 LOOKAHEAD_FLOOR_MS = 750.0
 LOOKAHEAD_MARGIN_MS = 150.0  # JPEG encoding and the hand-off, on top of the GPU time
 LOOKAHEAD_WINDOW = 8  # chunks
+DISSOLVE = 6  # frames, at a gaze switch in a silent chunk
 
 
 class Stages:
@@ -167,3 +170,94 @@ class Stages:
             self._error(f"upscale {self.upscaler.kind} failed, using none: {e}")
             self._swap_upscaler(get_upscaler("none"))
             return frames, None, None
+
+    # ---- round 3: head motion and gaze glances ----------------------------------------------------
+
+    def _init_motion(self, level: str, seed: int) -> None:
+        from .gaze import GazePolicy
+        from .motion import Motion
+
+        self.motion_level = level
+        self.motion = Motion(level, seed)
+        self.gaze = GazePolicy(level, seed, available=getattr(self.model, "refs", {}).keys())
+        self._glances: list[tuple[float, float]] = []  # pts windows where an idle glance shows live
+        self._switched = False  # this chunk's reference differs from the previous chunk's
+
+    def set_motion(self, level: str) -> None:
+        """Head motion and glances at `level` from the next chunk (motion eases over 0.5 s)."""
+        with self._lock:
+            self.motion_level = level
+            self.motion.set_level(level)
+            self.gaze.set_level(level)
+        self.sink("state", None)
+
+    def _glance_live(self, pts: float) -> bool:
+        return any(a <= pts <= b for a, b in self._glances)
+
+    def _gaze_turn(self, k: int, sentences: int, speaking: bool) -> str:
+        """Pick chunk k's reference and switch the model to it (keeping its motion latents)."""
+        from .compose import FADE, SLICE_FRAMES
+
+        prev = getattr(self.model, "reference", "main")
+        ref = self.gaze.decide(k, sentences, speaking)
+        set_ref = getattr(self.model, "set_reference", None)
+        if set_ref is None or (ref != "main" and ref not in getattr(self.model, "refs", {})):
+            ref = "main"
+        if set_ref is not None and ref != prev:
+            set_ref(ref)
+            if ref != "main":  # the review notes point at these (stream pts of the glance chunk)
+                print(f"th live: glance {ref} at {k * SLICE_FRAMES * 40.0:.0f} ms "
+                      f"({'speech' if speaking else 'idle'})", file=sys.stderr, flush=True)
+        self._switched = ref != prev
+        nxt = self.gaze.planned
+        if nxt is not None:  # an idle glance next chunk: show the live model over the loop for it
+            a = (nxt[0] * SLICE_FRAMES - FADE) * 40.0
+            self._glances.append((a, a + (SLICE_FRAMES + 2 * FADE) * 40.0))
+        self._glances = [w for w in self._glances if w[1] > (k - 2) * SLICE_FRAMES * 40.0]
+        return ref
+
+    def _dissolve(self, frames: Any, first: int, k: int) -> Any:
+        """At a reference switch in a silent chunk, dissolve the first DISSOLVE new frames from the
+        last held frame (the probe: entry step 1.84 -> 1.2 against a 0.77 median). Not in speech: it
+        froze the lips and did not lower the step there."""
+        from .compose import SLICE_FRAMES, mix
+
+        pos = k * SLICE_FRAMES - first  # index of the chunk's first new frame in `frames`
+        if pos < 1 or len(frames) < pos + DISSOLVE:
+            return frames
+        n = DISSOLVE
+        anchor = frames[pos - 1:pos]
+        held = anchor.repeat(n, 0) if isinstance(frames, np.ndarray) else anchor.expand(n, -1, -1, -1)
+        out = frames.copy() if isinstance(frames, np.ndarray) else frames.clone()
+        out[pos:pos + n] = mix(held, frames[pos:pos + n], [(j + 1) / (n + 1) for j in range(n)])
+        return out
+
+    def _move(self, first: int, frames: Any, alpha: Any) -> tuple[Any, Any]:
+        """Head motion on the composed 512 frames (and the alpha), before the upscaler."""
+        from .motion import warp
+
+        n = len(frames)
+        if self.motion.idle(first, n):
+            return frames, alpha
+        t1 = time.perf_counter()
+        frames, alpha, applied = warp(frames, self.motion.get(first, n), alpha, matte=alpha is not None)
+        if not isinstance(frames, np.ndarray):
+            import torch
+
+            torch.cuda.synchronize()
+        self.stats["motionMs"].append((time.perf_counter() - t1) * 1000)
+        self.stats["motion"] += [[first + j, *(round(float(v), 4) for v in row)] for j, row in enumerate(applied)]
+        return frames, alpha
+
+
+def jpeg_frame(frame: np.ndarray) -> bytes:
+    from PIL import Image
+
+    bio = __import__("io").BytesIO()
+    Image.fromarray(frame).save(bio, "JPEG", quality=P.JPEG_QUALITY)
+    return bio.getvalue()
+
+
+def jpeg_pair(frame: np.ndarray, alpha: np.ndarray) -> tuple[bytes, bytes]:
+    """Colour JPEG plus the alpha as a greyscale JPEG (0x04)."""
+    return jpeg_frame(frame), jpeg_frame(alpha)

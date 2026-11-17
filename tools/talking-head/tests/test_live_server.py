@@ -351,3 +351,32 @@ def test_idle_loop_state_and_stop_marker():
     assert end["text"] == "stopped"  # the out clients' flush signal
     lum = [float(np.asarray(Image.open(io.BytesIO(v["jpeg"])).convert("L")).mean()) for v in video]
     assert min(lum[:5]) < 5 and max(lum) > 50  # the loop (black) first, the live face (grey) later
+
+
+# ---- round 3: the motion command and state.motion ------------------------------------------------
+
+
+def test_motion_command_sets_state_motion_and_bad_level_is_refused():
+    async def go():
+        async with live_server(motion="natural") as (_server, engine):
+            ctl, cin, out, oin = await clients()
+            first = await oin.until(type="state", ready=True)
+            await ctl.send(json.dumps({"type": "motion", "level": "lively"}))
+            lively = await cin.until(type="state", motion="lively")
+            await ctl.send(json.dumps({"type": "motion", "level": "wild"}))
+            err = await cin.until(type="event", kind="error")
+            await ctl.send(json.dumps({"type": "motion", "level": "off"}))
+            off = await oin.until(type="state", motion="off")
+            await asyncio.sleep(1.5)  # the motion eases out within 0.5 s
+            n = len(oin.binary(P.TAG_VIDEO))
+            await asyncio.sleep(1.2)
+            moved_ms = list(engine.stats["motionMs"])
+            await ctl.close()
+            await out.close()
+            return first, lively, err, off, n, moved_ms, engine.motion.level
+
+    first, lively, err, off, n, moved_ms, level = asyncio.run(go())
+    assert first["motion"] == "natural"  # key always present
+    assert lively["motion"] == "lively" and off["motion"] == "off" and level == "off"
+    assert "motion.level" in err["text"]
+    assert moved_ms and n > 0  # frames were warped while on, and the stream kept flowing

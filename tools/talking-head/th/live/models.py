@@ -60,8 +60,12 @@ class FlashHeadModel:
     name = "lite"
     size = 512
 
-    def __init__(self, portrait: Path, seed: int = 1116, model_type: str = "lite") -> None:
+    def __init__(self, portrait: Path, seed: int = 1116, model_type: str = "lite",
+                 refs: dict[str, Path] | None = None) -> None:
+        """`refs`: extra references (name -> bust-cropped image), e.g. th.live.gaze.gaze_refs()."""
         self.portrait = portrait
+        self.refs = dict(refs or {})
+        self.reference = "main"
         self.seed = seed
         self.name = model_type
         self.repo = th_home() / "repos" / FH_REPO
@@ -90,6 +94,9 @@ class FlashHeadModel:
             # upstream keys the reference by the path's last '/' component: pass a posix path
             get_base_data(self.pipe, cond_image_path_or_dir=self.portrait.resolve().as_posix(),
                           base_seed=self.seed, use_face_crop=False)
+        self._main = self.pipe.person_name
+        for name, path in self.refs.items():
+            self.add_reference(name, path)
         p = get_infer_params()
         self.motion = p["motion_frames_num"]
         assert p["frame_num"] - self.motion == SLICE_FRAMES and p["sample_rate"] == RATE, p
@@ -101,6 +108,37 @@ class FlashHeadModel:
         self.pipe.reset_person_name()
         self.window[:] = 0
         self.load_s = time.perf_counter() - t0
+
+    def add_reference(self, name: str, image: Path) -> None:
+        """Encode one more reference exactly as upstream's prepare_params does (resize and centre
+        crop to 512, VAE-encode `frame_num` copies); `set_reference` switches to it."""
+        import torch
+        from PIL import Image
+        from flash_head.utils.utils import resize_and_centercrop
+
+        pipe = self.pipe
+        with torch.no_grad():
+            t = resize_and_centercrop(Image.open(image).convert("RGB"), (pipe.target_h, pipe.target_w))
+            t = (t.to(pipe.device, dtype=pipe.param_dtype) / 255 - 0.5) * 2
+            pipe.cond_image_tensor_dict[name] = t
+            pipe.cond_image_dict[name] = None
+            pipe.ref_img_latent_dict[name] = pipe.vae.encode(t.repeat(1, 1, pipe.frame_num, 1, 1))
+
+    def set_reference(self, name: str, keep_motion: bool = True) -> None:
+        """Switch the identity reference from the next chunk ("main" is the portrait). With
+        keep_motion the motion latents stay (the picture continues from the last frames); without
+        it this is upstream's reset_person_name (motion restarts from the still reference)."""
+        pipe = self.pipe
+        key = self._main if name == "main" else name
+        if key not in pipe.ref_img_latent_dict:
+            raise KeyError(f"no reference {name!r}")
+        if not keep_motion:
+            pipe.reset_person_name(key)
+        else:
+            pipe.person_name = key
+            pipe.original_color_reference = pipe.cond_image_tensor_dict[key]
+            pipe.ref_img_latent = pipe.ref_img_latent_dict[key]
+        self.reference = name
 
     def chunk(self, audio16k: np.ndarray) -> Any:
         import torch
@@ -126,6 +164,12 @@ class FakeModel:
         self.frames = 0
         self.motion_frames: np.ndarray | None = None  # like FlashHead: the last chunk's last 9
         self._last: np.ndarray | None = None
+        self.reference = "main"
+        self.refs: dict[str, Any] = {}
+        self.references: list[str] = []  # chunks rendered: the reference each used
+
+    def set_reference(self, name: str, keep_motion: bool = True) -> None:
+        self.reference = name
 
     def load(self) -> None:
         return None
@@ -139,6 +183,9 @@ class FakeModel:
             rms = float(np.sqrt(np.mean(audio16k[i * per:(i + 1) * per] ** 2)))
             out[i, s // 2:3 * s // 4, s // 4:3 * s // 4] = min(255, int(rms * 1200))
             out[i, :2, : (self.frames + i) % s] = 255  # a moving tick: frames are never identical
+        if self.reference != "main":  # a glance: a visible tint, so tests can see the switch
+            out[:, s // 8:s // 4, : s // 4, 0] = 255
+        self.references.append(self.reference)
         self.frames += SLICE_FRAMES
         self.motion_frames, self._last = self._last, out[-9:].copy()
         return out

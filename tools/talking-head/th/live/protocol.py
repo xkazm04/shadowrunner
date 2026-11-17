@@ -40,6 +40,7 @@ EVENT_KINDS = ("line-start", "line-end", "reply-text", "slide", "error")
 SOURCES = ("text", "mic")
 ROLES = ("control", "out")
 IDLE_MODES = ("loop", "live")  # state.idle: the pre-rendered idle loop is showing, or the live model
+MOTION_LEVELS = ("off", "natural", "lively")  # round 3: head motion and gaze glances
 
 _VIDEO_HEAD = struct.Struct("<BdHH")
 _AUDIO_HEAD = struct.Struct("<BdI")
@@ -122,11 +123,13 @@ def dumps(msg: dict[str, Any]) -> str:
 
 
 def state(*, ready: bool, upscale: str, source: str, queue: int, delay_ms: int | None, size: int,
-          model: str = "lite", matte: bool = False, idle: str = "live") -> dict[str, Any]:
+          model: str = "lite", matte: bool = False, idle: str = "live",
+          motion: str = "natural") -> dict[str, Any]:
     assert idle in IDLE_MODES, idle
+    assert motion in MOTION_LEVELS, motion
     return {"type": "state", "ready": ready, "model": model, "fps": FPS, "upscale": upscale,
             "source": source, "queue": queue, "delayMs": delay_ms, "size": size, "matte": matte,
-            "idle": idle}
+            "idle": idle, "motion": motion}
 
 
 def event(kind: str, at_ms: float, id: str | None = None, text: str | None = None) -> dict[str, Any]:
@@ -174,6 +177,9 @@ def parse_command(text: str) -> dict[str, Any]:
     elif t == "matte":
         if not isinstance(msg.get("on"), bool):
             raise BadCommand("matte needs a boolean 'on'")
+    elif t == "motion":
+        if msg.get("level") not in MOTION_LEVELS:
+            raise BadCommand(f"motion.level must be one of {MOTION_LEVELS}")
     elif t == "slide":
         if not isinstance(msg.get("index"), int) or isinstance(msg.get("index"), bool) or msg["index"] < 0:
             raise BadCommand("slide.index must be a non-negative integer")

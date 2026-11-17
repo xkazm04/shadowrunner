@@ -88,7 +88,7 @@ class LiveServer:
         assert e is not None
         return P.dumps(P.state(ready=e.ready, upscale=e.upscaler.kind, source=e.source,
                                queue=e.queue_len, delay_ms=e.delay_ms(), size=e.size, model=e.model.name,
-                               matte=e.matte is not None, idle=e.idle_mode))
+                               matte=e.matte is not None, idle=e.idle_mode, motion=e.motion_level))
 
     def _send_state(self) -> None:
         s = self.state_msg()
@@ -197,6 +197,9 @@ class LiveServer:
         elif t == "matte":
             if cmd["on"] != (e.matte is not None):
                 e.set_matte(cmd["on"])
+        elif t == "motion":
+            if cmd["level"] != e.motion_level:
+                e.set_motion(cmd["level"])
         elif t == "slide":
             client.slide_index = cmd["index"]
 

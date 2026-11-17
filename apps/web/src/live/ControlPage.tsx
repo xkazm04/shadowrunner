@@ -9,6 +9,8 @@
 //   arrives; an error no line or turn claims shows under the toolbar.
 // - Stop also ends the slide deck where it is, and flushes the preview at once (round 2).
 // - The matte switch, like the upscaler, shows the request until `state.matte` confirms it.
+// - The motion switch (round 3) does the same with `state.motion`; an older server sends no
+//   `motion`, so nothing is checked and the state line leaves it out.
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactElement } from "react";
 import { ChatTab } from "./ChatTab";
 import { EmptyState } from "./EmptyState";
@@ -16,7 +18,7 @@ import { LinesTab } from "./LinesTab";
 import { addLine, addTurn, looseError, updateChat, updateLines, type ChatTurn, type LineRecord } from "./log";
 import { OutView } from "./OutView";
 import { newId, outUrl } from "./params";
-import { DEFAULT_SERVER, UPSCALE_KINDS, type LiveState, type UpscaleKind } from "./protocol";
+import { DEFAULT_SERVER, MOTION_LEVELS, UPSCALE_KINDS, type LiveState, type MotionLevel, type UpscaleKind } from "./protocol";
 import { PuppetTab } from "./PuppetTab";
 import { SlidesTab } from "./SlidesTab";
 import { useLiveControl } from "./useLive";
@@ -35,10 +37,11 @@ const MATTE_CHOICES = [
   { on: false, label: "Off" },
   { on: true, label: "On" },
 ] as const;
+const MOTION_LABEL: Readonly<Record<MotionLevel, string>> = { off: "Off", natural: "Natural", lively: "Lively" };
 export const NOT_CONNECTED = "Not sent: the live server is not connected.";
 export const MIC_ON = "Puppet mode is on: stop the microphone to type lines.";
 
-function stateLine(state: LiveState): string {
+export function stateLine(state: LiveState): string {
   return [
     state.ready ? "ready" : "warming up",
     `${state.fps} fps`,
@@ -49,6 +52,7 @@ function stateLine(state: LiveState): string {
     `source ${state.source}`,
     `matte ${state.matte ? "on" : "off"}`,
     ...(state.idle === null ? [] : [`idle ${state.idle}`]),
+    ...(state.motion === null ? [] : [`motion ${state.motion}`]),
   ].join(" · ");
 }
 
@@ -62,6 +66,7 @@ export function ControlPage({ server }: { server: string }): ReactElement {
   const [error, setError] = useState<string | undefined>(undefined);
   const [requested, setRequested] = useState<UpscaleKind | undefined>(undefined);
   const [matteAsked, setMatteAsked] = useState<boolean | undefined>(undefined);
+  const [motionAsked, setMotionAsked] = useState<MotionLevel | undefined>(undefined);
   const [stops, setStops] = useState(0);
   const known = useRef(new Set<string>());
   const tabRefs = useRef(new Map<TabId, HTMLButtonElement>());
@@ -76,6 +81,7 @@ export function ControlPage({ server }: { server: string }): ReactElement {
           setError(loose);
           setRequested(undefined);
           setMatteAsked(undefined);
+          setMotionAsked(undefined);
         }
       }),
     [listen],
@@ -83,7 +89,8 @@ export function ControlPage({ server }: { server: string }): ReactElement {
   useEffect(() => {
     if (requested !== undefined && state?.upscale === requested) setRequested(undefined);
     if (matteAsked !== undefined && state?.matte === matteAsked) setMatteAsked(undefined);
-  }, [state, requested, matteAsked]);
+    if (motionAsked !== undefined && state?.motion === motionAsked) setMotionAsked(undefined);
+  }, [state, requested, matteAsked, motionAsked]);
 
   const say = useCallback(
     (text: string, origin: LineRecord["origin"], id: string = newId("line")): boolean => {
@@ -121,6 +128,11 @@ export function ControlPage({ server }: { server: string }): ReactElement {
     if (send({ type: "matte", on })) setMatteAsked(on);
   };
 
+  const motion = (level: MotionLevel) => {
+    setError(undefined);
+    if (send({ type: "motion", level })) setMotionAsked(level);
+  };
+
   const onTabKey = (event: KeyboardEvent<HTMLButtonElement>) => {
     const at = TABS.findIndex((t) => t.id === tab);
     const to = { ArrowRight: at + 1, ArrowLeft: at - 1, Home: 0, End: TABS.length - 1 }[event.key];
@@ -136,6 +148,7 @@ export function ControlPage({ server }: { server: string }): ReactElement {
   const blocked = !open ? NOT_CONNECTED : mic ? MIC_ON : undefined;
   const shownUpscale = requested ?? state?.upscale;
   const shownMatte = matteAsked ?? state?.matte;
+  const shownMotion = motionAsked ?? state?.motion;
   const obs = outUrl(typeof window === "undefined" ? "" : window.location.origin, server, DEFAULT_SERVER);
 
   return (
@@ -170,6 +183,15 @@ export function ControlPage({ server }: { server: string }): ReactElement {
               <label key={label} className={styles.segment}>
                 <input type="radio" name="matte" value={label.toLowerCase()} checked={shownMatte === on} onChange={() => matte(on)} />
                 <span>{label}</span>
+              </label>
+            ))}
+          </fieldset>
+          <fieldset className={styles.segmented} disabled={!open} data-live="motion">
+            <legend className={styles.legend}>Motion</legend>
+            {MOTION_LEVELS.map((level) => (
+              <label key={level} className={styles.segment}>
+                <input type="radio" name="motion" value={level} checked={shownMotion === level} onChange={() => motion(level)} />
+                <span>{MOTION_LABEL[level]}</span>
               </label>
             ))}
           </fieldset>

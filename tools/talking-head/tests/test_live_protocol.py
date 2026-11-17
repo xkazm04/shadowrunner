@@ -44,9 +44,12 @@ def test_video_alpha_layout_byte_for_byte():
 def test_json_messages_keep_every_key():
     st = P.state(ready=False, upscale="none", source="text", queue=0, delay_ms=None, size=512)
     assert set(st) == {"type", "ready", "model", "fps", "upscale", "source", "queue", "delayMs", "size",
-                       "matte", "idle"}
+                       "matte", "idle", "motion"}
     assert st["delayMs"] is None and st["fps"] == 25
     assert st["matte"] is False and st["idle"] == "live"  # round 2 keys, always present
+    assert st["motion"] == "natural"  # round 3 key, always present
+    assert P.state(ready=True, upscale="none", source="text", queue=0, delay_ms=1, size=512,
+                   motion="lively")["motion"] == "lively"
     assert P.state(ready=True, upscale="none", source="text", queue=0, delay_ms=1, size=512,
                    matte=True, idle="loop")["idle"] == "loop"
     ev = P.event("line-start", 960.0, "a")
@@ -68,10 +71,13 @@ def test_origin_rule(origin, ok):
 def test_commands_validated():
     assert P.parse_command('{"type":"say","id":"1","text":"hi"}')["text"] == "hi"
     assert P.parse_command('{"type":"matte","on":true}')["on"] is True
+    for level in ("off", "natural", "lively"):
+        assert P.parse_command(f'{{"type":"motion","level":"{level}"}}')["level"] == level
     for bad in ('{"type":"matte"}', '{"type":"matte","on":1}', '{"type":"matte","on":"yes"}',
                 'nope', '[]', '{"type":"say","id":1,"text":"x"}', '{"type":"say","id":"1","text":" "}',
                 '{"type":"hello","role":"admin"}', '{"type":"slide","index":-1}',
-                '{"type":"slide","index":true}', '{"type":"source","source":"camera"}', '{"type":"dance"}'):
+                '{"type":"slide","index":true}', '{"type":"source","source":"camera"}', '{"type":"dance"}',
+                '{"type":"motion"}', '{"type":"motion","level":"wild"}', '{"type":"motion","level":1}'):
         with pytest.raises(P.BadCommand):
             P.parse_command(bad)
 
@@ -105,8 +111,9 @@ def test_timeline_pts_line_events_and_sample_conservation():
     play = np.linspace(-0.5, 0.5, 30000, dtype=np.float32)  # 1.25 s at 24 kHz
     e.enqueue(Segment(ln, to_16k(play, 24000), play, 24000, [("reply-text", "hi")]))
     e.close_line(ln)
-    _, a0, e0, s0, _ = e._take_slice(0.0)
-    _, a1, e1, s1, _ = e._take_slice(960.0)
+    _, a0, e0, s0, _, sent0 = e._take_slice(0.0)
+    _, a1, e1, s1, _, sent1 = e._take_slice(960.0)
+    assert sent0 == [0.0] and sent1 == []  # sentence starts (ms into the slice) feed the motion
     assert [x["kind"] for x in e0] == ["line-start", "reply-text"] and e0[0]["atMs"] == 0.0
     assert s0 == [ln] and not s1
     assert a0[0][0] == 0.0 and a1[0][0] == 960.0
@@ -126,7 +133,8 @@ def test_line_spoken_after_idle_starts_mid_stream_and_stop_drops_it():
     pcm = np.ones(4000, np.float32) * 0.1
     e.enqueue(Segment(ln, pcm, pcm, 16000))
     e.enqueue(Segment(ln, pcm, pcm, 16000))
-    buf, audio, events, _, _ = e._take_slice(960.0)
+    buf, audio, events, _, _, sents = e._take_slice(960.0)
+    assert sents == [0.0, 250.0]
     assert events[0]["atMs"] == 960.0 and audio[0][0] == 960.0 and audio[1][0] == 1210.0
     assert buf[:8000].min() == pytest.approx(0.1) and buf[8000:].max() == 0
     e.enqueue(Segment(ln, pcm, pcm, 16000))
@@ -134,7 +142,7 @@ def test_line_spoken_after_idle_starts_mid_stream_and_stop_drops_it():
     assert cut == [ln] and ln.cut
     ends = [p for k, p in ev if k == "event" and p["kind"] == "line-end"]
     assert [(x["id"], x["text"]) for x in ends] == [("l2", "stopped")]
-    _, audio, events, _, _ = e._take_slice(1920.0)
+    _, audio, events, _, _, _ = e._take_slice(1920.0)
     assert not audio and not events
 
 
@@ -145,7 +153,8 @@ def test_mic_backlog_is_bounded():
     for _ in range(40):  # 4 s arrives while the engine is busy
         e.enqueue(Segment(None, pcm, pcm, 16000))
     assert sum(len(s.pcm16k) for s in e._fifo) <= 2 * SLICE_SAMPLES
-    _, audio, _, _, _ = e._take_slice(0.0)
+    _, audio, _, _, _, sents = e._take_slice(0.0)
+    assert sents == []  # the mic has no sentences
     assert len(audio) == 1 and len(audio[0][2]) == SLICE_SAMPLES  # mic packets coalesce per chunk
 
 

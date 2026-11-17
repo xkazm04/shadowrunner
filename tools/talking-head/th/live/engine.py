@@ -35,8 +35,8 @@ import numpy as np
 
 from . import protocol as P
 from .compose import HOLD, TAIL_MS, Compositor, load_loop
-from .models import CHUNK_MS, RATE, SLICE_SAMPLES, Model
-from .stages import Stages
+from .models import CHUNK_MS, RATE, SLICE_FRAMES, SLICE_SAMPLES, Model
+from .stages import Stages, jpeg_frame as _jpeg, jpeg_pair as _jpeg_pair
 from .upscale import Upscaler, get_upscaler
 
 LEAD_MS = 2 * CHUNK_MS
@@ -45,7 +45,6 @@ LOOKAHEAD_AUTO = not os.environ.get("TH_LIVE_LOOKAHEAD_MS")  # ceiling of the ad
 EMIT_QUEUE = 2
 CLIENT_PLAYOUT_MS = 250
 MIC_MAX_SAMPLES = 2 * SLICE_SAMPLES  # mic backlog beyond this is dropped (oldest first)
-
 
 
 @dataclass(eq=False)
@@ -100,8 +99,10 @@ Sink = Callable[[str, Any], None]  # ("chunk", Chunk) | ("event", dict) | ("stat
 
 class Engine(Stages):
     def __init__(self, model: Model, sink: Sink, upscale: str = "none", jpeg_workers: int = 4,
-                 raw_frames: bool = False, matte: bool = False, loop: Any = None) -> None:
-        """`loop`: the idle loop's frames, "auto" ($TH_HOME/live/idle/iris/loop.npz) or None."""
+                 raw_frames: bool = False, matte: bool = False, loop: Any = None,
+                 motion: str = "natural", seed: int = 1116) -> None:
+        """`loop`: the idle loop's frames, "auto" ($TH_HOME/live/idle/iris/loop.npz) or None.
+        `motion`: head motion and gaze glances, off | natural | lively (stages.py, round 3)."""
         self.model = model
         self.sink = sink
         self.raw_frames = raw_frames  # bench: keep numpy frames instead of JPEG
@@ -128,8 +129,10 @@ class Engine(Stages):
         self._threads = [threading.Thread(target=self._gpu_loop, name="gpu", daemon=True),
                          threading.Thread(target=self._emit_loop, name="emit", daemon=True)]
         self.stats: dict[str, Any] = {"chunks": 0, "dropped": 0, "chunkMs": [], "upscaleMs": [],
-                                      "matteMs": [], "startDelays": [], "lookaheadMs": []}
+                                      "matteMs": [], "startDelays": [], "lookaheadMs": [], "motionMs": [],
+                                      "motion": []}
         self.error: BaseException | None = None
+        self._init_motion(motion, seed)
 
     # ---- clock and state -------------------------------------------------------------------------
 
@@ -215,7 +218,7 @@ class Engine(Stages):
     def _live_at(self, pts: float) -> bool:
         """Whether the live model shows at `pts` (else the idle loop): from HOLD frames before a
         line's first sample to TAIL_MS after its end (open lines: until they end); always on mic."""
-        if self.source == "mic":
+        if self.source == "mic" or self._glance_live(pts):
             return True
         for ln in self._spoken:
             end = ln.cut_ms if ln.cut_ms is not None else (ln.end_ms if ln.done else None)
@@ -275,8 +278,11 @@ class Engine(Stages):
                 self._lock.wait(min(0.05, (start_at - now) / 1000))
         return -1
 
-    def _take_slice(self, t_ms: float) -> tuple[np.ndarray, list, list[dict], list[Line], list[Line]]:
+    def _take_slice(self, t_ms: float) -> tuple[np.ndarray, list, list[dict], list[Line], list[Line],
+                                                list[float]]:
+        """Audio, sent pieces, events, starting/ending lines, sentence-start offsets (ms)."""
         buf = np.zeros(SLICE_SAMPLES, np.float32)
+        sents: list[float] = []
         audio: list[tuple[float, int, np.ndarray, Line | None]] = []
         events: list[dict] = []
         starts: list[Line] = []
@@ -294,6 +300,8 @@ class Engine(Stages):
                     events.append(P.event("line-start", at, ln.id, None))
                     starts.append(ln)
                 if s.pos == 0:
+                    if ln is not None:
+                        sents.append(o * 1000 / RATE)
                     events += [P.event(kind, at, ln.id if ln else None, text) for kind, text in s.events]
                 take = min(SLICE_SAMPLES - o, len(s.pcm16k) - s.pos)
                 buf[o:o + take] = s.pcm16k[s.pos:s.pos + take]
@@ -322,21 +330,26 @@ class Engine(Stages):
                     self._open.remove(ln)
                     self._ending.append(ln)
                     ends.append(ln)
-        return buf, audio, events, starts, ends
+        return buf, audio, events, starts, ends, sents
 
     def _compute(self, k: int) -> Chunk:
         self._apply_pending()
         self.stats["lookaheadMs"].append(self.lookahead())
         t_ms = k * CHUNK_MS
         epoch = self._epoch
-        buf, audio, events, starts, ends = self._take_slice(t_ms)
+        buf, audio, events, starts, ends, sents = self._take_slice(t_ms)
         t0 = time.perf_counter()
+        self._gaze_turn(k, len(sents), bool(audio) or self.source == "mic")
         new = self.model.chunk(buf)
+        self.motion.feed(k * SLICE_FRAMES, buf, sents)
         first, frames = self.post.seam(k, new, getattr(self.model, "motion_frames", None))
+        if self._switched and not audio:
+            frames = self._dissolve(frames, first, k)
         frames, idle = self.post.compose(first, frames, self._live_at)
         self._spoken = [ln for ln in self._spoken if (ln.cut_ms is None and not ln.done)
                         or (ln.cut_ms if ln.cut_ms is not None else ln.end_ms) + TAIL_MS > t_ms - CHUNK_MS]
         alpha = self._matte_frames(frames) if self.matte is not None else None
+        frames, alpha = self._move(first, frames, alpha)
         frames, alpha, up_ms = self._upscale(frames, alpha)
         arr = frames if isinstance(frames, np.ndarray) else frames.cpu().numpy()
         al = alpha if alpha is None or isinstance(alpha, np.ndarray) else alpha.cpu().numpy()
@@ -382,15 +395,3 @@ class Engine(Stages):
             if changed or any(e["kind"] in ("line-start", "line-end") for e in c.events):
                 self.sink("state", None)
 
-
-def _jpeg(frame: np.ndarray) -> bytes:
-    from PIL import Image
-
-    bio = __import__("io").BytesIO()
-    Image.fromarray(frame).save(bio, "JPEG", quality=P.JPEG_QUALITY)
-    return bio.getvalue()
-
-
-def _jpeg_pair(frame: np.ndarray, alpha: np.ndarray) -> tuple[bytes, bytes]:
-    """Colour JPEG plus the alpha as a greyscale JPEG (0x04)."""
-    return _jpeg(frame), _jpeg(alpha)

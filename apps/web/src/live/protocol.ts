@@ -20,6 +20,9 @@ export const UPSCALE_KINDS: readonly UpscaleKind[] = ["none", "realesrgan", "max
 export type Source = "text" | "mic";
 /** Which idle the server shows: the pre-rendered loop or the live model (round 2). */
 export type IdleKind = "loop" | "live";
+/** Head motion and gaze glances (round 3). */
+export type MotionLevel = "off" | "natural" | "lively";
+export const MOTION_LEVELS: readonly MotionLevel[] = ["off", "natural", "lively"];
 /** The text of the `line-end` the server sends for a cut line: out clients flush on it. */
 export const STOPPED = "stopped";
 
@@ -31,6 +34,7 @@ export type ClientMessage =
   | { type: "source"; source: Source }
   | { type: "upscale"; kind: UpscaleKind }
   | { type: "matte"; on: boolean }
+  | { type: "motion"; level: MotionLevel }
   | { type: "slide"; index: number };
 
 export interface LiveState {
@@ -47,6 +51,8 @@ export interface LiveState {
   matte: boolean;
   /** Null from a server that predates the idle loop. */
   idle: IdleKind | null;
+  /** Null from a server that predates head motion (round 3). */
+  motion: MotionLevel | null;
 }
 
 export type EventKind = "line-start" | "line-end" | "reply-text" | "slide" | "error";
@@ -131,6 +137,7 @@ export function parseServerMessage(text: string): ServerMessage | undefined {
       size: v.size,
       matte: v.matte === true,
       idle: v.idle === "loop" || v.idle === "live" ? v.idle : null,
+      motion: MOTION_LEVELS.find((level) => level === v.motion) ?? null,
     };
   }
   if (v.type === "event") {

@@ -28,6 +28,7 @@ def _parser() -> argparse.ArgumentParser:
     s.add_argument("--fake", action="store_true", help="synthetic model and voice (no GPU)")
     s.add_argument("--matte", action="store_true", help="start with matting on (0x04 frames)")
     s.add_argument("--no-idle-loop", action="store_true", help="show the live model when silent")
+    s.add_argument("--motion", choices=("off", "natural", "lively"), default="natural")
     b = sub.add_parser("bench")
     b.add_argument("--script", default=None)
     b.add_argument("--idle-s", type=float, default=0.0)
@@ -37,6 +38,7 @@ def _parser() -> argparse.ArgumentParser:
     b.add_argument("--lead-s", type=float, default=2.0)
     b.add_argument("--tail-s", type=float, default=1.5)
     b.add_argument("--matte", action="store_true")
+    b.add_argument("--motion", choices=("off", "natural", "lively"), default="natural")
     m = sub.add_parser("make-idle")
     m.add_argument("--work", type=Path, required=True)
     m.add_argument("--seconds", type=float, default=12.0)
@@ -46,11 +48,12 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def make_model(fake: bool, portrait: Path | None, seed: int):
+    from .gaze import gaze_refs
     from .models import FakeModel, FlashHeadModel, bust_crop
 
     if fake:
         return FakeModel(size=256, compute_s=0.3)
-    return FlashHeadModel(bust_crop() if portrait is None else portrait, seed=seed)
+    return FlashHeadModel(bust_crop() if portrait is None else portrait, seed=seed, refs=gaze_refs())
 
 
 def serve(args: argparse.Namespace) -> int:
@@ -63,7 +66,8 @@ def serve(args: argparse.Namespace) -> int:
         tts.set_backend(tts.FakeTts())
     server = LiveServer(args.allow_origin)
     engine = Engine(make_model(args.fake, args.portrait, args.seed), server.sink, upscale=args.upscale,
-                    matte=args.matte, loop=None if args.no_idle_loop else "auto")
+                    matte=args.matte, loop=None if args.no_idle_loop else "auto", motion=args.motion,
+                    seed=args.seed)
     server.attach(engine, tts.speak, reply_sentences)
 
     async def main() -> None:
@@ -119,7 +123,7 @@ def main(argv: list[str] | None = None) -> int:
     from .bench import run_headless
 
     return run_headless(args.script, args.idle_s, args.upscale, args.seed, args.out,
-                        args.lead_s, args.tail_s, args.matte)
+                        args.lead_s, args.tail_s, args.matte, args.motion)
 
 
 if __name__ == "__main__":

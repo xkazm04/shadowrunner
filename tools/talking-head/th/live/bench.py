@@ -101,15 +101,17 @@ class Recorder:
 
 
 def run_headless(script: str | None, idle_s: float, upscale: str, seed: int, out: Path,
-                 lead_s: float = LEAD_IDLE_S, tail_s: float = TAIL_S, matte: bool = False) -> int:
+                 lead_s: float = LEAD_IDLE_S, tail_s: float = TAIL_S, matte: bool = False,
+                 motion: str = "natural") -> int:
     from . import tts
     from .engine import LATEST_MS, LOOKAHEAD_AUTO, Engine
+    from .gaze import gaze_refs
     from .models import FlashHeadModel, bust_crop
 
     out.mkdir(parents=True, exist_ok=True)
     rec = Recorder(out)
-    engine = Engine(FlashHeadModel(bust_crop(), seed=seed), rec.sink, upscale=upscale, raw_frames=True,
-                    loop="auto", matte=matte)
+    engine = Engine(FlashHeadModel(bust_crop(), seed=seed, refs=gaze_refs()), rec.sink, upscale=upscale,
+                    raw_frames=True, loop="auto", matte=matte, motion=motion, seed=seed)
     rec.clock = engine.now_ms
     t0 = time.perf_counter()
     try:
@@ -136,6 +138,8 @@ def run_headless(script: str | None, idle_s: float, upscale: str, seed: int, out
                    "endMs": _r(ln.end_ms), "firstFrameMs": _r(ln.first_frame_ms),
                    "ttsFirstMs": _r(ln.tts_first_ms)} for ln in lines],
         "events": rec.events,
+        "motion": {"level": motion, "params": st["motion"], "motionMs": [round(x, 2) for x in st["motionMs"]],
+                   "events": engine.motion.events, "glances": engine.gaze.log},
     }
     (out / "bench.json").write_text(json.dumps(body, indent=1) + "\n", encoding="utf-8", newline="\n")
     return 0
@@ -173,6 +177,19 @@ async def _drive(engine, rec: Recorder, script: str | None, idle_s: float, lead_
     return speaker.log
 
 
+def _motion_summary(m: dict | None) -> dict | None:
+    """Level, warp ms per chunk, applied ranges (p95 - p5), nods and glances."""
+    if not m:
+        return None
+    p = np.array([row[1:5] for row in m["params"]]) if m["params"] else np.zeros((0, 4))
+    rng = lambda x: None if not len(x) else round(float(np.percentile(x, 95) - np.percentile(x, 5)), 2)  # noqa: E731
+    return {"level": m["level"], "motionMs": {"p50": _pct(m["motionMs"], 50), "p95": _pct(m["motionMs"], 95)},
+            "range": {"dxPx": rng(p[:, 0]), "dyPx": rng(p[:, 1]), "rotDeg": rng(p[:, 2]),
+                      "scalePct": rng(p[:, 3] * 100 - 100) if len(p) else None},
+            "nods": sum(e[1] == "nod" for e in m["events"]), "tilts": sum(e[1] != "nod" for e in m["events"]),
+            "glances": m["glances"]}
+
+
 def _r(v: float | None) -> float | None:
     return None if v is None else round(v, 1)
 
@@ -186,7 +203,7 @@ def _pct(xs: list[float], q: float) -> float | None:
 
 def bench(script: str | None, upscale: str = "none", seed: int = 1116, idle_s: float = 0.0,
           metrics: bool = True, lead_s: float = LEAD_IDLE_S, tail_s: float = TAIL_S,
-          matte: bool = False) -> Path:
+          matte: bool = False, motion: str = "natural") -> Path:
     from ..ffmpeg import duration_s, fps_of, probe, video_stream
     from ..gpu import VramSampler, gpu_lock, memory_used_mib, others_over_limit
     from ..paths import new_run_dir, portrait_path
@@ -199,7 +216,7 @@ def bench(script: str | None, upscale: str = "none", seed: int = 1116, idle_s: f
     log = run_dir / "log.txt"
     args = ["bench", "--upscale", upscale, "--seed", str(seed), "--out", str(run_dir)]
     args += ["--script", script] if script else ["--idle-s", str(idle_s)]
-    args += ["--lead-s", str(lead_s), "--tail-s", str(tail_s)] + (["--matte"] if matte else [])
+    args += ["--lead-s", str(lead_s), "--tail-s", str(tail_s), "--motion", motion] + (["--matte"] if matte else [])
     co: dict[str, Any] = {}
     with gpu_lock():
         co["start"] = others_over_limit()
@@ -252,6 +269,7 @@ def summarise(b: dict, m, sharp: float | None, co: dict, vram_mib: int | None) -
         "chunkMs": {"p50": p50, "p95": _pct(cm, 95), "max": _pct(cm, 100)},
         "upscaleMs": {"p50": _pct(um, 50), "p95": _pct(um, 95)},
         "matteMs": {"p50": _pct(b.get("matteMs", []), 50), "p95": _pct(b.get("matteMs", []), 95)},
+        "motion": _motion_summary(b.get("motion")),
         "droppedChunks": b["droppedChunks"], "chunks": b["chunks"],
         "slackMs": {"min": _pct(slack, 0), "p5": _pct(slack, 5)},
         "lateChunks": sum(x < 0 for x in slack),

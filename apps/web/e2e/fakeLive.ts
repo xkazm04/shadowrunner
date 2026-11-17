@@ -7,6 +7,7 @@
 // Round 2: `matte` on switches the stream to 0x04 frames at 1024 px (a synthetic colour frame and
 // a circular alpha with a soft edge); `state` carries `matte` and `idle` ("live" while a line
 // plays, "loop" otherwise); `stop` cuts the playing line with a `line-end` "stopped".
+// Round 3: `state` carries `motion` ("natural" at start); the `motion` command sets it.
 import { createServer, type IncomingMessage } from "node:http";
 import { pathToFileURL } from "node:url";
 import sharp from "sharp";
@@ -142,6 +143,7 @@ export async function startFakeLive(port = FAKE_PORT): Promise<FakeLive> {
   let source = "text";
   let pendingSlide: number | undefined;
   let matteOn = false;
+  let motion = "natural";
   /** The line playing now, and its line-end timer. */
   let playing: { id: string; end: NodeJS.Timeout } | undefined;
 
@@ -159,6 +161,7 @@ export async function startFakeLive(port = FAKE_PORT): Promise<FakeLive> {
       size: matteOn ? MATTE_SIZE : SIZE,
       matte: matteOn,
       idle: playing === undefined ? "loop" : "live",
+      motion,
     });
   const each = (role: string | undefined, data: string | Buffer) => {
     for (const [ws, r] of roles) if (role === undefined || r === role) ws.send(data);
@@ -231,6 +234,10 @@ export async function startFakeLive(port = FAKE_PORT): Promise<FakeLive> {
         ws.send(state());
       } else if (message.type === "say") say(String(message.id));
       else if (message.type === "stop") stop();
+      else if (message.type === "motion") {
+        motion = String(message.level);
+        each(undefined, state());
+      }
       else if (message.type === "matte") {
         matteOn = message.on === true;
         each(undefined, state());

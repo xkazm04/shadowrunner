@@ -91,7 +91,7 @@ test.describe("live", () => {
     await page.goto(`/live?${query}`);
     await expect(page.locator('[data-page="live"]')).toHaveAttribute("data-status", "open", { timeout: 15_000 });
     await expect(page.locator('[data-live="connection"]')).toContainText("Connected");
-    await expect(page.locator('[data-live="state"]')).toHaveText("ready · 25 fps · upscale none · delay 250 ms · queue 0 · 512 px · source text · matte off · idle loop");
+    await expect(page.locator('[data-live="state"]')).toHaveText("ready · 25 fps · upscale none · delay 250 ms · queue 0 · 512 px · source text · matte off · idle loop · motion natural");
 
     await page.locator('[data-live="line-text"]').fill("Good evening from the cellar.");
     await page.locator('[data-live="speak"]').click();
