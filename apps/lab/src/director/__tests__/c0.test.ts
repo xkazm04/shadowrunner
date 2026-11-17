@@ -3,7 +3,7 @@ import type { ControlArm } from "../../contract.js";
 import { createC0 } from "../arms/control/c0.js";
 import { parseFixture } from "../arms/control/fixture.js";
 import type { ControlContext, ControlEvent } from "../arms/control/index.js";
-import type { LlmChunk, LlmRequest, LlmTransport } from "../llm/index.js";
+import { createFixtureTransport, type LlmChunk, type LlmRequest, type LlmTransport } from "../llm/index.js";
 import { loadScenario } from "../scenario.js";
 
 const scenario = loadScenario("haunt-01");
@@ -67,7 +67,7 @@ describe("C0 over a transport", () => {
 describe("C0 over a fixture", () => {
   it("replays recorded replies with no model call", async () => {
     const fixture = parseFixture({ scenario: "haunt-01", source: "test", replies: { c2: { line: "Noted.", emotion: "smug" } } }, "f");
-    const arm = createC0(context(fakeTransport(modelCalled), { fixture }));
+    const arm = createC0(context(createFixtureTransport(fixture), { apiKey: "sk-unused" }));
     expect(await turn(arm, 1)).toEqual([
       { t: 0, kind: "emotion", value: "smug" },
       { t: 0, kind: "say", id: "say-c2", text: "Noted." },

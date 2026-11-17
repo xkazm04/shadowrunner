@@ -6,7 +6,7 @@ import { createControlArm } from "./director/arms/control/index.js";
 import { parseArgs, USAGE, type RunCommand } from "./director/args.js";
 import { resolveConfig } from "./director/config.js";
 import { runLive } from "./director/live.js";
-import { createTransport, defaultLlmKind } from "./director/llm/index.js";
+import { createFixtureTransport, createTransport, defaultLlmKind } from "./director/llm/index.js";
 import { createOutputArm } from "./director/output/index.js";
 import { ensureStageAssets } from "./director/prep.js";
 import { fixturePath, recordFixture } from "./director/recordFixture.js";
@@ -59,9 +59,9 @@ async function run(cmd: RunCommand): Promise<RunResult> {
     {
       config,
       scenario,
-      llm: createTransport(kind, process.env, model),
+      // A fixture is a transport too: every arm replays through its own live path, no model call.
+      llm: fixture === undefined ? createTransport(kind, process.env, model) : createFixtureTransport(fixture),
       ...(apiKey === undefined ? {} : { apiKey }),
-      ...(fixture === undefined ? {} : { fixture }),
       model,
       wire: fixture === undefined ? `${kind} ${model}` : `fixture ${fixture.source}`,
       timeScale: cmd.timeScale,

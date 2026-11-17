@@ -1,9 +1,9 @@
 // C0, the baseline control arm: today's product engine. @sr/engine's AnthropicEngine with its own
 // persona prompt, REPLY_SCHEMA and parseReply, one call per chat message, yielding emotion, then
 // gesture (if any), then the line. The wire under the engine is chosen by the context:
-//   --control-fixture  recorded replies, no model call;
 //   --llm api          the engine's own fetch to the Messages API with ANTHROPIC_API_KEY;
-//   --llm cli          the engine's Messages body answered by `claude -p` (llm/messagesFetch.ts).
+//   otherwise          the engine's Messages body answered by ctx.llm (llm/messagesFetch.ts):
+//                      `claude -p` for --llm cli, the recorded turn for --control-fixture.
 // A failed or unparseable reply counts as a control error and the turn stays silent.
 import {
   AnthropicEngine,
@@ -13,23 +13,11 @@ import {
   type EngineReply,
   type EngineRequest,
   type FetchLike,
-  type FetchResponse,
 } from "@sr/engine";
 import type { ChatMessage, ControlArm, Scenario } from "../../../contract.js";
 import { isFiniteNumber, isRecord, parseJson } from "../../json.js";
 import { createMessagesFetch, priceUsd } from "../../llm/index.js";
-import type { ControlFixture } from "./fixture.js";
 import { emptyUsage, type ControlArmFactory, type ControlContext, type ControlEvent } from "./types.js";
-
-/** The fixture's reply for `chatId`, served as a Messages API response. */
-function fixtureFetch(fixture: ControlFixture, chatId: string): FetchLike {
-  return async (): Promise<FetchResponse> => {
-    const reply = fixture.replies[chatId];
-    if (reply === undefined) return { ok: false, status: 404, text: async () => "{}" };
-    const text = JSON.stringify({ content: [{ type: "text", text: JSON.stringify(reply) }], stop_reason: "end_turn" });
-    return { ok: true, status: 200, text: async () => text };
-  };
-}
 
 /** Global fetch, reading usage off each Messages API response on the way back. */
 function meteredFetch(onUsage: (tokensIn: number, tokensOut: number) => void): FetchLike {
@@ -74,32 +62,33 @@ export const createC0: ControlArmFactory = (ctx) => {
   const usage = emptyUsage();
   const model = ctx.model ?? DEFAULT_ENGINE_MODEL;
   let beat = 0;
-  const live: FetchLike | undefined =
-    ctx.fixture !== undefined
-      ? undefined
-      : ctx.llm.kind === "api" && ctx.apiKey !== undefined
-        ? meteredFetch((tokensIn, tokensOut) => {
-            usage.tokensIn += tokensIn;
-            usage.tokensOut += tokensOut;
-            usage.costUsd += priceUsd(model, tokensIn, tokensOut) ?? 0;
-          })
-        : createMessagesFetch(
-            ctx.llm,
-            (u) => {
-              usage.tokensIn += u.tokensIn;
-              usage.tokensOut += u.tokensOut;
-              usage.costUsd += u.costUsd ?? 0;
-            },
-            (error) => ctx.log(`C0: transport failed: ${error instanceof Error ? error.message : String(error)}`),
-          );
+  const direct: FetchLike | undefined =
+    ctx.llm.kind === "api" && ctx.apiKey !== undefined
+      ? meteredFetch((tokensIn, tokensOut) => {
+          usage.tokensIn += tokensIn;
+          usage.tokensOut += tokensOut;
+          usage.costUsd += priceUsd(model, tokensIn, tokensOut) ?? 0;
+        })
+      : undefined;
+  /** The transport wire for one turn; `key` lets a fixture transport serve the recorded turn. */
+  const viaTransport = (chatId: string): FetchLike =>
+    createMessagesFetch(
+      ctx.llm,
+      (u) => {
+        usage.tokensIn += u.tokensIn;
+        usage.tokensOut += u.tokensOut;
+        usage.costUsd += u.costUsd ?? 0;
+      },
+      (error) => ctx.log(`C0: transport failed: ${error instanceof Error ? error.message : String(error)}`),
+      chatId,
+    );
 
   const arm: ControlArm = {
     id: "C0",
     async *turn({ scenario, chat }) {
       beat += 1;
-      const fetch = ctx.fixture === undefined ? live : fixtureFetch(ctx.fixture, chat.id);
-      if (fetch === undefined) throw new Error("C0 has no wire: neither a fixture nor a transport.");
-      // The api path sends the real key; the cli and fixture paths never read it.
+      const fetch = direct ?? viaTransport(chat.id);
+      // The api path sends the real key; the transport paths (cli, fixture) never read it.
       const engine = new AnthropicEngine({ apiKey: ctx.apiKey ?? "lab-no-key", fetch, model });
       let reply: EngineReply;
       try {

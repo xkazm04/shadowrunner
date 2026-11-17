@@ -4,26 +4,15 @@
 // real client tools; over `cli` they are emulated through a JSON schema (llm/cliStream.ts), so
 // all calls arrive together at turn end. Either way C2 yields each call as its chunk arrives, so a
 // transport that streams tool_use blocks one by one gets voiced call by call with no change here.
-// No tool_result round trip: one complete() per turn, like C0. Same model as C0 by default.
+// No tool_result round trip: one complete() per turn, like C0. --control-fixture replays through this
+// same path (llm/fixtureTransport.ts serves the recorded turn as tool calls). Same model as C0 by default.
 import { DEFAULT_ENGINE_MODEL } from "@sr/engine";
 import type { ControlArm } from "../../../contract.js";
 import { engineRequest } from "./c0.js";
 import { addUsage } from "./c1.js";
-import type { ControlFixture } from "./fixture.js";
 import { c2System, turnText } from "./prompts.js";
 import { C2_TOOLS, validateCall } from "./tools.js";
 import { emptyUsage, type ControlArmFactory } from "./types.js";
-
-/** A recorded C0 reply as C2 tool calls (the fixture path: no model call). */
-export function fixtureCalls(fixture: ControlFixture, chatId: string): { name: string; input: unknown }[] {
-  const reply = fixture.replies[chatId];
-  if (reply === undefined) return [];
-  return [
-    { name: "emote", input: { emotion: reply.emotion } },
-    ...(reply.gesture === undefined ? [] : [{ name: "gesture", input: { name: reply.gesture } }]),
-    { name: "say", input: { text: reply.line } },
-  ];
-}
 
 export const createC2: ControlArmFactory = (ctx) => {
   const usage = emptyUsage();
@@ -46,35 +35,32 @@ export const createC2: ControlArmFactory = (ctx) => {
         return event;
       };
 
-      if (ctx.fixture !== undefined) {
-        for (const call of fixtureCalls(ctx.fixture, chat.id)) {
-          const event = accept(call.name, call.input);
-          if (event !== undefined) yield event;
-        }
-      } else {
-        const request = engineRequest(ctx, scenario, chat, beat);
-        try {
-          for await (const chunk of ctx.llm.complete({
-            system: c2System(request.persona),
-            messages: [{ role: "user", content: turnText(request) }],
-            tools: [...C2_TOOLS],
-            stream: true,
-            model,
-            maxTokens: 800,
-          })) {
-            if (chunk.type === "toolCall") {
-              const event = accept(chunk.name, chunk.input);
-              if (event !== undefined) yield event;
-            } else if (chunk.type === "usage") {
-              addUsage(usage, chunk);
-            }
+      const request = engineRequest(ctx, scenario, chat, beat);
+      let failed = false;
+      try {
+        for await (const chunk of ctx.llm.complete({
+          system: c2System(request.persona),
+          messages: [{ role: "user", content: turnText(request) }],
+          tools: [...C2_TOOLS],
+          stream: true,
+          model,
+          maxTokens: 800,
+          key: chat.id,
+        })) {
+          if (chunk.type === "toolCall") {
+            const event = accept(chunk.name, chunk.input);
+            if (event !== undefined) yield event;
+          } else if (chunk.type === "usage") {
+            addUsage(usage, chunk);
           }
-        } catch (error) {
-          usage.controlErrors += 1;
-          ctx.log(`C2: turn ${chat.id} transport failed (${error instanceof Error ? error.message : String(error)}).`);
         }
+      } catch (error) {
+        failed = true;
+        usage.controlErrors += 1;
+        ctx.log(`C2: turn ${chat.id} transport failed (${error instanceof Error ? error.message : String(error)}).`);
       }
-      if (lines === 0) {
+      // A failed transport was counted above: one error per failed turn.
+      if (lines === 0 && !failed) {
         usage.controlErrors += 1;
         ctx.log(`C2: turn ${chat.id} produced no spoken line.`);
       }

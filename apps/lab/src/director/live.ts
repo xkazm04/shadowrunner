@@ -6,7 +6,6 @@ import { join } from "node:path";
 import { castVoice, VOICE_IDS, type VoiceId } from "@sr/engine";
 import { PACK_EXTENSION, readPack } from "@sr/pack";
 import type { ControlArm, RunConfig, Scenario } from "../contract.js";
-import type { ControlFixture } from "./arms/control/fixture.js";
 import type { ControlUsage } from "./arms/control/index.js";
 import type { LlmTransport } from "./llm/index.js";
 import { PACKS_DIR } from "./paths.js";
@@ -18,9 +17,9 @@ import { encodeWav, pcmDurationMs } from "./voice/wav.js";
 export interface LiveOptions {
   config: RunConfig;
   scenario: Scenario;
+  /** The control arm's transport: a model (--llm) or the fixture transport (--control-fixture). */
   llm: LlmTransport;
   apiKey?: string;
-  fixture?: ControlFixture;
   model?: string;
   /** How the control arm reaches its model, recorded as a `wire:` mark (e.g. "cli claude-haiku-5-5"). */
   wire: string;
@@ -81,7 +80,6 @@ export async function runLive(options: LiveOptions, deps: RunDeps): Promise<RunR
   const arm = deps.createControl(config.control, {
     llm: options.llm,
     ...(options.apiKey === undefined ? {} : { apiKey: options.apiKey }),
-    ...(options.fixture === undefined ? {} : { fixture: options.fixture }),
     ...(options.model === undefined ? {} : { model: options.model }),
     voice: voiceId,
     seed: config.seed,

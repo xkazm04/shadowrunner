@@ -3,15 +3,15 @@
 import type { VoiceId } from "@sr/engine";
 import type { ControlArm, TimelineEvent } from "../../../contract.js";
 import type { LlmTransport } from "../../llm/index.js";
-import type { ControlFixture } from "./fixture.js";
 
 export interface ControlContext {
-  /** The transport chosen by --llm (api: SDK, cli: `claude -p`). New arms call `llm.complete()`. */
+  /**
+   * The transport chosen by --llm (api: SDK, cli: `claude -p`), or the fixture transport for
+   * --control-fixture. New arms call `llm.complete()` with `key: chat.id` and get replay for free.
+   */
   llm: LlmTransport;
   /** ANTHROPIC_API_KEY, present only with --llm api. Director-side only. */
   apiKey?: string;
-  /** --control-fixture: recorded replies instead of any model call. */
-  fixture?: ControlFixture;
   /** --model; each arm has a default. */
   model?: string;
   /** The character's voice id (persona metadata for prompts). */

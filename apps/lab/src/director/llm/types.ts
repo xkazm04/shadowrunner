@@ -1,7 +1,11 @@
-// The lab's one LLM seam: `complete()` streams chunks from either transport (--llm api|cli).
-// Arms never talk to a transport's wire format; they read these chunks.
+// The lab's one LLM seam: `complete()` streams chunks from either model transport (--llm api|cli)
+// or from a recorded fixture (--control-fixture, llm/fixtureTransport.ts). Arms never talk to a
+// transport's wire format; they read these chunks.
 
 export type LlmKind = "api" | "cli";
+
+/** A model transport (`--llm`), or `fixture`: recorded turns replayed with no model call. */
+export type TransportKind = LlmKind | "fixture";
 
 export interface LlmMessage {
   role: "user" | "assistant";
@@ -28,6 +32,8 @@ export interface LlmRequest {
   /** Model id; each transport has a default. */
   model?: string;
   maxTokens?: number;
+  /** The chat id this turn answers. Model transports ignore it; the fixture transport serves the recorded turn by it. */
+  key?: string;
 }
 
 export type LlmChunk =
@@ -39,7 +45,7 @@ export type LlmChunk =
   | { type: "stop"; reason: string };
 
 export interface LlmTransport {
-  readonly kind: LlmKind;
+  readonly kind: TransportKind;
   complete(request: LlmRequest): AsyncIterable<LlmChunk>;
 }
 

@@ -6,7 +6,7 @@ import { parseFixture } from "../arms/control/fixture.js";
 import { createControlArm, type ControlContext, type ControlEvent } from "../arms/control/index.js";
 import { C2_TOOLS, validateCall } from "../arms/control/tools.js";
 import { toolCallSchema } from "../llm/cliStream.js";
-import type { LlmChunk, LlmRequest, LlmTransport } from "../llm/index.js";
+import { createFixtureTransport, type LlmChunk, type LlmRequest, type LlmTransport } from "../llm/index.js";
 import { loadScenario } from "../scenario.js";
 
 const scenario = loadScenario("haunt-01");
@@ -103,7 +103,7 @@ describe("C1 over a streaming transport", () => {
 
   it("plays a recorded fixture through its grammar with no model call", async () => {
     const fixture = parseFixture({ scenario: "haunt-01", source: "t", replies: { c1: { line: "Counted.", emotion: "delighted", gesture: "nod" } } }, "f");
-    const arm = createC1(context(scripted([]), { fixture }));
+    const arm = createC1(context(createFixtureTransport(fixture)));
     expect(await collect(arm)).toEqual([
       { t: 0, kind: "emotion", value: "delighted" },
       { t: 0, kind: "gesture", value: "nod" },

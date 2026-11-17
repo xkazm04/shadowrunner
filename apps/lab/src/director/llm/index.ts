@@ -4,6 +4,7 @@ import { createCliTransport } from "./cliTransport.js";
 import type { LlmKind, LlmTransport } from "./types.js";
 
 export * from "./types.js";
+export { createFixtureTransport } from "./fixtureTransport.js";
 export { createMessagesFetch } from "./messagesFetch.js";
 
 export function defaultLlmKind(env: Readonly<Record<string, string | undefined>>): LlmKind {

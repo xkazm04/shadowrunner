@@ -41,11 +41,15 @@ function respond(status: number, body: unknown): FetchResponse {
   return { ok: status >= 200 && status < 300, status, text: async () => text };
 }
 
-/** `onUsage` sees every completed call's tokens (and cost when the transport reports it). */
+/**
+ * `onUsage` sees every completed call's tokens (and cost when the transport reports it). `key` (the
+ * chat id) goes on every request, so a fixture transport can serve the recorded turn.
+ */
 export function createMessagesFetch(
   transport: LlmTransport,
   onUsage: (usage: MessagesUsage) => void,
   onError: (error: unknown) => void = () => undefined,
+  key?: string,
 ): FetchLike {
   return async (_url: string, init: FetchInit): Promise<FetchResponse> => {
     const body = parseJson(init.body);
@@ -61,6 +65,7 @@ export function createMessagesFetch(
         ...(schema === undefined ? {} : { schema }),
         ...(typeof body.model === "string" ? { model: body.model } : {}),
         stream: false,
+        ...(key === undefined ? {} : { key }),
       })) {
         if (chunk.type === "text") text += chunk.text;
         else if (chunk.type === "json") json = chunk.value;

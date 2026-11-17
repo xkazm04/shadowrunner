@@ -33,11 +33,11 @@ The first run also builds the theme CSS and the cast packs if they are missing (
 ```
 pnpm lab run --config baseline --scenario haunt-01            # headed Chromium, live model
 pnpm lab run --headless                                       # GPU flags first, SwiftShader fallback
-pnpm lab run --control-fixture                                # recorded replies, no model at all
+pnpm lab run --control-fixture                                # recorded turns, no model at all
 pnpm lab run --config '{"lip":"L1"}' --seed 7 --debug         # one arm swapped; event list on screen
 pnpm lab run --time-scale 0.3                                 # chat arrives 3x sooner (debugging)
 pnpm lab replay <runId> [--headless]                          # zero LLM, zero TTS
-pnpm lab fixture <runId>                                      # that run's replies -> <scenario>.fixture.json
+pnpm lab fixture <runId>                                      # that run's turns -> <scenario>.fixture.json
 pnpm lab help
 ```
 
@@ -86,8 +86,26 @@ known), `stop`.
 
 C0 does not call `complete()` directly: it runs `@sr/engine`'s `AnthropicEngine` unchanged (persona
 prompt, `REPLY_SCHEMA`, `parseReply`) and swaps only the wire under it: the engine's own fetch with
-the key (`api`), `llm/messagesFetch.ts` (`cli`, answers the Messages body through the transport),
-or the fixture.
+the key (`api`), or `llm/messagesFetch.ts` (`cli` and the fixture: answers the Messages body
+through the transport, with `key` = the chat id).
+
+**The fixture transport** (`llm/fixtureTransport.ts`, kind `fixture`). `--control-fixture` hands
+the arm a transport, not a context field: `complete({ key: chat.id, ... })` serves the recorded
+turn in whatever wire the request asks for - `toolCall` chunks when it carries `tools` (C2), one
+`json` chunk `{ line, emotion, gesture? }` when it carries a `schema` (C0's REPLY_SCHEMA), else
+`text` chunks in C1's cue grammar that `CueStream` reads back to the same events. Then usage 0/0
+and stop. A chat id with no recorded turn throws a sentence naming it, so each arm counts one
+control error and stays silent, as on a failed model call. Every arm replays through its own live
+path (C1's eager streaming included), and a new arm gets replay by passing `key`.
+
+**Fixture format** (`arms/control/fixture.ts`). v2, written by `pnpm lab fixture <runId>`:
+`{ version: 2, scenario, source, turns: { <chatId>: [ { kind, ... } ] } }` - every say, emotion,
+gesture and scene event the turn performed, in order (no `t`; say ids are assigned on load), cut
+from the timeline per `play:<n>` window (`performancesOf`), so a C1/C2 run's room direction and
+every line after the first survive. v1 files (`replies: { <chatId>: { line, emotion, gesture? } }`,
+the committed scenarios) still load: each reply is upcast to `[emotion, gesture?, say]`.
+`fixture.replies` is C0's view of each turn (its first line). A multi-sentence line replays through
+C1 as one line per sentence, as the model's would.
 
 ## Adding an arm
 
@@ -103,7 +121,8 @@ the arm's one `notBuilt(...)` line in its registry. Every unbuilt slot throws
 | output (WP4) | `src/director/output/index.ts` | `O1: createO1` with `OutputArmFactory = (ctx: OutputContext) => OutputArm` | O0, O1 |
 
 - **ControlContext** (`arms/control/types.ts`): `llm` (the chosen transport), `apiKey?` (api only),
-  `fixture?`, `model?`, `voice`, `seed`, `log`. Yield `say` / `emotion` / `gesture` / `scene`
+  `model?`, `voice`, `seed`, `log`. Pass `key: chat.id` on every `complete()` so the fixture
+  transport can replay the turn. Yield `say` / `emotion` / `gesture` / `scene`
   events with `t: 0` (the director stamps `t`); report `usage()` including `controlErrors` for
   outputs that failed to parse and fell back. The director voices every `say`.
 - **LipContext** (`page/types.ts`): `character` (pack id), `mouth` (`Rig.mouth`, when measured),
@@ -131,8 +150,8 @@ the arm's one `notBuilt(...)` line in its registry. Every unbuilt slot throws
 Both use C0's persona (the engine's `personaPrompt`, with its "one spoken line, no stage
 directions" rule swapped for the arm's direction channel, `prompts.ts`), C0's quoted chat window,
 and C0's default model (`claude-haiku-5-5`). `usage()` meters tokens and cost like C0.
-`--control-fixture` works for both: each recorded reply is fed through the arm's own channel
-(C1: written as tags and parsed; C2: as emote/gesture/say calls), so no model is called.
+`--control-fixture` works for both through the fixture transport: each recorded turn arrives in
+the arm's own channel (C1: cue text, streamed and parsed; C2: tool calls), so no model is called.
 
 **C1 - inline cue grammar, streamed** (`c1.ts`, `cues.ts`). One plain-text `complete()` with
 `stream: true`. The model writes speech with tags in square brackets:
