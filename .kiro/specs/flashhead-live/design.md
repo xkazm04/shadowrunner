@@ -158,5 +158,28 @@ Owner verdict on the round 2 review: Maxine and the Iris sharpener look good; th
   - SyncNet and identity unchanged within noise;
   - 0 late chunks.
 
+## Round 4 amendment (Director, 2026-11-17): motion from the head, not the camera
+Owner verdict on round 3: the whole-frame warp read as camera shake. `off` and the idle (`natural`, no speech) passed; every speech clip with motion failed.
+- **P1, head-only motion (live):**
+  - Segment the head (hair, face, headset, ears) from the body (neck, jacket, shoulders) and the backdrop on each 512 frame (MediaPipe multiclass segmentation, Apache-2.0, or a licence-clean equivalent), with a feathered neck band.
+  - Rotate and translate ONLY the head layer around a neck pivot (below the chin, at the neck centre). Body and backdrop stay pixel-still.
+  - Fill what the moving head uncovers from a clean plate (the reference frame's background/body), then blend the neck band.
+  - Motion sources: round 3's sway, nods and tilts, re-tuned on the review clips, with nods rarer than once a second.
+  - Level names stay (`off` | `natural` | `lively`); idle keeps the round-3 behaviour the owner approved.
+  - Acceptance:
+    - Backdrop and shoulder pixels are measured still (mean abs change in a body/backdrop mask, against `off`).
+    - A side-by-side clip in which the Director, watching the shoulders, sees no camera motion.
+    - No visible seam at the neck or hair edges on a zoomed sheet.
+    - 0 late chunks. SyncNet and identity within noise.
+- **P2, face transplant (offline probe, path to live):**
+  - Paste FlashHead's talking face onto each frame of an EchoMimicV3 gesture clip of the same audio, so the body, hands and natural head motion come from EchoMimicV3 and the lip-sync and likeness come from FlashHead.
+  - Align per frame with MediaPipe face landmarks (similarity or partial-affine fit of FlashHead's face onto the clip's face), with a feathered face/jaw mask and colour matching to the clip's lighting. Smooth the transform over time to avoid jitter.
+  - Inputs: existing EMV3 clips in `var/talking-head/hands/` (`emv3-c8g` and `emv3-a8g`, with `line-short.wav`), plus FlashHead renders of the same audio from a bust crop of the waist-up image (`var/talking-head/hands/gen/waist-a.png` / `waist-c.png`).
+  - Acceptance:
+    - Clips, and a zoomed sheet of the face edge.
+    - SyncNet and identity of the composite against EMV3 alone.
+    - Jitter: face-edge motion against the clip's head motion.
+    - A note on what a live version needs (pre-rendered gesture clips, the compositor running per frame at 25 fps).
+
 ## Non-goals (v1)
 STT voice input, LiveKit/WebRTC, remote viewers, characters other than Iris, the Iris-trained sharpener (follow-up), the Pro model live.
