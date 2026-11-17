@@ -181,5 +181,30 @@ Owner verdict on round 3: the whole-frame warp read as camera shake. `off` and t
     - Jitter: face-edge motion against the clip's head motion.
     - A note on what a live version needs (pre-rendered gesture clips, the compositor running per frame at 25 fps).
 
+## Round 5 amendment (Director, 2026-11-17): real 3D head turns
+Owner verdict on round 4: head-only 2D motion looks warped/rubbery, the movement pattern is unnatural, and the head must turn in 3D. Only `off` passed. Hands are paused.
+- **H1, LivePortrait over FlashHead (live):**
+  - Re-render each FlashHead frame through LivePortrait's 3D keypoint and feature-volume renderer (MIT code and weights; MediaPipe in place of InsightFace, which is non-commercial):
+    - source = the Iris bust;
+    - expression and lip motion taken from FlashHead's own frame;
+    - head rotation = FlashHead's own + a rotation track.
+  - Rotation track, in order of preference:
+    - H2's learned Ditto track for the same audio;
+    - a stochastic track matched to natural speech statistics (Busso 2007: mostly yaw, about 3-5 deg SD, about 10 deg/s, correlated with pitch and energy), never periodic.
+  - Acceptance:
+    - 25 fps combined on the 4090 (FlashHead + LivePortrait + Maxine), 0 late chunks;
+    - lip-sync not visibly worse (SyncNet within about 0.5 of FlashHead alone);
+    - mouth sharpness measured against FlashHead alone;
+    - side-by-side clips against `off`.
+- **H2, Ditto end-to-end (live candidate):**
+  - Ditto (Apache, Ant Group): audio to LivePortrait motion (head rotation, translation, expression) to render, with MediaPipe detectors only (never the InsightFace checkpoints it ships).
+  - Online/streaming mode on the 4090 (native or WSL/Docker with the nvidia runtime).
+  - Compare with FlashHead on the same audio and portrait: SyncNet, identity, sharpness, real-time factor, time to first frame, head-motion statistics.
+  - Export its head-rotation track per audio for H1.
+- **Track file contract (H2 produces, H1 consumes):**
+  - `$TH_HOME/head3d/tracks/<name>.npz` with float32 arrays `yaw`, `pitch`, `roll` in degrees, scalar `fps` = 25, and string `audio` (the wav path).
+  - One value per output frame, frame 0 aligned to audio sample 0.
+- **Owner-facing rule:** the Director watches a head-only crop AND a shoulder crop of every candidate before the owner sees it. A clip where the head looks like a sheet bending is not shown.
+
 ## Non-goals (v1)
 STT voice input, LiveKit/WebRTC, remote viewers, characters other than Iris, the Iris-trained sharpener (follow-up), the Pro model live.
