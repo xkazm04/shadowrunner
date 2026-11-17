@@ -20,6 +20,14 @@ describe("parseArgs", () => {
     expect(parseArgs([])).toEqual({ command: "help" });
   });
 
+  it("reads runs and compare", () => {
+    expect(parseArgs(["compare", "a", "b"])).toEqual({ command: "compare", a: "a", b: "b" });
+    expect(parseArgs(["runs", "--scenario", "haunt-01"])).toEqual({ command: "runs", scenario: "haunt-01" });
+    expect(parseArgs(["runs"])).toEqual({ command: "runs" });
+    expect(() => parseArgs(["compare", "a"])).toThrow("pnpm lab compare needs two run ids: pnpm lab compare <runA> <runB>.");
+    expect(() => parseArgs(["runs", "--nope"])).toThrow('Unknown flag "--nope" for pnpm lab runs.');
+  });
+
   it("fails with a sentence on bad input", () => {
     expect(() => parseArgs(["run", "--llm", "grpc"])).toThrow("--llm must be api or cli.");
     expect(() => parseArgs(["run", "--seed"])).toThrow("--seed needs a number.");

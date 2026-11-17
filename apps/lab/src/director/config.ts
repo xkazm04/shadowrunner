@@ -72,3 +72,10 @@ export function parseRunConfig(value: unknown): RunConfig {
 export function armTag(config: RunConfig): string {
   return `${config.control}${config.lip}${config.scene}${config.output}`;
 }
+
+/** The arm keys on which two configs differ ("lip", "control+scene", "external", or "same"). */
+export function axisOf(a: RunConfig, b: RunConfig): string {
+  if ((a.external ?? "") !== (b.external ?? "")) return "external";
+  const keys = (["control", "lip", "scene", "output"] as const).filter((k) => a[k] !== b[k]);
+  return keys.length === 0 ? "same" : keys.join("+");
+}

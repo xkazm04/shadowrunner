@@ -18,6 +18,8 @@ export const USAGE = `Avatar Lab (docs/lab.md)
   pnpm lab replay <runId> [--headless] [--debug]
                                          re-render a run: zero LLM and zero TTS calls
   pnpm lab fixture <runId>               write the run's replies as its scenario's fixture
+  pnpm lab runs [--scenario <id>]        the run ledger: arms, ttfa, latency p50, fps, errors, cost, status
+  pnpm lab compare <runA> <runB>         per-metric delta a -> b: better / worse / same / unmeasured
   pnpm lab mouths <character> [...]      L2 mouth set (GEMINI_API_KEY, or --placeholder)
   pnpm lab measure <file> [...]          fps + A/V offset from a recorded file -> metrics.json
   pnpm lab synth [...]                   synthetic clip with a known A/V offset (measure check)
@@ -44,6 +46,8 @@ export type Command =
   | RunCommand
   | { command: "replay"; runId: string; headless: boolean; debug: boolean }
   | { command: "fixture"; runId: string }
+  | { command: "runs"; scenario?: string }
+  | { command: "compare"; a: string; b: string }
   | { command: "setup" }
   | { command: "help" };
 
@@ -58,6 +62,15 @@ function value(flag: string, next: string | undefined): string {
   return next;
 }
 
+function parseRuns(rest: readonly string[]): Command {
+  const [flag, next, ...more] = rest;
+  if (flag === undefined) return { command: "runs" };
+  if (flag !== "--scenario") throw new Error(`Unknown flag "${flag}" for pnpm lab runs.`);
+  const scenario = value(flag, next);
+  if (more[0] !== undefined) throw new Error(`Unknown flag "${more[0]}" for pnpm lab runs.`);
+  return { command: "runs", scenario };
+}
+
 export function parseArgs(argv: readonly string[]): Command {
   const [command, ...rest] = argv.filter((a) => a !== "--");
   if (command === undefined || command === "help" || command === "--help" || command === "-h") return { command: "help" };
@@ -68,7 +81,15 @@ export function parseArgs(argv: readonly string[]): Command {
     if (command === "fixture") return { command, runId };
     return { command, runId, headless: rest.includes("--headless"), debug: rest.includes("--debug") };
   }
-  if (command !== "run") throw new Error(`Unknown command "${command}". Commands: run, replay, fixture, setup.`);
+  if (command === "compare") {
+    const [a, b, ...more] = rest;
+    if (a === undefined || b === undefined || more.length > 0 || [a, b].some((id) => id.startsWith("--"))) {
+      throw new Error("pnpm lab compare needs two run ids: pnpm lab compare <runA> <runB>.");
+    }
+    return { command, a, b };
+  }
+  if (command === "runs") return parseRuns(rest);
+  if (command !== "run") throw new Error(`Unknown command "${command}". Commands: run, replay, fixture, runs, compare, setup.`);
   const out: RunCommand = { command: "run", config: "baseline", scenario: "haunt-01", headless: false, timeScale: 1, debug: false };
   for (let i = 0; i < rest.length; i += 1) {
     const flag = rest[i];

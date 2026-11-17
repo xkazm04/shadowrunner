@@ -10,6 +10,9 @@ import { createFixtureTransport, createTransport, defaultLlmKind } from "./direc
 import { createOutputArm } from "./director/output/index.js";
 import { ensureStageAssets } from "./director/prep.js";
 import { fixturePath, recordFixture } from "./director/recordFixture.js";
+import { listRuns, readRun } from "./director/ledger.js";
+import { formatComparison, formatRunsTable, runVerdict } from "./director/ledgerFormat.js";
+import { runsRoot } from "./director/paths.js";
 import { runReplay } from "./director/replay.js";
 import type { RunDeps, RunResult } from "./director/run.js";
 import { loadScenario } from "./director/scenario.js";
@@ -45,6 +48,16 @@ function report(result: RunResult): void {
   log(`run ${result.runId} done: ${result.dir}`);
   log(`recording: ${result.recording}`);
   process.stdout.write(`${JSON.stringify(result.metrics, null, 2)}\n`);
+  log(runVerdict(runsRoot(), result.runId));
+}
+
+function compare(a: string, b: string): void {
+  const [ra, rb] = [a, b].map((id) => {
+    const r = readRun(runsRoot(), id);
+    if (r.status !== "complete") throw new Error(`Run ${id} is incomplete or missing (no readable config.json and metrics.json in ${r.dir}).`);
+    return r;
+  });
+  if (ra !== undefined && rb !== undefined) formatComparison(ra, rb).forEach(log);
 }
 
 async function run(cmd: RunCommand): Promise<RunResult> {
@@ -93,6 +106,13 @@ async function main(argv: readonly string[]): Promise<void> {
       return;
     case "setup":
       return setup(log);
+    case "runs": {
+      const runs = listRuns(runsRoot(), cmd.scenario === undefined ? {} : { scenario: cmd.scenario });
+      if (runs.length === 0) return log(`no runs in ${runsRoot()}${cmd.scenario === undefined ? "" : ` for scenario ${cmd.scenario}`}`);
+      return formatRunsTable(runs).forEach(log);
+    }
+    case "compare":
+      return compare(cmd.a, cmd.b);
     case "fixture":
       log(`fixture written: ${recordFixture(cmd.runId)}`);
       return;

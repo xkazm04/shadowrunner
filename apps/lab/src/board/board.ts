@@ -8,9 +8,13 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { RunConfig } from "../contract.js";
+import { axisOf } from "../director/config.js";
 import { runDir, VAR_LAB } from "../director/paths.js";
 import { readTimeline } from "../director/timeline.js";
 import { readRunConfig } from "../measure/runConfig.js";
+
+/** The one axis rule lives with the RunConfig (director/config.ts); the board and the run ledger share it. */
+export { axisOf };
 
 export const FFMPEG = process.env.SR_LAB_FFMPEG ?? "ffmpeg";
 export const FFPROBE = process.env.SR_LAB_FFPROBE ?? "ffprobe";
@@ -70,13 +74,6 @@ export function parseBoardArgs(argv: readonly string[]): BoardArgs {
 /** Deterministic 0..1 from a string (sha256), for seeded order and moment choice. */
 export function unit(text: string): number {
   return createHash("sha256").update(text).digest().readUInt32BE(0) / 2 ** 32;
-}
-
-/** The arm keys on which two configs differ ("lip", "control+scene", "external", or "same"). */
-export function axisOf(a: RunConfig, b: RunConfig): string {
-  if ((a.external ?? "") !== (b.external ?? "")) return "external";
-  const keys = (["control", "lip", "scene", "output"] as const).filter((k) => a[k] !== b[k]);
-  return keys.length === 0 ? "same" : keys.join("+");
 }
 
 interface RunInfo {

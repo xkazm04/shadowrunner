@@ -49,6 +49,26 @@ else `cli`); `--model` the control arm's model (default `claude-haiku-5-5`, the 
 its recorded `t` (PCM before each audio event) and records a new run with `replayOf` set. It never
 asks for a control arm or a voice (`replay.test.ts` passes factories that throw and asserts zero calls).
 
+### The run ledger: `runs`, `compare`, and every run's verdict (`src/director/ledger.ts`)
+
+```
+pnpm lab runs [--scenario haunt-01]     # newest first: arms, ttfaMs, latency p50, fpsP50, errors, cost, status
+pnpm lab compare <runA> <runB>          # axis line + metric / a / b / delta / verdict
+```
+
+Run folders are only read, never rewritten. A folder without a readable `config.json` and
+`metrics.json` (a crashed run) is listed as `incomplete`. `compare` judges b against a per metric:
+lower is better for `ttfaMs`, `turnLatencyMs` (on its p50), `droppedFrames`, `cpuPct`, `gpuPct`,
+`controlErrors`, `costUsd`; higher for `fpsP50`/`fpsP5`; smaller size for `avOffsetMs`. A key only
+one run measured reads `-` and `unmeasured`, never a 0 delta (metrics.json omits what it could not
+measure).
+
+Every `run` and `replay` ends (stderr, after the metrics JSON on stdout) with one line against its
+**peer**: the newest complete, non-replay, non-external run of the same scenario and seed that differs
+on one arm or sits on BASELINE, e.g. `vs <peerRunId> (lip): ttfaMs 1840 -> 1610 better, fpsP50 59 -> 52
+worse`, or `no comparable run (scenario haunt-01, seed 7)`. `axisOf` (`director/config.ts`) is the
+one rule the ledger and the verdict board share.
+
 ## How a run flows
 
 1. The director (Node, `src/cli.ts`) validates the config and builds the control arm first, so an
