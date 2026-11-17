@@ -28,7 +28,8 @@ export * from "./mouth/anchor.js";
 export * from "./mouth/colours.js";
 export * from "./mouth/paint.js";
 // Lip-sync (perfection-pass task 4): the viseme scheduler (moved from the Avatar Lab), the clip
-// analyser and its per-frame drive. The analyser's internals (features, model, aligner) stay private.
+// analyser, its live stream and its per-frame drive. The internals (features, model, aligner) stay private.
 export * from "./mouth/track.js";
 export { analyseSpeech, POSTERIOR_SPAN, QUIET_DB, SILENCE_DB, TEXT_SHARE, type AnalyseOptions, type MouthTrack } from "./speech/analyse.js";
+export { CMN_PRIOR_S, CMN_S, createSpeechStream, PEAK_DECAY_S, STREAM_LATENCY_S, type SpeechStream, type SpeechStreamOptions, type StreamFrames } from "./speech/stream.js";
 export * from "./speech/drive.js";

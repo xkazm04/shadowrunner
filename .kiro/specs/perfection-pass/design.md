@@ -164,3 +164,20 @@ are returned in reports and written by the Director.
   matte exists); leftovers go to the nearer of head or body (`keepEveryPiece`, last step of
   `assembleRig`). Lantern Warden is only partly covered (dark coat on a dark ground needs a matte);
   Malakor is exempt as house art and pinned as failing the check.
+
+## Amendment (challenge-2026-11-17, avatar/B): streaming speech analyser
+- Task 4's analyser had only a whole-clip entry point, so every live voice (the overlay mic, an
+  `<sr-avatar>` fed a MediaStream, any `attachAudio` tap) fell back to the loudness jaw. The
+  per-frame core is now shared: `frameFeatures` (speech/features.ts) and `frameLogPosteriors`
+  (speech/model.ts); `analyseSpeech` is one consumer and its output is bit-identical.
+- `createSpeechStream(sampleRate, { gateRms? }): SpeechStream` (`@sr/avatar/core`, speech/stream.ts):
+  `push(chunk) -> { mix, spoken }` for the frames that push completed, `frames()`, `shapes()`.
+  Causal: running peak (PEAK_DECAY_S 2 s), running voiced cepstral mean (starts at 0 weighted as
+  CMN_PRIOR_S 1 s, then CMN_S 5 s), a trailing POSTERIOR_SPAN + 1 box. Chunk-invariant (resampler
+  state carried). Frame t is out once t + STREAM_LATENCY_S (0.095 s) of audio is in. On the
+  recorded replay line its leading shape matches `analyseSpeech`'s on 79.5 % of speech frames.
+- `AttachAudioOptions.shapes?: boolean` (default false): the tap feeds a stream gated at
+  SPEECH_FLOOR from its AnalyserNode (what played since the last read, by the context's clock) and
+  exposes `AudioLevelTap.shapes?()`. The player uses it as the mouth when there is no
+  `setMouthShapes` mix, no clip mouth, no level override, and motion is full. Text alignment stays
+  batch-only. The overlay mic and `<sr-avatar>` do not opt in yet (a follow-up per surface).

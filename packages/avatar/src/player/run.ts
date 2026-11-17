@@ -15,7 +15,8 @@
 // - The frame inputs (`AvatarPlayerInputs`, AvatarCanvas's props): `act` and `gesture` are taken by
 //   the next frame only; dim, lookAt (a ref read per frame), gaze, drive, a level source and a clip
 //   mouth hold until changed. A clip mouth runs through createTrackMouth on the loop's own dt; a
-//   `setMouthShapes` mix wins over it while set. `setRig` hands the renderer the new rig at once
+//   `setMouthShapes` mix wins over it while set. With neither, a tap attached with
+//   `{ shapes: true }` (audio/level.ts) is the mouth (full motion, no level override). `setRig` hands the renderer the new rig at once
 //   (skipped when nothing changed); the frame body, `mouthMode` and `layerFrames` follow it.
 // - `autoSize` observes the canvas's parent (the canvas is expected to fill it, CSS 100%); with no
 //   parent, or with `autoSize: false`, the caller calls `resize`.
@@ -33,6 +34,7 @@ import type { CreateRendererOptions } from "../gl/renderer.js";
 import { fitView, layerAffine, lookLight } from "../render/frame.js";
 import type { MouthPose, MouthShapesInput } from "../mouth/state.js";
 import { mouthMode, type MouthMode } from "../mouth/anchor.js";
+import { restWeights } from "../mouth/shapes.js";
 import type { CanvasHost, FrameClock, Renderer, RigAssets } from "../render/types.js";
 import { bufferDpr, isReducedMotion } from "../react/loop.js";
 import { watchVisibility } from "../render/visibility.js";
@@ -92,6 +94,16 @@ export function runPlayer(canvas: HTMLCanvasElement, options: AvatarPlayerOption
     return isReducedMotion(media?.matches ?? false, host.closest("[data-motion]")?.getAttribute("data-motion"));
   };
 
+  // A `{ shapes: true }` tap's mouth: only while the level is the tap's (no `setLevel` or level
+  // source) and in full motion (under reduced motion the level drive's twin stays).
+  const tapInput: MouthShapesInput = { shapes: restWeights() };
+  const tapMouth = (reduced: boolean): MouthShapesInput | undefined => {
+    const shapes = override === undefined && !reduced ? tap?.shapes?.() : undefined;
+    if (shapes === undefined) return undefined;
+    tapInput.shapes = shapes;
+    return tapInput;
+  };
+
   const step = (dt: number): void => {
     const gesture = pendingGesture;
     pendingGesture = undefined;
@@ -101,7 +113,7 @@ export function runPlayer(canvas: HTMLCanvasElement, options: AvatarPlayerOption
     const point = resolveLookAt(lookAt);
     // The track steps every frame (its reduced-motion ease keeps time) even under a caller's mix.
     const fromClip = trackMouth({ mouth: clip, reducedMotion: reduced, dt });
-    const mouth = mouthInput ?? fromClip;
+    const mouth = mouthInput ?? fromClip ?? tapMouth(reduced);
     const out = body({
       rig,
       look,

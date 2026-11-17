@@ -17,6 +17,15 @@
 //   `options.context` or a new AudioContext, per attach. It is tapped only, never routed to the
 //   speakers (a live mic would echo). `detach()` disconnects the wrapper and closes the context
 //   when the tap created it; the stream's tracks belong to the caller and keep running.
+// - `{ shapes: true }` (opt-in, live lip-sync): the tap also runs a speech stream
+//   (speech/stream.ts, gated at SPEECH_FLOOR) and exposes `shapes()`, its newest mouth mix. Each
+//   read feeds it what has played since the last read: the context's clock (`currentTime`, in
+//   whole samples) says how many samples, and the newest that many of the analyser's frame are
+//   fed. A gap longer than LEVEL_FFT_SIZE samples (about 43 ms at 48 kHz: a stalled page) loses
+//   the rest of it and the stream reads on across the seam. `level()` and `shapes()` in one frame
+//   feed it once.
+import { restWeights, type ShapeWeights } from "../mouth/shapes.js";
+import { createSpeechStream, type SpeechStream } from "../speech/stream.js";
 
 /** Samples per analysed frame (about 43 ms at 48 kHz, about one jaw attack). */
 export const LEVEL_FFT_SIZE = 2048;
@@ -26,6 +35,11 @@ export interface AudioLevelTap {
   level(): number;
   /** Disconnects the analyser. Idempotent. */
   detach(): void;
+  /**
+   * With `{ shapes: true }` only: the speech stream's newest mouth mix (read only; rest once
+   * detached). It lags the voice by STREAM_LATENCY_S.
+   */
+  shapes?(): ShapeWeights;
 }
 
 export interface AttachAudioOptions {
@@ -34,6 +48,8 @@ export interface AttachAudioOptions {
    * element already attached once keeps its first context.
    */
   context?: AudioContext;
+  /** Also read mouth shapes from the voice (`shapes()`), not only its loudness. Default false. */
+  shapes?: boolean;
 }
 
 interface ElementRoute {
@@ -117,11 +133,14 @@ export function attachAudio(source: AudioSource, options: AttachAudioOptions = {
   analyser.fftSize = LEVEL_FFT_SIZE;
   node.connect(analyser);
   const samples = new Float32Array(analyser.fftSize);
+  const feed = options.shapes === true ? speechFeed(analyser, context, samples) : undefined;
   let attached = true;
+  const rest = restWeights();
   return {
     level(): number {
       if (!attached) return 0;
-      analyser.getFloatTimeDomainData(samples);
+      if (feed === undefined) analyser.getFloatTimeDomainData(samples);
+      else feed.read();
       return speechLevel(rms(samples));
     },
     detach(): void {
@@ -129,6 +148,37 @@ export function attachAudio(source: AudioSource, options: AttachAudioOptions = {
       attached = false;
       node.disconnect(analyser);
       release?.();
+    },
+    ...(feed === undefined
+      ? {}
+      : {
+          shapes(): ShapeWeights {
+            if (!attached) return rest;
+            feed.read();
+            return feed.stream.shapes();
+          },
+        }),
+  };
+}
+
+/**
+ * A `{ shapes: true }` tap's speech stream and its reader: `read()` refreshes `samples` from the
+ * analyser and feeds the stream what has played since the last read (by the context's clock).
+ */
+function speechFeed(analyser: AnalyserNode, context: BaseAudioContext, samples: Float32Array<ArrayBuffer>): { stream: SpeechStream; read: () => void } {
+  const rate = context.sampleRate;
+  const stream = createSpeechStream(rate, { gateRms: SPEECH_FLOOR });
+  const position = (): number => Math.round(context.currentTime * rate);
+  let fed = position();
+  return {
+    stream,
+    read(): void {
+      const now = position();
+      if (now === fed) return;
+      analyser.getFloatTimeDomainData(samples);
+      const fresh = Math.min(samples.length, Math.max(0, now - fed));
+      fed = now;
+      if (fresh > 0) stream.push(samples.subarray(samples.length - fresh));
     },
   };
 }
