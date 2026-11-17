@@ -17,6 +17,7 @@ export * from "./composite.js";
 export * from "./palette.js";
 export * from "./assemble.js";
 export * from "./job.js";
+export * from "./forgeMachine.js";
 export * from "./validate.js";
 export * from "./named.js";
 export * from "./cutNamed.js";

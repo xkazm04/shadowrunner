@@ -6,6 +6,7 @@
 import { validateRig, type Rig } from "@sr/rig";
 import { parseBrief } from "./brief.js";
 import { CAST_SIZE, rerollsLeft } from "./cast.js";
+import { CAST_STATUSES, FORGE_ERROR_CODES } from "./forgeMachine.js";
 import type { PortraitMime } from "./job.js";
 import { parseParts } from "./parts.js";
 import type { PartsV2 } from "./types.js";
@@ -90,10 +91,10 @@ const isRecord = (v: unknown): v is Fields => typeof v === "object" && v !== nul
 const isString = (v: unknown): v is string => typeof v === "string";
 const isCount = (v: unknown): v is number => typeof v === "number" && Number.isInteger(v) && v >= 0;
 const strings = (v: unknown): v is string[] => Array.isArray(v) && v.every(isString);
-const STATUSES: readonly string[] = ["drafting", "segmenting", "cutting", "ready", "failed"] satisfies CastStatus[];
+const STATUSES: readonly string[] = CAST_STATUSES;
 const SLOT_STATES: readonly string[] = ["drafting", "cut", "uncut", "failed"] satisfies CastSlotState[];
 const MIMES: readonly string[] = ["image/png", "image/jpeg", "image/webp"] satisfies PortraitMime[];
-const CODES: readonly string[] = ["quota", "refused_likeness", "refused_content", "upstream", "bad_input"] satisfies ForgeErrorCode[];
+const CODES: readonly string[] = FORGE_ERROR_CODES;
 
 function slotOf(v: unknown): CastSlot | undefined {
   if (!isRecord(v) || !isString(v.state) || !SLOT_STATES.includes(v.state)) return undefined;

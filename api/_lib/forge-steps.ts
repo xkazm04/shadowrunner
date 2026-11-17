@@ -1,7 +1,8 @@
 // Forge steps on the live plane (forge-pipeline design.md, task 7). A job is client-driven: POST
 // runs the first step (`startJob`), then every GET runs at most one more (`runStep`), each inside one
 // function invocation. Server step order is parts -> fill -> cut -> assemble; the statuses the client
-// sees move forward through queued -> portrait -> segmenting -> cutting -> filling -> expressing -> done:
+// sees move forward through queued -> portrait -> segmenting -> cutting -> filling -> expressing -> done
+// (the order, the step each status runs and the legal moves are @sr/forge forgeMachine.ts):
 //   POST, mode prompt   portrait (final image model)                      -> segmenting
 //   POST, mode brief    portrait from the approved brief (cast-forge 4.3)  -> segmenting
 //   POST, mode image    likeness/content check, upload kept               -> portrait
@@ -20,6 +21,7 @@ import {
   LIKENESS_PROMPT,
   PARTS_PROMPT,
   assembleRig,
+  canAdvance,
   composePlate,
   cutAll,
   cutNamed,
@@ -27,6 +29,7 @@ import {
   fallbackFill,
   fillPrompt,
   fillPromptFromBrief,
+  isForgeErrorCode,
   liftedRegion,
   parseBriefPartsJson,
   parseLikenessJson,
@@ -37,6 +40,7 @@ import {
   portraitPromptFromBrief,
   restylePrompt,
   sniffImage,
+  stepFor,
   type ForgeErrorCode,
   type ForgeJob,
   type ForgeStep,
@@ -148,22 +152,29 @@ export async function startJob(job: ForgeJob, upload: { bytes: Uint8Array; mime:
   });
 }
 
-/** Runs the step for the job's status and returns the updated job; done and failed jobs stay as they are. */
+/** The work of each step a GET runs (forgeMachine.ts STEP_OF_STATUS says which status runs which). */
+const STEP_WORK: Partial<Record<ForgeStep, (job: ForgeJob, ctx: StepContext) => Promise<void>>> = {
+  portrait: restyle,
+  parts,
+  fill: fillEdit,
+  cut: cutAndAssemble,
+};
+
+/**
+ * Runs the step for the job's status (`stepFor`) and returns the updated job; a step that leaves
+ * the job somewhere `canAdvance` forbids fails it `upstream`. `expressing` runs one family per GET
+ * and stays there until the sixth (forge-expressions.ts); done and failed jobs stay as they are.
+ */
 export async function runStep(job: ForgeJob, ctx: StepContext): Promise<ForgeJob> {
-  switch (job.status) {
-    case "portrait":
-      return guarded(job, () => restyle(job, ctx));
-    case "segmenting":
-      return guarded(job, () => parts(job, ctx));
-    case "cutting":
-      return guarded(job, () => fillEdit(job, ctx));
-    case "filling":
-      return guarded(job, () => cutAndAssemble(job, ctx));
-    case "expressing":
-      return expressStep(job, ctx).then(() => job);
-    default:
-      return job;
-  }
+  const from = job.status;
+  if (from === "expressing") return expressStep(job, ctx).then(() => job);
+  const step = stepFor(from);
+  const work = step === undefined ? undefined : STEP_WORK[step];
+  if (work === undefined) return job;
+  return guarded(job, async () => {
+    await work(job, ctx);
+    if (!canAdvance(from, job.status)) throw fail("upstream", "The forge lost its place. Try again.");
+  });
 }
 
 /** Any throw fails the job: an ApiError keeps its code and message, anything else is `upstream`. */
@@ -171,16 +182,13 @@ async function guarded(job: ForgeJob, work: () => Promise<void>): Promise<ForgeJ
   try {
     await work();
   } catch (err) {
-    const known = err instanceof ApiError && isForgeCode(err.code);
+    const known = err instanceof ApiError && isForgeErrorCode(err.code);
     job.status = "failed";
     job.error = known ? { code: err.code, message: err.message } : { code: "upstream", message: "The forge failed. Try again." };
     console.warn(`forge: job failed: ${job.error.code}${known ? "" : ` (${err instanceof Error ? err.name : typeof err})`}`);
   }
   return job;
 }
-
-const FORGE_CODES: readonly string[] = ["quota", "refused_likeness", "refused_content", "upstream", "bad_input"] satisfies ForgeErrorCode[];
-const isForgeCode = (code: string): code is ForgeErrorCode => FORGE_CODES.includes(code);
 
 async function restyle(job: ForgeJob, ctx: StepContext): Promise<void> {
   const upload = await readJobImage(ctx, job.uploadUrl, job.uploadMime);

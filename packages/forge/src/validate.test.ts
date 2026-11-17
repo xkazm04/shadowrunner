@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import m8Raw from "../test/fixtures/m8-parts.raw.txt?raw";
 import m8 from "../test/fixtures/m8-parts.json";
 import type { Rig } from "@sr/rig";
+import { jobShapeError } from "./forgeMachine.js";
 import { isAwake, toJobView, type ForgeJob } from "./job.js";
 import { MAX_REQUEST_PROMPT, MAX_UPLOAD_BASE64, MAX_UPLOAD_BYTES, UPLOAD_LIMIT_MESSAGE, parseForgeJob, parseForgeRequest, parseLikenessJson, parsePartsJson } from "./validate.js";
 
@@ -121,11 +122,13 @@ const job: fc.Arbitrary<ForgeJob> = fc
     { requiredKeys: ["jobId", "plane", "mode", "status", "createdAt"] },
   )
   .map((j) => ({ ...j, parts: m8 as ForgeJob["parts"] }));
+/** forgeMachine.ts: the server writes only records that are whole at their status. */
+const stored = job.filter((j) => jobShapeError(j) === undefined);
 
 describe("parseForgeJob", () => {
   it("round-trips every record the server writes", () => {
     fc.assert(
-      fc.property(job, (j) => {
+      fc.property(stored, (j) => {
         expect(parseForgeJob(JSON.stringify(j))).toEqual(j);
       }),
     );
@@ -133,7 +136,7 @@ describe("parseForgeJob", () => {
 
   it("rejects a record with any field off-contract", () => {
     fc.assert(
-      fc.property(job, fc.constantFrom("status", "createdAt", "plane", "fill", "parts", "error", "assets", "timings", "expressions", "expressionIndex"), (j, field) => {
+      fc.property(stored, fc.constantFrom("status", "createdAt", "plane", "fill", "parts", "error", "assets", "timings", "expressions", "expressionIndex"), (j, field) => {
         return parseForgeJob(JSON.stringify({ ...j, [field]: { bad: null } })) === undefined;
       }),
     );

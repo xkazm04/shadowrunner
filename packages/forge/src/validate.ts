@@ -9,6 +9,7 @@ import { BRIEF_LIMITS, parseBrief, type BriefError } from "./brief.js";
 import { MAX_EXTRA_EDITS, MAX_FACE_ATTEMPT } from "./faceMaterial.js";
 import { CAST_SIZE } from "./cast.js";
 import { castRecordOf, type CastRecord } from "./castJob.js";
+import { FORGE_ERROR_CODES, FORGE_STATUSES, jobShapeError } from "./forgeMachine.js";
 import { readFaceGate } from "./faceGate.js";
 import { REPAINT_KEY, readRepaintLedger } from "./faceRepaint.js";
 import { settleBriefParts } from "./briefParts.js";
@@ -192,9 +193,9 @@ export function parseBriefPartsJson(text: string, brief: CharacterBrief): Result
   return { ok: true, value: { ...parsed.value, notes: settled.notes } };
 }
 
-const STATUSES: readonly string[] = ["queued", "portrait", "segmenting", "cutting", "filling", "expressing", "done", "failed"] satisfies ForgeStatus[];
+const STATUSES: readonly string[] = FORGE_STATUSES;
 const OUTCOMES: readonly string[] = ["ok", "skipped", "failed"] satisfies ExpressionOutcome[];
-const ERROR_CODES: readonly string[] = ["quota", "refused_likeness", "refused_content", "upstream", "bad_input"] satisfies ForgeErrorCode[];
+const ERROR_CODES: readonly string[] = FORGE_ERROR_CODES;
 const MIMES: readonly string[] = ["image/png", "image/jpeg", "image/webp"] satisfies PortraitMime[];
 const STEPS: readonly string[] = FORGE_STEPS;
 
@@ -236,7 +237,7 @@ function timingsOf(v: unknown): ForgeJob["timings"] | undefined {
   return out;
 }
 
-/** A job record read back from the job store; undefined when any field is off-contract. */
+/** A job record read back from the job store; undefined when any field is off-contract or the record is not whole at its status. */
 export function parseForgeJob(text: string): ForgeJob | undefined {
   const decoded = decode(text);
   if (!decoded.ok || !isRecord(decoded.value)) return undefined;
@@ -324,5 +325,6 @@ export function parseForgeJob(text: string): ForgeJob | undefined {
     if (!timings) return undefined;
     job.timings = timings;
   }
-  return job;
+  // forgeMachine.ts: a record whose status contradicts its fields (expressing with no rig) is refused here.
+  return jobShapeError(job) === undefined ? job : undefined;
 }

@@ -174,6 +174,8 @@ describe("parseForgeJob with named parts", () => {
       status: "cutting",
       createdAt: 1,
       brief: BRIEF,
+      portraitUrl: "https://x/portrait.png",
+      portraitMime: "image/png",
       named: { version: 2, parts: parsed.value.named, cut: { feather: 0 } },
       decomposition: "named",
     };

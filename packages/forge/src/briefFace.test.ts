@@ -11,6 +11,7 @@ import b_sir_vacant from "../../../assets/characters/cast/sir-vacant/brief.json"
 import b_the_redactor from "../../../assets/characters/cast/the-redactor/brief.json";
 import b_the_tallyman from "../../../assets/characters/cast/the-tallyman/brief.json";
 import b_vicar_of_the_lure from "../../../assets/characters/cast/vicar-of-the-lure/brief.json";
+import type { Rig } from "@sr/rig";
 import { describe, expect, it } from "vitest";
 import { BRIEF_LIMITS, BRIEF_PROMPT, BRIEF_SCHEMA, briefFromRecorded, parseBrief } from "./brief.js";
 import { MAX_EXTRA_EDITS, MAX_FACE_ATTEMPT } from "./faceMaterial.js";
@@ -84,7 +85,8 @@ describe("brief face.eyes", () => {
 
 describe("job record with C3 fields", () => {
   const job = (extra: Record<string, unknown>): string =>
-    JSON.stringify({ jobId: "j", plane: "live", mode: "brief", status: "expressing", createdAt: 1, brief: { ...BRIEF, face: { eyes: EYES } }, expressionIndex: 2, ...extra });
+    JSON.stringify({ jobId: "j", plane: "live", mode: "brief", status: "expressing", createdAt: 1, brief: { ...BRIEF, face: { eyes: EYES } }, rig: RIG, assets: { "head.png": "https://x/head.png" }, expressionIndex: 2, ...extra });
+  const RIG: Rig = { version: 1, id: "t", name: "T", width: 8, height: 8, source: "forge", palette: { glow: "#ffffff", eye: "#28dcc8", rim: "#ffffff", mouth: "#000000" }, layers: [{ name: "head", kind: "head", bbox: [0, 0, 8, 8], z: 1, file: "head.png", anchor: [4, 4] }] };
 
   it("keeps the brief's face, expressionAttempt and extraEdits", () => {
     const parsed = parseForgeJob(job({ expressionAttempt: 1, extraEdits: 3 }));

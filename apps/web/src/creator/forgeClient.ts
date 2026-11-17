@@ -11,7 +11,8 @@
 // - A job view is checked before use (`readJobView`): unknown status, wrong plane, a `rig` that
 //   fails `validateRig` or non-string asset URLs make the response `upstream`, never a crash.
 import { readFaceGate } from "@sr/forge/faceGate";
-import type { ForgeErrorCode, ForgeRequest, ForgeStatus, JobView } from "@sr/forge/wire";
+import { FORGE_ERROR_CODES, FORGE_STATUSES, isForgeErrorCode, isForgeStatus } from "@sr/forge/machine";
+import type { ForgeErrorCode, ForgeRequest, JobView } from "@sr/forge/wire";
 import { EXPRESSION_FAMILIES, validateRig, type ExpressionFamily } from "@sr/rig";
 import { apiFetch, type Fetcher } from "../app/plane";
 
@@ -26,10 +27,8 @@ export interface ForgeClient {
 
 export const FORGE_URL = "/api/forge";
 
-/** Every status, in step order (wire.ts). */
-export const FORGE_STATUSES: readonly ForgeStatus[] = ["queued", "portrait", "segmenting", "cutting", "filling", "expressing", "done", "failed"];
-
-export const FORGE_ERROR_CODES: readonly ForgeErrorCode[] = ["quota", "refused_likeness", "refused_content", "upstream", "bad_input"];
+/** Every status in step order, and the wire error codes: the forge's one definition (`@sr/forge/machine`). */
+export { FORGE_ERROR_CODES, FORGE_STATUSES, isForgeErrorCode };
 
 /** A forge failure as the creator handles it: a wire code and a message for people. */
 export class ForgeError extends Error {
@@ -44,10 +43,7 @@ export class ForgeError extends Error {
 type Fields = Record<string, unknown>;
 const isRecord = (v: unknown): v is Fields => typeof v === "object" && v !== null && !Array.isArray(v);
 
-export const isForgeErrorCode = (v: unknown): v is ForgeErrorCode =>
-  typeof v === "string" && (FORGE_ERROR_CODES as readonly string[]).includes(v);
-
-const isStatus = (v: unknown): v is ForgeStatus => typeof v === "string" && (FORGE_STATUSES as readonly string[]).includes(v);
+const isStatus = isForgeStatus;
 
 /** The code an HTTP status means when the body names none. */
 export function codeForStatus(status: number): ForgeErrorCode {

@@ -3,13 +3,14 @@
 // names; the creator imports them from "@sr/forge/wire" and never redeclares them.
 import type { ExpressionFamily, LayerPatch, Rig } from "@sr/rig";
 import type { FaceGate, FaceGateReading } from "./faceGate.js";
+import type { CAST_STATUSES, FORGE_ERROR_CODES, FORGE_STATUSES } from "./forgeMachine.js";
 import type { PartRole } from "./types.js";
 
-/** Job status, in step order. `filling` sits between `cutting` and `done`. */
-export type ForgeStatus = "queued" | "portrait" | "segmenting" | "cutting" | "filling" | "expressing" | "done" | "failed";
+/** Job status, in step order (forgeMachine.ts FORGE_STATUSES). `filling` sits between `cutting` and `done`. */
+export type ForgeStatus = (typeof FORGE_STATUSES)[number];
 
 /** Error codes that may cross the API in `{ error: { code, message } }`. */
-export type ForgeErrorCode = "quota" | "refused_likeness" | "refused_content" | "upstream" | "bad_input";
+export type ForgeErrorCode = (typeof FORGE_ERROR_CODES)[number];
 
 /** Body of `POST /api/forge`; answered with `202 { jobId }`. */
 export interface ForgeRequest {
@@ -39,7 +40,7 @@ export interface CastRequest {
 }
 
 /** A casting batch's status, in step order (L2). */
-export type CastStatus = "drafting" | "segmenting" | "cutting" | "ready" | "failed";
+export type CastStatus = (typeof CAST_STATUSES)[number];
 
 /**
  * One draft of a casting batch (L2). `state`: "cut" has a provisional rig; "uncut" has a portrait

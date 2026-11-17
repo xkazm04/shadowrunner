@@ -2,7 +2,7 @@
 // the ledger never lets a family past MAX_FAMILY_REPAINTS or a job past MAX_JOB_REPAINTS and keeps
 // one key per spent repaint; the stored ledger and the wire candidate read back as written and
 // anything off-contract is refused; the request body and the job view's repaint window.
-import { EXPRESSION_FAMILIES, type ExpressionFamily, type LayerPatch } from "@sr/rig";
+import { EXPRESSION_FAMILIES, type ExpressionFamily, type LayerPatch, type Rig } from "@sr/rig";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { FACE_GATE_REASONS, gateReading } from "./faceGate.js";
@@ -114,7 +114,8 @@ describe("the repaint ledger", () => {
   });
 
   it("a ledger in the job record is kept; an unreadable one refuses the job (it guards money)", () => {
-    const job: ForgeJob = { jobId: "a".repeat(32), plane: "live", mode: "prompt", status: "done", createdAt: 0, repaints: reserveRepaint(undefined, "key-00000001", "joy", 9) };
+    const rig: Rig = { version: 1, id: "t", name: "T", width: 8, height: 8, source: "forge", palette: { glow: "#ffffff", eye: "#28dcc8", rim: "#ffffff", mouth: "#000000" }, layers: [{ name: "head", kind: "head", bbox: [0, 0, 8, 8], z: 1, file: "head.png", anchor: [4, 4] }] };
+    const job: ForgeJob = { jobId: "a".repeat(32), plane: "live", mode: "prompt", status: "done", createdAt: 0, rig, assets: { "head.png": "https://x/head.png" }, repaints: reserveRepaint(undefined, "key-00000001", "joy", 9) };
     expect(parseForgeJob(JSON.stringify(job))?.repaints).toEqual(job.repaints);
     expect(parseForgeJob(JSON.stringify({ ...job, repaints: { counts: { joy: 3 }, keys: {} } }))).toBeUndefined();
   });

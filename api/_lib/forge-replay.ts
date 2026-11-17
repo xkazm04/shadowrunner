@@ -22,6 +22,7 @@ import {
   parseForgeRequest,
   parseReplayBatchId,
   requestKey,
+  RUNNING_STATUSES,
   rigWithFaces,
   withFacesStep,
   type ForgeRequest,
@@ -51,7 +52,8 @@ export interface ReplayJob {
   assets: Record<string, string>;
 }
 
-const STATUS_ORDER: readonly ForgeStatus[] = ["queued", "portrait", "segmenting", "cutting", "filling", "expressing", "done"];
+/** A recording's statuses in order (forgeMachine.ts): every running one, then done; never failed. */
+const STATUS_ORDER: readonly ForgeStatus[] = [...RUNNING_STATUSES, "done"];
 const SLUG = /^[a-z0-9-]{1,48}$/;
 /** A file in the job's own folder: no path, no scheme. */
 const FILE = /^[a-z0-9_-]{1,48}\.(png|jpg)$/;

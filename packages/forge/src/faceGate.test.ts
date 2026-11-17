@@ -1,7 +1,7 @@
 // forge-creator S1: the face-gate reading. `readFaceGate` is the one reader (job parser, client
 // view, library record): on-contract readings survive with their numbers at one decimal, malformed
 // entries are dropped (never the record), and the whole note stays tiny.
-import { EXPRESSION_FAMILIES } from "@sr/rig";
+import { EXPRESSION_FAMILIES, type Rig } from "@sr/rig";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { FACE_GATE_REASONS, GATE_ATTEMPTS_MAX, GATE_NUMBER_MAX, gateReading, readFaceGate, readGateReading, round1, type FaceGate, type FaceGateReading } from "./faceGate.js";
@@ -73,7 +73,8 @@ describe("readFaceGate", () => {
 });
 
 describe("the job record and the view", () => {
-  const base = { jobId: "j", plane: "live", mode: "prompt", status: "done", createdAt: 1, expressions: { joy: "skipped" } };
+  const rig: Rig = { version: 1, id: "t", name: "T", width: 8, height: 8, source: "forge", palette: { glow: "#ffffff", eye: "#28dcc8", rim: "#ffffff", mouth: "#000000" }, layers: [{ name: "head", kind: "head", bbox: [0, 0, 8, 8], z: 1, file: "head.png", anchor: [4, 4] }] };
+  const base = { jobId: "j", plane: "live", mode: "prompt", status: "done", createdAt: 1, rig, assets: { "head.png": "https://x/head.png" }, expressions: { joy: "skipped" } };
 
   it("parseForgeJob keeps a gate, drops malformed readings and never refuses the job for them; toJobView forwards it", () => {
     fc.assert(
