@@ -206,5 +206,8 @@ Owner verdict on round 4: head-only 2D motion looks warped/rubbery, the movement
   - One value per output frame, frame 0 aligned to audio sample 0.
 - **Owner-facing rule:** the Director watches a head-only crop AND a shoulder crop of every candidate before the owner sees it. A clip where the head looks like a sheet bending is not shown.
 
+## Round 5 verdict (owner, 2026-11-17)
+Keep plain FlashHead. Every added head motion (whole-frame warp, head-only warp, LivePortrait re-render, Ditto) lost to plain FlashHead on the owner's review. The live default becomes `plain`: no head warp and no speech glances, while the round-3-approved idle loop and idle glances stay. `off` (nothing at all), `natural`, `lively`, the LivePortrait and Ditto probes stay as opt-in experiments.
+
 ## Non-goals (v1)
 STT voice input, LiveKit/WebRTC, remote viewers, characters other than Iris, the Iris-trained sharpener (follow-up), the Pro model live.

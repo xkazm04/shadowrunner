@@ -40,7 +40,7 @@ EVENT_KINDS = ("line-start", "line-end", "reply-text", "slide", "error")
 SOURCES = ("text", "mic")
 ROLES = ("control", "out")
 IDLE_MODES = ("loop", "live")  # state.idle: the pre-rendered idle loop is showing, or the live model
-MOTION_LEVELS = ("off", "natural", "lively")  # round 3: head motion and gaze glances
+MOTION_LEVELS = ("plain", "off", "natural", "lively")  # round 3: head motion and gaze glances
 
 _VIDEO_HEAD = struct.Struct("<BdHH")
 _AUDIO_HEAD = struct.Struct("<BdI")
@@ -124,7 +124,7 @@ def dumps(msg: dict[str, Any]) -> str:
 
 def state(*, ready: bool, upscale: str, source: str, queue: int, delay_ms: int | None, size: int,
           model: str = "lite", matte: bool = False, idle: str = "live",
-          motion: str = "natural") -> dict[str, Any]:
+          motion: str = "plain") -> dict[str, Any]:
     assert idle in IDLE_MODES, idle
     assert motion in MOTION_LEVELS, motion
     return {"type": "state", "ready": ready, "model": model, "fps": FPS, "upscale": upscale,

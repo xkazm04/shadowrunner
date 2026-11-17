@@ -21,8 +21,8 @@ export type Source = "text" | "mic";
 /** Which idle the server shows: the pre-rendered loop or the live model (round 2). */
 export type IdleKind = "loop" | "live";
 /** Head motion and gaze glances (round 3). */
-export type MotionLevel = "off" | "natural" | "lively";
-export const MOTION_LEVELS: readonly MotionLevel[] = ["off", "natural", "lively"];
+export type MotionLevel = "plain" | "off" | "natural" | "lively";
+export const MOTION_LEVELS: readonly MotionLevel[] = ["plain", "off", "natural", "lively"];
 /** The text of the `line-end` the server sends for a cut line: out clients flush on it. */
 export const STOPPED = "stopped";
 

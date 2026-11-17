@@ -37,7 +37,7 @@ const MATTE_CHOICES = [
   { on: false, label: "Off" },
   { on: true, label: "On" },
 ] as const;
-const MOTION_LABEL: Readonly<Record<MotionLevel, string>> = { off: "Off", natural: "Natural", lively: "Lively" };
+const MOTION_LABEL: Readonly<Record<MotionLevel, string>> = { plain: "Plain", off: "Off", natural: "Natural", lively: "Lively" };
 export const NOT_CONNECTED = "Not sent: the live server is not connected.";
 export const MIC_ON = "Puppet mode is on: stop the microphone to type lines.";
 

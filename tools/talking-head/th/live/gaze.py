@@ -15,6 +15,7 @@ chunk (FlashHead takes it per 0.96 s slice), so a glance lasts one chunk:
 - never two glance chunks in a row, and never within MIN_GAP_S of the previous glance;
 - direction: left or right (DIRS, SPEECH_DIRS); up and down are registered but not scheduled, as
   the probes showed no glance (up) or drooping lids (down);
+- `plain` (the default): idle glances only, as the owner approved in round 3, none in speech;
 - `lively` glances more often, `off` never; speech glances have their own switch (`speech`).
 Deterministic for a seed and the same calls.
 """
@@ -26,13 +27,13 @@ from typing import Iterable
 
 import numpy as np
 
-LEVELS = ("off", "natural", "lively")
+LEVELS = ("plain", "off", "natural", "lively")
 DIRS = {"L": 0.5, "R": 0.5}  # idle direction weights (probes: gazeU shows nothing in idle and a half
 SPEECH_DIRS = {"L": 0.5, "R": 0.5}  # blink in speech; gazeD reads as drooping lids for 2 chunks)
 EDIT_DIRS = ("L", "R", "U", "D")  # the gaze edits cropped and registered (U and D kept for probes)
-P_SPEECH = {"off": 0.0, "natural": 0.3, "lively": 0.5}  # per chunk that holds a sentence boundary
-IDLE_S = {"off": None, "natural": (6.0, 10.0), "lively": (4.0, 7.0)}
-MIN_GAP_S = {"off": 0.0, "natural": 3.0, "lively": 2.0}
+P_SPEECH = {"plain": 0.0, "off": 0.0, "natural": 0.3, "lively": 0.5}  # per chunk that holds a sentence boundary
+IDLE_S = {"plain": (6.0, 10.0), "off": None, "natural": (6.0, 10.0), "lively": (4.0, 7.0)}
+MIN_GAP_S = {"plain": 3.0, "off": 0.0, "natural": 3.0, "lively": 2.0}
 MAIN = "main"
 
 
@@ -76,7 +77,7 @@ def gaze_refs(out: Path | None = None, src: Path | None = None) -> dict[str, Pat
 
 
 class GazePolicy:
-    def __init__(self, level: str = "natural", seed: int = 1116, chunk_ms: float = 960.0,
+    def __init__(self, level: str = "plain", seed: int = 1116, chunk_ms: float = 960.0,
                  available: Iterable[str] | None = None, speech: bool | None = None) -> None:
         """`speech`: glances at sentence boundaries too (default on; TH_LIVE_SPEECH_GLANCES=0 or
         `th live --no-speech-glances` turn them off, idle glances stay)."""

@@ -100,7 +100,7 @@ Sink = Callable[[str, Any], None]  # ("chunk", Chunk) | ("event", dict) | ("stat
 class Engine(Stages):
     def __init__(self, model: Model, sink: Sink, upscale: str = "none", jpeg_workers: int = 4,
                  raw_frames: bool = False, matte: bool = False, loop: Any = None,
-                 motion: str = "natural", seed: int = 1116) -> None:
+                 motion: str = "plain", seed: int = 1116) -> None:
         """`loop`: the idle loop's frames, "auto" ($TH_HOME/live/idle/iris/loop.npz) or None.
         `motion`: head motion and gaze glances, off | natural | lively (stages.py, round 3)."""
         self.model = model

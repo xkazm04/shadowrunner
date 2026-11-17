@@ -56,7 +56,7 @@ def _parser() -> argparse.ArgumentParser:
                     "default birefnet-lite-matting): frames go out as 0x04 colour + alpha")
     lv.add_argument("--no-idle-loop", action="store_true", help="show the live model on silence instead "
                     "of the idle loop")
-    lv.add_argument("--motion", choices=("off", "natural", "lively"), default="natural",
+    lv.add_argument("--motion", choices=("plain", "off", "natural", "lively"), default="plain",
                     help="head motion and gaze glances (the control page can change it live)")
     lv.add_argument("--no-speech-glances", action="store_true", help="gaze glances in idle only, "
                     "none at sentence boundaries (TH_LIVE_SPEECH_GLANCES=0)")
@@ -73,7 +73,7 @@ def _parser() -> argparse.ArgumentParser:
     lb.add_argument("--lead-s", type=float, default=2.0, help="idle before the first line, seconds")
     lb.add_argument("--tail-s", type=float, default=1.5, help="idle after the last line, seconds")
     lb.add_argument("--matte", action="store_true", help="matting on (frames still recorded without alpha)")
-    lb.add_argument("--motion", choices=("off", "natural", "lively"), default="natural",
+    lb.add_argument("--motion", choices=("plain", "off", "natural", "lively"), default="plain",
                     help="head motion and gaze glances")
     return p
 

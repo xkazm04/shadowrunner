@@ -47,7 +47,7 @@ def test_json_messages_keep_every_key():
                        "matte", "idle", "motion"}
     assert st["delayMs"] is None and st["fps"] == 25
     assert st["matte"] is False and st["idle"] == "live"  # round 2 keys, always present
-    assert st["motion"] == "natural"  # round 3 key, always present
+    assert st["motion"] == "plain"  # round 3 key, always present; plain is the default since round 5
     assert P.state(ready=True, upscale="none", source="text", queue=0, delay_ms=1, size=512,
                    motion="lively")["motion"] == "lively"
     assert P.state(ready=True, upscale="none", source="text", queue=0, delay_ms=1, size=512,

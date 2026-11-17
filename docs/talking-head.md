@@ -1944,3 +1944,11 @@ The neck stretches with chin-up and chin-down poses. No seam shows at the collar
 - Live: TensorRT in Docker streams at 25 fps paced, about 1.0 s from audio-in to first frame, +2.7 GB VRAM, 1.36× headroom.
 - Native Windows PyTorch is not real time.
 - Whether the movement reads as natural is the review's call. The clips to watch are `sbs-online-paced-trt.mp4` and `sbs-head-online-paced-trt.mp4` per clip.
+
+## Live default after round 5 (owner verdict, 2026-11-17)
+
+The owner kept plain FlashHead over every added head motion (whole-frame warp, head-only warp,
+LivePortrait re-render, Ditto). `th live` now defaults to `--motion plain`: no head warp and no glances
+during speech, with the idle loop and the idle glances the owner approved in round 3. `off` removes the
+idle glances too; `natural` and `lively` remain available on `/live` and on the command line, and the
+round-5 probes stay under `th/experiments/head3d/`.

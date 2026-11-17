@@ -7,7 +7,7 @@
 // Round 2: `matte` on switches the stream to 0x04 frames at 1024 px (a synthetic colour frame and
 // a circular alpha with a soft edge); `state` carries `matte` and `idle` ("live" while a line
 // plays, "loop" otherwise); `stop` cuts the playing line with a `line-end` "stopped".
-// Round 3: `state` carries `motion` ("natural" at start); the `motion` command sets it.
+// Round 3: `state` carries `motion` ("plain" at start since round 5); the `motion` command sets it.
 import { createServer, type IncomingMessage } from "node:http";
 import { pathToFileURL } from "node:url";
 import sharp from "sharp";
@@ -143,7 +143,7 @@ export async function startFakeLive(port = FAKE_PORT): Promise<FakeLive> {
   let source = "text";
   let pendingSlide: number | undefined;
   let matteOn = false;
-  let motion = "natural";
+  let motion = "plain";
   /** The line playing now, and its line-end timer. */
   let playing: { id: string; end: NodeJS.Timeout } | undefined;
 

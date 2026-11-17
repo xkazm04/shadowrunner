@@ -126,6 +126,7 @@ describe("parseServerMessage", () => {
     expect(parseServerMessage(JSON.stringify({ ...state, motion: undefined }))).toMatchObject({ motion: null });
     expect(parseServerMessage(JSON.stringify({ ...state, motion: "wild" }))).toMatchObject({ motion: null });
     expect(parseServerMessage(JSON.stringify({ ...state, motion: "off" }))).toMatchObject({ motion: "off" });
+    expect(parseServerMessage(JSON.stringify({ ...state, motion: "plain" }))).toMatchObject({ motion: "plain" });
     expect(parseServerMessage(JSON.stringify({ ...state, idle: "nap" }))).toMatchObject({ idle: null });
     const event = { type: "event", kind: "slide", id: null, text: "2", atMs: 4000 };
     expect(parseServerMessage(JSON.stringify(event))).toEqual(event);

@@ -29,6 +29,7 @@ def test_speech_glances_at_about_30_percent_of_boundaries_left_or_right_never_ba
     assert 0.15 < rate < 0.3  # 30 % per eligible boundary, thinned by the 3 s gap
     assert len(speech_glances(GazePolicy("lively", 1), 2000)) > len(log)
     assert speech_glances(GazePolicy("off", 1), 2000) == []
+    assert speech_glances(GazePolicy("plain", 1), 2000) == []  # plain: no glances in speech
     assert speech_glances(GazePolicy("natural", 1, speech=False), 2000) == []  # the owner's switch
     assert speech_glances(GazePolicy("natural", 1), 2000) == log  # deterministic
 
@@ -46,6 +47,9 @@ def test_idle_glances_every_6_to_10_s_planned_one_chunk_ahead():
     assert len(shown) > 30 and gaps.min() >= 5.7 and gaps.max() <= 11.0
     lively = GazePolicy("lively", 2)
     assert sum(lively.decide(k, 0, False) != "main" for k in range(400)) > len(shown)
+    plain = GazePolicy("plain", 2)  # the default since round 5: the approved idle glances stay
+    assert [k for k in range(400) if plain.decide(k, 0, False) != "main"] == shown
+    assert all(GazePolicy("off", 2).decide(k, 0, False) == "main" for k in range(400))
 
 
 def test_speech_cancels_a_planned_idle_glance():
@@ -70,6 +74,9 @@ class RefModel(FakeModel):
 
 def _engine(model, loop=None) -> Engine:
     e = Engine(model, lambda kind, payload: None, raw_frames=True, loop=loop, motion="natural", seed=4)
+    deadline = time.perf_counter() + 5.0  # the head layer builds on a thread (round 4); wait for it so
+    while e.head is None and time.perf_counter() < deadline:  # a race cannot skip the motion stage
+        time.sleep(0.01)
     e._t0 = time.perf_counter()
     return e
 

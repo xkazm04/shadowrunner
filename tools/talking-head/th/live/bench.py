@@ -102,7 +102,7 @@ class Recorder:
 
 def run_headless(script: str | None, idle_s: float, upscale: str, seed: int, out: Path,
                  lead_s: float = LEAD_IDLE_S, tail_s: float = TAIL_S, matte: bool = False,
-                 motion: str = "natural") -> int:
+                 motion: str = "plain") -> int:
     from . import tts
     from .engine import LATEST_MS, LOOKAHEAD_AUTO, Engine
     from .gaze import gaze_refs
@@ -203,7 +203,7 @@ def _pct(xs: list[float], q: float) -> float | None:
 
 def bench(script: str | None, upscale: str = "none", seed: int = 1116, idle_s: float = 0.0,
           metrics: bool = True, lead_s: float = LEAD_IDLE_S, tail_s: float = TAIL_S,
-          matte: bool = False, motion: str = "natural") -> Path:
+          matte: bool = False, motion: str = "plain") -> Path:
     from ..ffmpeg import duration_s, probe
     from ..gpu import VramSampler, gpu_lock, memory_used_mib, others_over_limit
     from ..paths import new_run_dir, portrait_path

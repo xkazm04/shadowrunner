@@ -16,7 +16,7 @@ moved the whole frame and read as camera shake):
   sentence, and the mic, which has no marks: a pause of END_PAUSE_S after at least END_RUN_S of
   voice (Kokoro's sentence pauses are 0.5-0.6 s, its comma pauses 0.3-0.36 s);
 - idle: no nods, and a small new tilt every 5-9 s.
-Levels: `off` (identity), `natural` (gain 1), `lively` (gain 1.6); a level change eases over 0.5 s.
+Levels: `plain` (identity; the owner's default since round 5: plain FlashHead), `off` (identity), `natural` (gain 1), `lively` (gain 1.6); a level change eases over 0.5 s.
 Everything is a function of the frames fed so far and the seed: the same feed gives the same
 transforms, however it is split into chunks.
 """
@@ -27,8 +27,8 @@ import math
 
 import numpy as np
 
-LEVELS = ("off", "natural", "lively")
-GAIN = {"off": 0.0, "natural": 1.0, "lively": 1.6}
+LEVELS = ("plain", "off", "natural", "lively")
+GAIN = {"plain": 0.0, "off": 0.0, "natural": 1.0, "lively": 1.6}
 FPS = 25
 RATE = 16000
 HOP = RATE // FPS  # audio samples per frame
@@ -63,7 +63,7 @@ def _smooth(x: float) -> float:
 
 
 class Motion:
-    def __init__(self, level: str = "natural", seed: int = 1116) -> None:
+    def __init__(self, level: str = "plain", seed: int = 1116) -> None:
         assert level in LEVELS, level
         self.level = level
         self.rng = np.random.default_rng(seed)
@@ -174,7 +174,7 @@ class Motion:
         self.i = i + 1
 
     def _event(self, i: int, kind: str) -> None:
-        if self.level != "off":  # computed either way (the state stays continuous), shown only on
+        if self.level not in ("off", "plain"):  # computed either way (the state stays continuous), shown only on
             self.events.append((i, kind))
 
     def _new_tilt(self, i: int, amount: float) -> None:
