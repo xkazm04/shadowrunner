@@ -1627,3 +1627,309 @@ What the passages show:
 Recipe for a recorded line: TeaCache off; one window (up to 5.4 s) at audio guidance 4.5, or a longer line with `--long --audio-chunk 113` at 3.0; 3-4 seeds, then pick by hand score among the takes that gesture, and watch the worst-window sheet before shipping. Still open: the gesture fades after the first window of a passage (a per-window prompt, or a fresh reference pose every window with a longer crossfade, are the next things to try), and the check's recall is partial (it is a screen for the worst frames, not a guarantee).
 
 Cost, measured on the 4090: a 5 s single window 195 s denoising (TeaCache off) plus about 60 s loading and finishing; a 17 s passage 13.5-15.5 min wall, so about 48 GPU-minutes per finished video-minute.
+
+# Doc text, round 5 H1 (LivePortrait over FlashHead): for docs/talking-head.md, "Live" section
+
+### Round 5, H1: real 3D head turns with LivePortrait (2026-11-17; `th/experiments/head3d/lp_*`)
+
+The owner's verdict on round 4: the head-only 2D warp looks rubbery and the head must turn in 3D.
+H1 re-renders every FlashHead frame through LivePortrait (KwaiVGI, MIT code and weights) with a
+rotation added, offline but chunk by chunk (24 frames, as live). The live engine is not touched.
+
+**Set-up** (`lp_setup.py`): LivePortrait's code at commit 9b294b3 in `$TH_HOME/repos/liveportrait`
+(only `src/` is imported, as the package `lpsrc`), and its five PyTorch checkpoints from
+huggingface.co/KwaiVGI/LivePortrait (revision 82a4fa6, model card `license: mit`, 522 MB,
+sha256-pinned, `$TH_HOME/models/liveportrait/` with a licence.json). Not fetched, never loaded:
+InsightFace `buffalo_l` (non-commercial; upstream's face detector and 106-point landmarks),
+upstream's `landmark.onnx` (only used behind InsightFace) and the animal X-Pose weights. The face
+crop comes from MediaPipe Face Landmarker (Apache-2.0, `th fetch mediapipe`). The modules need only
+torch, numpy, opencv, pyyaml and scipy, which the FlashHead env already has, so it runs there with
+nothing installed (where a live wiring would run it). FasterLivePortrait (warmshao, MIT; TensorRT
+8.x and a custom grid_sample3d plugin, `--mp` replaces InsightFace) was read, not used.
+
+**Bridge** (`lp_bridge.py`), per 24-frame chunk on the GPU:
+- one fixed crop for the whole stream, from the bust's MediaPipe landmarks with LivePortrait's crop
+  rule (square, 2.3x the landmark extent, 12.5 % down, upright): FlashHead's head moves under a pixel,
+  so per-frame detection is not needed. On Iris it covers almost the whole 512 frame;
+- LivePortrait's motion extractor reads each FlashHead frame's rotation, expression, scale and
+  translation; the rotation track is added to its yaw/pitch/roll; stitching (LivePortrait's
+  shoulder-alignment MLP) on; warp + SPADE decode (256 in, 512 out); paste-back through the crop
+  transform with upstream's feathered mask, FlashHead's own frame outside it. No eye or lip
+  retargeting.
+- **Source = each FlashHead frame** (`--source frame`, the Director's ruling after the first look):
+  the appearance features come from the frame itself, so the rotation is the only change and a zero
+  track reconstructs the frame. The brief's design, **source = the bust** (`--source bust`), is kept as
+  a measured control: it closes the mouth (see the table: SyncNet 4.7 against 8.5).
+
+**The statistical track** (`track_stats.py`, numpy, streaming): per 40 ms frame from causal audio
+features (level, autocorrelation F0), deterministic for (seed, audio) however the audio is split
+(test). Sources: band-limited random drift per axis (Ornstein-Uhlenbeck noise through two
+low-passes, scaled by speech activity, 35 % in silence); slow yaw turns of 6-10 degrees over
+0.8-1.2 s on an emphasis (level jump while voiced, F0 above the speaker's running mean; at most
+every 2.5-5 s, probability 0.6), relaxing toward 0 over about 4 s; down-and-back nods of 1.5-3
+degrees on emphasis onsets (every 1.2-2.6 s at most); the head rises with F0 and rolls slightly with
+yaw; two final low-passes (no jitter) and soft limits (yaw 14, pitch 8, roll 6 degrees). Never
+periodic (test: autocorrelation under 0.6 at every lag from 2 to 20 s). On pitch-45s speech: yaw SD
+4.15, range 13.8, pitch SD 1.6, roll SD 1.2 degrees, 7.7 deg/s; on 20 s of silence yaw SD 0.94,
+2.7 deg/s. 0.05 ms per frame on the CPU.
+
+**The Ditto track** (H2): `$TH_HOME/head3d/tracks/<name>.npz`, relative to the source pose,
+LivePortrait's convention, added as is. Pitch-led (pitch-45s: yaw SD 1.5, pitch SD 2.5, roll SD 1.0,
+6.6 deg/s) and moving in silence. Rendered as is and with yaw x2 (H2's knob).
+
+**Inputs**: FlashHead's own frames from the round 4 `off` bench run 20261117T084652Z (pitch-45s, 1197
+frames, its speech.wav) and a fresh `th live-bench --idle-s 20 --motion off` (20261117T124535Z, 525
+frames). Every render: `python -m th.experiments.head3d.lp_run --run <run> --track none|stats|<npz>
+--source frame|bust --out var/talking-head/live-review-r5/h1/<clip>` in the FlashHead env, under the
+GPU lock; measured with `uv run python -m th.experiments.head3d.lp_measure` (core env).
+
+**Measured, pitch-45s** (512 px, before Maxine). SyncNet, identity and face sharpness as live-bench.
+Mouth = variance of the Laplacian on the lip box grown 30 % (MediaPipe), voiced frames. Pose = MediaPipe's
+facial transformation matrix on the output (an estimator independent of LivePortrait), SD / p95-p5 range
+in degrees over the voiced frames. Added = the track's SD; LP = LivePortrait's own estimate of the added
+rotation on the output. Outside = mean abs difference against `off` (0-255) on the shoulders / backdrop corners.
+
+| clip | SyncNet (offset) | identity mean / p5 | face sharpness | mouth sharpness | yaw SD / range | pitch SD / range | roll SD | added yaw / pitch SD | LP sees yaw / pitch SD | outside |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `off` (FlashHead alone) | 8.45 (-1) | 0.975 / 0.961 | 11.6 | 32.1 | 0.25 / 0.8 | 0.70 / 2.3 | 0.24 | | | |
+| control, bust source | **4.68** (-1) | 0.984 / 0.979 | 10.3 | 27.9 | 0.20 / 0.6 | 0.38 / 1.2 | 0.18 | 0 | 0.06 / 0.15 | 2.3 / 1.6 |
+| control, frame source | 8.54 (-1) | 0.964 / 0.947 | 8.0 | 18.1 | 0.25 / 0.8 | 0.72 / 2.5 | 0.24 | 0 | 0.03 / 0.06 | 1.9 / 1.9 |
+| statistical, bust source | **4.65** (-1) | 0.964 / 0.900 | 10.0 | 28.4 | 2.55 / 8.3 | 1.37 / 4.6 | 1.16 | 4.2 / 1.6 | 3.48 / 1.33 | 2.5 / 1.9 |
+| statistical | 8.54 (-1) | 0.943 / 0.881 | 7.7 | 18.3 | 2.48 / 8.2 | 1.35 / 4.6 | 1.15 | 4.2 / 1.6 | 3.54 / 1.24 | 2.2 / 2.2 |
+| statistical x1.4 | 8.49 (-1) | 0.932 / 0.837 | 7.7 | 18.6 | 3.31 / 10.9 | 1.71 / 5.8 | 1.54 | 5.5 / 2.3 | 4.62 / 1.69 | 2.2 / 2.2 |
+| Ditto (H2) | 8.49 (-1) | 0.950 / 0.934 | 7.6 | 17.0 | 0.95 / 3.4 | 2.04 / 6.8 | 0.83 | 1.5 / 2.5 | 1.31 / 1.82 | 2.1 / 2.1 |
+| Ditto, yaw x2 | 8.51 (-1) | 0.928 / 0.894 | 7.6 | 17.3 | 1.85 / 7.0 | 2.10 / 7.3 | 0.81 | 3.0 / 2.5 | 2.43 / 1.82 | 2.0 / 2.2 |
+| statistical, features every 4th frame | **6.46** (0) | 0.943 / 0.881 | 8.0 | 18.2 | 2.48 / 8.3 | 1.37 / 4.5 | 1.15 | 4.2 / 1.6 | 3.54 / 1.24 | 2.2 / 2.2 |
+| statistical, crop 1.9x (not 2.3x) | 8.41 (-1) | 0.947 / 0.901 | 7.8 | 19.0 | 2.51 / 8.4 | 1.35 / 4.7 | 1.16 | 4.2 / 1.6 | 3.37 / 1.34 | 1.4 / 2.1 |
+
+After Maxine (`lp_upscale.py`, 1024 px, the way the stream is upscaled), mouth sharpness: `off` 13.7,
+frame-source clips 9.1-9.5 (control 9.5, statistical 9.5, x1.4 9.5, Ditto 9.1, Ditto yaw x2 9.1), bust
+control 13.5.
+
+Idle (20 s, 525 frames; pose over all frames): `off` yaw / pitch SD 0.08 / 0.11 degrees, face sharpness
+14.7, identity 0.981; control 0.08 / 0.10, 9.1, 0.977; statistical 0.57 / 0.42, 8.7, 0.973; Ditto 1.26 /
+2.41, 8.3, 0.954; Ditto yaw x2 2.31 / 2.38, 8.8, 0.942. SyncNet is meaningless in silence (0.11-0.14 for all).
+
+What the figures say:
+- **Lip-sync holds** with the frame source: SyncNet 8.49-8.54 against 8.45 (the acceptance asks within
+  about 0.5). With the bust as source it falls to 4.7: LivePortrait re-renders FlashHead's open mouth
+  from the bust's closed one and it comes out nearly shut, no teeth (`bust-source-vs-off.png`).
+- **Features at a stride are not safe**: reusing the appearance features of every 4th frame drops
+  SyncNet to 6.46 and the mouth visibly lags (`mouth-sheet-pitch.jpg`, 4th column). The frame source's
+  extra cost is one appearance pass per frame: 46 ms per 24 frames in PyTorch, 13.5 ms in TensorRT.
+- **It is softer**: LivePortrait renders the face through a 256 px crop that covers nearly the whole
+  512 frame. Face sharpness 11.6 -> 7.7-8.0, mouth 32 -> 17-19 at 512; after Maxine the mouth is 9.1-9.5
+  against 13.7. By eye the skin loses its freckles and pores and the teeth lose their separations; the
+  shapes and the mouth's motion stay FlashHead's (`maxine-f520-off-control-stats.jpg`,
+  `mouth-sheet-pitch.jpg`). A tighter crop (1.9x) gains nothing (19.0). The re-render alone (control)
+  also lifts the contrast slightly and drops identity 0.975 -> 0.964.
+- **The rotation shows at 60-85 %** of the commanded angle (MediaPipe sees yaw SD 2.5 for 4.2
+  commanded; LivePortrait's own estimator 3.5). Busso's yaw SD of 3-5 degrees on the output needs the
+  statistical track at about x1.4 (MediaPipe 3.3, LivePortrait 4.6; commanded 9.5 deg/s).
+- **Identity** falls with the turn (0.93-0.95 mean, p5 down to 0.84): DINOv2 against a frontal portrait
+  scores a turned head lower; by eye she stays herself.
+- The shoulders and the backdrop change by about 2/255 against `off` (LivePortrait's paste-back mask
+  covers most of the frame, so they are re-rendered, but stitching keeps them in place:
+  `*/sheet-shoulders.jpg`).
+
+**By eye** (head crops at the extremes of each turn: `<clip>/sheet-head.jpg`, the sides at 1.5x:
+`<clip>/sheet-zoom.jpg`, `zoom-ditto-yaw2-f90.png`, `stats14-yaw-extremes-f872-f520.jpg`):
+- It reads as a head turning in 3D, not a bent sheet: the nose moves across the cheek, the far cheek
+  narrows, the near ear and the headset cup come into view, the fringe and the side hair move with the
+  skull, and the collar and shoulders stay put. Pitch tips the chin and the brow. Up to about 10-13
+  degrees of yaw nothing tears.
+- What fills the revealed side: LivePortrait's occlusion-aware decoder paints the ear, the earring and
+  the hair behind the turned cheek; at 10-13 degrees they are plausible but soft, and the earring
+  smears a little.
+- **The headset's mic boom dissolves** when she turns toward it: faint at -6 degrees, gone at -10
+  (`mic-boom-vs-yaw.jpg`: FlashHead above, LivePortrait below, yaw 0 to -10). Turning the other way it
+  stays. A one-sided yaw limit (about -5 degrees) avoids it; the statistical track would need that
+  asymmetry.
+- Ditto's motion is pitch-led (nods and up-tilts, pitch SD 2.0 on the output against yaw 0.95), and it
+  keeps moving in silence (idle pitch SD 2.4, about 6 deg/s), which reads busier than a listener; the
+  statistical track is yaw-led and calms in silence (idle SD 0.6 / 0.4). Ditto with yaw x2 sits between
+  the two. Which reads as a person talking is the owner's call on the clips.
+
+**A detail-transfer attempt** (`--detail`, experiment, off by default): FlashHead's high frequencies
+(frame minus a sigma-1.2 blur) moved by a smooth flow interpolated from the keypoints' motion and added
+inside the face. It restores sharpness, but at 10 degrees it ghosts the eyeliner and the mic boom
+(`detail-transfer-probe.jpg`: FlashHead | LivePortrait | + detail). Not adopted.
+
+**Speed** (RTX 4090 shared with World of Warcraft and the other builder's jobs, 96-100 % utilisation at
+times, so every figure here is under contention):
+
+| stage, per 24-frame chunk | PyTorch (FP16 autocast) | TensorRT 10.13 FP16 |
+| --- | --- | --- |
+| motion extractor M | 27 ms | 6.6 ms |
+| appearance features F (frame source) | 46 ms | 13.5 ms |
+| warp W | 238 ms | 88.6 ms |
+| SPADE decoder G | 418 ms | 116.0 ms |
+| LivePortrait total | 560-780 ms with crop, stitching and paste (31-43 fps) | 225 ms, the four networks (107 fps) |
+
+- TensorRT: `lp_trt.py export` (ONNX, static batch 24, opset 20; `onnx` 1.17 installed on its own in
+  `$TH_HOME/envs/head3d-onnx` and put on PYTHONPATH for the export only) then `lp_trt.py time`
+  (`trtexec --fp16` in the round 3 `th-a2f-sdk` container, CUDA 12.9). TensorRT's GridSample takes 4D
+  input only, so W's two trilinear samples of the 3D feature volume are rewritten as 8 corner gathers for
+  the export (`grid_sample_3d`, max difference 1.6e-4 from the original W; unit test against
+  F.grid_sample). Speed only: the engines' outputs were not compared with PyTorch. FasterLivePortrait's
+  TensorRT 8 route needs its own grid_sample3d plugin; not used.
+- Combined, `lp_bench.py` (FlashHead Lite + the statistical track + LivePortrait PyTorch + Maxine,
+  chunk after chunk on pitch-45s, 49 chunks): FlashHead 289 ms p50 / 428 p95, track 1.5 ms,
+  LivePortrait 584 / 598, Maxine 13; total **890 ms p50, 1026 p95: 27.0 fps capacity at p50, 23.4 at
+  p95, 7 of 48 chunks over the 960 ms budget**. FlashHead + Maxine alone in the same conditions: 361 /
+  898 ms (66.5 / 26.7 fps), 1 chunk over. VRAM 15.0 GB peak with LivePortrait (5.1 GB without).
+- So PyTorch LivePortrait does **not** hold 25 fps with 0 late chunks on this shared GPU. With the
+  TensorRT engines the LivePortrait share falls from about 585 to about 230 ms per chunk, which projects
+  the combined chunk to about 530-590 ms p50 (41-45 fps). That needs a TensorRT runtime inside the
+  FlashHead env (or LivePortrait in its own process), which is the wiring step's decision.
+
+**Review clips** (`var/talking-head/live-review-r5/h1/`): each `<clip>/up.mp4` is the Maxine 1024
+version with the line's audio (what `/live?out=1` would show), `raw.mp4` the 512 render:
+- pitch-45s: `pitch-off`, `pitch-control-frame` (fidelity control), `pitch-stats-frame`,
+  `pitch-stats14-frame`, `pitch-ditto-frame`, `pitch-ditto-yaw2-frame`; bust controls
+  `pitch-control-bust`, `pitch-stats-bust`;
+- idle 20 s: `idle-off`, `idle-control-frame`, `idle-stats-frame`, `idle-ditto-frame`,
+  `idle-ditto-yaw2-frame`;
+- side by side (512, hstacked, with audio): `sbs-pitch-off-control-stats-ditto-dittoyaw2.mp4`,
+  `sbs-idle-off-control-stats-ditto-dittoyaw2.mp4`, `sbs-pitch-off-stats-stats14.mp4`;
+- per clip: `sheet-head.jpg`, `sheet-zoom.jpg`, `sheet-shoulders.jpg` (FlashHead alone beside the clip
+  at the 4 extremes of its track), `measure.json`, `render.json`, `track.npz`, `pose.npz`.
+
+Not done: the owner's eye on the motion, and the live wiring (`th live` is untouched).
+
+# Doc text, round 5 H2 (Ditto end-to-end): for docs/talking-head.md, "Live" section
+
+### Ditto, audio-driven 3D head motion (round 5, H2; `th/experiments/head3d/ditto_*`)
+
+An offline and streaming probe of Ditto (antgroup/ditto-talkinghead, Ant Group, Apache-2.0 code and weights) as a live candidate. Ditto turns audio into LivePortrait motion (head rotation, translation and expression, through a motion-space diffusion model, LMDM), then renders it with LivePortrait's 3D keypoint and feature-volume renderer. The head turns in 3D: it is re-rendered from a feature volume, not warped in 2D. The probe also exports Ditto's head-rotation track per audio for H1 (LivePortrait over FlashHead). Nothing in `th` imports it.
+
+```
+uv run python -m th.experiments.head3d.ditto_cli setup            # clone, env, PyTorch weights (no InsightFace)
+uv run python -m th.experiments.head3d.ditto_cli setup-docker     # image th-head3d-ditto:trt861 + TensorRT engines
+uv run python -m th.experiments.head3d.ditto_cli render NAME --audio WAV [--mode offline|online] [--paced]
+      [--runtime native|docker] [--track TRACK [--frames N]]      # GPU lock
+uv run python -m th.experiments.head3d.ditto_cli fh NAME --audio WAV        # FlashHead `off` on the same bust + wav
+uv run python -m th.experiments.head3d.ditto_cli measure NAME --mode DIR    # Ditto vs FlashHead (GPU lock for SyncNet)
+```
+
+Outputs go to `var/talking-head/live-review-r5/h2/<name>/`:
+- `<mode>/raw.mp4` (Ditto at the bust's 640 px, 25 fps, with the audio), `pose.npz`, `timing.json`, `run.json`, `log.txt`;
+- `fh/raw.mp4` and `fh/clip.mp4` (FlashHead Lite through the realtime-fh arm, 512 px);
+- `figures-<mode>.json`;
+- `head-sheet-<mode>.png` (head-only crops at Ditto's turn extremes, FlashHead | Ditto) and `shoulder-sheet-<mode>.png`;
+- `sbs-<mode>.mp4` (full frame) and `sbs-head-<mode>.mp4` (head crop), FlashHead `off` | Ditto, with the audio.
+
+**Licences and what is never loaded:**
+- Code: Apache-2.0, pinned at `c3e47ee`, used unedited.
+- Weights: the Hugging Face repo `digital-avatar/ditto-talkinghead` at `e4a2f60`; its LICENSE is Apache-2.0 (the card carries no licence tag). Fetched:
+  - the PyTorch set: appearance/motion extractors, warp network, decoder, stitch network, LMDM;
+  - `hubert_streaming_fix_kv.onnx`;
+  - `landmark203.onnx`;
+  - `face_landmarker.task` (MediaPipe, Apache-2.0);
+  - for Docker, the TensorRT `ditto_trt_Ampere_Plus` engines.
+  - Everything is recorded in `$TH_HOME/models/head3d-ditto/licence.json`.
+- InsightFace (non-commercial) is never downloaded or loaded:
+  - Ditto ships `det_10g.onnx`, `2d106det.onnx`, `insightface_det` and `landmark106`.
+  - Its avatar registration (`source2info.py`) calls them to find the face before the 203-point crop.
+  - `ditto_shims.install()` swaps both classes in that module's namespace from outside. The detector becomes the MediaPipe Face Landmarker box, and the 106-point step becomes 68 iBUG-order points mapped from MediaPipe's 478, which upstream's crop code already reads.
+- Other outside-in adaptations:
+  - a numpy blend replaces the Cython one, so no MSVC build is needed;
+  - `np.atan2` is aliased to `np.arctan2`, because upstream uses the numpy-2 name;
+  - `MotionStitch` is wrapped to record each frame's rendered and source pose.
+
+**Runtimes:**
+- **Native (Windows, PyTorch).** `$TH_HOME/envs/head3d-ditto`: Python 3.10, torch 2.6.0+cu124, onnxruntime-gpu 1.20 (CUDA execution provider), mediapipe 0.10.9. It works but is not real time:
+  - offline (50 diffusion steps): 18.7 fps;
+  - streaming (upstream's online settings: 10 steps, overlap 70, chunks of 3+5+2 frames): 10 fps.
+  - Per-stage profile:
+
+    | Stage | Time |
+    |---|---|
+    | LMDM | 279 ms per 10 frames |
+    | warp | 13.5 ms per frame |
+    | decode | 22.5 ms per frame |
+    | putback (CPU) | 17.8 ms per frame |
+    | HuBERT | 12 ms per 5-frame chunk |
+
+  - That is about 640 ms of GPU work per 400 ms of video.
+- **Docker (TensorRT 8.6.1).** Upstream's `Ampere_Plus` engines are Linux builds; the 3D grid-sample plugin is serialized into the warp engine as a `.so`.
+  - Image `th-head3d-ditto:trt861`: python:3.10-slim, pip TensorRT 8.6.1 with its CUDA 12 libraries, CPU torch, and the same runtime packages as the native env.
+  - `$TH_HOME`, the head3d code and the output directory are mounted.
+  - It runs on the 4090 through Docker Desktop's nvidia runtime at 33.8 fps unpaced (smoke-6s), so it is real time with headroom.
+
+**Track export (for H1).**
+- Files: `$TH_HOME/head3d/tracks/<name>.npz` per the round-5 contract:
+  - float32 `yaw`, `pitch`, `roll` in degrees, one value per output frame;
+  - frame 0 at audio sample 0;
+  - `fps` = 25 and `audio` = the wav path.
+- Values are Ditto's learned motion relative to the bust's own pose (yaw -0.1, pitch 9.2, roll 0.5 deg), in LivePortrait's convention. Upstream adds a constant +2 deg pitch to every frame; it is removed, so a still head reads 0.
+- Extra keys: `rendered`, `source`, `bias`, `fit` (`exact` | `padded k` | `trimmed k`).
+- Tracks come from the offline (50-step) runs: `smoke-6s`, `pitch-45s`, `pitch-45s-live` (1197 frames) and `idle-20s-live` (525 frames), all `exact`. The last two follow H1's live FlashHead wavs.
+
+**Comparison with FlashHead `off`, same audio and bust.** SyncNet and identity come from `th.post.metrics` against Iris's portrait. Sharpness is the variance of the Laplacian on the face box resized to 256 px and on the lip box resized to 128 px, so clip sizes do not matter.
+
+| clip | arm | SyncNet (offset) | identity mean / min | sharpness face / mouth | first frame | real time |
+|---|---|---|---|---|---|---|
+| pitch-45s | FlashHead off | 8.95 (-1) | 0.968 / 0.928 | 130 / 24 | 0.39-0.53 s audio-in (+0.96 s chunk) | 42 fps capacity |
+| pitch-45s | Ditto offline (native) | 9.04 (0) | 0.971 / 0.942 | 111 / 38 | 29 s (whole clip first) | 18.7 fps |
+| pitch-45s | Ditto online, native, paced | 9.65 (0) | 0.968 | 111 / 33 | 3.0 s | 10 fps: falls behind, latency reaches 72 s by the end |
+| pitch-45s | **Ditto online, TensorRT, paced** | 9.58 (0) | 0.971 / 0.934 | 109 / 32 | **1.03 s** | **25 fps paced; 34 fps capacity** |
+| smoke-6s | FlashHead off | 8.50 (-1) | 0.975 | 130 / 27 | | |
+| smoke-6s | Ditto offline / online TRT | 7.77 / 8.02 (0) | 0.970 / 0.972 | 109-112 / 33-36 | 1.04 s (TRT paced) | |
+| idle 21 s | FlashHead off | (no speech) | 0.979 | 159 / 35 | | |
+| idle 21 s | Ditto online TRT | (no speech) | 0.979 | 106 / 23 | 1.06 s | 25 fps paced |
+
+**VRAM:**
+- Ditto TensorRT: +2.7 GB.
+- Ditto native: +4.6-5.3 GB.
+- FlashHead: +6.4 GB.
+
+**Paced latency (TensorRT).** Frame i is due i×40 ms after the audio starts.
+- Latency holds at p50 0.91 s, p95 1.00 s, max 1.05 s over the 45 s clip.
+- 0 frames are later than the first-frame latency plus the client's 250 ms buffer.
+- A first TensorRT run of pitch-45s drifted to 3.9 s and then caught up. Its VRAM peak was 9.2 GB against 4.0 GB for every other run, so another GPU client was present. The rerun was flat.
+
+**Online padding.** Ditto's online path emits 13-17 trailing pad frames after the audio ends, and SyncNet offset is 0. Consumers trim to ceil(audio × 25).
+
+**Head motion.** Natural speech, the design's reference (Busso 2007): yaw SD about 3-5 deg and about 10 deg/s.
+
+Ditto's own track (relative to the bust):
+
+| clip | yaw SD / p5-p95 | pitch SD / p5-p95 | roll SD | mean angular speed (p95) |
+|---|---|---|---|---|
+| smoke-6s offline | 1.9 / 7.3 | 2.9 / 10.5 | 0.4 | 10.5 (26.8) deg/s |
+| pitch-45s offline | 2.1 / 7.0 | 3.2 / 10.3 | 2.2 | 6.5 (18.0) deg/s |
+| pitch-45s online TRT | 1.5 / 4.7 | 1.9 / 6.0 | 1.2 | 7.9 (17.4) deg/s |
+| pitch-45s-live offline | 1.5 / 4.8 | 2.5 / 8.9 | 1.0 | 6.6 (17.0) deg/s |
+| idle-20s-live offline | 1.9 / 5.6 | 3.0 / 9.8 | 0.5 | 8.6 (23.7) deg/s |
+
+Read from the clips by MediaPipe's transformation matrix, the same instrument for both arms:
+- FlashHead `off` on pitch-45s: yaw SD 0.44, pitch SD 1.10.
+- Ditto on pitch-45s: yaw SD 0.9-1.1, pitch SD 1.5-2.5.
+- MediaPipe's angular speed has a noise floor of about 3 deg/s on FlashHead's still idle, so speeds are compared on Ditto's own track.
+
+In short:
+- Ditto's speed matches natural speech.
+- Its motion is pitch-led (nods, chin lifts) and its yaw sits under the natural 3-5 deg.
+- It keeps moving in silence (idle pitch SD 3.0 deg): a listening sway, mouth closed.
+
+**Body.** Ditto pastes the re-rendered crop back over the source image, so the jacket and shoulders are the source pixels. Mean absolute change of the bottom quarter of the frame against frame 0:
+- Ditto: 1.4-1.5 (speech);
+- FlashHead: 3.0-3.8, because it regenerates the whole frame.
+
+The neck stretches with chin-up and chin-down poses. No seam shows at the collar on the shoulder sheets.
+
+**Turn extremes, by eye (head-only and shoulder crops at each clip's yaw, pitch and roll extremes, and at the fastest move: pitch 16 to 10 deg over 8 frames, 33 deg/s):**
+- The head turns as a solid. Nose perspective, fringe, ears and headset move together; nothing reads as a bent sheet.
+- The headset earcups and the mic boom stay attached. At chin-down the cyan earcup light dims slightly.
+- Skin is smoother than FlashHead's (face sharpness -15%), and teeth and lips are crisper in speech (mouth sharpness +25-60%; lower on the closed idle mouth).
+- Blinks are symmetric, but the closed lid shows a faint cyan eyeliner smear for 2-3 frames.
+- The head also moves toward and away from the camera, so the face grows a little at chin-down. The head-crop sheets use one fixed box, which can clip the earcups at those frames.
+
+**Verdict (numbers, not the owner's eye):**
+- Lip sync: on par with FlashHead (pitch-45s 9.0-9.6 vs 8.95; smoke-6s 7.8-8.0 vs 8.5).
+- Identity: equal.
+- Motion: real 3D head turns at a natural speed, pitch-led, with less yaw than natural speech.
+- Live: TensorRT in Docker streams at 25 fps paced, about 1.0 s from audio-in to first frame, +2.7 GB VRAM, 1.36× headroom.
+- Native Windows PyTorch is not real time.
+- Whether the movement reads as natural is the review's call. The clips to watch are `sbs-online-paced-trt.mp4` and `sbs-head-online-paced-trt.mp4` per clip.
