@@ -8,8 +8,12 @@
 // Browser-safe: no node imports (the creator imports it as "@sr/forge/cast").
 import type { Rig } from "@sr/rig";
 import { portraitPromptFromBrief } from "./brief.js";
+import { rigForecast } from "./castForecast.js";
 import { assetsWithFaces, rigWithFaces } from "./replayFaces.js";
 import type { CastCandidateView, CastStatus, CastView, CharacterBrief } from "./wire.js";
+
+// forge-pkg B: the forecast's browser-safe half, for the creator ("@sr/forge/cast").
+export { forecastLines, readCastForecast, recommendDraft, rigForecast } from "./castForecast.js";
 
 /** Candidates per batch. */
 export const CAST_SIZE = 3;
@@ -121,7 +125,8 @@ export interface RecordedCandidate {
 /**
  * Replay: the view of a recorded batch `elapsedMs` after its start. Each candidate is its recorded
  * job's rig without its faces (a provisional rig has none), its portrait shown from "cutting" on;
- * no diagnostics are computed for recordings, the note says what each one is. Undefined when a
+ * no diagnostics are computed for recordings, the note says what each one is; its forecast is read
+ * from the recorded rig (iris layers, acts: `rigForecast`), so replay drafts differ too. Undefined when a
  * slug has no recording.
  */
 export function replayCastView(batchId: string, batch: ReplayBatch, jobs: ReadonlyMap<string, RecordedCandidate>, elapsedMs: number): CastView | undefined {
@@ -141,7 +146,7 @@ export function replayCastView(batchId: string, batch: ReplayBatch, jobs: Readon
       continue;
     }
     const rig = rigWithFaces(job.rig, 0);
-    candidates.push({ ...base, state: "cut", portraitUrl: job.portraitUrl, rig, assets: assetsWithFaces(job.rig, rig, job.assets) });
+    candidates.push({ ...base, state: "cut", portraitUrl: job.portraitUrl, rig, assets: assetsWithFaces(job.rig, rig, job.assets), forecast: rigForecast(job.rig) });
   }
   return { batchId, status, plane: "replay", rerollsLeft: rerollsLeft(batch.round), candidates };
 }

@@ -3,8 +3,9 @@
 // and its in-browser replay twin over the recorded jobs (the same three candidates the server's
 // replay shows: `castTrio` and `replayCastView` from "@sr/forge/cast"). A view is checked before use
 // (`readCastView`): a candidate's rig must pass `validateRig` with a URL for every layer file, or
-// the whole view is `upstream`, never a half-shown candidate.
-import { castTrio, MAX_REROLLS, parseReplayBatchId, replayBatchId, replayCastView } from "@sr/forge/cast";
+// the whole view is `upstream`, never a half-shown candidate. A malformed forecast (forge-pkg B) is
+// only advice: it is dropped and the candidate kept.
+import { castTrio, MAX_REROLLS, parseReplayBatchId, readCastForecast, replayBatchId, replayCastView } from "@sr/forge/cast";
 import { requestKey } from "@sr/forge/brief";
 import type { CastCandidateView, CastStatus, CastView, CharacterBrief } from "@sr/forge/wire";
 import { validateRig } from "@sr/rig";
@@ -39,6 +40,8 @@ function candidateOf(v: unknown): CastCandidateView | undefined {
     if (typeof v.note !== "string") return undefined;
     out.note = v.note;
   }
+  const forecast = readCastForecast(v.forecast);
+  if (forecast !== undefined) out.forecast = forecast;
   if (v.rig !== undefined || v.assets !== undefined) {
     const rig = validateRig(v.rig);
     if (!rig.ok || !isRecord(v.assets)) return undefined;

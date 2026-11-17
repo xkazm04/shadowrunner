@@ -39,6 +39,7 @@ export * from "./replayFaces.js";
 export * from "./faceMaterial.js";
 export * from "./cast.js";
 export * from "./castJob.js";
+export * from "./castForecast.js";
 export * from "./faceGate.js";
 export * from "./faceRepaint.js";
 export * from "./cover.js";

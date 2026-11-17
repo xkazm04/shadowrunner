@@ -6,11 +6,12 @@
 import { validateRig, type Rig } from "@sr/rig";
 import { parseBrief } from "./brief.js";
 import { CAST_SIZE, rerollsLeft } from "./cast.js";
+import { readCastForecast } from "./castForecast.js";
 import { CAST_STATUSES, FORGE_ERROR_CODES } from "./forgeMachine.js";
 import type { PortraitMime } from "./job.js";
 import { parseParts } from "./parts.js";
 import type { PartsV2 } from "./types.js";
-import type { CastCandidateView, CastStatus, CastView, CharacterBrief, ForgeErrorCode } from "./wire.js";
+import type { CastCandidateView, CastForecast, CastStatus, CastView, CharacterBrief, ForgeErrorCode } from "./wire.js";
 
 export type CastSlotState = CastCandidateView["state"];
 
@@ -22,6 +23,8 @@ export interface CastSlot {
   empty: string[];
   warnings: string[];
   note?: string;
+  /** forge-pkg B: computed by the cut step from the bytes it holds (a few hundred bytes); omitted when unknown. */
+  forecast?: CastForecast;
 }
 
 export interface CastBatch {
@@ -73,6 +76,7 @@ export function toCastView(batch: CastBatch, cuts: readonly (CastCut | undefined
       empty: [...slot.empty],
       warnings: [...slot.warnings],
       ...(slot.note === undefined ? {} : { note: slot.note }),
+      ...(slot.state === "cut" && slot.forecast !== undefined ? { forecast: slot.forecast } : {}),
     };
   });
   return {
@@ -102,6 +106,8 @@ function slotOf(v: unknown): CastSlot | undefined {
   if (v.portraitUrl !== undefined && !isString(v.portraitUrl)) return undefined;
   if (v.portraitMime !== undefined && !(isString(v.portraitMime) && MIMES.includes(v.portraitMime))) return undefined;
   if (v.note !== undefined && !isString(v.note)) return undefined;
+  // A malformed forecast is dropped, the slot kept (as readFaceGate): it is advice, not the candidate.
+  const forecast = readCastForecast(v.forecast);
   return {
     state: v.state as CastSlotState,
     ...(isString(v.portraitUrl) ? { portraitUrl: v.portraitUrl } : {}),
@@ -110,6 +116,7 @@ function slotOf(v: unknown): CastSlot | undefined {
     empty: [...v.empty],
     warnings: [...v.warnings],
     ...(isString(v.note) ? { note: v.note } : {}),
+    ...(forecast === undefined ? {} : { forecast }),
   };
 }
 

@@ -58,6 +58,14 @@ describe("readCastView", () => {
     expect(readCastView({ ...VIEW, candidates: [{ ...VIEW.candidates[1], portraitUrl: null }] })).toBeUndefined();
     expect(readCastView({ ...VIEW, status: "cooking" })).toBeUndefined();
   });
+
+  it("keeps a well-formed forecast; drops a malformed one and keeps the candidate (forge-pkg B)", () => {
+    const forecast = { eyes: { follow: ["eye_l"], painted: ["eye_r"] }, acts: { land: ["hand_r"], lost: [], cues: { hand_r: ["sold"] } } };
+    expect(readCastView({ ...VIEW, candidates: [{ ...VIEW.candidates[0], forecast }] })?.candidates[0]?.forecast).toEqual(forecast);
+    const bad = readCastView({ ...VIEW, candidates: [{ ...VIEW.candidates[0], forecast: { eyes: "both" } }] });
+    expect(bad?.candidates).toHaveLength(1);
+    expect(bad?.candidates[0]).not.toHaveProperty("forecast");
+  });
 });
 
 describe("HTTP casting client", () => {

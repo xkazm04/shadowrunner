@@ -5,8 +5,11 @@
 // (the head turned, the parallax showing). Jaw and Turn are stills; Rest is still under reduced
 // motion (the player's own twin). Under each: what was not found, said plainly. "Cast this one"
 // hands that candidate to the forge; "None of these" re-rolls (the count left is shown); "Back to
-// the brief" returns to the card.
+// the brief" returns to the card. forge-pkg B: each cut draft also says what the paid steps will
+// make of it (its forecast: at least how many eyes follow chat, which acts land), and one draft may
+// carry a "Recommended" tag with its reason; the streamer still chooses.
 import { AvatarCanvas, type RigAssets } from "@sr/avatar";
+import { forecastLines, recommendDraft } from "@sr/forge/cast";
 import type { CastCandidateView, CastView } from "@sr/forge/wire";
 import { defaultLook, YAW_LIMIT_DEG, type Drive, type Rig } from "@sr/rig";
 import { useEffect, useId, useMemo, useState } from "react";
@@ -92,12 +95,22 @@ function Facts({ candidate }: { candidate: CastCandidateView }) {
   if (candidate.empty.length > 0) lines.push(`Cut came out empty: ${candidate.empty.map((n) => n.replaceAll("_", " ")).join(", ")}.`);
   for (const w of candidate.warnings) lines.push(`${w.charAt(0).toUpperCase()}${w.slice(1)}.`);
   if (candidate.state === "cut" && lines.length === 0) lines.push("Every planned part was found.");
+  const forecast = candidate.state === "cut" && candidate.forecast !== undefined ? forecastLines(candidate.forecast) : [];
   return (
-    <ul className={styles.facts}>
-      {lines.map((line) => (
-        <li key={line}>{line}</li>
-      ))}
-    </ul>
+    <>
+      <ul className={styles.facts}>
+        {lines.map((line) => (
+          <li key={line}>{line}</li>
+        ))}
+      </ul>
+      {forecast.length > 0 && (
+        <ul className={styles.forecast} aria-label="Once cast">
+          {forecast.map((line) => (
+            <li key={line}>{line}</li>
+          ))}
+        </ul>
+      )}
+    </>
   );
 }
 
@@ -122,6 +135,7 @@ export function CastSheet({ state, name, recorded, busy, onCast, onReroll, onBac
   const candidates = sheet?.candidates ?? [];
   const shown = Math.min(focus, Math.max(0, candidates.length - 1));
   const left = sheet?.rerollsLeft ?? 0;
+  const pick = useMemo(() => (ready ? recommendDraft(candidates.map((c) => c.forecast), candidates) : undefined), [ready, candidates]);
 
   return (
     <section className={styles.sheet} aria-label="Casting: three drafts" data-phase={state.phase}>
@@ -146,6 +160,12 @@ export function CastSheet({ state, name, recorded, busy, onCast, onReroll, onBac
           <li key={`${sheet?.batchId ?? ""}-${c.index}`} className={styles.card} data-state={c.state} data-shown={c.index === shown ? "" : undefined}>
             <Preview candidate={c} pose={pose} name={name} />
             <h3 className={styles.cardName}>Draft {String.fromCharCode(65 + c.index)}</h3>
+            {pick?.index === c.index && (
+              <p className={styles.recommended}>
+                <span className={styles.tag}>Recommended</span> {pick.reason.charAt(0).toUpperCase()}
+                {pick.reason.slice(1)}.
+              </p>
+            )}
             <Facts candidate={c} />
             <button type="button" className={styles.cast} disabled={!ready || busy || c.portraitUrl === undefined || c.state === "failed"} onClick={() => onCast(c.index)}>
               Cast this one

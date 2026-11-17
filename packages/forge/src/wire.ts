@@ -63,6 +63,19 @@ export interface CastCandidateView {
   warnings: string[];
   /** One line about the candidate (why it failed, or what a recorded one is). */
   note?: string;
+  /** forge-pkg B: what the paid steps will make of a cut draft (castForecast.ts); omitted when unknown. */
+  forecast?: CastForecast;
+}
+
+/**
+ * forge-pkg B, a cut draft's forecast, computed for free from the provisional rig. `eyes.follow`: the
+ * eye layers that will get an iris layer even without the iris-free edit (conservative: at least
+ * these follow chat); `painted`: the rest, which may stay one painted piece. `acts.land`: the brief's
+ * act parts with a non-empty layer in the cut; `lost`: those without; `cues`: each landing act's words.
+ */
+export interface CastForecast {
+  eyes: { follow: string[]; painted: string[] };
+  acts: { land: string[]; lost: string[]; cues: Record<string, string[]> };
 }
 
 /** Body of `GET /api/forge/drafts/:batchId` (L2). Optional fields omitted, never null. */

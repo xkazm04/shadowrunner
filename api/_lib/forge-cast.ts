@@ -20,6 +20,8 @@ import {
   CAST_SIZE,
   MAX_REROLLS,
   castCutId,
+  castForecast,
+  decodeImage,
   draftPrompt,
   missingParts,
   parseBriefPartsJson,
@@ -30,9 +32,12 @@ import {
   type CastCut,
   type CastPick,
   type CastRecord,
+  type CastForecast,
   type CastSlot,
   type ForgeJob,
+  type Rgba,
 } from "@sr/forge";
+import type { Rig } from "@sr/rig";
 import { COST_USD } from "./costs.js";
 import { ApiError, errorBody, errorResponse } from "./errors.js";
 import type { GeminiClient } from "./gemini.js";
@@ -209,6 +214,24 @@ async function partsStep(batch: CastBatch, gemini: GeminiClient, store: JobStore
   batch.status = "cutting";
 }
 
+/**
+ * forge-pkg B: the draft's forecast from the layer bytes the cut step already holds (no edit, no
+ * spend); undefined when it cannot be read, and the slot simply has none.
+ */
+function forecastOf(rig: Rig, files: Readonly<Record<string, Uint8Array>>, brief: CastBatch["brief"]): CastForecast | undefined {
+  try {
+    const images: Record<string, Rgba> = {};
+    for (const layer of rig.layers) {
+      const bytes = files[layer.file];
+      const image = bytes === undefined ? undefined : decodeImage(bytes);
+      if (image?.ok === true) images[layer.file] = image.value;
+    }
+    return castForecast(rig, images, brief);
+  } catch {
+    return undefined;
+  }
+}
+
 /** GET cutting: the next drawn candidate's provisional rig (fallback plate, no regions); none left -> ready. */
 async function cutStep(batch: CastBatch, store: JobStore<CastRecord>): Promise<void> {
   const i = batch.slots.findIndex((s) => s.state === "drafting");
@@ -227,7 +250,8 @@ async function cutStep(batch: CastBatch, store: JobStore<CastRecord>): Promise<v
     const folder = castCutId(batch.jobId, i);
     for (const [file, bytes] of Object.entries(assembled.value.files)) assets[file] = await store.putImage(folder, file, { bytes, contentType: "image/png" });
     await store.put({ ...cut, rig: assembled.value.rig, assets });
-    batch.slots[i] = { ...slot, state: "cut", empty: [...empty], warnings: assembled.value.warnings.map((w) => w.message) };
+    const forecast = forecastOf(assembled.value.rig, assembled.value.files, batch.brief);
+    batch.slots[i] = { ...slot, state: "cut", empty: [...empty], warnings: assembled.value.warnings.map((w) => w.message), ...(forecast === undefined ? {} : { forecast }) };
   } catch {
     batch.slots[i] = { ...slot, state: "uncut", note: "No working face could be cut from this draft; casting it asks for its parts again." };
   }
