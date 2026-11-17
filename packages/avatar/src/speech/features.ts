@@ -12,6 +12,9 @@
 //   mean normalisation: the voice's own timbre and the recording's colour cancel, the movement
 //   between sounds stays). FEATURES = 14 numbers per frame.
 // - Frame i is centred at i * FRAME_S.
+// - `frameFeatures` is the per-frame core (window, FFT, mel, DCT; no normalisation): the whole
+//   clip here normalises against its peak and its voiced mean, the live stream (speech/stream.ts)
+//   against running ones. `lowPassFor` is the resampler's filter, shared the same way.
 
 export const ANALYSIS_RATE = 16000;
 /** Hop between frames, seconds. */
@@ -80,24 +83,37 @@ export function fft(re: Float64Array, im: Float64Array): void {
   }
 }
 
+/** The anti-alias low-pass for going down from `sampleRate`: windowed sinc at 0.45 of the target rate, 8 lobes wide. */
+export interface LowPass {
+  /** 2 * half + 1 taps, centred. */
+  taps: Float64Array;
+  half: number;
+  /** The taps' sum (each output is divided by it). */
+  sum: number;
+}
+
+export function lowPassFor(sampleRate: number): LowPass {
+  const cut = (0.45 * ANALYSIS_RATE) / sampleRate;
+  const half = Math.ceil(4 / cut);
+  const taps = new Float64Array(2 * half + 1);
+  let sum = 0;
+  for (let i = -half; i <= half; i += 1) {
+    const x = 2 * cut * i;
+    const sinc = i === 0 ? 1 : Math.sin(Math.PI * x) / (Math.PI * x);
+    const w = 0.42 + 0.5 * Math.cos((Math.PI * i) / half) + 0.08 * Math.cos((2 * Math.PI * i) / half);
+    taps[i + half] = sinc * w;
+    sum += sinc * w;
+  }
+  return { taps, half, sum };
+}
+
 /** `samples` at ANALYSIS_RATE (a low-pass under the new Nyquist first when it goes down). */
 export function resample(samples: Float32Array, sampleRate: number): Float32Array {
   if (sampleRate === ANALYSIS_RATE) return samples;
   const ratio = sampleRate / ANALYSIS_RATE;
   let source = samples;
   if (ratio > 1) {
-    // Windowed-sinc low-pass at 0.45 of the target rate, 8 lobes wide.
-    const cut = (0.45 * ANALYSIS_RATE) / sampleRate;
-    const half = Math.ceil(4 / cut);
-    const taps = new Float64Array(2 * half + 1);
-    let sum = 0;
-    for (let i = -half; i <= half; i += 1) {
-      const x = 2 * cut * i;
-      const sinc = i === 0 ? 1 : Math.sin(Math.PI * x) / (Math.PI * x);
-      const w = 0.42 + 0.5 * Math.cos((Math.PI * i) / half) + 0.08 * Math.cos((2 * Math.PI * i) / half);
-      taps[i + half] = sinc * w;
-      sum += sinc * w;
-    }
+    const { taps, half, sum } = lowPassFor(sampleRate);
     source = new Float32Array(samples.length);
     const n = samples.length;
     for (let k = 0; k < n; k += 1) {
@@ -156,70 +172,100 @@ export interface SpeechFeatures {
   db: Float32Array;
 }
 
-/** The clip's frames, one every FRAME_S from t = 0. */
+/** Samples between frame centres at ANALYSIS_RATE. */
+export const HOP = Math.round(FRAME_S * ANALYSIS_RATE);
+/** A frame's window starts this many samples before its centre (and ends as many after). */
+export const HALF_WINDOW = WINDOW / 2;
+/** A frame's raw measures (`frameFeatures`): RMS energy, zero-crossing rate, then CEPSTRA cepstra. */
+export const RAW = 2 + CEPSTRA;
+export { CEPSTRA, FLOOR_DB, VOICED_DB };
+
+interface Kernel {
+  hamming: Float64Array;
+  dct: Float64Array;
+  re: Float64Array;
+  im: Float64Array;
+  power: Float64Array;
+  logMel: Float64Array;
+}
+
+let kernel: Kernel | undefined;
+
+/** The window, the DCT rows and the scratch buffers, built once (the core is synchronous). */
+function kernelOf(): Kernel {
+  kernel ??= {
+    hamming: Float64Array.from({ length: WINDOW }, (_, i) => 0.54 - 0.46 * Math.cos((2 * Math.PI * i) / (WINDOW - 1))),
+    // DCT-II rows for cepstra 1..CEPSTRA (c0, the overall level, is left out: energy stands in).
+    dct: Float64Array.from({ length: CEPSTRA * MEL_BANDS }, (_, i) => Math.cos((Math.PI * (Math.floor(i / MEL_BANDS) + 1) * ((i % MEL_BANDS) + 0.5)) / MEL_BANDS)),
+    re: new Float64Array(FFT_SIZE),
+    im: new Float64Array(FFT_SIZE),
+    power: new Float64Array(FFT_SIZE / 2 + 1),
+    logMel: new Float64Array(MEL_BANDS),
+  };
+  return kernel;
+}
+
+/**
+ * The per-frame core both paths share (the whole clip below, the live stream in speech/stream.ts):
+ * the window samples[start .. start + WINDOW) (a missing sample is 0) measured into
+ * out[at .. at + RAW): RMS energy, zero-crossing rate, CEPSTRA cepstra. Nothing is normalised here.
+ */
+export function frameFeatures(samples: ArrayLike<number>, start: number, out: Float64Array, at: number): void {
+  const { hamming, dct, re, im, power, logMel } = kernelOf();
+  const filters = melFilters();
+  re.fill(0);
+  im.fill(0);
+  let sq = 0;
+  let crossings = 0;
+  let prev = samples[start] ?? 0;
+  for (let i = 0; i < WINDOW; i += 1) {
+    const x = samples[start + i] ?? 0;
+    sq += x * x;
+    if (x >= 0 !== prev >= 0) crossings += 1;
+    re[i] = (x - 0.97 * prev) * (hamming[i] ?? 0);
+    prev = x;
+  }
+  fft(re, im);
+  for (let k = 0; k <= FFT_SIZE / 2; k += 1) power[k] = (re[k] ?? 0) ** 2 + (im[k] ?? 0) ** 2;
+  for (let m = 0; m < MEL_BANDS; m += 1) {
+    const filter = filters[m];
+    let acc = 1e-10;
+    if (filter !== undefined) for (let k = 0; k < filter.weights.length; k += 1) acc += (power[filter.from + k] ?? 0) * (filter.weights[k] ?? 0);
+    logMel[m] = Math.log(acc);
+  }
+  for (let c = 0; c < CEPSTRA; c += 1) {
+    let acc = 0;
+    for (let m = 0; m < MEL_BANDS; m += 1) acc += (logMel[m] ?? 0) * (dct[c * MEL_BANDS + m] ?? 0);
+    out[at + 2 + c] = acc / MEL_BANDS;
+  }
+  out[at] = Math.sqrt(sq / WINDOW);
+  out[at + 1] = crossings / WINDOW;
+}
+
+/** The clip's frames, one every FRAME_S from t = 0, normalised against the whole clip. */
 export function speechFeatures(input: Float32Array, sampleRate: number): SpeechFeatures {
   const samples = sampleRate > 0 ? resample(input, sampleRate) : new Float32Array(0);
-  const hop = Math.round(FRAME_S * ANALYSIS_RATE);
-  const frames = samples.length === 0 ? 0 : Math.ceil(samples.length / hop);
-  const filters = melFilters();
-  const hamming = Float64Array.from({ length: WINDOW }, (_, i) => 0.54 - 0.46 * Math.cos((2 * Math.PI * i) / (WINDOW - 1)));
-  // DCT-II rows for cepstra 1..CEPSTRA (c0, the overall level, is left out: energy stands in).
-  const dct = Float64Array.from({ length: CEPSTRA * MEL_BANDS }, (_, i) => Math.cos((Math.PI * (Math.floor(i / MEL_BANDS) + 1) * ((i % MEL_BANDS) + 0.5)) / MEL_BANDS));
-  const re = new Float64Array(FFT_SIZE);
-  const im = new Float64Array(FFT_SIZE);
-  const power = new Float64Array(FFT_SIZE / 2 + 1);
-  const logMel = new Float64Array(MEL_BANDS);
-  const cepstra = new Float64Array(frames * CEPSTRA);
-  const energy = new Float64Array(frames);
-  const zcr = new Float64Array(frames);
-  for (let f = 0; f < frames; f += 1) {
-    const start = f * hop - WINDOW / 2;
-    re.fill(0);
-    im.fill(0);
-    let sq = 0;
-    let crossings = 0;
-    let prev = samples[start] ?? 0;
-    for (let i = 0; i < WINDOW; i += 1) {
-      const x = samples[start + i] ?? 0;
-      sq += x * x;
-      if (x >= 0 !== prev >= 0) crossings += 1;
-      re[i] = (x - 0.97 * prev) * (hamming[i] ?? 0);
-      prev = x;
-    }
-    fft(re, im);
-    for (let k = 0; k <= FFT_SIZE / 2; k += 1) power[k] = (re[k] ?? 0) ** 2 + (im[k] ?? 0) ** 2;
-    for (let m = 0; m < MEL_BANDS; m += 1) {
-      const filter = filters[m];
-      let acc = 1e-10;
-      if (filter !== undefined) for (let k = 0; k < filter.weights.length; k += 1) acc += (power[filter.from + k] ?? 0) * (filter.weights[k] ?? 0);
-      logMel[m] = Math.log(acc);
-    }
-    for (let c = 0; c < CEPSTRA; c += 1) {
-      let acc = 0;
-      for (let m = 0; m < MEL_BANDS; m += 1) acc += (logMel[m] ?? 0) * (dct[c * MEL_BANDS + m] ?? 0);
-      cepstra[f * CEPSTRA + c] = acc / MEL_BANDS;
-    }
-    energy[f] = Math.sqrt(sq / WINDOW);
-    zcr[f] = crossings / WINDOW;
-  }
+  const frames = samples.length === 0 ? 0 : Math.ceil(samples.length / HOP);
+  const raw = new Float64Array(frames * RAW);
+  for (let f = 0; f < frames; f += 1) frameFeatures(samples, f * HOP - HALF_WINDOW, raw, f * RAW);
   let peak = 1e-6;
-  for (let f = 0; f < frames; f += 1) peak = Math.max(peak, energy[f] ?? 0);
+  for (let f = 0; f < frames; f += 1) peak = Math.max(peak, raw[f * RAW] ?? 0);
   const db = new Float32Array(frames);
-  for (let f = 0; f < frames; f += 1) db[f] = Math.max(FLOOR_DB, 20 * Math.log10((energy[f] ?? 0) / peak + 1e-9));
+  for (let f = 0; f < frames; f += 1) db[f] = Math.max(FLOOR_DB, 20 * Math.log10((raw[f * RAW] ?? 0) / peak + 1e-9));
   const mean = new Float64Array(CEPSTRA);
   let voiced = 0;
   for (let f = 0; f < frames; f += 1) {
     if (!((db[f] ?? FLOOR_DB) > VOICED_DB)) continue;
     voiced += 1;
-    for (let c = 0; c < CEPSTRA; c += 1) mean[c] = (mean[c] ?? 0) + (cepstra[f * CEPSTRA + c] ?? 0);
+    for (let c = 0; c < CEPSTRA; c += 1) mean[c] = (mean[c] ?? 0) + (raw[f * RAW + 2 + c] ?? 0);
   }
   for (let c = 0; c < CEPSTRA; c += 1) mean[c] = (mean[c] ?? 0) / Math.max(1, voiced);
   const values = new Float32Array(frames * FEATURES);
   for (let f = 0; f < frames; f += 1) {
     const at = f * FEATURES;
     values[at] = (db[f] ?? FLOOR_DB) / 10;
-    values[at + 1] = (zcr[f] ?? 0) * 10;
-    for (let c = 0; c < CEPSTRA; c += 1) values[at + 2 + c] = (cepstra[f * CEPSTRA + c] ?? 0) - (mean[c] ?? 0);
+    values[at + 1] = (raw[f * RAW + 1] ?? 0) * 10;
+    for (let c = 0; c < CEPSTRA; c += 1) values[at + 2 + c] = (raw[f * RAW + 2 + c] ?? 0) - (mean[c] ?? 0);
   }
   return { values, frames, db };
 }
