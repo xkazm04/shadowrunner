@@ -294,6 +294,52 @@ describe("Compare (requirement 7.2)", () => {
   });
 });
 
+describe("Compare's change list (rig/B: what changed, reverted one at a time)", () => {
+  const LABEL = "Hold to compare with the look as opened";
+  const eyeOpened = testRig().palette.eye;
+
+  async function pickEye(hex: string): Promise<void> {
+    const chip = view?.container.querySelector('[data-chip="light:eye"]');
+    if (chip === null || chip === undefined) throw new Error("no eye chip");
+    if (view?.container.querySelector('input[type="color"]') === null) await click(chip);
+    const picker = view?.container.querySelector<HTMLInputElement>('input[type="color"]');
+    if (picker === null || picker === undefined) throw new Error("no colour picker");
+    await slide(picker, hex);
+  }
+  const toggleList = (): HTMLElement => {
+    const el = view?.container.querySelector<HTMLElement>("[data-changes]");
+    if (el === null || el === undefined) throw new Error("no change list toggle");
+    return el;
+  };
+  const rows = (): string[] => [...(view?.container.querySelectorAll<HTMLElement>("[data-change]") ?? [])].map((r) => r.dataset.change ?? "");
+
+  it("a colour dragged back to the value it was opened with leaves nothing to compare", async () => {
+    await pickEye("#123456");
+    expect(disabled(LABEL)).toBe(false);
+    await pickEye(eyeOpened);
+    expect(last().look.palette.eye).toBe(eyeOpened);
+    expect(disabled(LABEL)).toBe(true);
+  });
+
+  it("lists each change; Revert on one row drops that change alone, as one undoable step", async () => {
+    await pickEye("#123456");
+    await fire(window, new Event("pointerup"));
+    await click(named("crown on the face"));
+    expect(toggleList().textContent).toContain("2");
+    await click(toggleList());
+    expect(toggleList().getAttribute("aria-expanded")).toBe("true");
+    expect(rows()).toEqual(["palette:eye", "hidden:crown"]);
+    await click(named("Revert Eye colour"));
+    expect(rows()).toEqual(["hidden:crown"]);
+    expect(last().look.palette.eye).toBe(eyeOpened);
+    expect(last().look.hidden).toEqual(["crown"]);
+    await click(named("Undo look change"));
+    expect(last().look.palette.eye).toBe("#123456");
+    expect(last().look.hidden).toEqual(["crown"]);
+    expect(rows()).toEqual(["palette:eye", "hidden:crown"]);
+  });
+});
+
 describe("rename and duplicate (requirement 7.3)", () => {
   async function field(): Promise<HTMLInputElement> {
     await click(named("Rename Test Ghost"));

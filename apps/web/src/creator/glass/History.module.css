@@ -108,6 +108,48 @@
   }
 }
 
+/* rig/B: the change list under the status line, one row per change since the look was opened. */
+.changes {
+  display: grid;
+  gap: var(--sr-space-1);
+  margin: 0;
+  padding: var(--sr-space-2);
+  border: thin solid var(--sr-line);
+  border-radius: var(--sr-radius-1);
+  background-color: var(--sr-surface-1);
+  list-style: none;
+}
+
+.change {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sr-space-2);
+  font-family: var(--sr-font-body);
+  font-size: var(--sr-size-text-sm);
+}
+
+.what {
+  color: var(--sr-text-strong);
+  font-weight: 700;
+}
+
+.delta {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  color: var(--sr-text-muted);
+  overflow-wrap: anywhere;
+}
+
+.hide {
+  position: absolute;
+  inline-size: 0.0625rem;
+  block-size: 0.0625rem;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .step:focus-visible,
 .compare:focus-visible,
 .rename:focus-visible,

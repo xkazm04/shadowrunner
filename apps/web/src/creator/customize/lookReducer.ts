@@ -20,6 +20,8 @@
 //   family order, an empty map left out). Retiring a retired family or restoring a painted one gives
 //   the same look back. "Reset to character default" (faceReset) resets the sliders but keeps the
 //   retirements: they have their own Restore, and a verdict on a face is not a slider tweak.
+// - rig/B: "revert" sets one change Compare lists (lookChanges) back to the look as opened
+//   (revertChange), every other key as it is; one undoable step like any discrete action.
 import {
   clampShape,
   defaultLook,
@@ -27,12 +29,14 @@ import {
   FACE_LIMITS,
   faceValue,
   isIdentityShape,
+  revertChange,
   withFaceValue,
   withRetired,
   type Emotion,
   type ExpressionFamily,
   type FaceField,
   type Look,
+  type LookChange,
   type Palette,
   type PartShape,
   type Rig,
@@ -53,7 +57,9 @@ export type LookAction =
   /** Back to the character's own profile: `look.face` deleted but for its retired faces. */
   | { type: "faceReset" }
   /** One family's painted face retired to procedural motion (`retired: true`) or restored. */
-  | { type: "retire"; family: ExpressionFamily; retired: boolean };
+  | { type: "retire"; family: ExpressionFamily; retired: boolean }
+  /** One change since `from` (the look as opened) set back to `from`'s value. */
+  | { type: "revert"; from: Look; change: Pick<LookChange, "area" | "key"> };
 
 const HEX = /^#?([0-9a-f]{6})$/i;
 
@@ -148,5 +154,7 @@ export function lookReducer(look: Look, action: LookAction): Look {
       if ((look.face?.expression?.faces?.[action.family] === "procedural") === action.retired) return look;
       return withFace(look, withRetired(look.face, action.family, action.retired));
     }
+    case "revert":
+      return revertChange(look, action.from, action.change);
   }
 }

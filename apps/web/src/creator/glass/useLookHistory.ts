@@ -5,11 +5,12 @@
 // - History is per character for the session: kept in a module map by record id and createdAt, so
 //   switching away and back (the editor remounts) keeps it, and a reload starts afresh. A kept
 //   history is used only while its present is the record's stored look; when the record changed
-//   under it (another tab, an import over it) the character starts a new history.
+//   under it (another tab, an import over it) the character starts a new history. "The same look"
+//   is @sr/rig sameLook (rig/B): structural, blind to key order.
 // - Ctrl+Z undoes, Ctrl+Shift+Z and Ctrl+Y redo (Cmd on a Mac), on window, except while a text
 //   field has focus (its own undo wins) or inside a dialog. Sliders and colour inputs are not text
 //   fields. The shell's keymap (app/keys.ts) binds none of these keys.
-import { type Look } from "@sr/rig";
+import { sameLook, type Look } from "@sr/rig";
 import { useCallback, useEffect, useMemo, useReducer } from "react";
 import { canRedo, canUndo, createHistory, push, redo, seal, undo, type History } from "../customize/lookHistory";
 import { lookReducer, type LookAction } from "../customize/lookReducer";
@@ -56,8 +57,6 @@ function reduce(h: History<Look>, msg: Msg): History<Look> {
       return seal(h);
   }
 }
-
-const sameLook = (a: Look, b: Look): boolean => a === b || JSON.stringify(a) === JSON.stringify(b);
 
 function begin(key: string, look: Look): History<Look> {
   const kept = sessions.get(key);

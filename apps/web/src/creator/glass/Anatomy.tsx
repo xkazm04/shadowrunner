@@ -21,9 +21,11 @@
 // (the reducer shares unchanged parts), and every callback here is stable (the library and the
 // look are read through refs), so a slider drag re-renders the glass, the dragged card and nothing
 // else (Anatomy.renders.dom.test.tsx).
+// rig/B: Compare is enabled by a change since opened (lookChanges), not a new look object, and
+// "Changes (n)" lists them under the status line (ChangeList), each reverted alone by a "revert" step.
 import type { VoiceId } from "@sr/engine";
-import { regionKey, resolveFace, resolveGesture, type Emotion, type ExpressionFamily, type FaceField, type Gesture, type Palette, type PartShape } from "@sr/rig";
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { lookChanges, regionKey, resolveFace, resolveGesture, type Emotion, type ExpressionFamily, type FaceField, type Gesture, type LookChange, type Palette, type PartShape } from "@sr/rig";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { CharacterRecord } from "../library/libraryStore";
 import { useArtRig, useRigAssets, type Library } from "../library/useLibrary";
 import { useSpeaker } from "../useSpeaker";
@@ -32,7 +34,7 @@ import { FaceCard } from "./FaceCard";
 import { FAMILY_EMOTION, FaceFamilies, useFacePreview } from "./FaceFamilies";
 import { Glass } from "./Glass";
 import { gestureLabel, useGesturePulse } from "./gestures";
-import { BeforeTag, HistoryBar } from "./HistoryBar";
+import { BeforeTag, ChangeList, HistoryBar } from "./HistoryBar";
 import { LayerRail, useBlobUrls } from "./LayerRail";
 import { MoodDial } from "./MoodDial";
 import { NameField } from "./NameField";
@@ -81,6 +83,7 @@ export function Anatomy({ record, library, cast, badge, readPixels = decodePixel
   const history = useLookHistory(record);
   const { look, dispatch } = history;
   const [comparing, setComparing] = useState(false);
+  const [listing, setListing] = useState(false);
   const art = useArtRig(record.rig);
   const [tab, setTab] = useState<SignalTab>("mood");
   const [part, setPart] = useState<string | undefined>(undefined);
@@ -158,6 +161,9 @@ export function Anatomy({ record, library, cast, badge, readPixels = decodePixel
   const onFace = useCallback((field: FaceField, value: number) => dispatch({ type: "face", field, value, rig }), [dispatch, rig]);
   const onFaceReset = useCallback(() => dispatch({ type: "faceReset" }), [dispatch]);
   const onRetire = useCallback((family: ExpressionFamily, retired: boolean) => dispatch({ type: "retire", family, retired }), [dispatch]);
+  const opened = history.opened;
+  const changes = useMemo(() => lookChanges(rig, opened, look), [rig, opened, look]);
+  const onRevert = useCallback((change: LookChange) => dispatch({ type: "revert", from: opened, change }), [dispatch, opened]);
   const onPick = (point: [number, number]): void => {
     void glassPick.pick(point).then((hit) => {
       if (hit !== undefined) select(hit.layer, hit.slot);
@@ -220,9 +226,11 @@ export function Anatomy({ record, library, cast, badge, readPixels = decodePixel
               canRedo={history.canRedo}
               onUndo={history.undo}
               onRedo={history.redo}
-              canCompare={look !== history.opened}
+              changes={changes.length}
               comparing={comparing}
               onCompare={setComparing}
+              listing={listing}
+              onListing={setListing}
             />
             <button type="button" className={styles.reset} disabled={!changed} onClick={() => dispatch({ type: "reset", rig: record.rig })}>
               Reset look
@@ -232,6 +240,7 @@ export function Anatomy({ record, library, cast, badge, readPixels = decodePixel
             </span>
           </span>
         </div>
+        {listing && changes.length > 0 && <ChangeList changes={changes} onRevert={onRevert} />}
         {cast}
       </section>
       <aside className={signal.signal} aria-label="Signal">

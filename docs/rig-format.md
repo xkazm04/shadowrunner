@@ -464,6 +464,19 @@ a valid Rig. It returns `{ rig, warnings }`, where each warning is `{ layer, mes
   with a decoded look's `regions` (keys `layer/slot`, values `#rrggbb`) and `shape` (six finite
   numbers within `SHAPE_LIMITS`); with a rig, keys must name its layers and region slots. The web
   library runs it on read.
+- `lookChanges(rig, from, to)` (`packages/rig/src/lookDiff.ts`) lists what changed from one look
+  to another as `LookChange { area, key, label, before?, after? }`, one change per palette key,
+  hidden layer, emotion, gesture, region key, shape layer, face field (`FACE_FIELDS` by dotted path,
+  then `expression.faces.<family>`), `motion.spring`, `turn.warp` and `turn.light`, in that order
+  (keys sorted within an area). `label` is for people ("Eye colour", "horn: Horn tip", where the
+  slot name comes from the rig's `regions.slots`). A side where the key is absent has no
+  `before` / `after`. A hidden layer or a retired family is `true` / `false`. Key order never counts
+  as a change. The creator's Compare lists these changes.
+- `revertChange(look, from, change)` sets that one change back to `from`'s value. It deletes the key
+  when `from` has none, and leaves an emptied map out. Every other change is kept, so
+  `lookChanges(rig, from, result)` is the old list without `change`.
+- `sameLook(a, b)` is structural equality over the same fields. It ignores key order and the order of
+  `hidden`, and it is true exactly when `lookChanges` is empty.
 
 ### Face profile
 

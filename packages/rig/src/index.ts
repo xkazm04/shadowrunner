@@ -20,4 +20,5 @@ export * from "./morph.js";
 export * from "./validateMorph.js";
 export * from "./validateMouth.js";
 export * from "./sections.js";
+export * from "./lookDiff.js";
 export type { Problem, SectionRead } from "./read.js";
