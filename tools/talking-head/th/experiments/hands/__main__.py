@@ -3,9 +3,13 @@
   image <variant.png>...           identity of each waist-up variant vs Iris's portrait (JSON)
   line [--text T] [--file F]       speak the test line into <out>/line.wav (Kokoro, Iris's voice)
   health                           nvlddmkm events in the last 30 min + nvidia-smi
+  check <clip.mp4>...              hand check: score, worst 0.5 s, flagged-frame sheets
+  seams <clip.mp4>                 a --long take's joins: frame and face step, per-window SyncNet
   finish <raw.mp4> <name>          clip.mp4 (with line.wav), sheet.png, figures.json in <out>/<name>
   sa [--kind rec-vec|square] ...   StableAvatar-1.3B at 480x832 on the waist-up image, then finish
   emv3 [--steps 8] ...             EchoMimicV3-Flash (offloaded components) on it, then finish
+                                   (levers: --seed --audio-cfg --negative --no-teacache --shift;
+                                   --long renders a 15-20 s line in continued windows)
 """
 
 from __future__ import annotations
@@ -53,6 +57,32 @@ def _finish(args: argparse.Namespace) -> None:
     print(json.dumps(fig, indent=2))
 
 
+def _check(args: argparse.Namespace) -> None:
+    from .handsheet import report
+
+    rows = {}
+    for c in args.clips:
+        clip = Path(c)
+        r = report(clip, clip.parent)
+        rows[str(clip)] = {k: r[k] for k in ("handScore", "handWorst", "handWorstAt", "flagKinds")}
+        fig = clip.parent / "figures.json"
+        if fig.is_file():  # keep a finished take's figures in step with a re-run check
+            f = json.loads(fig.read_text(encoding="utf-8"))
+            fig.write_text(json.dumps({**f, **rows[str(clip)]}, indent=2) + chr(10), encoding="utf-8")
+    print(json.dumps(rows, indent=2))
+
+
+def _seams(args: argparse.Namespace) -> None:
+    from . import emv3
+    from .seam import report
+
+    clip = Path(args.clip)
+    st = json.loads((clip.parent / "figures.json").read_text(encoding="utf-8"))["settings"]
+    plan = emv3.window_plan(st["frames"], st["window"], st["overlap"])
+    print(json.dumps(report(clip, main_checkout() / PORTRAIT, plan, st["overlap"], clip.parent),
+                     indent=2))
+
+
 def _sa(args: argparse.Namespace) -> None:
     import shutil
 
@@ -85,26 +115,36 @@ def _emv3(args: argparse.Namespace) -> None:
     from .finish import finish
     from .run import run
 
-    out = out_root() / args.name
+    out = (Path(args.out) if args.out else out_root()) / args.name
     work = out / "work"
     image = Path(args.image) if args.image else out_root() / "gen" / "waist-a.png"
     out.mkdir(parents=True, exist_ok=True)
     ref = out / f"reference{image.suffix}"
     shutil.copyfile(image, ref)
     wav = Path(args.wav) if args.wav else out_root() / "line-short.wav"
-    frames = emv3.frames_for(duration_s(wav))
+    window = emv3.WINDOW if args.long else 0
+    frames = emv3.frames_for(duration_s(wav), cap=None if args.long else emv3.MAX_FRAMES)
     settings = {"steps": args.steps, "frames": frames, "seed": args.seed, "audioCfg": args.audio_cfg,
                 "textCfg": args.text_cfg, "offload": not args.full_load, "image": str(image),
-                "wav": str(wav), "sampleArea": list(emv3.SAMPLE_AREA), "prompt": args.prompt}
+                "wav": str(wav), "sampleArea": list(emv3.SAMPLE_AREA), "prompt": args.prompt,
+                "negative": args.negative, "teacache": not args.no_teacache, "shift": args.shift,
+                "window": window, "overlap": args.overlap if window else 0,
+                "audioChunk": args.audio_chunk}
     emv3.write_driver()
     argv = emv3.command(ref, wav, work, args.seed, args.steps, frames, args.audio_cfg, args.text_cfg,
-                        emv3.PROMPTS[args.prompt])
+                        emv3.PROMPTS[args.prompt], emv3.NEGATIVES[args.negative], args.shift)
     rec = run("echomimicv3-flash", emv3.env(), argv, out, settings,
-              extra_env={"TH_EMV3_OFFLOAD": "0" if args.full_load else "1"})
+              extra_env=emv3.driver_env(not args.full_load, not args.no_teacache, window, args.overlap,
+                                        args.audio_chunk))
     raw = out / "raw.mp4"
     shutil.move(str(emv3.output(work, ref)), raw)
     fig = finish(raw, wav, main_checkout() / PORTRAIT, out,
                  {"renderS": rec.render_s, "vramPeakMiB": rec.vram_peak_mib, "settings": settings})
+    if window:
+        from .seam import report
+
+        plan = emv3.window_plan(frames, window, args.overlap)
+        fig["seams"] = report(out / "clip.mp4", main_checkout() / PORTRAIT, plan, args.overlap, out)
     print(json.dumps(fig, indent=2))
 
 
@@ -125,6 +165,12 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("name")
     p.add_argument("--wav", help="audio to mux (default <out>/line.wav)")
     p.set_defaults(fn=_finish)
+    p = sub.add_parser("check", help="per-frame hand check: hands.json + sheets beside each clip")
+    p.add_argument("clips", nargs="+")
+    p.set_defaults(fn=_check)
+    p = sub.add_parser("seams", help="seams of a --long take: frame/face step at each join")
+    p.add_argument("clip")
+    p.set_defaults(fn=_seams)
     p = sub.add_parser("sa", help="StableAvatar-1.3B candidate")
     p.add_argument("--kind", choices=("rec-vec", "square"), default="rec-vec")
     p.add_argument("--steps", type=int, default=50)
@@ -144,6 +190,15 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--image", help="waist-up reference (default <out>/gen/waist-a.png)")
     p.add_argument("--wav", help="line audio (default <out>/line-short.wav, within 137 frames)")
     p.add_argument("--name", default="emv3")
+    p.add_argument("--out", help="output root (default var/talking-head/hands)")
+    p.add_argument("--negative", choices=("upstream", "fingers"), default="upstream")
+    p.add_argument("--no-teacache", action="store_true", help="render every step in full")
+    p.add_argument("--shift", type=float, default=5.0)
+    p.add_argument("--long", action="store_true",
+                   help="whole line in windows with motion-frame continuation")
+    p.add_argument("--overlap", type=int, default=9, help="motion frames carried over (4k + 1)")
+    p.add_argument("--audio-chunk", type=int, default=0,
+                   help="wav2vec features per N-frame chunk (0 = over the whole line, upstream)")
     p.set_defaults(fn=_emv3)
     args = ap.parse_args(argv)
     args.fn(args)

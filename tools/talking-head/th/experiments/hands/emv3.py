@@ -16,6 +16,7 @@ streaming any large model layer by layer. Upstream code is not edited.
 
 from __future__ import annotations
 
+import math
 from pathlib import Path
 
 from ...arms.base import ArmEnv
@@ -52,32 +53,16 @@ GESTURE_PROMPT = ("A woman with a silver-grey bob and a black headset stands wai
                   "background integrity matching the reference image's spatial configuration, "
                   "lighting conditions, and color temperature.")
 PROMPTS = {"presenter": PROMPT, "gesture": GESTURE_PROMPT}
-
-DRIVER = '''"""th iris-hands driver (written by th/experiments/hands/emv3.py): infer_flash.main() with the
-one pipeline.to(cuda) replaced by enable_model_cpu_offload when TH_EMV3_OFFLOAD=1."""
-import os
-import sys
-
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import infer_flash  # noqa: E402
-from src.pipeline_wan_fun_inpaint_audio_2512 import WanFunInpaintAudioPipeline as P  # noqa: E402
-
-_to = P.to
-
-
-def _offload_to(self, *args, **kwargs):
-    dev = kwargs.get("device", args[0] if args else None)
-    if os.environ.get("TH_EMV3_OFFLOAD") == "1" and dev is not None and str(dev).startswith("cuda"):
-        if not getattr(self, "_th_offloaded", False):
-            self.enable_model_cpu_offload(device=dev)
-            self._th_offloaded = True
-        return self
-    return _to(self, *args, **kwargs)
-
-
-P.to = _offload_to
-infer_flash.main()
-'''
+# --negative_prompt: upstream's default already names bad, twisted and fused hands; "fingers" adds
+# extra/missing fingers. Note: the Flash pipeline encodes the negative prompt but its denoising loop
+# never uses it (the guided pass is audio-free, not negative-text), and --guidance_scale only
+# switches that pass on (> 1); round 2 measures this rather than assuming it.
+NEGATIVES = {"upstream": None,
+             "fingers": ("Deformed hands, mutated hands, malformed fingers, extra fingers, missing "
+                         "fingers, six fingers, fused fingers, twisted wrists, broken hands, "
+                         "blurry hands, bad anatomy.")}
+WINDOW = 121   # frames per window for a long line (the Flash card's cap is 137; 4k + 1)
+OVERLAP = 9    # motion frames carried into the next window: 1 + 8 = three whole latent frames
 
 
 def env() -> ArmEnv:
@@ -91,18 +76,20 @@ def setup() -> None:
                 "--index-strategy", "unsafe-best-match")
 
 
-def frames_for(seconds: float, fps: int = 25) -> int:
-    """Upstream's length rule: min(audio frames, cap), then down to 4k + 1 (the VAE's stride)."""
-    n = min(int(seconds * fps), MAX_FRAMES)
+def frames_for(seconds: float, fps: int = 25, cap: int | None = MAX_FRAMES) -> int:
+    """Upstream's length rule: min(audio frames, cap), then down to 4k + 1 (the VAE's stride).
+    `cap=None` for a windowed long line."""
+    n = int(seconds * fps) if cap is None else min(int(seconds * fps), cap)
     return (n - 1) // 4 * 4 + 1
 
 
 def command(reference: Path, wav: Path, work: Path, seed: int, steps: int, frames: int,
-            audio_cfg: float, text_cfg: float, prompt: str = PROMPT) -> list[str]:
+            audio_cfg: float, text_cfg: float, prompt: str = PROMPT, negative: str | None = None,
+            shift: float = 5.0, area: tuple[int, int] = SAMPLE_AREA) -> list[str]:
     base = ArmEnv("diffusion-sa").models / "Wan2.1-Fun-V1.1-1.3B-InP"
     w2v = ArmEnv("diffusion-it").models / "chinese-wav2vec2-base"
     dit = models_dir("hands-emv3") / "transformer" / "diffusion_pytorch_model.safetensors"
-    return [
+    argv = [
         "python", "th_hands_flash.py",
         "--image_path", str(reference.resolve()), "--audio_path", str(wav.resolve()),
         "--prompt", prompt, "--num_inference_steps", str(steps),
@@ -114,16 +101,43 @@ def command(reference: Path, wav: Path, work: Path, seed: int, steps: int, frame
         "--neg_scale", "1.0", "--neg_steps", "0", "--seed", str(seed), "--enable_teacache",
         "--teacache_threshold", "0.1", "--num_skip_start_steps", "5", "--riflex_k", "6",
         "--ulysses_degree", "1", "--ring_degree", "1", "--weight_dtype", "bfloat16",
-        "--sample_size", str(SAMPLE_AREA[0]), str(SAMPLE_AREA[1]), "--fps", "25",
-        "--add_prompt", "", "--shift", "5.0",
+        "--sample_size", str(area[0]), str(area[1]), "--fps", "25",
+        "--add_prompt", "", "--shift", str(shift),
     ]
+    if negative is not None:
+        argv += ["--negative_prompt", negative]
+    return argv
+
+
+def driver_env(offload: bool, teacache: bool, window: int = 0, overlap: int = OVERLAP,
+               audio_chunk: int = 0) -> dict[str, str]:
+    return {"TH_EMV3_OFFLOAD": "1" if offload else "0", "TH_EMV3_TEACACHE": "1" if teacache else "0",
+            "TH_EMV3_WINDOW": str(window), "TH_EMV3_OVERLAP": str(overlap),
+            "TH_EMV3_AUDIO_CHUNK": str(audio_chunk)}
 
 
 def write_driver() -> Path:
+    """Copy flash_driver.py (offload, TeaCache and window patches) into the clone."""
     p = env().repo / "th_hands_flash.py"
-    p.write_text(DRIVER, encoding="utf-8", newline="\n")
+    p.write_bytes((Path(__file__).parent / "flash_driver.py").read_bytes())
     return p
 
 
 def output(work: Path, reference: Path) -> Path:
     return work / f"{reference.stem}_output.mp4"
+
+
+def window_plan(total: int, window: int = WINDOW, overlap: int = OVERLAP) -> list[tuple[int, int]]:
+    """(start, length) of each window, as flash_driver.plan renders them (a copy: the driver runs
+    in the EMV3 venv and cannot import `th`; a test keeps the two equal)."""
+    if total <= window:
+        return [(0, total)]
+    count = math.ceil((total - overlap) / (window - overlap))
+    stride = math.ceil((total - overlap) / count / 4) * 4
+    out, start = [], 0
+    while True:
+        n = min(stride + overlap, total - start)
+        out.append((start, n))
+        if start + n >= total:
+            return out
+        start += n - overlap
