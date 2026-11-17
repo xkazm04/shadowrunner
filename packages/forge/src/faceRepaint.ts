@@ -127,12 +127,14 @@ export function readRepaintCandidate(v: unknown): RepaintCandidate | undefined {
     if (!isRecord(p) || !isRecord(p.layers) || !isRecord(p.assets)) return undefined;
     const entries = Object.entries(p.layers);
     if (entries.length === 0 || entries.length > MAX_PATCHES) return undefined;
-    const layers: Record<string, LayerPatch> = {};
+    const read: [string, LayerPatch][] = [];
     for (const [name, raw] of entries) {
       const patch = readLayerPatch(raw);
       if (!LAYER_NAME.test(name) || patch === undefined) return undefined;
-      layers[name] = patch;
+      read.push([name, patch]);
     }
+    // fromEntries defines own keys; `layers[name] = patch` would set the prototype for "__proto__".
+    const layers: Record<string, LayerPatch> = Object.fromEntries(read);
     const assets: Record<string, string> = {};
     for (const patch of Object.values(layers)) {
       for (const file of [patch.file, ...(patch.socket === undefined ? [] : [patch.socket])]) {

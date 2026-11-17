@@ -131,6 +131,14 @@ describe("readRepaintCandidate", () => {
     );
   });
 
+  it("keeps a layer named __proto__ as an own key, never as the prototype (fast-check seed 103405039)", () => {
+    const layer = { file: "a.joy_r1.png", bbox: [0, 0, 1, 1], mode: "over" };
+    const wire = `{"family":"joy","ok":true,"plane":"live","left":{"family":0,"job":0},"patch":{"layers":{"__proto__":${JSON.stringify(layer)},"a":${JSON.stringify(layer)}},"assets":{"a.joy_r1.png":"https://x/a.png"}}}`;
+    const read = readRepaintCandidate(JSON.parse(wire));
+    expect(read && Object.keys(read.patch?.layers ?? {})).toEqual(["__proto__", "a"]);
+    expect(read && Object.getPrototypeOf(read.patch?.layers)).toBe(Object.prototype);
+  });
+
   it("never throws and refuses missing files, paths, bad boxes and unknown families", () => {
     fc.assert(fc.property(fc.anything(), (v) => void readRepaintCandidate(v)));
     const good = { file: "head.joy_r1.png", bbox: [1, 2, 3, 4], mode: "over" };
