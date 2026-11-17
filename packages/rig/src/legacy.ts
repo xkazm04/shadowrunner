@@ -12,6 +12,7 @@
 // validateRig to check, so a sidecar merged into layers.json survives the import.
 import type { Result } from "./result.js";
 import { phaseFromName } from "./motion.js";
+import { isRecord, type Fields } from "./read.js";
 import { RIG_VERSION, type LayerKind, type Motion, type Palette, type Rig } from "./types.js";
 import { validateRig, type RigError } from "./validate.js";
 import { readFloat, readPulse, type MotionCanvas } from "./validateMotion.js";
@@ -54,10 +55,6 @@ const CROWN: Mapping = { kind: "crown", follow: "head" };
 const UNKNOWN: Mapping = { kind: "accessory" };
 
 const SLUG = /^[a-z0-9_-]+$/;
-
-type Fields = Record<string, unknown>;
-const isRecord = (value: unknown): value is Fields =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
 
 const shape = (path: string, message: string, layer?: string): RigError => ({
   code: "bad_shape",

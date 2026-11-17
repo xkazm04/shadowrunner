@@ -6,52 +6,17 @@
 // (`bbox_out_of_bounds`, `bad_color`), as for the layer's own bbox and the palette.
 import { ACT_KINDS, readAct } from "./act.js";
 import { EXPRESSION_FAMILIES, MAX_REGION_SLOTS, SHAPE_LIMITS } from "./control.js";
+import { describe, isFiniteNumber, isRecord, Reader, type Fields, type FileRule, type Problem } from "./read.js";
 import type { ExpressionFamily, LayerAct, LayerPatch, LayerRegions, PartShape, Rig, RegionSlot } from "./types.js";
 
-export interface ControlProblem {
-  path: string;
-  message: string;
-}
-
-type Fields = Record<string, unknown>;
-const isRecord = (value: unknown): value is Fields => typeof value === "object" && value !== null && !Array.isArray(value);
-const isFiniteNumber = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
+export type ControlProblem = Problem;
+export type { FileRule };
 const SLOT_ID = /^[a-z0-9_]+$/;
 const HEX = /^#[0-9a-f]{6}$/i;
 const PATCH_MODES: readonly LayerPatch["mode"][] = ["over", "replace"];
 const isFamily = (key: string): key is ExpressionFamily => (EXPRESSION_FAMILIES as readonly string[]).includes(key);
 
-function describe(value: unknown): string {
-  if (value === undefined) return "missing";
-  if (value === null) return "null";
-  if (Array.isArray(value)) return "an array";
-  if (typeof value === "number" || typeof value === "boolean") return String(value);
-  return `a ${typeof value}`;
-}
-
-/** Why a file name is unusable, or undefined (validate.ts's rule for layer files). */
-export type FileRule = (file: string) => string | undefined;
-
-class ControlReader {
-  readonly problems: ControlProblem[] = [];
-
-  private readonly fileRule: FileRule;
-
-  constructor(fileRule: FileRule) {
-    this.fileRule = fileRule;
-  }
-
-  fail(path: string, message: string): undefined {
-    this.problems.push({ path, message: `${path}: ${message}` });
-    return undefined;
-  }
-
-  file(value: unknown, path: string): string | undefined {
-    if (typeof value !== "string") return this.fail(path, `expected a file name, got ${describe(value)}`);
-    const problem = this.fileRule(value);
-    return problem === undefined ? value : this.fail(path, `${JSON.stringify(value)} ${problem}`);
-  }
-
+class ControlReader extends Reader {
   bbox(value: unknown, path: string): LayerPatch["bbox"] | undefined {
     const items: unknown[] = Array.isArray(value) ? Array.from(value) : [];
     if (items.length !== 4 || !items.every(isFiniteNumber)) return this.fail(path, `expected a tuple of 4 finite numbers, got ${describe(value)}`);

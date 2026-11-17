@@ -20,54 +20,19 @@
 //   is `bbox_out_of_bounds` at its own path.
 import { EXPRESSION_FAMILIES } from "./control.js";
 import { isMorphTrack, MORPH_GAIN_TRACKS, MORPH_MAX_KEYS, MORPH_MAX_STOPS, MORPH_TRACKS } from "./morph.js";
+import { describe, fileProblem, isFiniteNumber, isRecord, Reader, type FileRule, type Problem } from "./read.js";
 import type { MorphGainTrack, MorphKey, MorphSway, Rig, RigMorph } from "./types.js";
 
-export interface MorphProblem {
-  path: string;
-  message: string;
-}
+export type MorphProblem = Problem;
 
-/** Why a file name is unusable, or undefined (validate.ts's rule for layer files). */
-type FileRule = (file: string) => string | undefined;
 type Box = [x: number, y: number, w: number, h: number];
-type Fields = Record<string, unknown>;
-
-const isRecord = (value: unknown): value is Fields => typeof value === "object" && value !== null && !Array.isArray(value);
-const isFiniteNumber = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
 const KEY_ID = /^[a-z0-9_]+$/;
 /** `MorphSway.amp` at most this share of the rig's width. */
 export const MORPH_SWAY_MAX = 0.05;
 /** `MorphKey.flowMax` upper bound, canvas px. */
 export const MORPH_FLOW_MAX = 256;
 
-function describe(value: unknown): string {
-  if (value === undefined) return "missing";
-  if (value === null) return "null";
-  if (Array.isArray(value)) return "an array";
-  if (typeof value === "number" || typeof value === "boolean") return String(value);
-  return `a ${typeof value}`;
-}
-
-class MorphReader {
-  readonly problems: MorphProblem[] = [];
-
-  private readonly fileRule: FileRule;
-
-  constructor(fileRule: FileRule) {
-    this.fileRule = fileRule;
-  }
-
-  fail(path: string, message: string): undefined {
-    this.problems.push({ path, message: `${path}: ${message}` });
-    return undefined;
-  }
-
-  file(value: unknown, path: string): string | undefined {
-    if (typeof value !== "string") return this.fail(path, `expected a file name, got ${describe(value)}`);
-    const problem = this.fileRule(value);
-    return problem === undefined ? value : this.fail(path, `${JSON.stringify(value)} ${problem}`);
-  }
-
+class MorphReader extends Reader {
   /** An integer box with w, h > 0 and x, y >= 0. */
   box(value: unknown, path: string): Box | undefined {
     const items: unknown[] = Array.isArray(value) ? Array.from(value) : [];
@@ -182,7 +147,7 @@ class MorphReader {
 }
 
 /** `Rig.morph` at `path`; absent is fine. `width` bounds the sway's reach. */
-export function readMorph(value: unknown, path: string, width: number | undefined, fileRule: FileRule): { morph?: RigMorph; problems: MorphProblem[] } {
+export function readMorph(value: unknown, path: string, width: number | undefined, fileRule: FileRule = fileProblem): { morph?: RigMorph; problems: MorphProblem[] } {
   if (value === undefined) return { problems: [] };
   const reader = new MorphReader(fileRule);
   const morph = reader.morph(value, path, width);
@@ -220,4 +185,39 @@ export function checkMorph(rig: Rig): MorphCheck[] {
     if (x < 0 || y < 0 || x > rig.width || y > rig.height) out.push({ code: "bbox_out_of_bounds", message: `morph eye [${x}, ${y}] leaves the ${rig.width} x ${rig.height} canvas`, path: `$.morph.eyes[${i}]` });
   });
   return out;
+}
+
+/** A morph key in contract order; `at`, `flowCell` and `flowMax` only when present. */
+function wireKey(key: MorphKey): MorphKey {
+  const box = (b: MorphKey["bbox"]): MorphKey["bbox"] => [b[0], b[1], b[2], b[3]];
+  return {
+    id: key.id,
+    track: key.track,
+    ...(key.at === undefined ? {} : { at: key.at }),
+    bbox: box(key.bbox),
+    cell: box(key.cell),
+    ...(key.flowCell === undefined ? {} : { flowCell: box(key.flowCell) }),
+    ...(key.flowMax === undefined ? {} : { flowMax: key.flowMax }),
+    ...(key.backCell === undefined ? {} : { backCell: box(key.backCell) }),
+    ...(key.part === undefined ? {} : { part: key.part }),
+  };
+}
+
+/** RigMorph.mouthGain (round 6) in MORPH_GAIN_TRACKS order, tracks without a gain omitted. */
+function wireGain(gain: NonNullable<RigMorph["mouthGain"]>): NonNullable<RigMorph["mouthGain"]> {
+  return Object.fromEntries(MORPH_GAIN_TRACKS.flatMap((track) => (gain[track] === undefined ? [] : [[track, gain[track]]])));
+}
+
+/** Rig.morph (companion-lanes) in contract order. */
+export function wireMorph(morph: RigMorph): RigMorph {
+  const [[lx, ly], [rx, ry]] = morph.eyes;
+  return {
+    layer: morph.layer,
+    atlas: morph.atlas,
+    ...(morph.flow === undefined ? {} : { flow: morph.flow }),
+    keys: morph.keys.map(wireKey),
+    eyes: [[lx, ly], [rx, ry]],
+    ...(morph.sway === undefined ? {} : { sway: { map: morph.sway.map, amp: morph.sway.amp } }),
+    ...(morph.mouthGain === undefined ? {} : { mouthGain: wireGain(morph.mouthGain) }),
+  };
 }

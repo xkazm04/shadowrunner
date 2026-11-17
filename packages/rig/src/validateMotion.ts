@@ -9,6 +9,7 @@
 // [0, SPRING_STRENGTH_MAX] at `<path>.spring`, the whole field at `<path>` when not an object.
 // `Rig.turn` / `Look.turn` (perfection-pass V2) are read by `readRigTurn` the same way: `warp` and
 // `light` in [0, 1] at `<path>.warp` / `<path>.light`.
+import { describe, isRecord, Reader, type Fields, type Problem } from "./read.js";
 import type { BlinkMotion, FloatMotion, Motion, PulseMotion, RigMotion, RigTurn } from "./types.js";
 
 /** Float amplitude limit, as a fraction of the canvas width (x) and height (y). */
@@ -21,10 +22,7 @@ export const FLOAT_ROT_MAX_DEG = 15;
 /** Pulse amplitude limit (a light gain of up to 1 + this). */
 export const PULSE_AMP_MAX = 1;
 
-export interface MotionProblem {
-  path: string;
-  message: string;
-}
+export type MotionProblem = Problem;
 
 export interface MotionRead {
   /** The motion, as a fresh object of contract fields only; undefined when absent or faulty. */
@@ -38,35 +36,7 @@ export interface MotionCanvas {
   height?: number;
 }
 
-type Fields = Record<string, unknown>;
-const isRecord = (value: unknown): value is Fields => typeof value === "object" && value !== null && !Array.isArray(value);
-const isFiniteNumber = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
-
-function describe(value: unknown): string {
-  if (value === undefined) return "missing";
-  if (value === null) return "null";
-  if (Array.isArray(value)) return "an array";
-  if (typeof value === "number" || typeof value === "boolean") return String(value);
-  return `a ${typeof value}`;
-}
-
-class MotionReader {
-  readonly problems: MotionProblem[] = [];
-
-  fail(path: string, message: string): undefined {
-    this.problems.push({ path, message: `${path}: ${message}` });
-    return undefined;
-  }
-
-  /** A finite number in [lo, hi] (or [lo, hi) when `open`); `hi` undefined means no upper bound. */
-  number(value: unknown, path: string, lo: number, hi: number | undefined, open = false): number | undefined {
-    const range = hi === undefined ? `>= ${lo}` : `in [${lo}, ${hi}${open ? ")" : "]"}`;
-    if (!isFiniteNumber(value)) return this.fail(path, `expected a number ${range}, got ${describe(value)}`);
-    const above = hi !== undefined && (open ? value >= hi : value > hi);
-    if (value < lo || above) return this.fail(path, `expected a number ${range}, got ${value}`);
-    return value;
-  }
-
+class MotionReader extends Reader {
   phase(fields: Fields, path: string): number | undefined {
     return fields.phase === undefined ? undefined : this.number(fields.phase, `${path}.phase`, 0, 1, true);
   }
@@ -141,6 +111,12 @@ export function readRigMotion(value: unknown, path: string): { motion?: RigMotio
   if (reader.problems.length > 0) return { problems: reader.problems };
   return { motion: spring === undefined ? {} : { spring }, problems: [] };
 }
+
+/** `Rig.motion` in contract order. */
+export const wireRigMotion = (motion: RigMotion): RigMotion => (motion.spring === undefined ? {} : { spring: motion.spring });
+
+/** `Rig.turn` in contract order. */
+export const wireRigTurn = (turn: RigTurn): RigTurn => ({ ...(turn.warp === undefined ? {} : { warp: turn.warp }), ...(turn.light === undefined ? {} : { light: turn.light }) });
 
 /**
  * `Rig.turn` or `Look.turn` at `path` (perfection-pass V2); absent is fine. Faults: not an object

@@ -18,3 +18,6 @@ export * from "./spring.js";
 export * from "./turn.js";
 export * from "./morph.js";
 export * from "./validateMorph.js";
+export * from "./validateMouth.js";
+export * from "./sections.js";
+export type { Problem, SectionRead } from "./read.js";

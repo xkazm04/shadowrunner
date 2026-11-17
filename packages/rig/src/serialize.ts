@@ -1,10 +1,11 @@
 // serializeRig (rig-core req 1.2, design.md "Overview"): writes a Rig as JSON with the keys in
 // contract order (types.ts), optional fields omitted when undefined, and fields outside the
 // contract dropped. It never writes `null`: a non-finite number (which JSON.stringify would turn
-// into null) throws a RangeError instead.
+// into null) throws a RangeError instead. The optional sections (mouth, face, motion, turn, morph)
+// are written by their table, RIG_SECTIONS (sections.ts), each by its own contract-order wire.
 import { EXPRESSION_FAMILIES } from "./control.js";
-import { MORPH_GAIN_TRACKS } from "./morph.js";
-import type { ExpressionFamily, Layer, LayerPatch, LayerRegions, MorphKey, Motion, Palette, Rig, RigFace, RigMorph } from "./types.js";
+import { wireSections } from "./sections.js";
+import type { ExpressionFamily, Layer, LayerPatch, LayerRegions, Motion, Palette, Rig } from "./types.js";
 
 function wirePalette(palette: Palette): Palette {
   return { glow: palette.glow, eye: palette.eye, rim: palette.rim, mouth: palette.mouth };
@@ -69,41 +70,6 @@ function wireLayer(layer: Layer): Layer {
   };
 }
 
-/** A morph key in contract order; `at`, `flowCell` and `flowMax` only when present. */
-function wireKey(key: MorphKey): MorphKey {
-  const box = (b: MorphKey["bbox"]): MorphKey["bbox"] => [b[0], b[1], b[2], b[3]];
-  return {
-    id: key.id,
-    track: key.track,
-    ...(key.at === undefined ? {} : { at: key.at }),
-    bbox: box(key.bbox),
-    cell: box(key.cell),
-    ...(key.flowCell === undefined ? {} : { flowCell: box(key.flowCell) }),
-    ...(key.flowMax === undefined ? {} : { flowMax: key.flowMax }),
-    ...(key.backCell === undefined ? {} : { backCell: box(key.backCell) }),
-    ...(key.part === undefined ? {} : { part: key.part }),
-  };
-}
-
-/** RigMorph.mouthGain (round 6) in MORPH_GAIN_TRACKS order, tracks without a gain omitted. */
-function wireGain(gain: NonNullable<RigMorph["mouthGain"]>): NonNullable<RigMorph["mouthGain"]> {
-  return Object.fromEntries(MORPH_GAIN_TRACKS.flatMap((track) => (gain[track] === undefined ? [] : [[track, gain[track]]])));
-}
-
-/** Rig.morph (companion-lanes) in contract order. */
-function wireMorph(morph: RigMorph): RigMorph {
-  const [[lx, ly], [rx, ry]] = morph.eyes;
-  return {
-    layer: morph.layer,
-    atlas: morph.atlas,
-    ...(morph.flow === undefined ? {} : { flow: morph.flow }),
-    keys: morph.keys.map(wireKey),
-    eyes: [[lx, ly], [rx, ry]],
-    ...(morph.sway === undefined ? {} : { sway: { map: morph.sway.map, amp: morph.sway.amp } }),
-    ...(morph.mouthGain === undefined ? {} : { mouthGain: wireGain(morph.mouthGain) }),
-  };
-}
-
 function wireRig(rig: Rig): Rig {
   return {
     version: rig.version,
@@ -115,11 +81,7 @@ function wireRig(rig: Rig): Rig {
     ...(rig.fictional === undefined ? {} : { fictional: rig.fictional }),
     palette: wirePalette(rig.palette),
     layers: rig.layers.map(wireLayer),
-    ...(rig.mouth === undefined ? {} : { mouth: { cx: rig.mouth.cx, lineY: rig.mouth.lineY, width: rig.mouth.width, ...(rig.mouth.render === undefined ? {} : { render: rig.mouth.render }), ...(rig.mouth.cell === undefined ? {} : { cell: rig.mouth.cell }), ...(rig.mouth.lips === undefined ? {} : { lips: { left: rig.mouth.lips.left, right: rig.mouth.lips.right, upper: rig.mouth.lips.upper, lower: rig.mouth.lips.lower, ...(rig.mouth.lips.seam === undefined ? {} : { seam: rig.mouth.lips.seam }), ...(rig.mouth.lips.maw === true ? { maw: true as const } : {}) } }) } }),
-    ...(rig.face === undefined ? {} : { face: JSON.parse(JSON.stringify(rig.face)) as RigFace }),
-    ...(rig.motion === undefined ? {} : { motion: rig.motion.spring === undefined ? {} : { spring: rig.motion.spring } }),
-    ...(rig.turn === undefined ? {} : { turn: { ...(rig.turn.warp === undefined ? {} : { warp: rig.turn.warp }), ...(rig.turn.light === undefined ? {} : { light: rig.turn.light }) } }),
-    ...(rig.morph === undefined ? {} : { morph: wireMorph(rig.morph) }),
+    ...wireSections(rig),
   };
 }
 

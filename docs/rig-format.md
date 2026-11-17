@@ -35,8 +35,10 @@ they disagree, the spec wins and this page and the code are fixed to match.
 | `mouth` | RigMouth | no | Where the talking mouth is drawn (see "Mouth"). Omitted when the art owns its mouth. |
 | `face` | RigFace | no | The character's face profile (see "Face profile"): gaze, motion and expression strengths. Omitted means the defaults. Amended by face-control; the format stays version 1. |
 | `motion` | `{ spring?: number }` | no | Secondary motion (perfection-pass V1): `spring` in [0, 2] scales how far loose parts lag and settle (see Pose, Rules, "Secondary motion"); omitted means 1, 0 turns it off; `Look.motion` wins. Faults are `bad_shape` at `$.motion` / `$.motion.spring`. |
-| `morph` | RigMorph | no | Morph keys (companion-lanes): aligned repaints of one head layer blended by track weights, the portrait lane's face (see "Morph keys"). Omitted: none, and the rig renders exactly as before. The format stays version 1. |
 | `turn` | `{ warp?: number; light?: number }` | no | Depth turn and lighting (perfection-pass V2, WebGL only): `warp` in [0, 1] bends the head's layers with a head turn, `light` in [0, 1] moves the light across the face (see "Depth turn in the avatar"); omitted means the defaults (0.5 each; warp lowered for pixel art and mouthless heads), 0 turns one off; `Look.turn` wins field by field. Faults are `bad_shape` at `$.turn` / `$.turn.warp` / `$.turn.light`. |
+| `morph` | RigMorph | no | Morph keys (companion-lanes): aligned repaints of one head layer blended by track weights, the portrait lane's face (see "Morph keys"). Omitted: none, and the rig renders exactly as before. The format stays version 1. |
+
+The optional sections are listed above in contract order (`mouth`, `face`, `motion`, `turn`, `morph`), the order `serializeRig` writes them. Each is one row of `RIG_SECTIONS` (`packages/rig/src/sections.ts`): its reader, which `validateRig` and (for `face`, `motion`, `turn`) `readLook` use, and its contract-order wire, which `serializeRig` uses. A new optional section is one row there, with its field in `types.ts` and its row here.
 
 ### Mouth
 

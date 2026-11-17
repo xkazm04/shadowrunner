@@ -12,6 +12,7 @@
 // idle pose bit for bit. Under reduced motion (`still`) there is no movement: the layer's light is
 // raised by ACT_STILL_GAIN for the first half of the act, a single static beat, then put back.
 import { motionAt, type MotionOffset } from "./motion.js";
+import { isRecord } from "./read.js";
 import type { Layer, LayerAct, LayerKind } from "./types.js";
 
 /** Cue words per act, and the longest cue word. */
@@ -40,8 +41,6 @@ export interface ActCue {
   startedAt: number;
 }
 
-type Fields = Record<string, unknown>;
-const isRecord = (value: unknown): value is Fields => typeof value === "object" && value !== null && !Array.isArray(value);
 const inRange = (value: unknown, lo: number, hi: number): value is number => typeof value === "number" && Number.isFinite(value) && value >= lo && value <= hi;
 
 /**

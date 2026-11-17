@@ -7,6 +7,7 @@
 // `withRetired` sets it, and `resolveFace` takes the union of Rig.face's and Look.face's (a look can
 // retire a family the rig paints; it cannot bring back one the rig itself retired).
 import { EXPRESSION_FAMILIES } from "./control.js";
+import { isRecord, type Fields, type Problem } from "./read.js";
 import type { ExpressionFamily, Look, RetiredFaces, Rig, RigFace } from "./types.js";
 
 /** A profile with every field filled. */
@@ -46,13 +47,16 @@ export type FaceField = keyof typeof FACE_LIMITS;
 
 export const FACE_FIELDS = Object.keys(FACE_LIMITS) as FaceField[];
 
-type Fields = Record<string, unknown>;
-const isRecord = (v: unknown): v is Fields => typeof v === "object" && v !== null && !Array.isArray(v);
+/** Whatever sits at a dotted path of an undecoded profile. */
+function faceAt(face: unknown, field: FaceField): unknown {
+  let at: unknown = face;
+  for (const key of field.split(".")) at = isRecord(at) ? at[key] : undefined;
+  return at;
+}
 
 /** The value at a dotted path of a (partial) profile, or undefined. */
 export function faceValue(face: RigFace | ResolvedFace | undefined, field: FaceField): number | undefined {
-  let at: unknown = face;
-  for (const key of field.split(".")) at = isRecord(at) ? at[key] : undefined;
+  const at = faceAt(face, field);
   return typeof at === "number" && Number.isFinite(at) ? at : undefined;
 }
 
@@ -119,9 +123,20 @@ export function withRetired(face: RigFace | undefined, family: ExpressionFamily,
   return base;
 }
 
-export interface FaceProblem {
-  path: string;
-  message: string;
+export type FaceProblem = Problem;
+
+/**
+ * `Rig.face` in contract order: groups and fields in FACE_FIELDS order, then `expression.faces` in
+ * EXPRESSION_FAMILIES order. A number is written as it is (serializeRig refuses a non-finite one).
+ */
+export function wireFace(face: RigFace): RigFace {
+  let out: RigFace = {};
+  for (const field of FACE_FIELDS) {
+    const at = faceAt(face, field);
+    if (typeof at === "number") out = withFaceValue(out, field, at);
+  }
+  for (const family of EXPRESSION_FAMILIES) if (face.expression?.faces?.[family] === "procedural") out = withRetired(out, family, true);
+  return out;
 }
 
 /**
@@ -136,8 +151,7 @@ export function readFace(value: unknown, path: string): { face?: RigFace; proble
   const problems: FaceProblem[] = [];
   let face: RigFace | undefined;
   for (const field of FACE_FIELDS) {
-    let at: unknown = value;
-    for (const key of field.split(".")) at = isRecord(at) ? at[key] : undefined;
+    const at = faceAt(value, field);
     if (at === undefined) continue;
     const [min, max] = FACE_LIMITS[field];
     if (typeof at !== "number" || !Number.isFinite(at) || at < min || at > max) {

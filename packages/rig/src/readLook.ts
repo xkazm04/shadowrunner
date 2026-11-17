@@ -5,14 +5,12 @@
 import { EMOTION_TABLE } from "./look.js";
 import type { Emotion, Gesture, Look, Palette, PartShape, Rig } from "./types.js";
 import { validateLookControls } from "./validateControl.js";
-import { readFace } from "./face.js";
-import { readRigMotion, readRigTurn } from "./validateMotion.js";
+import { isRecord } from "./read.js";
+import { LOOK_SECTIONS, readSections } from "./sections.js";
 
 /** Every `Gesture`, as a runtime list. */
 export const GESTURE_NAMES = ["nod", "tilt", "lean_in", "recoil", "glare", "flare"] as const satisfies readonly Gesture[];
 
-type Fields = Record<string, unknown>;
-const isRecord = (v: unknown): v is Fields => typeof v === "object" && v !== null && !Array.isArray(v);
 const HEX = /^#[0-9a-fA-F]{6}$/;
 const PALETTE_KEYS: readonly (keyof Palette)[] = ["glow", "eye", "rim", "mouth"];
 const GESTURE_LIST: readonly string[] = GESTURE_NAMES;
@@ -57,14 +55,7 @@ export function readLook(value: unknown, rig?: Rig): Look | undefined {
   if (regions !== undefined) look.regions = regions;
   const shape = readControls<PartShape>("shape", value.shape, rig);
   if (shape !== undefined) look.shape = shape;
-  // face-control: the viewer's face profile; bad fields are dropped, never the look.
-  const face = readFace(value.face, "$.face").face;
-  if (face !== undefined) look.face = face;
-  // perfection-pass V1: the viewer's secondary motion strength; a bad one is dropped, never the look.
-  const motion = readRigMotion(value.motion, "$.motion").motion;
-  if (motion !== undefined) look.motion = motion;
-  // perfection-pass V2: the viewer's depth turn strengths; a bad one is dropped, never the look.
-  const turn = readRigTurn(value.turn, "$.turn").turn;
-  if (turn !== undefined) look.turn = turn;
-  return look;
+  // face-control (face: bad fields dropped), perfection-pass V1 (motion) and V2 (turn): read by the
+  // rig's own section readers; a bad one is dropped, never the look.
+  return { ...look, ...readSections(value, undefined, LOOK_SECTIONS).value };
 }

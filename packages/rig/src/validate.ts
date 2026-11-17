@@ -13,19 +13,17 @@
 // Layer.variants and Layer.regions (character-control) are read by validateControl.ts (`bad_shape`
 // at `$.layers[i].variants.<family>...` / `$.layers[i].regions...`); a patch bbox leaving the canvas
 // is `bbox_out_of_bounds` at its own path and a slot hex that is not "#rrggbb" is `bad_color`.
-// Rig.mouth (llm-avatar-lab) is optional; present, it is `bad_shape` at `$.mouth` unless an object
-// and at `$.mouth.<field>` unless cx in [0, width], lineY in [0, height] and width finite > 0; `render`
-// ("drawn" | "still") and `cell` (finite > 0) optional. `lips` (art-mouth) is optional; present, it is
-// `bad_shape` at `$.mouth.lips` unless an object of finite `left`, `right`, `upper`, `lower` with
-// 0 <= left < cx < right <= width and 0 <= upper < lineY < lower <= height; its optional `seam` is finite
-// with upper <= seam <= lower, else `bad_shape` at `$.mouth.lips.seam`.
+// Rig.mouth (llm-avatar-lab, art-mouth) is read by validateMouth.ts. The optional Rig sections
+// (mouth, face, motion, turn, morph) are read through their table, RIG_SECTIONS (sections.ts), and
+// every reader's problem becomes a `bad_shape` error as it is (read.ts, the shared read kernel).
 import { JAW_DROP_MAX, JAW_DROP_MIN } from "./pose.js";
+import { fileProblem, got, isFiniteNumber as isFinite, isRecord, Reader, type Fields, type Problem } from "./read.js";
 import type { Result } from "./result.js";
-import { RIG_VERSION, type Layer, type LayerKind, type Palette, type Rig, type RigLips, type RigMouth } from "./types.js";
-import { readFace } from "./face.js";
+import { readSections } from "./sections.js";
+import { RIG_VERSION, type Layer, type LayerKind, type Palette, type Rig } from "./types.js";
 import { readLayerControls } from "./validateControl.js";
-import { readMotion, readRigMotion, readRigTurn, type MotionCanvas } from "./validateMotion.js";
-import { checkMorph, readMorph } from "./validateMorph.js";
+import { readMotion, type MotionCanvas } from "./validateMotion.js";
+import { checkMorph } from "./validateMorph.js";
 
 export const RIG_ERROR_CODES = ["bbox_out_of_bounds", "duplicate_name", "duplicate_z", "bad_follow", "bad_color", "bad_shape"] as const;
 export type RigErrorCode = (typeof RIG_ERROR_CODES)[number];
@@ -53,13 +51,7 @@ const SOURCES: Record<Rig["source"], true> = { forge: true, replay: true, import
 const LAYER_NAME = /^[a-z0-9_]+$/;
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
 
-type Guard<T> = (value: unknown) => value is T;
-type Fields = Record<string, unknown>;
-
-const isRecord = (value: unknown): value is Fields =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
 const isString = (value: unknown): value is string => typeof value === "string";
-const isFinite = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
 const isInteger = (value: unknown): value is number => Number.isInteger(value);
 const isVersion = (value: unknown): value is typeof RIG_VERSION => value === RIG_VERSION;
 const isSource = (value: unknown): value is Rig["source"] => typeof value === "string" && Object.hasOwn(SOURCES, value);
@@ -73,57 +65,9 @@ const isDrop = (value: unknown): value is number => isFinite(value) && value >= 
 
 /** Right and bottom edges may overshoot the canvas by this much (float bboxes from the forge). */
 const EDGE_TOLERANCE = 1e-6;
-/** design.md: a layer file may be a "data:" URL from the forge; only PNG and (asset-webp amendment) WebP ones are accepted. */
-const DATA_URL_PREFIXES: readonly string[] = ["data:image/png;base64,", "data:image/webp;base64,"];
 
-/**
- * Why `file` is not a relative POSIX path inside the rig folder (or a non-empty PNG or WebP data: URL),
- * or undefined when it is.
- */
-function fileProblem(file: string): string | undefined {
-  const prefix = DATA_URL_PREFIXES.find((p) => file.startsWith(p));
-  if (prefix !== undefined) return file.length > prefix.length ? undefined : "is an empty data: URL";
-  if (file === "") return "must not be empty";
-
-  if (file.startsWith("/")) return "must be relative (no leading /)";
-  if (file.includes("\\")) return "must use / separators (no backslash)";
-  if (file.includes(":")) return "must not carry a scheme or drive (no :)";
-  const segments = file.split("/");
-  if (segments.includes("")) return "must not have an empty path segment (no // or trailing /)";
-  if (segments.includes("..")) return "must stay inside the rig folder (no .. segment)";
-  return undefined;
-}
-
-function got(value: unknown, expected: string): string {
-  if (value === undefined) return `missing; expected ${expected}`;
-  let actual = `a ${typeof value}`;
-  if (value === null) actual = "null";
-  else if (Array.isArray(value)) actual = "an array";
-  else if (typeof value === "number" || typeof value === "boolean") actual = String(value);
-  return `expected ${expected}, got ${actual}`;
-}
-
-/** Collects bad_shape errors while reading one decoded value. */
-class Reader {
-  readonly errors: RigError[] = [];
-
-  fail(path: string, message: string, layer?: string): undefined {
-    this.errors.push({ code: "bad_shape", message: `${path}: ${message}`, path, ...(layer === undefined ? {} : { layer }) });
-    return undefined;
-  }
-
-  required<T>(fields: Fields, key: string, path: string, guard: Guard<T>, expected: string, layer?: string): T | undefined {
-    const value = fields[key];
-    return guard(value) ? value : this.fail(`${path}.${key}`, got(value, expected), layer);
-  }
-
-  /** Absent (or undefined) is fine; present with any value `guard` rejects is not. */
-  optional<T>(fields: Fields, key: string, path: string, guard: Guard<T>, expected: string, layer?: string): T | undefined {
-    const value = fields[key];
-    if (value === undefined || guard(value)) return value;
-    return this.fail(`${path}.${key}`, `when present, ${got(value, expected)}`, layer);
-  }
-
+/** Collects bad_shape problems while reading one decoded value. */
+class RigReader extends Reader {
   tuple(fields: Fields, key: string, path: string, length: 2 | 4, layer: string | undefined): number[] | undefined {
     const value = fields[key];
     if (Array.isArray(value) && value.length === length) {
@@ -144,45 +88,9 @@ class Reader {
     return { glow, eye, rim, mouth };
   }
 
-  /** Rig.mouth: absent is fine; present, cx and lineY on the canvas, width finite > 0, lips (optional) about them. */
-  mouth(value: unknown, path: string, canvas: MotionCanvas): RigMouth | undefined {
-    if (value === undefined) return undefined;
-    if (!isRecord(value)) return this.fail(path, `when present, ${got(value, "an object { cx, lineY, width }")}`);
-    const within =
-      (limit: number | undefined): Guard<number> =>
-      (v: unknown): v is number =>
-        isFinite(v) && v >= 0 && (limit === undefined || v <= limit);
-    const cx = this.required(value, "cx", path, within(canvas.width), `a number in [0, ${canvas.width ?? "width"}]`);
-    const lineY = this.required(value, "lineY", path, within(canvas.height), `a number in [0, ${canvas.height ?? "height"}]`);
-    const width = this.required(value, "width", path, (v: unknown): v is number => isFinite(v) && v > 0, "a finite number > 0");
-    const render = value.render;
-    if (render !== undefined && render !== "drawn" && render !== "still") return this.fail(`${path}.render`, `when present, ${got(render, '"drawn" or "still"')}`);
-    const cell = value.cell;
-    if (cell !== undefined && !(isFinite(cell) && cell > 0)) return this.fail(`${path}.cell`, `when present, ${got(cell, "a finite number > 0")}`);
-    if (cx === undefined || lineY === undefined || width === undefined) return undefined;
-    const lips = value.lips === undefined ? undefined : this.lips(value.lips, `${path}.lips`, cx, lineY, canvas);
-    if (value.lips !== undefined && lips === undefined) return undefined;
-    return { cx, lineY, width, ...(render === undefined ? {} : { render }), ...(typeof cell === "number" ? { cell } : {}), ...(lips === undefined ? {} : { lips }) };
-  }
-
-  /** Rig.mouth.lips (art-mouth): finite corners either side of cx, upper above and lower below lineY, on the canvas. */
-  lips(value: unknown, path: string, cx: number, lineY: number, canvas: MotionCanvas): RigLips | undefined {
-    const expected = `an object { left, right, upper, lower } with 0 <= left < cx < right <= ${canvas.width ?? "width"} and 0 <= upper < lineY < lower <= ${canvas.height ?? "height"}`;
-    if (!isRecord(value)) return this.fail(path, `when present, ${got(value, expected)}`);
-    const { left, right, upper, lower } = value;
-    if (!isFinite(left) || !isFinite(right) || !isFinite(upper) || !isFinite(lower)) return this.fail(path, `${expected}; a field is not a finite number`);
-    const [w, h] = [canvas.width ?? Infinity, canvas.height ?? Infinity];
-    if (!(left >= 0 && left < cx && cx < right && right <= w)) return this.fail(path, `${expected}; got left ${left}, cx ${cx}, right ${right}`);
-    if (!(upper >= 0 && upper < lineY && lineY < lower && lower <= h)) return this.fail(path, `${expected}; got upper ${upper}, lineY ${lineY}, lower ${lower}`);
-    const seam = value.seam;
-    if (seam !== undefined && !(isFinite(seam) && seam >= upper && seam <= lower)) return this.fail(`${path}.seam`, `when present, ${got(seam, `a finite number in [upper ${upper}, lower ${lower}]`)}`);
-    if (value.maw !== undefined && value.maw !== true) return this.fail(`${path}.maw`, `when present, ${got(value.maw, "true")}`);
-    return { left, right, upper, lower, ...(seam === undefined ? {} : { seam }), ...(value.maw === true ? { maw: true as const } : {}) };
-  }
-
   layer(value: unknown, path: string, canvas: MotionCanvas): Layer | undefined {
     if (!isRecord(value)) return this.fail(path, got(value, "a layer object"));
-    const before = this.errors.length;
+    const before = this.problems.length;
     const raw = value.name;
     const named = typeof raw === "string" ? raw : undefined;
     const name = this.required(value, "name", path, isString, "a string", named);
@@ -204,13 +112,13 @@ class Reader {
     if (drop !== undefined && kind !== undefined && kind !== "jaw") this.fail(`${path}.drop`, `only a jaw layer has a drop, this one is ${kind}`, named);
     const emissive = this.optional(value, "emissive", path, isBoolean, "a boolean (omit the field for the kind's default)", named);
     const read = readMotion(value.motion, `${path}.motion`, canvas);
-    for (const problem of read.problems) this.fail(problem.path, problem.message.slice(problem.path.length + 2), named);
+    this.report(read.problems, named);
     const motion = read.motion;
     if (motion?.blink !== undefined && kind !== undefined && kind !== "eye") this.fail(`${path}.motion.blink`, `only an eye layer blinks, this one is ${kind}`, named);
     const controls = readLayerControls(value, path, fileProblem);
-    for (const problem of controls.problems) this.fail(problem.path, problem.message.slice(problem.path.length + 2), named);
+    this.report(controls.problems, named);
     const { variants, regions, socket, closed, tint, act } = controls;
-    if (this.errors.length > before) return undefined;
+    if (this.problems.length > before) return undefined;
     if (name === undefined || z === undefined || kind === undefined || file === undefined) return undefined;
     if (x === undefined || y === undefined || w === undefined || h === undefined) return undefined;
     if (ax === undefined || ay === undefined) return undefined;
@@ -250,7 +158,7 @@ class Reader {
 
   rig(value: unknown): Rig | undefined {
     if (!isRecord(value)) return this.fail("$", got(value, "a rig object"));
-    const before = this.errors.length;
+    const before = this.problems.length;
     const version = this.required(value, "version", "$", isVersion, `${RIG_VERSION}`);
     const id = this.required(value, "id", "$", isString, "a string");
     const name = this.required(value, "name", "$", isString, "a string");
@@ -261,16 +169,12 @@ class Reader {
     const palette = this.palette(value.palette, "$.palette");
     const canvas = { ...(width === undefined ? {} : { width }), ...(height === undefined ? {} : { height }) };
     const layers = this.layers(value.layers, "$.layers", canvas);
-    const mouth = this.mouth(value.mouth, "$.mouth", canvas);
-    const { face, problems: faceProblems } = readFace(value.face, "$.face");
-    const { motion, problems: motionProblems } = readRigMotion(value.motion, "$.motion");
-    const { turn, problems: turnProblems } = readRigTurn(value.turn, "$.turn");
-    const { morph, problems: morphProblems } = readMorph(value.morph, "$.morph", width, fileProblem);
-    for (const problem of [...faceProblems, ...motionProblems, ...turnProblems, ...morphProblems]) this.fail(problem.path, problem.message.slice(problem.path.length + 2));
-    if (this.errors.length > before) return undefined;
+    const sections = readSections(value, canvas);
+    this.report(sections.problems);
+    if (this.problems.length > before) return undefined;
     if (version === undefined || id === undefined || name === undefined || width === undefined || height === undefined) return undefined;
     if (source === undefined || palette === undefined || layers === undefined) return undefined;
-    return { version, id, name, width, height, source, ...(fictional === undefined ? {} : { fictional }), palette, layers, ...(mouth === undefined ? {} : { mouth }), ...(face === undefined ? {} : { face }), ...(motion === undefined ? {} : { motion }), ...(turn === undefined ? {} : { turn }), ...(morph === undefined ? {} : { morph }) };
+    return { version, id, name, width, height, source, ...(fictional === undefined ? {} : { fictional }), palette, layers, ...sections.value };
   }
 }
 
@@ -370,11 +274,13 @@ function checkFollows(rig: Rig, errors: RigError[]): void {
   });
 }
 
+const badShape = ({ path, message, layer }: Problem): RigError => ({ code: "bad_shape", message, path, ...(layer === undefined ? {} : { layer }) });
+
 /** Decoded JSON -> Rig, or every reason it is not one. */
 export function validateRig(input: unknown): Result<Rig, RigError[]> {
-  const reader = new Reader();
+  const reader = new RigReader();
   const rig = reader.rig(input);
-  if (rig === undefined) return { ok: false, errors: reader.errors };
+  if (rig === undefined) return { ok: false, errors: reader.problems.map(badShape) };
   const errors: RigError[] = [];
   checkPalette(rig.palette, errors);
   checkBounds(rig, errors);
