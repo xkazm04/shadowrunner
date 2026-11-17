@@ -2,7 +2,8 @@
 them off the GPU thread, swapping them in at a chunk boundary, and running them on a chunk with a
 fallback (an upscaler that fails falls back to `none`, a matte that fails switches matting off; each
 says why once in an `error` event, the stream never stops). Round 3 adds the gaze glance switch
-(th/live/gaze.py) before FlashHead and the head motion (th/live/motion.py) after the matte.
+(th/live/gaze.py) before FlashHead and the head motion (th/live/motion.py) after the matte; round 4
+applies that motion to the head only (th/live/headlayer.py).
 """
 
 from __future__ import annotations
@@ -182,6 +183,22 @@ class Stages:
         self.gaze = GazePolicy(level, seed, available=getattr(self.model, "refs", {}).keys())
         self._glances: list[tuple[float, float]] = []  # pts windows where an idle glance shows live
         self._switched = False  # this chunk's reference differs from the previous chunk's
+        self.head: Any = None  # a HeadLayer once built; until then (about 1 s) nothing moves
+        threading.Thread(target=self._build_head, name="headlayer-load", daemon=True).start()
+
+    def _build_head(self) -> None:
+        """The head map from the model's reference (MediaPipe multiclass segmenter), or, for a model
+        without one (the fake), a geometric stand-in. A segmenter that cannot load says so once and
+        falls back to the stand-in."""
+        from .headlayer import HeadLayer
+
+        size = self.model.size
+        portrait = getattr(self.model, "portrait", None)
+        try:
+            self.head = HeadLayer.from_image(portrait, size) if portrait else HeadLayer.geometric(size)
+        except Exception as e:
+            self._error(f"head layer: {e}; using a geometric head mask")
+            self.head = HeadLayer.geometric(size)
 
     def set_motion(self, level: str) -> None:
         """Head motion and glances at `level` from the next chunk (motion eases over 0.5 s)."""
@@ -233,20 +250,24 @@ class Stages:
         return out
 
     def _move(self, first: int, frames: Any, alpha: Any) -> tuple[Any, Any]:
-        """Head motion on the composed 512 frames (and the alpha), before the upscaler."""
-        from .motion import warp
-
+        """Head motion on the composed 512 frames (and the alpha), before the upscaler: the head
+        moves, the body and the backdrop stay still (th/live/headlayer.py). One frame per chunk
+        refreshes the head map off this thread."""
         n = len(frames)
-        if self.motion.idle(first, n):
+        head = self.head
+        if head is None or self.motion.idle(first, n) or head.size != frames.shape[1]:
             return frames, alpha
         t1 = time.perf_counter()
-        frames, alpha, applied = warp(frames, self.motion.get(first, n), alpha, matte=alpha is not None)
+        mid = frames[n // 2]
+        head.observe(mid if isinstance(mid, np.ndarray) else mid.cpu().numpy())
+        params = self.motion.get(first, n)
+        frames, alpha = head.apply(frames, params, alpha)
         if not isinstance(frames, np.ndarray):
             import torch
 
             torch.cuda.synchronize()
         self.stats["motionMs"].append((time.perf_counter() - t1) * 1000)
-        self.stats["motion"] += [[first + j, *(round(float(v), 4) for v in row)] for j, row in enumerate(applied)]
+        self.stats["motion"] += [[first + j, *(round(float(v), 4) for v in row)] for j, row in enumerate(params)]
         return frames, alpha
 
 

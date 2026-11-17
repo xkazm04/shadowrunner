@@ -1,31 +1,29 @@
-"""Procedural head motion (round 3): a per-frame 2D similarity transform on top of FlashHead.
+"""Procedural head motion: a per-frame 2D similarity transform on top of FlashHead.
 
 FlashHead Lite barely moves the head: in speech its rigid shift is under 1 px and its roll range
 0.8 degrees at 512 px (docs/talking-head.md "Round 3"). `Motion` adds, per frame (dx, dy in px at the
-model size, rot in degrees, scale):
-- sway: smoothed noise, a sum of three sines per axis at 0.1-0.3 Hz with seeded phases;
+model size, rot in degrees, scale), applied to the HEAD only (th/live/headlayer.py, round 4: round 3
+moved the whole frame and read as camera shake):
+- sway: smoothed noise, a sum of three sines per axis at 0.1-0.3 Hz with seeded phases; in idle at
+  IDLE_GAIN and IDLE_SLOW (the owner approved that idle), in speech slightly larger and quicker
+  (SPEECH_GAIN, SPEECH_SLOW);
 - nods: on energy onsets of the speech audio (a rise of ONSET_DB over the last 0.2 s while voiced),
-  at most one per REFRACTORY_S; a short down-and-back bump in dy with a slight scale-down;
-- tilts: at sentence starts (the engine passes each sentence's first sample) and clause pauses
-  (voice resuming after PAUSE_S of quiet), an eased (smoothstep, TILT_S) move to a new roll target
-  with a small sideways lean;
-- idle: when the audio is quiet the sway slows and shrinks (IDLE_GAIN) and a small new tilt comes
-  every 5-9 s; no nods.
+  then none for a random 2-3 s (REFRACTORY_S, so they never tick at a fixed rate); a short, soft
+  down-and-back bump in dy with a slight scale-down;
+- tilts: at sentence ends. The engine passes each sentence's first sample; the next sentence's
+  start marks where the one before ended, and the tilt eases in (smoothstep, TILT_S) from that
+  sentence's last voiced frame to a new roll target with a small sideways lean. A line's last
+  sentence, and the mic, which has no marks: a pause of END_PAUSE_S after at least END_RUN_S of
+  voice (Kokoro's sentence pauses are 0.5-0.6 s, its comma pauses 0.3-0.36 s);
+- idle: no nods, and a small new tilt every 5-9 s.
 Levels: `off` (identity), `natural` (gain 1), `lively` (gain 1.6); a level change eases over 0.5 s.
 Everything is a function of the frames fed so far and the seed: the same feed gives the same
 transforms, however it is split into chunks.
-
-`warp` applies the transforms with one bilinear affine grid sample (torch, on the frames' device),
-to the frames and, when matting is on, to the alpha with the same grid. Rotation and scale pivot
-on the neck (PIVOT). Without a matte the frame is zoomed by ZOOM and each transform is shrunk toward
-the pure zoom just enough that every output pixel samples inside the source (`fit`), so no border
-ever shows; with a matte nothing is zoomed and the edges are clamped.
 """
 
 from __future__ import annotations
 
 import math
-from typing import Any
 
 import numpy as np
 
@@ -34,28 +32,29 @@ GAIN = {"off": 0.0, "natural": 1.0, "lively": 1.6}
 FPS = 25
 RATE = 16000
 HOP = RATE // FPS  # audio samples per frame
-ZOOM = 1.04  # without a matte
-PIVOT = (0.5, 0.72)  # the neck, as a fraction of (width, height)
-SIZE_REF = 512.0  # amplitudes are in px at this size and scale with the frame
 SWAY_PX = (2.6, 1.6)  # dx, dy amplitude (sum of sines, so peaks reach about 1.5x)
 SWAY_DEG = 0.7
 SWAY_HZ = (0.1, 0.3)
-IDLE_GAIN = 0.45  # sway and tilts while quiet
+IDLE_GAIN = 0.45  # sway while quiet (round 3's approved idle)
 IDLE_SLOW = 0.6  # idle sway frequency factor
-NOD_PX = 3.4
-NOD_SCALE = -0.004
-NOD_S = (0.14, 0.32)  # down, back
-REFRACTORY_S = 0.8
+SPEECH_GAIN = 0.6  # sway while talking: a little more than idle (round 3: 1.0, read as shake)
+SPEECH_SLOW = 0.75
+NOD_PX = 2.4
+NOD_SCALE = -0.003
+NOD_S = (0.16, 0.36)  # down, back
+REFRACTORY_S = (2.0, 3.0)  # after a nod, the next waits this long (uniform)
 ONSET_DB = 9.0
 VOICED_DB = -38.0  # dBFS of a frame's RMS
-PAUSE_S = 0.16
 TILT_DEG = (0.6, 1.5)
-TILT_PX = 1.4  # sideways lean per degree of tilt
+TILT_PX = 1.0  # sideways lean per degree of tilt
 TILT_S = 0.7
+TILT_GAP_S = 1.2  # a sentence-end tilt needs this long since the last tilt
+END_PAUSE_S, END_RUN_S = 0.44, 1.5  # unmarked sentence ends: a pause after a run of voice
 IDLE_TILT_S = (5.0, 9.0)
 ATTACK_S, RELEASE_S = 0.25, 1.2
 LEVEL_EASE_S = 0.5
-CLAUSE_GAP_S = 1.5  # a clause tilt needs this long since the last tilt
+CHUNK = 24  # frames per engine chunk
+LOOKBACK = 30  # frames: how far back a sentence start looks for the previous sentence's voice
 
 
 def _smooth(x: float) -> float:
@@ -73,12 +72,15 @@ class Motion:
         self._sines = [(r.uniform(*SWAY_HZ, 3), r.uniform(0, 2 * math.pi, 3), r.uniform(0.6, 1.0, 3))
                        for _ in range(3)]
         self.i = 0  # next frame index to feed
-        self.params: dict[int, tuple[float, ...]] = {}  # frame -> (dx, dy, rot, scale, zoom weight)
+        self.params: dict[int, tuple[float, ...]] = {}  # frame -> (dx, dy, rot, scale, level weight)
         self._db: list[float] = []  # recent frame levels, dBFS
         self._act = 0.0  # speech activity 0..1
         self._gain = GAIN[level]
         self._quiet = 10**9  # frames since the last voiced frame
+        self._run = 0  # frames of the current run of speech (pauses under END_PAUSE_S included)
+        self._voiced: dict[int, bool] = {}  # recent frames: voiced or not (sentence-end lookback)
         self._last_nod = -10**9
+        self._nod_gap = REFRACTORY_S[0] * FPS
         self._nods: list[tuple[int, float]] = []  # (start frame, strength)
         self._tilt = (0.0, 0.0, 0, 1)  # (from deg, to deg, start frame, duration frames)
         self._next_idle_tilt = None  # frame index
@@ -93,24 +95,33 @@ class Motion:
 
     def feed(self, first: int, audio16k: np.ndarray, sentences: list[float] = ()) -> None:
         """Audio for frames first.. (HOP samples each); `sentences`: offsets in ms from `first`'s
-        start where a sentence's first sample sits. Frames already fed are skipped; a gap (a
-        skipped chunk) is filled with silence."""
+        start where a sentence's first sample sits. A sentence start after voice marks the end of
+        the sentence before it: its tilt starts after that sentence's last voiced frame (within this
+        chunk of CHUNK frames, so the result does not depend on how the feed is split). Frames
+        already fed are skipped; a gap (a skipped chunk) is filled with silence."""
         n = len(audio16k) // HOP
-        starts = {first + int(ms // 40) for ms in sentences}
         while self.i < first:
+            self._voiced[self.i] = False
             self._frame(self.i, -120.0, False)
+        dbs = []
         for j in range(n):
-            idx = first + j
-            if idx < self.i:
-                continue
             seg = audio16k[j * HOP:(j + 1) * HOP]
             rms = float(np.sqrt(np.mean(np.square(seg, dtype=np.float64)))) if len(seg) else 0.0
-            self._frame(idx, 20 * math.log10(max(rms, 1e-6)), idx in starts)
+            dbs.append(20 * math.log10(max(rms, 1e-6)))
+            self._voiced.setdefault(first + j, dbs[-1] > VOICED_DB)
+        ends = set()
+        for fs in {first + int(ms // 40) for ms in sentences}:
+            v = next((k for k in range(fs - 1, fs - LOOKBACK - 1, -1) if self._voiced.get(k)), None)
+            if v is not None:  # not a line's first sentence
+                ends.add(max(v + 1, fs - fs % CHUNK, first))
+        for j in range(n):
+            if first + j >= self.i:
+                self._frame(first + j, dbs[j], first + j in ends)
         self._prune()
 
     def get(self, first: int, n: int) -> np.ndarray:
-        """(n, 5) float32 (dx, dy, rot, scale, zoom weight) for frames first..first+n-1; identity
-        where unknown. The zoom weight (0..1) eases the no-border zoom in and out with the level."""
+        """(n, 5) float32 (dx, dy, rot, scale, level weight) for frames first..first+n-1; identity
+        where unknown. The level weight (0..1) is the eased level gain, capped at 1."""
         ident = (0.0, 0.0, 0.0, 1.0, 0.0)
         return np.array([self.params.get(first + j, ident) for j in range(n)], np.float32)
 
@@ -122,8 +133,10 @@ class Motion:
         old = self.i - 10 * FPS  # the engine reads back at most HOLD frames
         for k in [k for k in self.params if k < old]:
             del self.params[k]
+        for k in [k for k in self._voiced if k < self.i - 2 * LOOKBACK]:
+            del self._voiced[k]
 
-    def _frame(self, i: int, db: float, sentence: bool) -> None:
+    def _frame(self, i: int, db: float, end: bool) -> None:
         r = self.rng
         self._db = (self._db + [db])[-6:]
         voiced = db > VOICED_DB
@@ -135,16 +148,17 @@ class Motion:
         self._gain += max(-step, min(step, g_target - self._gain))
         # nods: an onset while voiced, outside the refractory period
         rise = db - min(self._db[:-1]) if len(self._db) > 1 else 0.0
-        if voiced and rise > ONSET_DB and i - self._last_nod >= REFRACTORY_S * FPS:
+        if voiced and rise > ONSET_DB and i - self._last_nod >= self._nod_gap:
             self._last_nod = i
+            self._nod_gap = r.uniform(*REFRACTORY_S) * FPS
             self._nods.append((i, float(r.uniform(0.6, 1.0)) * min(1.0, rise / (2 * ONSET_DB) + 0.5)))
             self._event(i, "nod")
-        # tilts: a sentence start, or voice resuming after a pause (a clause)
-        clause = (voiced and PAUSE_S * FPS <= self._quiet < 2 * FPS
-                  and i - self._last_tilt >= CLAUSE_GAP_S * FPS)
-        if sentence or clause:
+        # tilts: a sentence end (marked by the engine's next sentence, or a long pause after a run
+        # of voice: a line's last sentence, the mic)
+        pause = (not voiced and self._quiet + 1 == round(END_PAUSE_S * FPS) and self._run >= END_RUN_S * FPS)
+        if (end or pause) and i - self._last_tilt >= TILT_GAP_S * FPS:
             self._last_tilt = i
-            self._new_tilt(i, 1.0 if sentence else 0.6)
+            self._new_tilt(i, 1.0)
             self._event(i, "tilt")
             self._next_idle_tilt = None
         elif self._act < 0.05:
@@ -155,6 +169,7 @@ class Motion:
                 self._event(i, "idle-tilt")
                 self._next_idle_tilt = i + int(r.uniform(*IDLE_TILT_S) * FPS)
         self._quiet = 0 if voiced else self._quiet + 1
+        self._run = self._run + 1 if self._quiet < END_PAUSE_S * FPS else 0
         self.params[i] = self._compose(i)
         self.i = i + 1
 
@@ -177,8 +192,8 @@ class Motion:
     def _compose(self, i: int) -> tuple[float, float, float, float]:
         t = i / FPS
         act = self._act
-        amp = IDLE_GAIN + (1 - IDLE_GAIN) * act
-        slow = IDLE_SLOW + (1 - IDLE_SLOW) * act
+        amp = IDLE_GAIN + (SPEECH_GAIN - IDLE_GAIN) * act
+        slow = IDLE_SLOW + (SPEECH_SLOW - IDLE_SLOW) * act
         sw = [sum(w * math.sin(2 * math.pi * f * slow * t + p) for f, p, w in zip(*axis)) / 1.6
               for axis in self._sines]
         dx = SWAY_PX[0] * sw[0] * amp
@@ -201,101 +216,3 @@ class Motion:
         dx += TILT_PX * tilt
         g = self._gain
         return (dx * g, dy * g, rot * g, 1.0 + (scale - 1.0) * g, min(1.0, g))
-
-
-# ---- applying it ----------------------------------------------------------------------------------
-
-
-def _inverse_theta(p: np.ndarray, w: int, h: int, zoom: float) -> np.ndarray:
-    """(N, 2, 3) affine_grid thetas (output -> input, normalised coords, align_corners=False).
-    p: (N, 5); a frame's zoom is 1 + (zoom - 1) * its zoom weight."""
-    k = min(w, h) / SIZE_REF
-    out = np.zeros((len(p), 2, 3), np.float64)
-    cx, cy = PIVOT[0] * w, PIVOT[1] * h
-    for j, (dx, dy, rot, s, zw) in enumerate(p.astype(np.float64)):
-        a = math.radians(rot)
-        m = s * (1 + (zoom - 1) * zw) * np.array([[math.cos(a), -math.sin(a)], [math.sin(a), math.cos(a)]])
-        mi = np.linalg.inv(m)
-        c = np.array([cx, cy])
-        t = np.array([dx, dy]) * k
-        # u_in = c + mi (u_out - c - t), u in pixels (continuous); n = 2u/size - 1
-        lin = mi
-        off = c - mi @ (c + t)
-        d = np.diag([w / 2, h / 2])
-        di = np.diag([2 / w, 2 / h])
-        out[j, :, :2] = di @ lin @ d
-        out[j, :, 2] = di @ (lin @ np.array([w / 2, h / 2]) + off) - 1
-    return out
-
-
-def fit(p: np.ndarray, w: int, h: int, zoom: float) -> np.ndarray:
-    """Shrink each transform toward the pure zoom until all four output corners sample inside the
-    source by at least half a pixel (so bilinear never reads the padding)."""
-    p = np.asarray(p, np.float64).copy()
-    lim = np.array([1 - 1 / w, 1 - 1 / h])
-    corners = np.array([[sx * lim[0], sy * lim[1], 1.0] for sx in (-1, 1) for sy in (-1, 1)])
-
-    def inside(q: np.ndarray) -> bool:
-        th = _inverse_theta(q[None], w, h, zoom)[0]
-        return bool(np.all(np.abs(corners @ th.T) <= lim + 1e-9))
-
-    for j in range(len(p)):
-        if inside(p[j]):
-            continue
-        base = np.array([0.0, 0.0, 0.0, 1.0, p[j, 4]])
-        lo, hi = 0.0, 1.0
-        for _ in range(12):
-            mid = (lo + hi) / 2
-            lo, hi = (mid, hi) if inside(base + (p[j] - base) * mid) else (lo, mid)
-        p[j] = base + (p[j] - base) * lo
-    return p.astype(np.float32)
-
-
-def warp(frames: Any, params: np.ndarray, alpha: Any = None, matte: bool = False) -> tuple[Any, Any, np.ndarray]:
-    """Frames (N,H,W,3) uint8 (CUDA tensor or numpy) and optional alpha (N,H,W) -> transformed
-    (same types and device), plus the params as applied (after `fit`). Tensors go through torch's
-    grid sample; numpy frames (the fake model) through the same sampling in numpy, so the CPU
-    path never starts torch's thread pool next to the server's threads."""
-    n, h, w = frames.shape[:3]
-    zoom = 1.0 if matte else ZOOM
-    p = params if matte else fit(params, w, h, zoom)
-    theta = _inverse_theta(p, w, h, zoom)
-    if isinstance(frames, np.ndarray):
-        src = frames.astype(np.float32)
-        if alpha is not None:
-            src = np.concatenate([src, alpha[..., None].astype(np.float32)], -1)
-        out = np.clip(np.rint(_sample_np(src, theta)), 0, 255).astype(np.uint8)
-        return out[..., :3].copy(), None if alpha is None else out[..., 3].copy(), p
-    import torch
-    import torch.nn.functional as F
-
-    x = frames
-    th = torch.as_tensor(theta, dtype=torch.float32, device=x.device)  # fp32: fp16 grids jitter
-    grid = F.affine_grid(th, [n, 3, h, w], align_corners=False)
-    src_t = x.permute(0, 3, 1, 2).float()
-    if alpha is not None:
-        src_t = torch.cat([src_t, alpha[:, None].float()], 1)
-    o = F.grid_sample(src_t, grid, mode="bilinear", padding_mode="border", align_corners=False)
-    o = o.round_().clamp_(0, 255).to(torch.uint8)
-    rgb = o[:, :3].permute(0, 2, 3, 1).contiguous()
-    return rgb, (o[:, 3].contiguous() if alpha is not None else None), p
-
-
-def _sample_np(src: np.ndarray, theta: np.ndarray) -> np.ndarray:
-    """grid_sample(bilinear, padding border, align_corners False) in numpy: (N,H,W,C) float32."""
-    n, h, w, c = src.shape
-    nx = (2 * (np.arange(w, dtype=np.float32) + 0.5) / w - 1)[None, :]
-    ny = (2 * (np.arange(h, dtype=np.float32) + 0.5) / h - 1)[:, None]
-    out = np.empty_like(src)
-    for i in range(n):
-        t = theta[i].astype(np.float32)
-        ux = np.clip(((t[0, 0] * nx + t[0, 1] * ny + t[0, 2]) + 1) * (w / 2) - 0.5, 0, w - 1).ravel()
-        uy = np.clip(((t[1, 0] * nx + t[1, 1] * ny + t[1, 2]) + 1) * (h / 2) - 0.5, 0, h - 1).ravel()
-        x0, y0 = ux.astype(np.int32), uy.astype(np.int32)  # floor: both are >= 0
-        x1, y1 = np.minimum(x0 + 1, w - 1), np.minimum(y0 + 1, h - 1)
-        fx, fy = (ux - x0)[:, None], (uy - y0)[:, None]
-        f = src[i].reshape(-1, c)
-        top = f[y0 * w + x0] * (1 - fx) + f[y0 * w + x1] * fx
-        bot = f[y1 * w + x0] * (1 - fx) + f[y1 * w + x1] * fx
-        out[i] = (top * (1 - fy) + bot * fy).reshape(h, w, c)
-    return out

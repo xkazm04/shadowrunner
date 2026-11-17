@@ -637,7 +637,7 @@ look-ahead, which is otherwise adaptive; see "Round 2"), `TH_LIVE_SEAM=0` (seam 
   encode/emit queue holds 2 chunks and blocks the GPU thread beyond that. A chunk that would start a
   whole chunk late is skipped (`droppedChunks`), never drifted.
 - **Frames** (`th/live/compose.py`, `th/live/stages.py`): seam blend, then the idle loop mixed in,
-  then the matte (when on), the head motion (round 3) and the upscaler on the GPU, then JPEG (quality 90) on a 4-thread pool, so
+  then the matte (when on), the head motion (round 3; the head only since round 4) and the upscaler on the GPU, then JPEG (quality 90) on a 4-thread pool, so
   the GPU loop never waits on encoding; an emitter thread sends finished chunks in order. With the
   seam blend a chunk's 24 frames start 3 frames (120 ms) before its audio slice: the previous
   chunk's last 3. Each client has its own send queue; a viewer more than 300 messages behind loses
@@ -1178,7 +1178,8 @@ the clip's median) is 0.70 / 0.31 px (x / y, p95 - p5) and the roll range (Media
 0.77 degrees; the nose tip moves 4.5 / 8.7 px, mostly with the jaw. In idle: 0.16 / 0.13 px, 0.45
 degrees. So the added motion below is sized against a head that, as a rigid body, barely moves.
 
-**Head motion** (`th/live/motion.py`). A per-frame 2D similarity transform (dx, dy, roll, scale),
+**Head motion** (`th/live/motion.py`; round 4 re-tuned it and applies it to the head only, see
+"Round 4"). A per-frame 2D similarity transform (dx, dy, roll, scale),
 deterministic for the seed and the audio fed (however it is split into chunks):
 - **sway**: three sines per axis at 0.1-0.3 Hz with seeded phases (dx 2.6 px, dy 1.6 px, roll
   0.7 degrees at 512 px, before the sum's peaks);
@@ -1286,3 +1287,129 @@ Maxine, the way `/live?out=1` receives the stream):
 
 `contact-sheet.jpg` shows 8 frames per clip, `glance-strips.jpg` shows each glance from -0.2 to
 +1.8 s, and `glances.json` gives each glance's time, frame, reference and measured gaze.
+
+### Round 4: head-only motion (2026-11-17)
+
+The owner's verdict on round 3: every speech clip with motion read as camera shake, because the
+whole frame moved, shoulders and backdrop included. `off` and the idle clip passed. Round 4 moves the
+head only. Protocol, web and level names are unchanged (`off` | `natural` | `lively`).
+
+**The head layer** (`th/live/headlayer.py`). Each 512 frame is warped by a per-pixel field instead of
+one transform: output pixel u samples the input at u + w(u) * D(u), where D is the displacement of
+the full head transform (motion.py's dx, dy, roll and scale) and w is a weight map:
+- **segmentation**: MediaPipe's multiclass selfie segmenter (`selfie_multiclass_256x256.tflite`,
+  16 MB, model card "LICENSED UNDER Apache License, Version 2.0"; one .tflite, no auxiliary model)
+  run by the FlashHead env's mediapipe 0.10.9 `ImageSegmenter`. Classes: background, hair,
+  body-skin, face-skin, clothes, others. On Iris it separates hair, face, neck and jacket cleanly;
+  one ear cup comes out as "others", and the mic boom as backdrop. It is fetched once into
+  `$TH_HOME/models/selfie-multiclass/` (sha-pinned, with a licence.json) the first time the server
+  builds the map.
+- **w = 1** on the head (hair, face-skin, others) and on the backdrop within 10 px of it, so thin
+  strands and the mic boom move with the head; beyond that the backdrop fades to 0 over 40 px.
+- **the neck bends, it does not tear**: w = 1 down to 24 px below the closed-mouth chin (FlashHead's
+  jaw drops the chin by up to 21 px: 378 to 399 over a pitch-45s run), then a smoothstep to 0 over
+  44 px. Next to the collar, the neck and the backdrop ramp up from 0 over 10 px, so the collar's
+  edge does not fold.
+- **w = 0 exactly** on the clothes and wherever the smoothed weight is under 0.001; those pixels are
+  copied from the input, bit for bit (the tests check it on a moving head).
+- **pivot**: below the chin at the neck centre, 28 px under the chin found by the segmentation (Iris:
+  (256, 405) at 512). The segmentation gives the chin directly, so no landmark model is loaded.
+- Nothing is uncovered (the field is continuous), so no clean plate is needed. A rigid layer with a
+  plate (the head and halo moved as one piece, a 16 px feathered neck band, the uncovered pixels from
+  the frame inpainted under the head) was compared offline on the same frames and params: at the
+  crown it showed a dark seam where the head left the frame's top edge, and nothing it did better.
+  The soft field shipped.
+- **cost**: the segmenter takes ~100 ms per frame on the CPU, whatever the input size, so it never
+  runs on the GPU thread. The map is built from the bust at start (about 1 s, on its own thread;
+  nothing moves until it is ready) and refreshed from one live frame per chunk on a worker thread
+  (skipped while one is running), blended into the running class map (70 % old / 30 % new), so it
+  follows the gaze references and the idle loop. On the GPU thread the warp is one `grid_sample`
+  over the box around the moving pixels (74 % of the frame moves): 4-6 ms per chunk p50 (table
+  below).
+
+**Motion sources, re-tuned** (`th/live/motion.py`):
+- **sway**: the idle values the owner approved (45 % amplitude, 0.6x speed), and in speech 60 % and
+  0.75x (round 3: 100 % and 1x);
+- **nods**: after a nod the next waits a random 2-3 s (was 0.8 s), so they never tick at a fixed
+  rate; 2.4 px (was 3.4) with a 0.3 % scale-down, 0.52 s long;
+- **tilts at sentence ends**: a sentence start after voice marks where the sentence before it
+  ended, and the tilt eases in from that sentence's last voiced frame (bounded to the chunk holding
+  the mark, so it does not depend on how the feed is split). A line's last sentence, and the mic,
+  have no next mark: a pause of 0.44 s after at least 1.5 s of voice counts as a sentence end
+  (Kokoro's sentence pauses are 0.5-0.6 s, its comma pauses 0.3-0.36 s). No more tilts at sentence
+  starts or clause pauses. Lean 1.0 px per degree (was 1.4);
+- idle unchanged; `lively` is 1.6x `natural` on every axis.
+- The no-border zoom and its border fit are gone: the frame's edges never move.
+
+**Measured offline first** (CPU, on the round 3 `off` run 20261116T234649Z: FlashHead's own frames,
+with the round 4 motion computed from its speech, sentence starts taken as voice after 0.48 s of
+quiet; 1176 frames):
+
+| figure | `natural` | `lively` |
+| --- | --- | --- |
+| applied dx / dy, px (p95 - p5) | 5.6 / 2.3 | 8.9 / 3.6 |
+| applied roll, degrees | 3.15 | 5.05 |
+| crown displacement, px (p95 / max) | 12.6 / 14.4 | 20.1 / 23.1 |
+| chin displacement, px (p95 / max) | 3.7 / 5.0 | 6.0 / 8.0 |
+| nods / tilts | 17 / 14 in 47 s | 17 / 14 |
+| shoulders (clothes) vs `off`, mean abs | 0.000 | 0.000 |
+| far backdrop (over 50 px from the head) vs `off` | 0.000 | 0.000 |
+| backdrop that moves at all | 58 % of the backdrop pixels (the halo around the head) | |
+
+**Measured live** 2026-11-17 09:43-09:54 with `th live-bench --script pitch-45s` (upscale none, seed
+1116, 512 px). Stillness is the mean abs frame-to-frame change (grey, 0-255) inside a mask from the
+bust's segmentation, eroded 3 px: the shoulders (clothes) and the far backdrop (over 60 px from the
+head), over the 1065 speech frames. Round 3's runs are the reference.
+
+| run | shoulders | far backdrop | near backdrop | roll on the output, deg (p95 - p5) | nose x / y, px | nods (applied) | chunk ms p50 / p95 / max | late / dropped | slack min ms | SyncNet (offset) | identity mean / p5 | warp ms p50 / p95 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| round 3 `off` (234649Z) | 0.318 | 0.171 | 0.195 | 0.78 | 4.2 / 8.5 | | 406 / 452 / 488 | 0 / 0 | 185 | 8.33 (-1) | 0.974 / 0.960 | |
+| round 3 `natural`, whole frame (234343Z) | **1.623** | 0.378 | 1.292 | 2.82 | 11.6 / 9.5 | 45 | 427 / 697 / 839 | 0 / 0 | 140 | 8.47 (-1) | 0.972 / 0.961 | 7.4 / 24.9 |
+| round 4 `off` (084652Z) | 0.320 | 0.173 | 0.198 | | | | 333 / 611 / 801 | 0 / 0 | 139 | 8.45 (-1) | 0.975 / 0.961 | |
+| round 4 `natural` (084339Z, a fixed 2 s nod gap) | 0.327 | 0.183 | 0.322 | 3.14 | 13.5 / 9.0 | 21 | 351 / 443 / 503 | 0 / 0 | 164 | 8.39 (-1) | 0.972 / 0.958 | 4.2 / 5.6 |
+| round 4 `natural` (085148Z, final) | 0.332 | 0.191 | 0.293 | 2.53 | 9.4 / 9.7 | 18 | 482 / 814 / 854 | 0 / 0 | 36 | 8.32 (-1) | 0.969 / 0.942 | 5.7 / 13.5 |
+| round 4 `natural`, matte on (084928Z) | 0.322 | 0.185 | 0.316 | | | 17 | 473 / 511 / 556 | 0 / 0 | 146 | 8.43 (-1) | 0.971 / 0.949 | 5.0 / 5.8 |
+
+- The shoulders and the far backdrop are as still as with `off` (0.32-0.33 against 0.32; round 3
+  moved them 5x). What is left is FlashHead's own sub-pixel body motion and the JPEG/H.264 noise.
+  The near backdrop (the halo, within 60 px of the head) moves with the head, as designed.
+- The head moves as much as in round 3 or more (roll 2.5-3.1 degrees on the output, nose x 9-13 px),
+  but it is the head: the crown travels 19-22 px (p95 - p5, as applied) while the collar does not move.
+- SyncNet stays in the run-to-run band (8.3-8.5). Identity: 0.969-0.972 with motion against 0.975
+  without, the same small drop round 3 measured (0.972); the final run's p5 (0.942) is lower, and its
+  minimum (0.897) sits on a gaze glance.
+- The final `natural` run shared the GPU with another job (a 1.3 GB co-tenant at its end; chunk p95
+  814 ms against 443 for the same code an hour earlier), so its slack fell to 36 ms. Still 0 late.
+- The warp is 4-6 ms per chunk on the GPU (p50); the segmenter refresh runs on a CPU thread.
+
+**Review clips** (`var/talking-head/live-review-r4/p1/`, recorded through the server on port 8766
+with Maxine, the way `/live?out=1` receives the stream): `line-off`, `line-natural`, `line-lively`
+(the same typed line), `passage-natural` (5 sentences) and `matte-natural` (matte on, over a light
+background). `contact-sheet.jpg` shows 8 frames per clip; each clip folder has a
+`shoulders-strip.jpg` (the shoulder band at 8 times); `clipcheck.json` has the shoulder figures.
+
+Measured on the recorded clips (the Maxine output scaled back to 512, from the line's start;
+the same masks as above; spread = p95 of the per-pixel max - min over the clip inside the shoulders),
+with round 3's clips of the same lines:
+
+| clip | shoulders, frame-to-frame | far backdrop | shoulder spread | round 3: shoulders / spread |
+| --- | --- | --- | --- | --- |
+| `line-off` | 0.333 | 0.192 | 24 | 0.336 / 24 |
+| `line-natural` | 0.338 | 0.204 | 22 | **1.904 / 79** |
+| `line-lively` | 0.321 | 0.223 | 21 | **2.579 / 100** |
+| `passage-natural` | 0.341 | 0.213 | 33 | 2.553 / 93 |
+| `matte-natural` | 0.334 | 0.013 (light backdrop) | 24 | 3.720 / 119 |
+
+Every clip has all its frames (none missing at the 40 ms grid), and the server logged no error.
+`motion-spread-off-r4natural-r3natural.png` shows where `line-off`, `line-natural` and round 3's
+`line-natural` move (per-pixel max - min, x2): round 4's collar and shoulders show the same thin
+edges as `off` (FlashHead's own sub-pixel body motion and compression), round 3's are thick bands.
+`zoom-sheet-natural.jpg` crops the neck, the hair edges and the crown at the four extreme poses of
+the final `natural` bench run, beside the same frames of the `off` run, x2.5: no seam, no fold at
+the collar, no tear under the chin. `offline/` holds the soft-against-rigid comparison, the weight
+map over the bust and side-by-side `off` | moved videos of the whole pitch-45s for `natural` and
+`lively`.
+
+Not done: the owner's eye. The figures say the shoulders and the backdrop do not move; whether the
+head's motion now reads as a person talking (`natural`) and an animated presenter (`lively`) is the
+review's call.
