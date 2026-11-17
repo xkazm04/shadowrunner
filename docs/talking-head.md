@@ -72,7 +72,7 @@ show it as n/a). Pydantic model: `th/schema.py` (`RunRecord`, `load_run`, `json_
 | `schema`, `arm`, `script`, `seed`, `runtime` | what ran; `script` is the script id (text in `tools/talking-head/scripts/<id>.txt`) |
 | `portrait` | repo-relative path of the input image |
 | `width`, `height`, `fps`, `durationS` | read back from video.mp4 with ffprobe |
-| `renderS`, `rtf` | wall seconds of the arm call alone (post-processing excluded); `rtf` = renderS / audio seconds |
+| `renderS`, `rtf` | wall seconds of the arm call alone (post-processing excluded); `rtf` = renderS / audio seconds, one rule for every producer (`th/record.py`); live-bench divides by speech.wav seconds since 2026-11-17 (it used video duration before, so older live-fh `rtf` are not comparable) |
 | `ttffMs` | time from the arm call to its first `on_frame` callback; null when the arm has none |
 | `vramPeakMiB` | peak `memory.used` (nvidia-smi, sampled every 250 ms during the arm call) minus the value at its start |
 | `gpuExclusive` | true when no other process held more than 500 MiB of VRAM at the arm's start and end; null if unmeasurable |

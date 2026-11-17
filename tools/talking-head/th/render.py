@@ -13,29 +13,15 @@ from .arms import get_arm
 from .arms.base import ArmNotBuilt, Job
 from .audio import read_script, render_audio
 from .fetch import core_weights
-from .ffmpeg import duration_s, fps_of, probe, video_stream
+from .ffmpeg import duration_s, probe
 from .gpu import VramSampler, gpu_lock, others_over_limit
 from .paths import new_run_dir, portrait_path
 from .post.alpha import write_alpha
 from .post.metrics import Metrics, measure
 from .post.normalise import normalise
-from .schema import SCHEMA, Identity, RunRecord, Sync
-
-
-def _contention(label: str, others: list[tuple[int, int]] | None, notes: list[str]) -> None:
-    if others is None:
-        notes.append(f"gpuExclusive unmeasurable at {label} (no per-process VRAM figure)")
-    elif others:
-        listed = ", ".join(f"pid {p} {mib} MiB" for p, mib in others)
-        notes.append(f"other GPU processes at {label}: {listed}")
-
-
-def _timed(run_log: Path, label: str, fn, /, *args, **kw):
-    t = time.perf_counter()
-    out = fn(*args, **kw)
-    with open(run_log, "a", encoding="utf-8") as fh:
-        fh.write(f"stage {label}: {time.perf_counter() - t:.1f}s\n")
-    return out
+from .record import (
+    Provenance, Timing, build_record, contention_notes, gpu_exclusive, join_notes, repo_relative, stage,
+)
 
 
 def render(arm_id: str, script_id: str, seed: int = 1116, runtime: str = "native",
@@ -63,7 +49,7 @@ def render(arm_id: str, script_id: str, seed: int = 1116, runtime: str = "native
 
     with gpu_lock():
         before = others_over_limit()
-        _contention("start", before, notes)
+        notes += contention_notes("start", before)
         t0 = time.perf_counter()
         try:
             with VramSampler() as vram:
@@ -79,45 +65,31 @@ def render(arm_id: str, script_id: str, seed: int = 1116, runtime: str = "native
         with open(log, "a", encoding="utf-8") as fh:
             fh.write(f"stage arm: {render_s:.1f}s\n")
         after = others_over_limit()
-        _contention("end", after, notes)
-        exclusive = None if before is None or after is None else not before and not after
+        notes += contention_notes("end", after)
+        exclusive = gpu_exclusive(before, after)
 
         if result.video.resolve() != job.raw.resolve():
             shutil.move(str(result.video), job.raw)
         video = run_dir / "video.mp4"
         print(f"th: {arm_id} rendered in {render_s:.1f}s; normalising", file=sys.stderr)
-        _timed(log, "normalise", normalise, job.raw, audio, audio_s, video, log=log)
+        stage(log, "normalise", normalise, job.raw, audio, audio_s, video, log=log)
         if alpha:
             print("th: matting (BiRefNet) -> alpha.webm", file=sys.stderr)
-            _timed(log, "alpha", write_alpha, video, run_dir / "alpha.webm", log=log)
+            stage(log, "alpha", write_alpha, video, run_dir / "alpha.webm", log=log)
         m = Metrics()
         if metrics:
             print("th: measuring (MediaPipe, SyncNet, DINOv2)", file=sys.stderr)
-            m = _timed(log, "metrics", measure, video, portrait)
+            m = stage(log, "metrics", measure, video, portrait)
 
-    info = probe(video)
-    vs = video_stream(info)
-    dur = float(info["format"]["duration"])
-    rec = RunRecord(
-        schema=SCHEMA, arm=arm_id, script=script_id, seed=seed,
-        portrait=_repo_relative(portrait), runtime=runtime,
-        width=int(vs["width"]), height=int(vs["height"]), fps=round(fps_of(vs), 3),
-        durationS=round(dur, 3), renderS=round(render_s, 3), rtf=round(render_s / audio_s, 4),
-        ttffMs=round((first_frame[0] - t0) * 1000, 1) if first_frame else None,
-        vramPeakMiB=vram.peak_delta_mib, gpuExclusive=exclusive,
-        sync=Sync(conf=m.sync_conf, offsetFrames=m.sync_offset),
-        identity=Identity(**m.identity), faceRoi=m.face_roi,
+    rec = build_record(
+        probe=probe(video), metrics=m,
+        timing=Timing(render_s=render_s, audio_s=audio_s,
+                      ttff_ms=round((first_frame[0] - t0) * 1000, 1) if first_frame else None,
+                      vram_peak_mib=vram.peak_delta_mib),
+        provenance=Provenance(arm=arm_id, script=script_id, seed=seed, portrait=repo_relative(portrait),
+                              runtime=runtime),
         weights=[*(result.weights or arm.weights()), *core_weights()],
-        notes="; ".join(n for n in [result.notes, *m.notes, *notes] if n) or None,
+        notes=join_notes([result.notes, *m.notes, *notes]), gpu_exclusive=exclusive,
     )
     rec.write(run_dir / "run.json")
     return run_dir
-
-
-def _repo_relative(p: Path) -> str:
-    from .paths import TOOL_DIR
-
-    try:
-        return p.resolve().relative_to(TOOL_DIR.parent.parent.resolve()).as_posix()
-    except ValueError:
-        return p.as_posix()

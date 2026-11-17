@@ -204,7 +204,7 @@ def _pct(xs: list[float], q: float) -> float | None:
 def bench(script: str | None, upscale: str = "none", seed: int = 1116, idle_s: float = 0.0,
           metrics: bool = True, lead_s: float = LEAD_IDLE_S, tail_s: float = TAIL_S,
           matte: bool = False, motion: str = "natural") -> Path:
-    from ..ffmpeg import duration_s, fps_of, probe, video_stream
+    from ..ffmpeg import duration_s, probe
     from ..gpu import VramSampler, gpu_lock, memory_used_mib, others_over_limit
     from ..paths import new_run_dir, portrait_path
     from .env import ensure_requirements, spawn
@@ -235,7 +235,8 @@ def bench(script: str | None, upscale: str = "none", seed: int = 1116, idle_s: f
         from ..post.metrics import Metrics, measure
         from ..post.normalise import normalise
 
-        normalise(run_dir / "raw.mp4", speech, duration_s(speech), video, log=log)
+        audio_s = duration_s(speech)
+        normalise(run_dir / "raw.mp4", speech, audio_s, video, log=log)
         m = measure(video, portrait_path()) if metrics else Metrics()
         sharp = sharpness(video, m.face_box)
         if not script:
@@ -245,9 +246,7 @@ def bench(script: str | None, upscale: str = "none", seed: int = 1116, idle_s: f
     live = summarise(b, m, sharp, co, vram.peak_delta_mib)
     live["seam"] = bench_seams(run_dir / "raw.mp4", b["lines"], b["size"])
     (run_dir / "live.json").write_text(json.dumps(live, indent=2) + "\n", encoding="utf-8", newline="\n")
-    info = probe(video)
-    vs = video_stream(info)
-    _run_json(run_dir, script or live["script"], seed, info, vs, fps_of, wall, b, m, vram, co, live)
+    _run_json(run_dir, script or live["script"], seed, probe(video), wall, audio_s, b, m, vram, co, live)
     return run_dir
 
 
@@ -286,34 +285,28 @@ def summarise(b: dict, m, sharp: float | None, co: dict, vram_mib: int | None) -
     }
 
 
-def _run_json(run_dir, script, seed, info, vs, fps_of, wall, b, m, vram, co, live) -> None:
+def _run_json(run_dir, script, seed, info, wall, audio_s, b, m, vram, co, live) -> None:
     from ..arms.base import read_licences
     from ..fetch import core_weights
     from ..paths import portrait_path, th_home
-    from ..render import _contention, _repo_relative
-    from ..schema import SCHEMA, Identity, RunRecord, Sync
+    from ..record import Provenance, Timing, build_record, contention_notes, gpu_exclusive, join_notes, repo_relative
 
-    notes: list[str] = []
-    _contention("start", co["start"], notes)
-    _contention("end", co["end"], notes)
-    dur = float(info["format"]["duration"])
     first = [ln["firstFrameMs"] for ln in b["lines"] if ln["firstFrameMs"] is not None]
-    rec = RunRecord(
-        schema=SCHEMA, arm=ARM, script=script, seed=seed, portrait=_repo_relative(portrait_path()),
-        runtime="native", width=int(vs["width"]), height=int(vs["height"]), fps=round(fps_of(vs), 3),
-        durationS=round(dur, 3), renderS=round(wall, 3), rtf=round(wall / dur, 4),
-        ttffMs=first[0] if first else None, vramPeakMiB=vram.peak_delta_mib,
-        gpuExclusive=None if co["start"] is None or co["end"] is None else not co["start"] and not co["end"],
-        sync=Sync(conf=m.sync_conf, offsetFrames=m.sync_offset), identity=Identity(**m.identity),
-        faceRoi=m.face_roi,
+    build_record(
+        probe=info, metrics=m,
+        # rtf = renderS / audio seconds (speech.wav), as in th render; not / video duration
+        timing=Timing(render_s=wall, audio_s=audio_s, ttff_ms=first[0] if first else None,
+                      vram_peak_mib=vram.peak_delta_mib),
+        provenance=Provenance(arm=ARM, script=script, seed=seed, portrait=repo_relative(portrait_path()),
+                              runtime="native"),
         weights=[*read_licences(th_home() / "models" / "realtime-fh"), *core_weights()],
-        notes="; ".join([f"live engine, bust crop, upscale {live['upscale']} ({live['size']} px); "
-                         f"{live['fps']} fps delivered, capacity {live['capacityFps']['p50']} fps (p50), "
-                         f"chunk p50/p95 {live['chunkMs']['p50']}/{live['chunkMs']['p95']} ms, "
-                         f"{live['droppedChunks']} dropped; sharpness {live['sharpness']}",
-                         *m.notes, *notes]),
-    )
-    rec.write(run_dir / "run.json")
+        gpu_exclusive=gpu_exclusive(co["start"], co["end"]),
+        notes=join_notes([f"live engine, bust crop, upscale {live['upscale']} ({live['size']} px); "
+                          f"{live['fps']} fps delivered, capacity {live['capacityFps']['p50']} fps (p50), "
+                          f"chunk p50/p95 {live['chunkMs']['p50']}/{live['chunkMs']['p95']} ms, "
+                          f"{live['droppedChunks']} dropped; sharpness {live['sharpness']}", *m.notes],
+                         extra=[*contention_notes("start", co["start"]), *contention_notes("end", co["end"])]),
+    ).write(run_dir / "run.json")
 
 
 def sharpness(video: Path, face_box: list[int] | None, every: int = 25) -> float | None:

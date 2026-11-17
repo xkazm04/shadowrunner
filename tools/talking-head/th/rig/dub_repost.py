@@ -17,21 +17,13 @@ from __future__ import annotations
 import argparse
 import json
 import shutil
-import time
 from pathlib import Path
 
-from ..ffmpeg import duration_s, fps_of, probe, video_stream
+from ..ffmpeg import duration_s, probe
 from ..paths import TOOL_DIR, audio_dir, new_run_dir
-from ..schema import Identity, RunRecord, Sync, load_run
+from ..record import Provenance, Timing, build_record, join_notes, stage
+from ..schema import load_run
 from . import dub_paste
-
-
-def _stage(logfile: Path, label: str, fn, /, *a, **kw):
-    t = time.perf_counter()
-    out = fn(*a, **kw)
-    with open(logfile, "a", encoding="utf-8") as fh:
-        fh.write(f"stage {label}: {time.perf_counter() - t:.1f}s\n")
-    return out
 
 
 def _paste(src: Path, run: Path, log: Path, keep_s: tuple[float, ...]) -> dict:
@@ -44,8 +36,8 @@ def _paste(src: Path, run: Path, log: Path, keep_s: tuple[float, ...]) -> dict:
     keep_dir.mkdir(exist_ok=True)
     keep = {int(round(t * 25)): keep_dir / f"paste-{t:06.2f}s.png" for t in keep_s}
     if mode == "mouth":
-        stats = _stage(log, "paste", dub_paste.composite, run / "plate25.mp4", run / "ls-raw.mp4",
-                       run / "raw.mp4", log=log, keep=keep)
+        stats = stage(log, "paste", dub_paste.composite, run / "plate25.mp4", run / "ls-raw.mp4",
+                      run / "raw.mp4", log=log, keep=keep)
     else:
         shutil.copy2(run / "ls-raw.mp4", run / "raw.mp4")
         stats = {"frames": None, "missed": 0, "seconds": 0.0}
@@ -76,29 +68,27 @@ def repost(src: Path, metrics_device: str = "cpu", alpha: str = "lock", keep_s: 
         stats = json.loads((run / "paste.json").read_text(encoding="utf-8"))
     else:
         stats = _paste(src, run, log, keep_s)
-        _stage(log, "normalise", normalise, run / "raw.mp4", audio, audio_s, video, log=log)
-    m = _stage(log, "metrics", measure, video, TOOL_DIR.parent.parent / rec.portrait, device=metrics_device)
+        stage(log, "normalise", normalise, run / "raw.mp4", audio, audio_s, video, log=log)
+    m = stage(log, "metrics", measure, video, TOOL_DIR.parent.parent / rec.portrait, device=metrics_device)
 
-    vs = video_stream(probe(video))
     render_s = (rec.renderS or 0.0) + float(stats["seconds"])
-    RunRecord(
-        schema=rec.schema_, arm="dub-ls", script=rec.script, seed=rec.seed, portrait=rec.portrait,
-        runtime=rec.runtime, width=int(vs["width"]), height=int(vs["height"]), fps=round(fps_of(vs), 3),
-        durationS=round(float(probe(video)["format"]["duration"]), 3), renderS=round(render_s, 3),
-        rtf=round(render_s / audio_s, 4), ttffMs=None, vramPeakMiB=rec.vramPeakMiB,
-        gpuExclusive=rec.gpuExclusive, sync=Sync(conf=m.sync_conf, offsetFrames=m.sync_offset),
-        identity=Identity(**m.identity), faceRoi=m.face_roi, weights=rec.weights,
-        notes="; ".join(n for n in [
+    build_record(
+        probe=probe(video), metrics=m,
+        timing=Timing(render_s=render_s, audio_s=audio_s, vram_peak_mib=rec.vramPeakMiB),
+        provenance=Provenance(arm="dub-ls", script=rec.script, seed=rec.seed, portrait=rec.portrait,
+                              runtime=rec.runtime),
+        weights=rec.weights, gpu_exclusive=rec.gpuExclusive,
+        notes=join_notes([
             rec.notes, f"v2: post-only paste TH_DUB_PASTE={stats['mode']} of {src.name} (no new LatentSync "
             f"render; renderS = its arm {rec.renderS}s + paste {stats['seconds']}s on CPU, {stats['missed']} "
-            f"frames without landmarks); metrics on {metrics_device}", *m.notes] if n),
+            f"frames without landmarks); metrics on {metrics_device}", *m.notes]),
     ).write(run / "run.json")
     if alpha == "lock":
         from ..gpu import gpu_lock
         from ..post.alpha import write_alpha
 
         with gpu_lock():
-            _stage(log, "alpha", write_alpha, video, run / "alpha.webm", log=log)
+            stage(log, "alpha", write_alpha, video, run / "alpha.webm", log=log)
     return run
 
 
