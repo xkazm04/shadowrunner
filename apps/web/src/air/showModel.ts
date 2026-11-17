@@ -45,6 +45,10 @@ export interface ShowSnapshot {
   answering?: string;
   /** One lifecycle mark per chat id (chatMarks.ts): queued, pending, answering, answered, passed or none. */
   marks?: ChatMarks;
+  /** challenge-2026-11-17 air/B, the producer desk (showDesk.ts): the show is held (a BRB). */
+  held?: true;
+  /** The chat id the next pick takes. */
+  cued?: string;
 }
 
 /** The show controller (show.ts createShow). */
@@ -59,6 +63,11 @@ export interface Show {
   post(text: string): boolean;
   /** The visitor allowed sound (a click): later lines play. */
   soundOn(): void;
+  /** The desk: hold the show (the line on air finishes), resume it, cut the line, cue a message next. False when the desk does not take it now. */
+  hold(): boolean;
+  resume(): boolean;
+  skip(): boolean;
+  cue(id: string): boolean;
 }
 
 export type PlayResult = "ended" | "blocked" | "error";

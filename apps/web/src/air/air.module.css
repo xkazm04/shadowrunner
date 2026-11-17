@@ -87,6 +87,22 @@
   letter-spacing: 0.08em;
 }
 
+/* challenge-2026-11-17 air/B: the show is held (the producer desk's H), bound to the show's state. */
+.held {
+  display: inline-block;
+  margin: var(--sr-space-2) var(--sr-space-2) 0 0;
+  padding: var(--sr-space-1) var(--sr-space-2);
+  background-color: var(--sr-surface-2);
+  color: var(--sr-text-strong);
+  border: thin solid var(--sr-ember);
+  border-radius: var(--sr-radius-1);
+  font-family: var(--sr-font-mono);
+  font-size: var(--sr-size-text-sm);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.held small,
 .scripted small {
   font-size: inherit;
   font-weight: 400;

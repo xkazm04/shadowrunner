@@ -37,10 +37,13 @@
 // file is the interpreter that runs its effects (launch, air, play, timers, health, the audience)
 // and feeds what happens back as events. The chat marks are one derivation (chatMarks.ts): the
 // snapshot carries them, and a visitor's message the picks went by is marked `passed`.
-import { pickMessage, MAX_CHAT_CHARS, MAX_CHAT_MESSAGES, type EngineRequest } from "@sr/engine";
+// air/B: the producer desk (showDesk.ts deskStep) wraps showStep: hold, resume, skip and cue are
+// events too, and the snapshot says `held` and `cued`.
+import { MAX_CHAT_CHARS, MAX_CHAT_MESSAGES, type EngineRequest } from "@sr/engine";
 import { launchBeat, requestReply, voiceFor, type BeatSource, type InFlight, type ReadyBeat } from "./beat";
 import { chatMarks, keepAnswered, sameMarks } from "./chatMarks";
-import { initialShow, showStep, type ShowEffect, type ShowEvent, type ShowState } from "./showMachine";
+import { deskAllows, deskPick, deskStep, OPEN_DESK, type Desk, type DeskEvent } from "./showDesk";
+import { initialShow, type ShowEffect, type ShowEvent, type ShowState } from "./showMachine";
 import { CHAT_KEEP, createShowClock, plainMsg, showPeriod, THINK_DELAY_MS, VISITOR_NAME, type AirMsg, type Show, type ShowDeps, type ShowSnapshot } from "./showModel";
 import { HEALTH_POLL_MS } from "./stage";
 
@@ -54,6 +57,9 @@ export function createShow(deps: ShowDeps): Show {
   const listeners = new Set<() => void>();
   let snap: ShowSnapshot = { status: "booting", chat: [], sound: "on", beat: 0, pending: undefined };
   let state: ShowState = initialShow(deps.prefetch === true);
+  /** The producer desk (showDesk.ts), and the beat of a line skipped while it played. */
+  let desk: Desk = OPEN_DESK;
+  let cut = -1;
   /** Each launched beat's handle, and a landed beat waiting for the stage. */
   const flights = new Map<number, InFlight>();
   const landed = new Map<number, ReadyBeat>();
@@ -64,7 +70,7 @@ export function createShow(deps: ShowDeps): Show {
   let audienceTimer: unknown;
   let thinkTimer: unknown;
   let currentUrl: string | undefined;
-  const queue: ShowEvent[] = [];
+  const queue: (ShowEvent | DeskEvent)[] = [];
   let busy = false;
 
   const notify = () => {
@@ -98,11 +104,14 @@ export function createShow(deps: ShowDeps): Show {
       requeued = true;
       return queued ? { ...m, queued: true as const } : plainMsg(m);
     });
-    const same = status === snap.status && pending === snap.pending && upcoming === snap.upcoming && answering === snap.answering && !requeued && sameMarks(snap.marks, marks);
+    const { held, cued } = desk;
+    const same = status === snap.status && pending === snap.pending && upcoming === snap.upcoming && answering === snap.answering && held === (snap.held === true) && cued === snap.cued && !requeued && sameMarks(snap.marks, marks);
     if (same) return;
-    const next: ShowSnapshot = { ...snap, status, pending, chat, marks, ...(upcoming === undefined ? {} : { upcoming }), ...(answering === undefined ? {} : { answering }) };
+    const next: ShowSnapshot = { ...snap, status, pending, chat, marks, ...(upcoming === undefined ? {} : { upcoming }), ...(answering === undefined ? {} : { answering }), ...(held ? { held } : {}), ...(cued === undefined ? {} : { cued }) };
     if (upcoming === undefined) delete next.upcoming;
     if (answering === undefined) delete next.answering;
+    if (!held) delete next.held;
+    if (cued === undefined) delete next.cued;
     snap = next;
     notify();
   };
@@ -113,13 +122,14 @@ export function createShow(deps: ShowDeps): Show {
   };
 
   /** Steps the reducer and runs its effects; events raised meanwhile wait their turn. */
-  const dispatch = (event: ShowEvent) => {
+  const dispatch = (event: ShowEvent | DeskEvent) => {
     queue.push(event);
     if (busy) return;
     busy = true;
     for (let next = queue.shift(); next !== undefined; next = queue.shift()) {
-      const out = showStep(state, next);
+      const out = deskStep(state, desk, next);
       state = out.state;
+      desk = out.desk;
       for (const fx of out.effects) run(fx);
     }
     busy = false;
@@ -128,7 +138,7 @@ export function createShow(deps: ShowDeps): Show {
 
   /** Posts every audience message due by now; schedules the next one. */
   const postAudience = () => {
-    if (!state.running || state.stage.status === "dead_line" || show.audience.length === 0) return;
+    if (!state.running || desk.held || state.stage.status === "dead_line" || show.audience.length === 0) return;
     const n = show.audience.length;
     for (;;) {
       const loop = Math.floor(audienceAt / n);
@@ -172,8 +182,7 @@ export function createShow(deps: ShowDeps): Show {
   /** Picks (the visitor's messages first when asked) and launches one beat. */
   const launch = (id: number, visitorFirst: boolean, prefetched: boolean) => {
     const ctx = { self, now: clock.read() };
-    const visitors = visitorFirst ? pickMessage(snap.chat.filter((m) => m.fromVisitor === true), state.pickState, ctx) : undefined;
-    const { picked, state: pickState } = visitors?.picked !== undefined ? visitors : pickMessage(snap.chat, state.pickState, ctx);
+    const { picked, state: pickState } = deskPick(snap.chat, state.pickState, desk, ctx, visitorFirst);
     const req: EngineRequest = {
       characterId: show.characterId,
       persona,
@@ -217,6 +226,7 @@ export function createShow(deps: ShowDeps): Show {
     }
     const startedAt = deps.now();
     const result = voiced ? await player.play(url, reply.line) : "blocked";
+    if (cut === beat) return;
     dispatch({ kind: "lineEnded", gen, result, elapsed: deps.now() - startedAt, at: clock.read() });
   };
 
@@ -268,6 +278,14 @@ export function createShow(deps: ShowDeps): Show {
     }
   };
 
+  /** A desk event, when the desk takes it now. */
+  const desked = (event: DeskEvent): boolean => {
+    if (!deskAllows(state, desk, event, { ...snap, self })) return false;
+    if (event.kind === "skip") cut = snap.caption?.beat ?? -1;
+    dispatch(event);
+    return true;
+  };
+
   return {
     subscribe(listener) {
       listeners.add(listener);
@@ -290,5 +308,9 @@ export function createShow(deps: ShowDeps): Show {
     soundOn() {
       set({ sound: "on" });
     },
+    hold: () => desked({ kind: "hold", at: clock.read() }),
+    resume: () => desked({ kind: "resume", at: clock.read() }),
+    skip: () => desked({ kind: "skip" }),
+    cue: (id) => desked({ kind: "cue", id }),
   };
 }

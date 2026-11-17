@@ -21,6 +21,9 @@
 // the reply's emotion the moment the reply lands; the reply's gesture stays with the spoken line
 // (a gesture is a beat of delivery, and the prop fires once per change). Film grain over the set
 // (Grain.tsx). On the live plane the next line is fetched while this one plays (show.ts).
+// challenge-2026-11-17 air/B, the producer desk (showDesk.ts): H holds the show (the slate says
+// HELD while it is held) and resumes it, S cuts the line; both off-screen, so capture never shows
+// them. A chat message's cue button has the character answer it next.
 import { AvatarCanvas, type RigAssets } from "@sr/avatar";
 import { castSlug, MAX_CHAT_CHARS } from "@sr/engine";
 import { defaultLook, type Look, type Rig } from "@sr/rig";
@@ -122,16 +125,24 @@ function typing(target: EventTarget | null): boolean {
   return target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
 }
 
+/** The desk's keys (H hold or resume, S skip). */
+export interface DeskKeys {
+  toggleHold(): boolean;
+  skip(): boolean;
+}
+
 /**
- * The strip's C key and its Esc. Listens in the capture phase so Esc is taken before the shell's
- * own Esc (back to the set): the first Esc closes the strip (and takes the focus out of it), only
- * a later one leaves. Keys typed into the chat box are not ours.
+ * The strip's C key and its Esc, and the desk's H and S. Listens in the capture phase so Esc is
+ * taken before the shell's own Esc (back to the set): the first Esc closes the strip (and takes
+ * the focus out of it), only a later one leaves. Keys typed into the chat box are not ours.
  */
-export function useStripKeys(holder: RefObject<HTMLElement | null>): boolean {
+export function useStripKeys(holder: RefObject<HTMLElement | null>, desk?: DeskKeys): boolean {
   const [open, setOpen] = useState(false);
   const isOpen = useRef(open);
+  const deskKeys = useRef(desk);
   useEffect(() => {
     isOpen.current = open;
+    deskKeys.current = desk;
   });
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -151,6 +162,14 @@ export function useStripKeys(holder: RefObject<HTMLElement | null>): boolean {
         setOpen(next);
         if (next) (box?.querySelector<HTMLElement>('[aria-current="page"]') ?? box?.querySelector<HTMLElement>("a"))?.focus();
         else if (focusInside && document.activeElement instanceof HTMLElement) document.activeElement.blur();
+        return;
+      }
+      const key = event.key.toLowerCase();
+      const desk = deskKeys.current;
+      if ((key === "h" || key === "s") && desk !== undefined && !event.repeat && !typing(event.target)) {
+        event.preventDefault();
+        if (key === "h") desk.toggleHold();
+        else desk.skip();
       }
     };
     document.addEventListener("keydown", onKey, true);
@@ -177,7 +196,7 @@ export function AirPage({ plane, badge, controls, strip }: AirPageProps) {
   // The sheet's script on replay: answered in the browser, so no paid endpoint is ever asked.
   const scripted = cast.scripted === true && plane === "replay";
   const local = useMemo(() => (scripted ? localScript(cast.show, cast.persona.voice, castBank()) : undefined), [scripted, cast]);
-  const { snapshot, now, post, soundOn } = useShow({
+  const { snapshot, now, post, soundOn, toggleHold, skip, cue } = useShow({
     show: cast.show,
     persona: cast.persona,
     self: cast.self,
@@ -187,7 +206,7 @@ export function AirPage({ plane, badge, controls, strip }: AirPageProps) {
     ...(local === undefined ? {} : { local }),
     prefetch: plane === "live",
   });
-  const { status, caption, chat, sound, pending, upcoming, answering, marks } = snapshot;
+  const { status, caption, chat, sound, pending, upcoming, answering, marks, held, cued } = snapshot;
   const speaking = status === "speaking";
   const voiced = useVoiced(loudness.jawOpen, speaking && caption?.voiced === true);
   const onAir = status === "on_air" || status === "speaking";
@@ -198,7 +217,7 @@ export function AirPage({ plane, badge, controls, strip }: AirPageProps) {
   const lights = useStageLights({ root, candles, chat, self: cast.self, now, jawOpen: loudness.jawOpen, speaking, dead });
 
   const stripBox = useRef<HTMLDivElement>(null);
-  const stripOpen = useStripKeys(stripBox);
+  const stripOpen = useStripKeys(stripBox, { toggleHold, skip });
 
   // Waiting on the next line: eyes to the chat; the reply's emotion as soon as it lands.
   const thinking = !speaking && !dead && pending !== undefined;
@@ -254,6 +273,11 @@ export function AirPage({ plane, badge, controls, strip }: AirPageProps) {
                 SCRIPTED <small>its own lines</small>
               </p>
             )}
+            {held && (
+              <p className={styles.held} data-held="">
+                HELD <small>back shortly</small>
+              </p>
+            )}
             <VoiceTally voiced={voiced} />
           </div>
           <OnAirLamp lit={onAir} />
@@ -285,6 +309,8 @@ export function AirPage({ plane, badge, controls, strip }: AirPageProps) {
         velocity={lights.velocity}
         heat={dead ? 0 : lights.heat}
         {...(marks === undefined ? {} : { marks })}
+        {...(cued === undefined ? {} : { cued })}
+        onCue={cue}
       />
       <audio ref={setAudio} preload="auto" />
     </div>

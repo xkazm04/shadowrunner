@@ -76,6 +76,10 @@ export interface UseShow {
   post(text: string): boolean;
   /** Call from a click: resumes the audio context and lets the next lines play. */
   soundOn(): void;
+  /** challenge-2026-11-17 air/B, the producer desk: hold or resume (a toggle), cut the line, cue a chat message next. False when not taken. */
+  toggleHold(): boolean;
+  skip(): boolean;
+  cue(id: string): boolean;
 }
 
 const IDLE: ShowSnapshot = { status: "booting", chat: [], sound: "on", beat: 0, pending: undefined };
@@ -120,6 +124,9 @@ export function useShow({ show, persona, self, audio, ensureRunning, fetch = api
   }, [controller, ensureRunning]);
 
   const now = useCallback(() => controller?.now() ?? 0, [controller]);
+  const toggleHold = useCallback(() => (controller === undefined ? false : controller.snapshot().held === true ? controller.resume() : controller.hold()), [controller]);
+  const skip = useCallback(() => controller?.skip() ?? false, [controller]);
+  const cue = useCallback((id: string) => controller?.cue(id) ?? false, [controller]);
 
-  return { snapshot, now, post, soundOn };
+  return { snapshot, now, post, soundOn, toggleHold, skip, cue };
 }

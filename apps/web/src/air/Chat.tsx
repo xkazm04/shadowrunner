@@ -7,6 +7,8 @@
 // while its reply is on the way, then the marks above once he speaks it.
 // challenge-2026-11-17 air/A: the marks come whole from the show (chatMarks.ts), one per message;
 // a visitor's message a pick went by without answering it says "passed by".
+// challenge-2026-11-17 air/B: a message nobody has answered carries a cue button (the producer
+// desk, showDesk.ts): pressed, the character answers it next.
 import type { ChatMsg } from "@sr/engine";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { CANDLE_COUNT } from "./candles";
@@ -21,6 +23,9 @@ export interface ChatProps {
   onPost(text: string): boolean;
   /** One lifecycle mark per message (show.ts snapshot `marks`); a message without one is plain. */
   marks?: ChatMarks;
+  /** The producer desk: the message the next pick takes, and cueing one (false when refused). */
+  cued?: string;
+  onCue?(id: string): boolean;
   maxLength: number;
   /** Messages in the last 30 s, and the corridor heat they make (0..1). */
   velocity?: number;
@@ -34,7 +39,7 @@ function kindOf(msg: ChatMsg, self: string): "self" | "visitor" | "audience" {
 
 const WICKS = Array.from({ length: CANDLE_COUNT }, (_, i) => i);
 
-export function Chat({ chat, self, onPost, marks, maxLength, velocity = 0, heat = 0 }: ChatProps) {
+export function Chat({ chat, self, onPost, marks, cued, onCue, maxLength, velocity = 0, heat = 0 }: ChatProps) {
   const [draft, setDraft] = useState("");
   const list = useRef<HTMLOListElement>(null);
   const newest = chat.at(-1)?.id;
@@ -70,9 +75,12 @@ export function Chat({ chat, self, onPost, marks, maxLength, velocity = 0, heat 
         {chat.map((msg) => {
           const mark = marks?.[msg.id] ?? "none";
           const done = mark === "answered" || mark === "answering";
+          const isCued = msg.id === cued;
+          const cueable = onCue !== undefined && msg.user !== self && (mark === "none" || mark === "queued" || mark === "passed");
           return (
             <li
               key={msg.id}
+              data-id={msg.id}
               className={styles.message}
               data-kind={kindOf(msg, self)}
               data-answered={done ? "" : undefined}
@@ -80,12 +88,18 @@ export function Chat({ chat, self, onPost, marks, maxLength, velocity = 0, heat 
               data-queued={mark === "queued" ? "" : undefined}
               data-pending={mark === "pending" ? "" : undefined}
               data-passed={mark === "passed" ? "" : undefined}
+              data-cued={isCued ? "" : undefined}
             >
               <span className={styles.user}>{msg.user}</span> <span className={styles.text}>{msg.text}</span>
               {done && <span className={styles.mark}> answered</span>}
               {mark === "queued" && <span className={styles.waitMark}> queued</span>}
               {mark === "pending" && <span className={styles.waitMark}> answering</span>}
               {mark === "passed" && <span className={styles.waitMark}> passed by</span>}
+              {cueable && (
+                <button type="button" className={styles.cue} data-cue="" aria-pressed={isCued} aria-label={`Answer next: ${msg.user}`} onClick={() => onCue(msg.id)}>
+                  {isCued ? "cued" : "cue"}
+                </button>
+              )}
             </li>
           );
         })}
@@ -109,7 +123,7 @@ export function Chat({ chat, self, onPost, marks, maxLength, velocity = 0, heat 
           </button>
         </div>
         <p className={styles.keys}>
-          <kbd>C</kbd> channels
+          <kbd>C</kbd> channels <kbd>H</kbd> hold <kbd>S</kbd> skip
         </p>
       </form>
     </section>

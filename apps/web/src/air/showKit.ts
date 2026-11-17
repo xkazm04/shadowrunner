@@ -26,6 +26,8 @@ export interface Options {
   show?: ShowScript;
   voiceStatus?: number;
   play?: () => PlayResult | Promise<PlayResult>;
+  /** Called when the show stops the player (challenge-2026-11-17 air/B: skip). */
+  stop?: () => void;
   now?: () => number;
   engineFails?: number;
   /** /api/health answers, in order; the last one repeats. Default: always healthy. */
@@ -107,7 +109,7 @@ export function setup(options: Options = {}) {
         if (options.play) return Promise.resolve(options.play());
         return new Promise((resolve) => setTimeout(() => resolve("ended"), LINE_MS));
       },
-      stop: () => undefined,
+      stop: () => options.stop?.(),
     },
     objectUrl: () => `blob:${(urls += 1)}`,
     revokeUrl: (url) => {
