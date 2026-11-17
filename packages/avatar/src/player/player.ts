@@ -1,9 +1,12 @@
 // React-free avatar player (spec avatar-reach, design "Player core"): the AvatarCanvas frame loop
 // for pages and elements that are not React (the <sr-avatar> element, the overlay, the studio).
-// The body is player/run.ts (its renderer factory is a test seam); the frame body, shared with
-// AvatarCanvas, is player/frame.ts.
-import type { Emotion, Gesture, Layer, Look, Rig } from "@sr/rig";
+// The body is player/run.ts (its renderer factory is a test seam) and the frame body is
+// player/frame.ts. It is the one host loop: <AvatarCanvas> is a React shell over it, so every
+// frame input (`AvatarPlayerInputs`) reaches React and non-React pages alike.
+import type { Drive, Emotion, Gesture, Layer, Look, Rig } from "@sr/rig";
 import type { AttachAudioOptions } from "../audio/level.js";
+import type { LookAtPoint } from "../driver/lookAt.js";
+import type { Gaze } from "../driver/state.js";
 import { createRenderer } from "../gl/renderer.js";
 import type { AssetLoader } from "../render/assets.js";
 import type { Affine } from "../render/frame.js";
@@ -11,6 +14,7 @@ import type { RigAssets } from "../render/types.js";
 import type { ShapeWeights } from "../mouth/shapes.js";
 import type { MouthPose, MouthShapesInput } from "../mouth/state.js";
 import type { MouthMode } from "../mouth/anchor.js";
+import type { ClipMouth } from "../speech/drive.js";
 import { runPlayer } from "./run.js";
 
 export interface AvatarPlayerOptions {
@@ -86,7 +90,43 @@ export interface AvatarPlayer {
   dispose(): void;
 }
 
-/** A React-free player on `canvas`: AvatarCanvas's renderer and frame body, driven from outside React. */
-export function createAvatarPlayer(canvas: HTMLCanvasElement, options: AvatarPlayerOptions): AvatarPlayer {
+/** A mutable holder of the look-at point, e.g. React's `useRef<LookAtPoint | null>(null)`. */
+export interface LookAtRef {
+  readonly current: LookAtPoint | null | undefined;
+}
+
+/**
+ * The rest of the frame inputs (AvatarCanvas's props), on `createAvatarPlayer`'s player. A sibling
+ * of `AvatarPlayer` rather than optional members of it, so hand-made players (test fakes typed
+ * `Record<keyof AvatarPlayer, ...>`) need not carry them. Every call is a no-op after `dispose`.
+ */
+export interface AvatarPlayerInputs {
+  /** Plays `layer`'s signature act (tiger L1) once, from the next frame. */
+  act(layer: string): void;
+  /** Eyes-only dim 0..1 (default 0), eased over about a second, instant under reduced motion. */
+  setDim(dim: number | undefined): void;
+  /** Look toward this point (normalised view space) or the point a ref holds, read every frame; `undefined` stops. */
+  setLookAt(lookAt: LookAtPoint | LookAtRef | undefined): void;
+  /** Default "host". */
+  setGaze(gaze: Gaze | undefined): void;
+  /** Overrides the driver (tests, screenshots); `undefined` returns to it. */
+  setDrive(drive: Drive | undefined): void;
+  /**
+   * A clip's mouth track on its clock: while set (and no `setMouthShapes` mix is), a rig whose
+   * mouth takes shapes follows the track every frame of the player's own loop (one soft shape
+   * under reduced motion). `undefined` returns to the level drive.
+   */
+  setClipMouth(clip: ClipMouth | undefined): void;
+  /** A level read every frame (a page's own reading); it wins over the tap like `setLevel`, the latest call of the two wins. */
+  setLevelSource(read: (() => number) | undefined): void;
+  /** Swaps the rig and its images live; the renderer takes them before the next draw. */
+  setRig(rig: Rig, assets: RigAssets): void;
+}
+
+/** `createAvatarPlayer`'s player: the interface plus every frame input. */
+export type FullAvatarPlayer = AvatarPlayer & AvatarPlayerInputs;
+
+/** The avatar host loop on `canvas` (renderer, frame body, rAF loop), driven from outside React or by <AvatarCanvas>. */
+export function createAvatarPlayer(canvas: HTMLCanvasElement, options: AvatarPlayerOptions): FullAvatarPlayer {
   return runPlayer(canvas, options, createRenderer);
 }

@@ -28,6 +28,14 @@ vi.mock(import("@sr/avatar/core"), async (original) => ({
       start: noop,
       stop: noop,
       renderFrame: noop,
+      act: noop,
+      setDim: noop,
+      setLookAt: noop,
+      setGaze: noop,
+      setDrive: noop,
+      setClipMouth: noop,
+      setLevelSource: noop,
+      setRig: noop,
       dispose: () => {
         probe.disposed += 1;
       },

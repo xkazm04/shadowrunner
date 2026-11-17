@@ -1,14 +1,40 @@
 // @vitest-environment happy-dom
 // <AvatarCanvas> (task 5, req 6, 5.3) with React Testing Library, the counting GL stub behind
 // HTMLCanvasElement.getContext, and a hand-driven requestAnimationFrame.
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { cleanup, render } from "@testing-library/react";
 import { defaultLook, poseLayers, type Drive, type Gesture, type Look } from "@sr/rig";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { glowGain } from "../gl/glow.js";
+import type { FrameBodyInputs, FrameOutput } from "../player/frame.js";
+import { runPlayer } from "../player/run.js";
 import { fitView, hexToRgb, layerAffine, lookLight } from "../render/frame.js";
+import type { Renderer } from "../render/types.js";
 import { AvatarCanvas, type AvatarCanvasProps } from "../react/AvatarCanvas.js";
 import { createGlStub, type GlStub } from "./glStub.js";
 import { fakeAssets, malakorRig } from "./malakor.js";
+
+/** Every frame body's outputs, per body (one per mount or player), in creation order. */
+const bodies = vi.hoisted(() => ({ outputs: [] as unknown[][] }));
+
+vi.mock("../player/frame.js", async (importOriginal) => {
+  const real = await importOriginal<typeof import("../player/frame.js")>();
+  return {
+    ...real,
+    createFrameBody: (...args: Parameters<typeof real.createFrameBody>) => {
+      const body = real.createFrameBody(...args);
+      const outputs: FrameOutput[] = [];
+      bodies.outputs.push(outputs);
+      return (inputs: FrameBodyInputs) => {
+        const out = body(inputs);
+        outputs.push(out);
+        return out;
+      };
+    },
+  };
+});
 
 const rig = malakorRig();
 const assets = fakeAssets(rig);
@@ -33,6 +59,7 @@ beforeEach(() => {
   nextId = 1;
   cancelled = [];
   reduceQuery = false;
+  bodies.outputs.length = 0;
   vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(((id: string) => (id === "webgl2" ? gl.gl : null)) as HTMLCanvasElement["getContext"]);
   vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
     const id = nextId++;
@@ -148,5 +175,43 @@ describe("<AvatarCanvas>", () => {
     expect(frames.size).toBe(0);
     expect([...gl.live]).toEqual([]);
     expect(container.querySelector("canvas")).toBeNull();
+  });
+});
+
+describe("<AvatarCanvas> over the player (one host loop)", () => {
+  it("moves exactly as a player with the same seed fed the same calls (parity)", () => {
+    const lookAt = { x: 0.6, y: -0.3 };
+    mount({ seed: 3, act: { layer: "jaw", n: 1 }, dim: 0.5, lookAt });
+    for (let i = 0; i < 10; i += 1) tick(i * 16);
+    cleanup();
+    const host = document.createElement("div");
+    const canvas = document.createElement("canvas");
+    host.appendChild(canvas);
+    document.body.appendChild(host);
+    const renderer: Renderer = {
+      setRig: () => undefined,
+      setLook: () => undefined,
+      draw: () => undefined,
+      resize: () => undefined,
+      info: () => ({ mode: "2d", drawCalls: 0, textureUploads: 0 }),
+      dispose: () => undefined,
+    };
+    const player = runPlayer(canvas, { rig, look, assets, seed: 3, backdrop: true }, () => renderer);
+    player.act("jaw");
+    player.setDim(0.5);
+    player.setLookAt(lookAt);
+    player.start();
+    for (let i = 0; i < 10; i += 1) tick(i * 16);
+    player.dispose();
+    host.remove();
+    const [canvasFrames, playerFrames] = bodies.outputs;
+    expect(canvasFrames).toHaveLength(10);
+    expect(playerFrames).toEqual(canvasFrames);
+  });
+
+  it("runs no loop of its own: the module drives the player and holds no frame scheduling or frame body", () => {
+    const source = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../react/AvatarCanvas.tsx"), "utf8");
+    expect(source).toMatch(/import \{[^}]*(runPlayer|createAvatarPlayer)[^}]*\} from "\.\.\/player\/(run|player)\.js"/);
+    for (const banned of ["requestAnimationFrame", "watchVisibility", "createFrameBody"]) expect(source).not.toContain(banned);
   });
 });

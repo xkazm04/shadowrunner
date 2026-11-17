@@ -4,7 +4,7 @@
 // the frames and the audio graph.
 import { mixSpans, restWeights, type MouthTrack } from "@sr/avatar/core";
 import { describe, expect, it, vi } from "vitest";
-import { lipSync, monoOf, trackOfLine, trackShaper } from "./lipsync";
+import { frameLoop, lipSync, monoOf, trackOfLine, trackShaper } from "./lipsync";
 import { playLine, type LineContext } from "./recorder";
 
 /** Open wide from 0.1 s to 0.3 s of a 0.5 s line. */
@@ -15,6 +15,7 @@ function fakePlayer(mode: "drawn" | "warp" | "still" | undefined, log: string[] 
   return {
     log,
     setMouthShapes: vi.fn((...args: unknown[]) => log.push(args[0] === undefined ? "shapes off" : "shapes")),
+    setClipMouth: vi.fn((...args: unknown[]) => log.push(args[0] === undefined ? "clip off" : "clip")),
     mouthMode: () => mode,
     start: vi.fn(() => log.push("player start")),
     stop: vi.fn(() => log.push("player stop")),
@@ -71,11 +72,32 @@ describe("trackShaper", () => {
 });
 
 describe("lipSync (Preview)", () => {
-  it("runs its frame before the player's: stops the loop, asks for a frame, starts the loop again", () => {
+  it("hands the player the line's track and clock: no loop of its own, no stop / start of the player's", () => {
+    const log: string[] = [];
+    const player = fakePlayer("drawn", log);
+    const clock = () => 0.2;
+    const stop = lipSync(player, lip, clock);
+    expect(player.setClipMouth).toHaveBeenCalledWith({ track, clock });
+    expect(log).toEqual(["clip"]);
+    stop();
+    expect(player.setClipMouth).toHaveBeenLastCalledWith(undefined);
+    expect(log).toEqual(["clip", "clip off"]);
+  });
+
+  it("does nothing for a jaw-only rig", () => {
+    const log: string[] = [];
+    const player = fakePlayer(undefined, log);
+    lipSync(player, lip, () => 0.2)();
+    expect(log).toEqual([]);
+  });
+});
+
+describe("frameLoop (the script director's Preview)", () => {
+  it("runs its step before the player's frame: stops the loop, asks for a frame, starts the loop again", () => {
     const log: string[] = [];
     const player = fakePlayer("drawn", log);
     const frames = fakeFrames(log);
-    const stop = lipSync(player, lip, () => 0.2, frames);
+    const stop = frameLoop(player, trackShaper(player, lip, () => 0.2), frames);
     expect(log).toEqual(["player stop", "frame requested", "player start"]);
     frames.run(16);
     frames.run(32);
@@ -83,13 +105,6 @@ describe("lipSync (Preview)", () => {
     stop();
     expect(frames.pending.size).toBe(0);
     expect(player.setMouthShapes).toHaveBeenLastCalledWith(undefined);
-  });
-
-  it("does nothing for a jaw-only rig", () => {
-    const log: string[] = [];
-    const player = fakePlayer(undefined, log);
-    lipSync(player, lip, () => 0.2, fakeFrames(log))();
-    expect(log).toEqual([]);
   });
 });
 

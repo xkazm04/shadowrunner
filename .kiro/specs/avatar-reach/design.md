@@ -39,8 +39,27 @@ export interface AvatarPlayer {
   renderFrame(dt: number): void;
   dispose(): void;                           // stop, detach, dispose renderer
 }
-export function createAvatarPlayer(canvas: HTMLCanvasElement, options: AvatarPlayerOptions): AvatarPlayer;
+/** The rest of the frame inputs (AvatarCanvas's props); a sibling interface so fakes of AvatarPlayer need not carry it. */
+export interface AvatarPlayerInputs {
+  act(layer: string): void;                  // the layer's signature act, from the next frame
+  setDim(dim: number | undefined): void;     // eyes-only dim 0..1, eased
+  setLookAt(lookAt: LookAtPoint | LookAtRef | undefined): void;   // a ref is read every frame
+  setGaze(gaze: Gaze | undefined): void;     // default "host"
+  setDrive(drive: Drive | undefined): void;  // overrides the driver
+  setClipMouth(clip: ClipMouth | undefined): void;   // a clip's track on its clock, stepped by the player's loop
+  setLevelSource(read: (() => number) | undefined): void;   // a level read every frame, wins over the tap
+  setRig(rig: Rig, assets: RigAssets): void; // live swap; the renderer takes it before the next draw
+}
+export type FullAvatarPlayer = AvatarPlayer & AvatarPlayerInputs;
+export function createAvatarPlayer(canvas: HTMLCanvasElement, options: AvatarPlayerOptions): FullAvatarPlayer;
 ```
+One host loop (challenge-2026-11-17, avatar/A): the player is the only frame loop. `<AvatarCanvas>`
+is a React shell over it (it creates the canvas, `createAvatarPlayer(canvas, { backdrop: true,
+autoSize: true, pauseOffscreen })`, and maps props onto player calls in effects), so pause, DPR,
+reduced motion and every frame input are fixed once. The loop watches the canvas's host element
+(its parent at creation) for visibility and `data-motion`, not the canvas, which the GL renderer
+replaces on a context loss. The studio's Preview hands the line's track to `setClipMouth` instead of
+running a second loop.
 The frame body is the one in `AvatarCanvas` (advanceFrame -> moodFader -> poseLayers(applyLook) ->
 renderer.draw); the builder extracts the shared parts rather than copying them, without changing
 `AvatarCanvas` behaviour. `attachAudio` in `audio/level.ts` gains `MediaStream` support
