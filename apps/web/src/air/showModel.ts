@@ -3,6 +3,7 @@
 // period. show.ts re-exports all of it, so importers keep reading "./show".
 import type { ChatMsg, EngineReply, Persona, ShowScript } from "@sr/engine";
 import type { Fetcher } from "../app/plane";
+import type { ChatMarks } from "./chatMarks";
 import type { LocalScript } from "./sheetShow";
 
 /** The default beat, and how long a caption-only line stays up (requirement 4.3). */
@@ -42,6 +43,22 @@ export interface ShowSnapshot {
   upcoming?: EngineReply;
   /** The id of the chat message the beat in flight answers, until its line starts. */
   answering?: string;
+  /** One lifecycle mark per chat id (chatMarks.ts): queued, pending, answering, answered, passed or none. */
+  marks?: ChatMarks;
+}
+
+/** The show controller (show.ts createShow). */
+export interface Show {
+  subscribe(listener: () => void): () => void;
+  snapshot(): ShowSnapshot;
+  /** Now on the show clock (the clock chat stamps use). */
+  now(): number;
+  start(): void;
+  stop(): void;
+  /** The visitor's message; false when empty after trimming. */
+  post(text: string): boolean;
+  /** The visitor allowed sound (a click): later lines play. */
+  soundOn(): void;
 }
 
 export type PlayResult = "ended" | "blocked" | "error";

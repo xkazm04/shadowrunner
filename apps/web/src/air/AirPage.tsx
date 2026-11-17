@@ -187,7 +187,7 @@ export function AirPage({ plane, badge, controls, strip }: AirPageProps) {
     ...(local === undefined ? {} : { local }),
     prefetch: plane === "live",
   });
-  const { status, caption, chat, sound, pending, upcoming, answering } = snapshot;
+  const { status, caption, chat, sound, pending, upcoming, answering, marks } = snapshot;
   const speaking = status === "speaking";
   const voiced = useVoiced(loudness.jawOpen, speaking && caption?.voiced === true);
   const onAir = status === "on_air" || status === "speaking";
@@ -199,13 +199,6 @@ export function AirPage({ plane, badge, controls, strip }: AirPageProps) {
 
   const stripBox = useRef<HTMLDivElement>(null);
   const stripOpen = useStripKeys(stripBox);
-
-  // Every message he has answered keeps its mark for as long as it is on screen.
-  const answeredNow = speaking ? caption?.answered?.id : undefined;
-  const [answered, setAnswered] = useState<ReadonlySet<string>>(() => new Set());
-  useEffect(() => {
-    if (answeredNow !== undefined) setAnswered((prev) => (prev.has(answeredNow) ? prev : new Set(prev).add(answeredNow)));
-  }, [answeredNow]);
 
   // Waiting on the next line: eyes to the chat; the reply's emotion as soon as it lands.
   const thinking = !speaking && !dead && pending !== undefined;
@@ -289,11 +282,9 @@ export function AirPage({ plane, badge, controls, strip }: AirPageProps) {
         self={cast.self}
         onPost={post}
         maxLength={MAX_CHAT_CHARS}
-        answered={answered}
         velocity={lights.velocity}
         heat={dead ? 0 : lights.heat}
-        {...(answeredNow === undefined ? {} : { answeredId: answeredNow })}
-        {...(answering === undefined ? {} : { pendingId: answering })}
+        {...(marks === undefined ? {} : { marks })}
       />
       <audio ref={setAudio} preload="auto" />
     </div>

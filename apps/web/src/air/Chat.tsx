@@ -5,9 +5,12 @@
 // he is answering right now is lit. Newest at the bottom; the list follows the newest message.
 // perfection-pass 5.1: a visitor's message says "queued" until a pick takes it, then "answering"
 // while its reply is on the way, then the marks above once he speaks it.
+// challenge-2026-11-17 air/A: the marks come whole from the show (chatMarks.ts), one per message;
+// a visitor's message a pick went by without answering it says "passed by".
 import type { ChatMsg } from "@sr/engine";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { CANDLE_COUNT } from "./candles";
+import type { ChatMarks } from "./chatMarks";
 import type { AirMsg } from "./showModel";
 import styles from "./Chat.module.css";
 
@@ -16,12 +19,8 @@ export interface ChatProps {
   self: string;
   /** Returns false when the message was empty. */
   onPost(text: string): boolean;
-  /** The message the character is answering right now. */
-  answeredId?: string;
-  /** Every message he has answered so far. */
-  answered?: ReadonlySet<string>;
-  /** The message the next line answers, picked but not yet spoken (show.ts `answering`). */
-  pendingId?: string;
+  /** One lifecycle mark per message (show.ts snapshot `marks`); a message without one is plain. */
+  marks?: ChatMarks;
   maxLength: number;
   /** Messages in the last 30 s, and the corridor heat they make (0..1). */
   velocity?: number;
@@ -35,7 +34,7 @@ function kindOf(msg: ChatMsg, self: string): "self" | "visitor" | "audience" {
 
 const WICKS = Array.from({ length: CANDLE_COUNT }, (_, i) => i);
 
-export function Chat({ chat, self, onPost, answeredId, answered, pendingId, maxLength, velocity = 0, heat = 0 }: ChatProps) {
+export function Chat({ chat, self, onPost, marks, maxLength, velocity = 0, heat = 0 }: ChatProps) {
   const [draft, setDraft] = useState("");
   const list = useRef<HTMLOListElement>(null);
   const newest = chat.at(-1)?.id;
@@ -69,22 +68,24 @@ export function Chat({ chat, self, onPost, answeredId, answered, pendingId, maxL
       </header>
       <ol ref={list} className={styles.messages} aria-live="off">
         {chat.map((msg) => {
-          const done = msg.id === answeredId || answered?.has(msg.id) === true;
-          const coming = !done && msg.id === pendingId;
+          const mark = marks?.[msg.id] ?? "none";
+          const done = mark === "answered" || mark === "answering";
           return (
             <li
               key={msg.id}
               className={styles.message}
               data-kind={kindOf(msg, self)}
               data-answered={done ? "" : undefined}
-              data-answering={msg.id === answeredId ? "" : undefined}
-              data-queued={msg.queued ? "" : undefined}
-              data-pending={coming ? "" : undefined}
+              data-answering={mark === "answering" ? "" : undefined}
+              data-queued={mark === "queued" ? "" : undefined}
+              data-pending={mark === "pending" ? "" : undefined}
+              data-passed={mark === "passed" ? "" : undefined}
             >
               <span className={styles.user}>{msg.user}</span> <span className={styles.text}>{msg.text}</span>
               {done && <span className={styles.mark}> answered</span>}
-              {msg.queued && <span className={styles.waitMark}> queued</span>}
-              {coming && <span className={styles.waitMark}> answering</span>}
+              {mark === "queued" && <span className={styles.waitMark}> queued</span>}
+              {mark === "pending" && <span className={styles.waitMark}> answering</span>}
+              {mark === "passed" && <span className={styles.waitMark}> passed by</span>}
             </li>
           );
         })}

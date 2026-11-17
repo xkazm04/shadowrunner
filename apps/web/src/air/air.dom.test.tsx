@@ -99,7 +99,7 @@ describe("Chat", () => {
   ];
 
   it("marks the audience, the visitor and the character, and the message being answered", async () => {
-    m = await mount(<Chat chat={chat} self="Malakor" onPost={() => true} answeredId="v1" maxLength={300} />);
+    m = await mount(<Chat chat={chat} self="Malakor" onPost={() => true} marks={{ v1: "answering" }} maxLength={300} />);
     const items = [...(m.container.querySelectorAll<HTMLElement>("li") ?? [])];
     expect(items.map((li) => li.dataset.kind)).toEqual(["audience", "visitor", "self"]);
     expect(items.map((li) => li.dataset.answered !== undefined)).toEqual([false, true, false]);
@@ -107,7 +107,7 @@ describe("Chat", () => {
   });
 
   it("keeps the answered mark on every message he has answered, and reads the candle velocity", async () => {
-    m = await mount(<Chat chat={chat} self="Malakor" onPost={() => true} answered={new Set(["a01", "v1"])} maxLength={300} velocity={7} heat={0.5} />);
+    m = await mount(<Chat chat={chat} self="Malakor" onPost={() => true} marks={{ a01: "answered", v1: "answered" }} maxLength={300} velocity={7} heat={0.5} />);
     const items = [...m.container.querySelectorAll<HTMLElement>("li")];
     expect(items.map((li) => li.dataset.answered !== undefined)).toEqual([true, true, false]);
     expect(items.every((li) => li.dataset.answering === undefined)).toBe(true);

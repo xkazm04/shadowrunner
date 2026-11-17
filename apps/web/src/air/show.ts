@@ -32,26 +32,20 @@
 //   already answers a visitor. A discarded beat is never retried. A prefetch that fails is
 //   dropped quietly and the serial path takes over when the line ends. The chat it sends is the
 //   chat as it stands when it launches, the line now playing included.
-import { pickMessage, initialPickState, MAX_CHAT_CHARS, MAX_CHAT_MESSAGES, type EngineRequest, type PickState } from "@sr/engine";
+//
+// challenge-2026-11-17 air/A: the rules above are a pure reducer (showMachine.ts showStep); this
+// file is the interpreter that runs its effects (launch, air, play, timers, health, the audience)
+// and feeds what happens back as events. The chat marks are one derivation (chatMarks.ts): the
+// snapshot carries them, and a visitor's message the picks went by is marked `passed`.
+import { pickMessage, MAX_CHAT_CHARS, MAX_CHAT_MESSAGES, type EngineRequest } from "@sr/engine";
 import { launchBeat, requestReply, voiceFor, type BeatSource, type InFlight, type ReadyBeat } from "./beat";
-import { BEAT_MS, CHAT_KEEP, createShowClock, plainMsg, showPeriod, THINK_DELAY_MS, VISITOR_NAME, type AirMsg, type Caption, type ShowDeps, type ShowSnapshot } from "./showModel";
-import { HEALTH_POLL_MS, INITIAL_STAGE, stageStep, type StageEvent, type StageState } from "./stage";
+import { chatMarks, keepAnswered, sameMarks } from "./chatMarks";
+import { initialShow, showStep, type ShowEffect, type ShowEvent, type ShowState } from "./showMachine";
+import { CHAT_KEEP, createShowClock, plainMsg, showPeriod, THINK_DELAY_MS, VISITOR_NAME, type AirMsg, type Show, type ShowDeps, type ShowSnapshot } from "./showModel";
+import { HEALTH_POLL_MS } from "./stage";
 
 export { requestVoice, VOICE_ATTEMPTS } from "./beat";
 export * from "./showModel";
-
-export interface Show {
-  subscribe(listener: () => void): () => void;
-  snapshot(): ShowSnapshot;
-  /** Now on the show clock (the clock chat stamps use). */
-  now(): number;
-  start(): void;
-  stop(): void;
-  /** The visitor's message; false when empty after trimming. */
-  post(text: string): boolean;
-  /** The visitor allowed sound (a click): later lines play. */
-  soundOn(): void;
-}
 
 export function createShow(deps: ShowDeps): Show {
   const { show, persona, self, timers, player } = deps;
@@ -59,90 +53,88 @@ export function createShow(deps: ShowDeps): Show {
   const period = showPeriod(show);
   const listeners = new Set<() => void>();
   let snap: ShowSnapshot = { status: "booting", chat: [], sound: "on", beat: 0, pending: undefined };
-  let stage: StageState = INITIAL_STAGE;
-  let pickState: PickState = initialPickState();
-  let running = false;
-  let generation = 0;
+  let state: ShowState = initialShow(deps.prefetch === true);
+  /** Each launched beat's handle, and a landed beat waiting for the stage. */
+  const flights = new Map<number, InFlight>();
+  const landed = new Map<number, ReadyBeat>();
+  let answered: ReadonlySet<string> = new Set();
   let audienceAt = 0;
   let visitorCount = 0;
   let beatTimer: unknown;
   let audienceTimer: unknown;
-  let currentUrl: string | undefined;
-  /** Time spent with the line dead: the audience's schedule moves on by it. */
-  let pausedMs = 0;
-  let deadSince: number | undefined;
-  /** The one beat in flight, and the pick state from before its pick (to undo it). */
-  let inflight: InFlight | undefined;
-  let pickBefore: PickState = pickState;
-  /** The stage waits on `inflight` with no line up; `thinking` once THINK_DELAY_MS have passed. */
-  let waiting = false;
-  let thinking = false;
   let thinkTimer: unknown;
+  let currentUrl: string | undefined;
+  const queue: ShowEvent[] = [];
+  let busy = false;
+
+  const notify = () => {
+    for (const listener of listeners) listener();
+  };
 
   const set = (patch: Partial<ShowSnapshot>) => {
     snap = { ...snap, ...patch };
-    for (const listener of listeners) listener();
+    notify();
   };
 
-  const append = (msg: AirMsg) => set({ chat: [...snap.chat, msg].slice(-CHAT_KEEP) });
-
-  const apply = (event: StageEvent) => {
-    stage = stageStep(stage, event);
-    if (stage.status !== snap.status) set({ status: stage.status });
-  };
-
-  /** pending / upcoming / answering, from the beat in flight and the wait. */
-  const showWait = () => {
-    const pending = waiting && thinking ? (inflight?.stage === "reply" ? "reply" : "voice") : undefined;
-    const upcoming = waiting ? inflight?.reply : undefined;
+  /** Status, wait, answering and the chat marks, derived from the state and the beat in flight. */
+  const sync = () => {
+    const inflight = state.flight === undefined ? undefined : flights.get(state.flight.id);
+    const status = state.stage.status;
+    const pending = state.wait === "thinking" ? (inflight?.stage === "reply" ? "reply" : "voice") : undefined;
+    const upcoming = state.wait === "none" ? undefined : inflight?.reply;
     const answering = inflight?.picked?.id;
-    if (pending === snap.pending && upcoming === snap.upcoming && answering === snap.answering) return;
-    const next: ShowSnapshot = { ...snap, pending, ...(upcoming === undefined ? {} : { upcoming }), ...(answering === undefined ? {} : { answering }) };
+    answered = keepAnswered(answered, snap.chat);
+    const speakingAnsweredId = status === "speaking" ? snap.caption?.answered?.id : undefined;
+    const marks = chatMarks(snap.chat, {
+      lastPickTs: state.pickState.lastPickTs,
+      answeredIds: answered,
+      ...(answering === undefined ? {} : { answeringId: answering }),
+      ...(speakingAnsweredId === undefined ? {} : { speakingAnsweredId }),
+    });
+    let requeued = false;
+    const chat = snap.chat.map((m) => {
+      const queued = marks[m.id] === "queued";
+      if (queued === (m.queued === true)) return m;
+      requeued = true;
+      return queued ? { ...m, queued: true as const } : plainMsg(m);
+    });
+    const same = status === snap.status && pending === snap.pending && upcoming === snap.upcoming && answering === snap.answering && !requeued && sameMarks(snap.marks, marks);
+    if (same) return;
+    const next: ShowSnapshot = { ...snap, status, pending, chat, marks, ...(upcoming === undefined ? {} : { upcoming }), ...(answering === undefined ? {} : { answering }) };
     if (upcoming === undefined) delete next.upcoming;
     if (answering === undefined) delete next.answering;
     snap = next;
-    for (const listener of listeners) listener();
+    notify();
   };
 
-  const startWait = () => {
-    waiting = true;
-    thinking = false;
-    timers.clear(thinkTimer);
-    thinkTimer = timers.set(() => {
-      thinking = true;
-      showWait();
-    }, THINK_DELAY_MS);
-    showWait();
+  const append = (msg: AirMsg) => {
+    set({ chat: [...snap.chat, msg].slice(-CHAT_KEEP) });
+    sync();
   };
 
-  const endWait = () => {
-    waiting = false;
-    thinking = false;
-    timers.clear(thinkTimer);
-    showWait();
-  };
-
-  /** A visitor's message is queued while a later pick may still take it. */
-  const markQueue = () => {
-    let changed = false;
-    const chat = snap.chat.map((m) => {
-      const queued = m.fromVisitor === true && m.ts > pickState.lastPickTs;
-      if (queued === (m.queued === true)) return m;
-      changed = true;
-      return queued ? { ...m, queued: true as const } : plainMsg(m);
-    });
-    if (changed) set({ chat });
+  /** Steps the reducer and runs its effects; events raised meanwhile wait their turn. */
+  const dispatch = (event: ShowEvent) => {
+    queue.push(event);
+    if (busy) return;
+    busy = true;
+    for (let next = queue.shift(); next !== undefined; next = queue.shift()) {
+      const out = showStep(state, next);
+      state = out.state;
+      for (const fx of out.effects) run(fx);
+    }
+    busy = false;
+    sync();
   };
 
   /** Posts every audience message due by now; schedules the next one. */
   const postAudience = () => {
-    if (!running || stage.status === "dead_line" || show.audience.length === 0) return;
+    if (!state.running || state.stage.status === "dead_line" || show.audience.length === 0) return;
     const n = show.audience.length;
     for (;;) {
       const loop = Math.floor(audienceAt / n);
       const msg = show.audience[audienceAt % n];
       if (msg === undefined) return;
-      const due = loop * period + msg.ts + pausedMs;
+      const due = loop * period + msg.ts + state.pausedMs;
       const wait = due - clock.read();
       if (wait > 0) {
         audienceTimer = timers.set(postAudience, wait);
@@ -156,16 +148,6 @@ export function createShow(deps: ShowDeps): Show {
   const release = () => {
     if (currentUrl !== undefined) deps.revokeUrl(currentUrl);
     currentUrl = undefined;
-  };
-
-  /** Drops the beat in flight (its clip URL is revoked by beat.ts) and undoes its pick. */
-  const discard = () => {
-    if (inflight === undefined) return;
-    inflight.abort();
-    inflight = undefined;
-    pickState = pickBefore;
-    markQueue();
-    showWait();
   };
 
   const source = (gen: number): BeatSource => ({
@@ -183,17 +165,15 @@ export function createShow(deps: ShowDeps): Show {
     },
     revokeUrl: (url) => deps.revokeUrl(url),
     changed: () => {
-      if (gen === generation) showWait();
+      if (gen === state.generation) sync();
     },
   });
 
-  /** Picks and launches the next beat; `visitorFirst` picks among the visitor's messages first. */
-  const launch = (gen: number, visitorFirst = false) => {
+  /** Picks (the visitor's messages first when asked) and launches one beat. */
+  const launch = (id: number, visitorFirst: boolean, prefetched: boolean) => {
     const ctx = { self, now: clock.read() };
-    const visitors = visitorFirst ? pickMessage(snap.chat.filter((m) => m.fromVisitor === true), pickState, ctx) : undefined;
-    const { picked, state } = visitors?.picked !== undefined ? visitors : pickMessage(snap.chat, pickState, ctx);
-    pickBefore = pickState;
-    pickState = state;
+    const visitors = visitorFirst ? pickMessage(snap.chat.filter((m) => m.fromVisitor === true), state.pickState, ctx) : undefined;
+    const { picked, state: pickState } = visitors?.picked !== undefined ? visitors : pickMessage(snap.chat, state.pickState, ctx);
     const req: EngineRequest = {
       characterId: show.characterId,
       persona,
@@ -201,126 +181,91 @@ export function createShow(deps: ShowDeps): Show {
       beat: snap.beat,
       ...(picked === undefined ? {} : { pickedId: picked.id }),
     };
-    inflight = launchBeat(req, picked, stage.status === "speaking", source(gen));
-    markQueue();
-    showWait();
+    const gen = state.generation;
+    const flight = launchBeat(req, picked, prefetched, source(gen));
+    flights.set(id, flight);
+    void flight.outcome.then((outcome) => {
+      if (!flights.has(id)) return;
+      if (outcome.kind === "ready") landed.set(id, outcome.ready);
+      dispatch({ kind: "outcome", gen, flight: id, result: outcome.kind, at: clock.read() });
+    });
+    dispatch({ kind: "picked", flight: id, visitor: picked?.fromVisitor === true, pickState });
   };
 
-  const schedule = (ms: number, gen: number) => {
-    timers.clear(beatTimer);
-    beatTimer = timers.set(() => {
-      if (gen === generation) void runBeat(gen);
-    }, ms);
+  const drop = (id: number) => {
+    flights.delete(id);
+    landed.delete(id);
   };
 
-  /** Asks /api/health; on air again when it answers, else polls again in HEALTH_POLL_MS. */
-  const checkHealth = async (gen: number): Promise<void> => {
-    const ok = await deps.health().catch(() => false);
-    if (gen !== generation) return;
-    const was = stage.status;
-    apply({ kind: "health", ok });
-    if (stage.status === "dead_line") {
-      if (was !== "dead_line") goDark();
-      pollHealth(gen);
-      return;
-    }
-    if (was === "booting" || was === "dead_line") {
-      if (deadSince !== undefined) pausedMs += clock.read() - deadSince;
-      deadSince = undefined;
-      postAudience();
-      schedule(0, gen);
-    }
-  };
-
-  /** The next health read, HEALTH_POLL_MS from now (only while the line is dead). */
-  const pollHealth = (gen: number) => {
-    timers.clear(beatTimer);
-    beatTimer = timers.set(() => {
-      if (gen === generation) void checkHealth(gen);
-    }, HEALTH_POLL_MS);
-  };
-
-  /** The line died: stop the voice, the beats and the audience. */
-  const goDark = () => {
-    deadSince = clock.read();
-    timers.clear(beatTimer);
-    timers.clear(audienceTimer);
-    player.stop();
-    release();
-    discard();
-    endWait();
-  };
-
-  /** The beat that `gen` started is still the current one and the line is up. */
-  const live = (gen: number) => gen === generation && stage.status !== "dead_line";
-
-  /** The stage is free: wait on the beat in flight (launching one if none is), then air it. */
-  const runBeat = async (gen: number): Promise<void> => {
-    apply({ kind: "line", speaking: false });
-    if (inflight === undefined) launch(gen);
-    startWait();
-    for (;;) {
-      const flight = inflight;
-      if (flight === undefined) return;
-      const outcome = await flight.outcome;
-      if (!live(gen)) return;
-      if (inflight !== flight) continue; // pre-empted by a visitor: wait on its replacement
-      inflight = undefined;
-      if (outcome.kind === "ready") {
-        endWait();
-        await airLine(gen, outcome.ready);
-        return;
-      }
-      if (outcome.kind === "aborted") return;
-      if (flight.prefetched) {
-        // A failed prefetch is dropped quietly: the serial path asks again now.
-        pickState = pickBefore;
-        launch(gen);
-        continue;
-      }
-      endWait();
-      markQueue();
-      apply({ kind: "engine", ok: false });
-      if (stage.status === "dead_line") {
-        // The engine failed twice: give it a poll interval before asking health.
-        goDark();
-        pollHealth(gen);
-      } else {
-        schedule(BEAT_MS, gen);
-      }
-      return;
-    }
-  };
-
-  /** Puts a ready beat on air: chat, caption, the next beat's prefetch, then the audio. */
-  const airLine = async (gen: number, ready: ReadyBeat): Promise<void> => {
+  /** Puts a ready beat on air (chat, caption), then plays it and reports the line's end. */
+  const air = async (id: number): Promise<void> => {
+    const ready = landed.get(id);
+    drop(id);
+    if (ready === undefined) return;
+    const gen = state.generation;
     const { beat, reply, url } = ready;
-    apply({ kind: "engine", ok: true });
-    const answered = reply.answeredId === undefined ? undefined : snap.chat.find((m) => m.id === reply.answeredId);
+    const asked = reply.answeredId === undefined ? undefined : snap.chat.find((m) => m.id === reply.answeredId);
     append({ id: `r${beat}`, user: self, text: reply.line, ts: clock.stamp() });
-    const caption = (voiced: boolean): Caption => ({ beat, line: reply.line, reply, voiced, ...(answered === undefined ? {} : { answered: plainMsg(answered) }) });
-    set({ beat: beat + 1 });
+    if (asked !== undefined) answered = keepAnswered(answered, snap.chat, asked.id);
     release();
     if (ready.owned) currentUrl = url;
     const voiced = url !== undefined && snap.sound === "on";
-    set({ caption: caption(voiced) });
-    apply({ kind: "line", speaking: true });
-    if (deps.prefetch === true && inflight === undefined) launch(gen);
+    set({ beat: beat + 1, caption: { beat, line: reply.line, reply, voiced, ...(asked === undefined ? {} : { answered: plainMsg(asked) }) } });
     if (url === undefined) {
-      schedule(BEAT_MS, gen);
+      dispatch({ kind: "lineEnded", gen, result: "none", elapsed: 0, at: clock.read() });
       return;
     }
     const startedAt = deps.now();
     const result = voiced ? await player.play(url, reply.line) : "blocked";
-    if (!live(gen)) return;
-    if (result === "ended") {
-      apply({ kind: "line", speaking: false });
-      schedule(0, gen);
-      return;
+    dispatch({ kind: "lineEnded", gen, result, elapsed: deps.now() - startedAt, at: clock.read() });
+  };
+
+  /** Asks /api/health and reports the answer. */
+  const checkHealth = async (gen: number): Promise<void> => {
+    const ok = await deps.health().catch(() => false);
+    dispatch({ kind: "health", gen, ok, at: clock.read() });
+  };
+
+  const run = (fx: ShowEffect): void => {
+    const gen = state.generation;
+    switch (fx.kind) {
+      case "checkHealth":
+        return void checkHealth(gen);
+      case "pollHealth":
+        timers.clear(beatTimer);
+        beatTimer = timers.set(() => void checkHealth(gen), HEALTH_POLL_MS);
+        return;
+      case "postAudience":
+        return postAudience();
+      case "stopAudience":
+        return timers.clear(audienceTimer);
+      case "launchBeat":
+        return launch(fx.flight, fx.visitorFirst, fx.prefetched);
+      case "abort":
+        flights.get(fx.flight)?.abort();
+        return drop(fx.flight);
+      case "air":
+        return void air(fx.flight);
+      case "schedule":
+        timers.clear(beatTimer);
+        beatTimer = timers.set(() => dispatch({ kind: "beatDue", gen, at: clock.read() }), fx.ms);
+        return;
+      case "clearBeat":
+        return timers.clear(beatTimer);
+      case "startThink":
+        timers.clear(thinkTimer);
+        thinkTimer = timers.set(() => dispatch({ kind: "thinkElapsed", gen }), THINK_DELAY_MS);
+        return;
+      case "clearThink":
+        return timers.clear(thinkTimer);
+      case "stopPlayer":
+        return player.stop();
+      case "revoke":
+        return release();
+      case "unvoice":
+        if (snap.caption !== undefined) set({ caption: { ...snap.caption, voiced: false }, ...(fx.blocked ? { sound: "blocked" as const } : {}) });
+        return;
     }
-    // Could not play: the caption stays up for the rest of a default beat, mouth closed.
-    set({ caption: caption(false), ...(result === "blocked" ? { sound: "blocked" as const } : {}) });
-    schedule(Math.max(0, BEAT_MS - (deps.now() - startedAt)), gen);
   };
 
   return {
@@ -332,34 +277,14 @@ export function createShow(deps: ShowDeps): Show {
     },
     snapshot: () => snap,
     now: () => clock.read(),
-    start() {
-      if (running) return;
-      running = true;
-      generation += 1;
-      stage = INITIAL_STAGE;
-      set({ status: stage.status });
-      void checkHealth(generation);
-    },
-    stop() {
-      running = false;
-      generation += 1;
-      timers.clear(beatTimer);
-      timers.clear(audienceTimer);
-      player.stop();
-      release();
-      discard();
-      endWait();
-    },
+    start: () => dispatch({ kind: "start" }),
+    stop: () => dispatch({ kind: "stop" }),
     post(text) {
       const clean = text.trim().slice(0, MAX_CHAT_CHARS);
       if (clean.length === 0) return false;
       visitorCount += 1;
       append({ id: `v${visitorCount}`, user: VISITOR_NAME, text: clean, ts: clock.stamp(), fromVisitor: true, queued: true });
-      // LIVE: a beat in flight that does not answer a visitor gives way to the visitor's beat.
-      if (deps.prefetch === true && running && stage.status !== "dead_line" && inflight !== undefined && inflight.picked?.fromVisitor !== true) {
-        discard();
-        launch(generation, true);
-      }
+      dispatch({ kind: "post" });
       return true;
     },
     soundOn() {
