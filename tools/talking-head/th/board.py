@@ -1,6 +1,7 @@
 """`th board`: a blind 3x2 grid of up to six runs. Tiles are lettered A-F in reading order; which
 run sits behind which letter is a seeded shuffle written only to key.json. The soundtrack is the
-first run's (as given on the command line), padded with silence to the longest run."""
+first run's (as given on the command line), padded with silence to the longest run. Once verdict.md
+is filled, `th board reveal` (th/reveal.py) unblinds it."""
 
 from __future__ import annotations
 
@@ -12,6 +13,7 @@ from .ffmpeg import duration_s, run_ffmpeg
 from .schema import load_run
 
 LETTERS = "ABCDEF"
+PICKS = ("keep", "maybe", "drop")  # verdict.md picks, best first; `th board reveal` reads them back
 TILE = 540
 COLS = 3
 FONTS = ("C:/Windows/Fonts/arialbd.ttf", "C:/Windows/Fonts/arial.ttf",
@@ -102,7 +104,7 @@ def _verdict(letters: list[str], seed: int) -> str:
         "# Board verdict",
         "",
         f"Blind board, seed {seed}. Watch board.mp4 before opening key.json.",
-        "For each tile: `pick` is one of keep / maybe / drop; notes are free text",
+        f"For each tile: `pick` is one of {' / '.join(PICKS)}; notes are free text",
         "(lip sync, identity drift, artefacts, motion, would it pass as a presenter?).",
         "",
     ]

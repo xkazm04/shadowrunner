@@ -32,10 +32,13 @@ def _parser() -> argparse.ArgumentParser:
     r.add_argument("--no-alpha", action="store_true", help="skip BiRefNet (alpha.webm not written)")
     r.add_argument("--no-metrics", action="store_true", help="skip SyncNet/identity (nulls in run.json)")
 
-    b = sub.add_parser("board", help="blind 3x2 board of up to six runs")
-    b.add_argument("--runs", required=True, help="comma-separated run dirs (the first one's audio plays)")
+    b = sub.add_parser("board", help="blind 3x2 board of up to six runs; `th board reveal` unblinds the "
+                       "filled verdict.md")
+    b.add_argument("action", nargs="?", choices=("build", "reveal"), default="build",
+                   help="build (default) or reveal (verdict.md + key.json + run.json -> reveal.md/json)")
+    b.add_argument("--runs", default=None, help="build: comma-separated run dirs (the first one's audio plays)")
     b.add_argument("--seed", type=int, default=1116)
-    b.add_argument("--out", type=Path, required=True)
+    b.add_argument("--out", type=Path, required=True, help="the board dir")
 
     from .live.upscale import KINDS
 
@@ -76,7 +79,8 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = _parser().parse_args(argv)
+    parser = _parser()
+    args = parser.parse_args(argv)
     if args.cmd == "fetch":
         from .fetch import fetch
 
@@ -96,8 +100,18 @@ def main(argv: list[str] | None = None) -> int:
         run = render(args.arm, args.script, seed=args.seed, runtime=args.runtime,
                      portrait=args.portrait, alpha=not args.no_alpha, metrics=not args.no_metrics)
         print(run)
+    elif args.cmd == "board" and args.action == "reveal":
+        from .reveal import VerdictError, reveal
+
+        try:
+            print(reveal(args.out))
+        except VerdictError as e:
+            raise SystemExit(f"th board reveal: {e}") from None
     elif args.cmd == "board":
         from .board import build
+
+        if not args.runs:
+            parser.error("th board: --runs is required to build a board")
 
         runs = [Path(r.strip()) for r in args.runs.split(",") if r.strip()]
         print(build(runs, args.seed, args.out))

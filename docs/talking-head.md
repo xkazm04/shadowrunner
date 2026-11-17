@@ -35,6 +35,7 @@ uv run th audio --script pitch-45s [--force]
 uv run th render --arm noop --script pitch-45s [--seed 1116] [--runtime native|docker]
                  [--portrait <png>] [--no-alpha] [--no-metrics]
 uv run th board --runs <runDir>,<runDir>,... --seed 3 --out <dir>
+uv run th board reveal --out <dir>
 ```
 
 - `fetch` downloads into `$TH_HOME/models/<name>/` and writes `licence.json` there (a list of
@@ -43,7 +44,7 @@ uv run th board --runs <runDir>,<runDir>,... --seed 3 --out <dir>
 - `audio` writes `$TH_HOME/audio/<script>.wav` (24 kHz mono) and `<script>.txt` (the spoken text),
   and reuses them while the text is unchanged.
 - `render` takes the GPU lock, runs the arm, then post-processes into a run dir and prints its path.
-- `board` builds the blind grid (below).
+- `board` builds the blind grid (below); `board reveal` unblinds its filled verdict.
 
 ## Where things live
 
@@ -134,6 +135,16 @@ letters -> run, arm, script, seed). Shorter runs hold their last frame up to the
 tiles are dark. The soundtrack is the first run on the command line, padded with silence.
 `verdict.md` is the template: one section per letter (pick: keep / maybe / drop, notes) and an
 overall winner.
+
+Once every pick and the winner are filled, `th board reveal --out dir` reads `verdict.md` back,
+checks its letters against `key.json`, joins each letter with its run's `run.json` and writes
+`reveal.json` (`th-reveal/1`: seed, winner, why, letters -> run, arm, pick, notes, sync conf/offset,
+identity mean/min, rtf, vramPeakMiB, and a `note` when the run.json is missing or invalid, its
+metrics then null) and `reveal.md`, the results table: rows keep > maybe > drop, then SyncNet conf
+descending, the winner marked, `n/a` for null metrics. A `keep` with identity min below 0.8, or a
+`drop` on the board's best SyncNet conf, gets a "disagrees with metrics" line. It refuses (and
+writes nothing) while a pick is blank or not keep / maybe / drop, the letters differ from
+`key.json`, or the winner is missing, unknown or dropped.
 
 ## Adding an arm
 
