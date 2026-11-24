@@ -21,7 +21,8 @@ import types
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-for k, v in {"RANK": "0", "WORLD_SIZE": "1", "LOCAL_RANK": "0", "MASTER_ADDR": "127.0.0.1",
+for k, v in {"USE_LIBUV": "0",   # torch's Windows build has no libuv for the TCP store
+             "RANK": "0", "WORLD_SIZE": "1", "LOCAL_RANK": "0", "MASTER_ADDR": "127.0.0.1",
              "MASTER_PORT": os.environ.get("TH_LC_PORT", "29517")}.items():
     os.environ.setdefault(k, v)
 
