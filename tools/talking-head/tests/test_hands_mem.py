@@ -250,3 +250,72 @@ def test_longcat_negative_prompt_is_read_from_the_demo() -> None:
         ns["demo_negative"]("nothing here")
     code = src[src.index('"""', 3) + 3:]
     assert code.index("demo.UMT5EncoderModel") < code.index("demo.generate(args)")
+
+
+def test_int8_dit_loads_on_meta_shard_by_shard(tmp_path: Path) -> None:
+    """The lean INT8 loader on a toy model: Linear layers become the quantized class, every
+    tensor comes from the shards (none left on meta), the rest is cast to bf16."""
+    import json
+
+    import pytest
+    import torch
+    from safetensors.torch import save_file
+
+    src = (HERE / "longcat_driver.py").read_text(encoding="utf-8")
+    ns: dict = {"os": __import__("os"), "json": json, "torch": torch}
+    exec(src[src.index("def params_on_meta("):src.index("def demo_negative(")], ns)  # noqa: S102
+
+    class QL(torch.nn.Module):
+        def __init__(self, i, o, bias=False):
+            super().__init__()
+            self.register_buffer("weight_int8", torch.zeros(o, i, dtype=torch.int8))
+            self.register_buffer("weight_scale", torch.zeros(o))
+
+    class Toy(torch.nn.Module):
+        def __init__(self, dim):
+            super().__init__()
+            self.a, self.final = torch.nn.Linear(dim, dim, bias=False), torch.nn.Linear(dim, 2)
+            self.norm = torch.nn.LayerNorm(dim)
+
+    d = tmp_path / "base_model_int8"
+    d.mkdir()
+    (d / "config.json").write_text(json.dumps({"_class_name": "Toy", "dim": 4}))
+    save_file({"a.weight_int8": torch.ones(4, 4, dtype=torch.int8), "a.weight_scale": torch.ones(4)},
+              str(d / "s1.safetensors"))
+    save_file({"final.weight": torch.ones(2, 4), "final.bias": torch.zeros(2),
+               "norm.weight": torch.ones(4), "norm.bias": torch.zeros(4)}, str(d / "s2.safetensors"))
+    m = ns["load_int8_lean"](str(tmp_path), model_cls=Toy, ql_cls=QL, skip={"final"})
+    assert isinstance(m.a, QL) and isinstance(m.final, torch.nn.Linear)
+    assert m.a.weight_int8.dtype == torch.int8 and int(m.a.weight_int8.sum()) == 16
+    assert m.final.weight.dtype == torch.bfloat16 and m.norm.weight.dtype == torch.bfloat16
+    assert not any(t.is_meta for t in m.state_dict().values())
+    (d / "s2.safetensors").unlink()
+    with pytest.raises(SystemExit):
+        ns["load_int8_lean"](str(tmp_path), model_cls=Toy, ql_cls=QL, skip={"final"})
+
+
+def test_offloaded_blocks_visit_the_device_only_for_their_forward() -> None:
+    import torch
+
+    src = (HERE / "longcat_driver.py").read_text(encoding="utf-8")
+    ns: dict = {}
+    exec(src[src.index("def offload_blocks("):src.index("def demo_negative(")], ns)  # noqa: S102
+    seen: list[str] = []
+
+    class Spy(torch.nn.Linear):
+        def forward(self, x):
+            seen.append(str(self.weight.device))
+            return super().forward(x)
+
+    blocks = torch.nn.ModuleList([Spy(2, 2) for _ in range(4)])
+    assert ns["offload_blocks"](blocks, 2, device="meta") == 2
+    assert [str(b.weight.device) for b in blocks] == ["cpu"] * 4
+    x = torch.ones(1, 2)
+    for b in blocks[:2]:
+        b(x)
+    try:
+        blocks[2](x.to("meta"))
+    except Exception:   # meta compute may not run everywhere; the move is what matters
+        pass
+    assert seen[2] == "meta" and str(blocks[2].weight.device) in ("cpu", "meta")
+    assert ns["offload_blocks"](blocks, 0) == 0
