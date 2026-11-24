@@ -174,6 +174,27 @@ writes nothing) while a pick is blank or not keep / maybe / drop, the letters di
    by the owner). A non-permissive model is a blocker to report, never a workaround.
 5. The GPU lock is taken by `th render`; an arm never takes it itself.
 
+## Resource thresholds (`th/guard.py`)
+
+Every heavy subprocess (`ArmEnv.run`, so every arm, experiment and measure that shells out) runs under a guard, so a render never takes the desktop down (2026-11-24: two renders ate all host memory and were killed by hand). Windows only; elsewhere a no-op.
+
+- **Admission**: the render starts only when the system's available commit covers the reserve plus a floor; it waits up to `TH_ADMIT_WAIT_S`, then refuses (`ResourceRefused`).
+- **Hard cap**: the process tree runs in a Job Object with a job memory limit = min(`TH_MEM_CAP_GB`, free commit - reserve). Past it, allocations fail inside the render (MemoryError / CUDA host OOM) and the run ends with its own error; the desktop keeps its memory. Children inherit the job. Below-normal CPU priority (`TH_PRIORITY`).
+- **Watchdog**: every `TH_GUARD_POLL_S` it reads the available commit; under the reserve (you opened something big) the render is **suspended**, resumed when free commit is back above reserve + `TH_MEM_HYST_GB`, and killed if it stays paused `TH_PAUSE_MAX_S`.
+- The run log ends with `guard: peak X GB of cap Y GB, paused Z s`.
+
+| variable | default | meaning |
+| --- | --- | --- |
+| `TH_MEM_CAP_GB` | 40 | most host commit one render may hold |
+| `TH_MEM_RESERVE_GB` | 12 | commit always left free for the desktop |
+| `TH_MEM_FLOOR_GB` | 8 | smallest cap worth starting with |
+| `TH_MEM_HYST_GB` | 4 | resume only this far above the reserve |
+| `TH_ADMIT_WAIT_S` / `TH_PAUSE_MAX_S` | 900 / 900 | wait to start / longest pause before the kill |
+| `TH_PRIORITY` | below_normal | `idle`, `below_normal` or `normal` |
+| `TH_GUARD` | 1 | `0` turns the guard off |
+
+Not covered: VRAM (one GPU job at a time is the GPU lock's job), the container behind `docker run` (only the client is capped), and GPU driver resets (nvlddmkm 153), which need a lower power limit or a driver fix.
+
 ## Tests
 
 `cd tools/talking-head && uv run pytest` (about 30 s). Unit tests always run; the end-to-end noop
@@ -1638,6 +1659,193 @@ What the passages show:
 Recipe for a recorded line: TeaCache off; one window (up to 5.4 s) at audio guidance 4.5, or a longer line with `--long --audio-chunk 113` at 3.0; 3-4 seeds, then pick by hand score among the takes that gesture, and watch the worst-window sheet before shipping. Still open: the gesture fades after the first window of a passage (a per-window prompt, or a fresh reference pose every window with a longer crossfade, are the next things to try), and the check's recall is partial (it is a screen for the worst frames, not a guarantee).
 
 Cost, measured on the 4090: a 5 s single window 195 s denoising (TeaCache off) plus about 60 s loading and finishing; a 17 s passage 13.5-15.5 min wall, so about 48 GPU-minutes per finished video-minute.
+
+### Round 3: gestures that last a whole passage (2026-11-24)
+
+Round 2's open problem: in a 15-20 s passage the gestures fade after the first window and the hands settle into a clasped rest. Round 3 measures that, then tries two levers on the one 4090:
+
+- the full (non-Flash) EchoMimicV3 with the levers Flash lacks;
+- two ways of re-anchoring Flash window by window.
+
+Same inputs as round 2: `waist-c`, the gesture prompt, `line-short.wav` (5.0 s) and `passage.wav` (17 s). Outputs are in `var/talking-head/live-review-r6/hands/` in the main checkout (picks in `picks/`; crashed and aborted attempts are kept in `failed/`).
+
+```
+uv run python -m th.experiments.hands.full                       # fetch the preview DiT + wav2vec2-base-960h (licence.json rows)
+uv run python -m th.experiments.hands full --steps 15|25 [--negative upstream|fingers|none --neg-scale 1.5 --neg-steps 2] \
+    [--long-cfg --partial 113 --overlap 8] [--audio-chunk 113] [--seed N] [--wav <line.wav>] --name <take>
+uv run python -m th.experiments.hands emv3 ... --long --audio-chunk 113 --beats             # (a) a prompt per window
+uv run python -m th.experiments.hands pose <clip.mp4> <out.png>                               # the open-hands frame of a take
+uv run python -m th.experiments.hands emv3 ... --long --audio-chunk 113 --pose <png> [--pose-end]   # (b) a fresh reference per window
+uv run python -m th.experiments.hands persist <clip.mp4>... [--dry]                           # gesture persistence into figures.json
+```
+
+#### Gesture persistence (`persist.py`, req 11)
+
+The passage is cut into the Flash `--long` window plan: 4 windows of 113 frames, starting at 0, 4.16, 8.32 and 12.48 s. A full-arm take is cut the same way. Per window, two numbers come from the hand check's cached landmarks (`hands.npz`):
+
+- **wrist travel**: per wrist track seen in at least a third of the window, the larger of its p95-p5 x and y spread, in face heights (median Face Landmarker extent). The window's value is the larger of the two wrists, as `wrist_range` is for a whole clip, and 0 when no wrist is seen enough.
+- **clasped rest**: the share of frames where every visible hand is clasped (the hand check's `clasped` with nothing judged) and the wrists are still (mean wrist speed over ±2 frames below 0.02 face heights per frame).
+
+A passage **holds** when every later window's travel is at least 60 % of the first window's. `figures.json` gets `persistence` (`windows`, `minLaterOverFirst`, `holds`). One caveat: a take with a small first window (round 2's `long-s7-notc` moves 0.11 face heights in window 1) can "hold" while hardly gesturing, so read `holds` next to the travel itself.
+
+The measure confirms round 2's diagnosis. All three per-chunk-audio passages of round 2 fail it, with the hands clasped for 70-100 % of window 3:
+
+| round-2 passage | travel per window (face heights) | clasped rest per window | holds (min later / first) |
+| --- | --- | --- | --- |
+| long-s7-notc-ac113 (round-2 pick) | 0.26 / 0.29 / 0.09 / 0.12 | 0.00 / 0.22 / 1.00 / 0.73 | no (0.34) |
+| long-s42-notc-ac113 | 0.29 / 0.50 / 0.90 / 0.12 | 0.12 / 0.81 / 0.68 / 0.91 | no (0.42) |
+| long-s1116-notc-ac113 | 0.47 / 0.31 / 0.23 / 0.56 | 0.00 / 0.00 / 0.73 / 0.38 | no (0.50) |
+| long-s1116-notc (whole-line audio) | 0.63 / 0.71 / 0.03 / 0.10 | 0.00 / 0.54 / 1.00 / 0.81 | no (0.04) |
+
+#### Full EchoMimicV3 (`full.py`, `full_driver.py`, `fullcli.py`, `facebox.py`; req 9)
+
+What it is: upstream `infer_preview.py`, unedited, from the same clone and venv as the Flash arm. It runs the main `BadToBest/EchoMimicV3` transformer (`transformer/`, 3.41 GB, revision `311e1769`, model card `license: apache-2.0`, read before downloading, sha256 pinned) on the same Wan2.1-Fun-V1.1-1.3B-InP base.
+
+One deviation from the brief: the audio encoder is `facebook/wav2vec2-base-960h` (Apache-2.0, 378 MB, revision `22aad52d`). Upstream's README names it as the preview's encoder; the Flash DiT is the one trained on chinese-wav2vec2-base, so feeding the preview DiT those features would be a mismatch.
+
+Both rows are in `$TH_HOME/models/hands-emv3/licence.json` next to the Flash row. Weights live in `full-transformer/` and `wav2vec2-base-960h/`.
+
+`infer_preview.py` has no command line: a `Config` class holds every setting, and the main loop renders `base_dir/{imgs,audios,prompts}/<name>`. The driver (copied into the clone as `th_hands_full.py`) overrides `Config` attribute by attribute from a JSON file. That exposes steps, text/audio guidance, the negative prompt with `neg_scale`/`neg_steps`, dynamic CFG, Long Video CFG with `partial_video_length`/`overlap_video_length`, TeaCache, shift and seed. It also patches:
+
+- **The face mask without RetinaFace.** Before upstream is imported, `src.face_detect` is replaced by a stub whose `get_mask_coord` returns a box measured on the th side with MediaPipe Face Landmarker (Apache-2.0). That box is the mesh extent, forehead to chin and cheek to cheek, in reference pixels. It matches RetinaFace's tight `facial_area`, so it gets no margin and goes through upstream's own scaling onto the 16 px patch grid. For `waist-c` the box is (y 219-495, x 396-645) of 1536 x 1024. `retina-face`, TensorFlow and InsightFace weights are never installed or loaded.
+- **umT5 in bf16.** `infer_preview` loads umT5-XXL without `low_cpu_mem_usage`, so its `torch_dtype` is ignored and the encoder comes up in fp32 (22 GB). The pipeline also takes its working dtype from `text_encoder.dtype`. The first attempts therefore filled the 4090 during the prompt encode (21.5 GiB peak) and crawled through shared memory: 100 % "utilisation" at 120 W, no step in 10 min. The driver now loads it straight into bf16, as `infer_flash.py` does, and evicts it to the CPU right after the prompt is encoded. diffusers' model offload would only evict it when the next hooked model runs, and the VAE encodes the whole masked clip in between. Peak after the fix: 10.8 GiB at the encode, 14.4 GB for the render.
+- **CPU offload** of whole components, as in the Flash driver.
+- **CFG one branch at a time.** The pipeline runs three CFG branches per step as one batch: negative text, text without audio, and full. The driver runs them one by one with the same arithmetic (unit-tested against the batched call). This was added while chasing the spill above. It is kept for headroom at 125 frames; at batch 1 the speed is the same, since the GPU is compute-bound either way.
+- **Per-chunk wav2vec features** (`--audio-chunk`), as round 2 did for Flash.
+
+What reading the pipeline (`src/pipeline_wan_fun_inpaint_audio.py`) shows before measuring:
+
+- **The negative prompt is really applied here.** The unconditional branch is the negative prompt, and guidance is `uncond + text_cfg x (no-audio - uncond) + audio_cfg x (full - no-audio)`.
+- **`neg_scale` compounds.** For steps `i <= neg_steps` the negative embedding is multiplied by `neg_scale` in place, every step. So upstream's 1.5 / 2 leaves it at 1.5^3 = 3.4x for the rest of the run, not 1.5x for two steps. That is measured as upstream ships it.
+- **Dynamic CFG** decays both guidance scales from their set value to half within the first third of the steps (text 4.0 -> 2.0 by step 8 of 15).
+- **The audio only reaches the face.** The audio cross-attention output is multiplied by the face-box mask (`get_audio_mask`), so hand motion comes from the text and the motion prior, not directly from the audio.
+- **Long Video CFG is a sliding window in latent space.** At every step it denoises 29-latent windows (113 frames) that overlap by 8 latents, blends the overlaps, and uses the reference image as the first conditioning frame of every window. For 17 s that is 5 windows per step.
+
+**5 s line** (`line-short.wav`, 125 frames in one window at 624 x 928; text CFG 4.0, audio CFG 2.9, dynamic CFG on, TeaCache off; "neg on" is upstream's hand negative prompt at 1.5 / 2, "neg off" is an empty negative prompt at 1.0 / 0):
+
+| take | seed | steps | neg CFG | hand score | worst 0.5 s | flags | SyncNet | identity | wrist travel | wall s | peak VRAM MiB |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| full-s1116-st15-neg | 1116 | 15 | on (1.5 / 2) | 0.68 | 0.00 at 1.56 s | jump 29, conf 25, faded 8, lost 2 | 4.70 | 0.774 | 0.93 | 633 | 14414 |
+| full-s1116-st15-noneg | 1116 | 15 | off | 0.76 | 0.00 at 1.52 s | jump 40, conf 29, bones 1 | 4.29 | 0.814 | 0.83 | 629 | 14415 |
+| full-s42-st15-neg | 42 | 15 | on (1.5 / 2) | 0.55 | 0.00 at 1.64 s | conf 49, jump 19, bones 17, lost 2 | 3.03 | 0.868 | 0.94 | 632 | 14415 |
+| full-s42-st15-noneg | 42 | 15 | off | 0.57 | 0.00 at 3.56 s | bones 105, jump 49, conf 40, shape 10, lost 1 | 3.72 | 0.843 | 0.79 | 631 | 14415 |
+| full-s1116-st25-neg | 1116 | 25 | on (1.5 / 2) | 0.76 | 0.23 at 1.8 s | jump 29, conf 12, faded 6, lost 1 | 4.30 | 0.803 | 1.02 | 994 | 14430 |
+
+- **Negative CFG on vs off is a wash.** Hand score 0.68 vs 0.76 on seed 1116 and 0.55 vs 0.57 on seed 42; the worst 0.5 s is 0.00 in all four; SyncNet ±0.5. The hand negative prompt does not stop the smeared, mitten-like hands of the fast gestures.
+- **25 steps instead of 15 helps a little.** Seed 1116 with neg on: hand score 0.68 -> 0.76, worst window 0.00 -> 0.23, more gesture (wrist travel 1.02), SyncNet 4.70 -> 4.30, 1.6x the time.
+- **Against Flash.** The full arm gestures wider and more often: open palms out to the sides, wrist travel 0.79-1.02 on every seed. Flash's 5 s takes reach 0.33-0.97. The cost is that the fast gestures smear (1.5-1.9 s on seed 1116), lip-sync is weaker (SyncNet 3.0-4.7 vs 8-9 for Flash with TeaCache off), and identity sits around 0.77-0.87. Round 2's `c8-s1116-notc-a45` stays the best 5 s take.
+
+**17 s passage with Long Video CFG** (seed 1116, 15 steps, neg off, `--long-cfg --partial 113 --overlap 8 --audio-chunk 113`):
+
+**Missing.** No Long-CFG passage finished. Attempts:
+
+1. Completed all 15 denoising steps (142 s per step: 5 latent windows of 3 CFG branches each, 14.4 GB VRAM), then died at the VAE decode on host memory (WinError 1450). That was before umT5 was dropped.
+2. Stopped at step 12/15 when the PC ran out of memory and the owner killed the render (15:11). A GPU driver error (nvlddmkm 153) is logged in the same second.
+3. Stopped 40 s in, at the same 15:41 kill.
+
+A 10-step rerun was queued but never started: rendering was halted to put a hard memory cap on every render. The cell stays empty until that cap exists and a rerun is allowed. From the timing alone, a 15-step passage costs about 38 min on the 4090 (2.2 GPU-h per video-minute per take), and a 10-step one about 26 min.
+
+#### Re-anchoring the Flash arm (req 10)
+
+Both round-2 follow-ups, on the 17 s passage with round 2's passage recipe (TeaCache off, `--long --audio-chunk 113`, audio guidance 3.0, gesture prompt, `waist-c`), seeds 7, 42 and 1116, so every take pairs with a round-2 take of the same seed:
+
+- **(a) a prompt per window, `--beats`** (`reanchor.py`): the four windows (starting at 0, 4.16, 8.32, 12.48 s) carry the passage's beats. Window 1 holds the intro and "First,", window 2 the first point, window 3 the second, window 4 "And finally" (sentence gaps at 3.0-3.6, 7.5-8.0 and 11.9-12.5 s). Each beat prompt uses the demo template: "opens both hands toward the viewer and raises three fingers", "raises one finger ... quick, light chopping gesture", "raises two fingers ... lays one open hand flat on her chest", "raises three fingers ... opens both palms wide".
+- **(b) a fresh reference per window, `--pose <png>`**: windows 2-4 get an open-hands pose frame as their CLIP identity image; the motion frames are kept. The pose is picked automatically (`pose` command, `reanchor.pick_pose`) from round 2's best 5 s take `c8-s1116-notc-a45`: both hands found, apart, open (mean fingertip distance at least 1.7 palm lengths), no hand flag within 2 frames, wrists highest. That is frame 97, hands open at chest height (`live-review-r6/hands/pose/open-hands-a45.png`). The CLIP image does reach the model: window 1 matches round 2 (mean frame difference 0.45 grey levels), and windows 2-4 differ by 2.4-3.5.
+- **(b+) the pose as a keyframe, `--pose --pose-end`** (one seed, added when (a) and (b) failed): the pose is also the last frame of every later window, kept by the mask. That is upstream's end-image conditioning, so the window has to arrive at open hands.
+
+| take | lever | seed | hand score | worst 0.5 s | SyncNet (per window) | identity | wrist travel | travel per window | clasped rest per window | holds (min later / first) | worst join step / clip p99 (x median) | wall s |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| long-s7-notc-ac113 | round 2 | 7 | 0.86 | 0.00 at 15.56 s | 5.68 (5.2 / 7.2 / 3.8 / 5.4) | 0.816 | 0.37 | 0.26 / 0.29 / 0.09 / 0.12 | 0.00 / 0.22 / 1.00 / 0.73 | no (0.34) | 2.2 / 3.2 | 800 |
+| beats-s7 | (a) beats | 7 | 1.00 | 1.00 at 0.0 s | 5.74 (5.4 / 6.8 / 3.7 / 5.5) | 0.787 | 0.26 | 0.11 / 0.19 / 0.04 / 0.10 | 0.00 / 0.59 / 1.00 / 1.00 | no (0.35) | 2.4 / 2.8 | 838 |
+| pose-s7 | (b) pose | 7 | 0.83 | 0.00 at 6.72 s | 5.60 (5.2 / 7.1 / 3.5 / 5.2) | 0.804 | 0.40 | 0.27 / 0.34 / 0.06 / 0.19 | 0.00 / 0.24 / 1.00 / 0.76 | no (0.22) | 2.3 / 3.5 | 1654 |
+| poseend-s7 | (b+) pose keyframe | 7 | 0.74 | 0.00 at 8.8 s | 5.93 (5.2 / 6.9 / 5.2 / 5.3) | 0.831 | 0.55 | 0.26 / 0.20 / 0.85 / 0.69 | 0.00 / 0.00 / 0.00 / 0.33 | yes (0.75) | 4.2 / 3.7 | 818 |
+| long-s42-notc-ac113 | round 2 | 42 | 0.80 | 0.11 at 9.2 s | 6.28 (5.6 / 7.2 / 4.2 / 6.5) | 0.813 | 0.58 | 0.29 / 0.50 / 0.90 / 0.12 | 0.12 / 0.81 / 0.68 / 0.91 | no (0.42) | 4.9 / 4.6 | 813 |
+| beats-s42 | (a) beats | 42 | 1.00 | 1.00 at 0.0 s | 6.22 (5.4 / 6.8 / 4.3 / 6.9) | 0.815 | 0.27 | 0.31 / 0.05 / 0.06 / 0.08 | 0.40 / 1.00 / 1.00 / 1.00 | no (0.17) | 3.5 / 2.8 | 836 |
+| pose-s42 | (b) pose | 42 | 0.68 | 0.00 at 8.76 s | 6.26 (5.5 / 6.9 / 4.4 / 6.5) | 0.817 | 0.86 | 0.28 / 0.50 / 0.99 / 0.12 | 0.12 / 0.81 / 0.57 / 0.88 | no (0.43) | 4.9 / 4.4 | 834 |
+| poseend-s42 | (b+) pose keyframe | 42 | 0.50 | 0.00 at 8.72 s | 6.04 (5.5 / 6.9 / 4.3 / 5.8) | 0.827 | 0.79 | 0.29 / 0.33 / 0.67 / 1.03 | 0.12 / 0.89 / 0.20 / 0.04 | yes (1.16) | 3.8 / 3.4 | 824 |
+| long-s1116-notc-ac113 | round 2 | 1116 | 0.47 | 0.00 at 5.16 s | 5.72 (4.8 / 6.8 / 5.2 / 5.4) | 0.816 | 1.80 | 0.47 / 0.31 / 0.23 / 0.56 | 0.00 / 0.00 / 0.73 / 0.38 | no (0.50) | 2.9 / 2.9 | 803 |
+| beats-s1116 | (a) beats | 1116 | 0.52 | 0.00 at 2.84 s | 5.76 (4.8 / 7.1 / 5.3 / 5.3) | 0.813 | 0.56 | 0.55 / 0.15 / 0.04 / 0.81 | 0.02 / 0.94 / 1.00 / 0.42 | no (0.07) | 3.1 / 3.9 | 828 |
+| pose-s1116 | (b) pose | 1116 | 0.42 | 0.00 at 5.12 s | 5.65 (4.7 / 6.7 / 5.1 / 5.7) | 0.809 | 0.61 | 0.47 / 0.32 / 0.24 / 0.99 | 0.00 / 0.00 / 0.75 / 0.34 | no (0.52) | 3.5 / 2.9 | 863 |
+
+(`pose-s7`'s wall time includes about 14 min of waiting for the GPU lock behind another take; the render itself took about 830 s, like the others. Round-2 rows are re-measured here for persistence only; their other figures are round 2's.)
+
+What the passages show:
+
+- **(a) Per-window prompts make it worse.** On all three seeds the hands clasp sooner and stay clasped: seed 42 is clasped through windows 2-4 (1.00 / 1.00 / 1.00) where round 2 still gestured in window 3. The hand score of 1.00 on seeds 7 and 42 only means there was almost nothing to judge. The gesture words in the prompt ("raises one finger", "opens both palms") do not reach the hands; the motion prior wins. SyncNet and identity are unchanged.
+- **(b) A fresh CLIP reference alone changes little.** Windows 2-4 differ from round 2 (frame difference 2.4-3.5 grey levels against round 2's take of the same seed), but each seed keeps its round-2 motion pattern: seed 7 clasps in window 3 (1.00), seed 42 gestures in window 3 and clasps again in window 4. The hands are a little worse (0.83 / 0.68 / 0.42 against 0.86 / 0.80 / 0.47). The CLIP image carries identity and look; it does not pose the body.
+- **(b+) The pose as a kept last frame is the only lever that holds.** Seeds 7 and 42 both pass the rule (0.75 and 1.16), and the clasped rest almost disappears from windows 3-4 (0.00 / 0.33 and 0.20 / 0.04). But it is mechanical, and the hands pay for it. Every window ends with the hands rising from wherever they are to the chest-height open pose in its last 0.2-0.4 s. That reads as a lift every 4 s. The faster motion costs hand quality: flags are about twice as dense in the 0.6 s before each later window's end as elsewhere (about 20 of 99-123 flagged frames sit in those 11 % of the frames), and most of the rest are smeared or translucent hands in the bigger gestures between (seed 42: faded 111, lost 35). Hand score is 0.74 on seed 7 and 0.50 on seed 42 (round 2: 0.86 / 0.80). One join per take steps a little past the clip's own 99th percentile (4.2 vs 3.7, 3.8 vs 3.4), and the face jumps 5.5x its median step at seed 42's second join. Seed 1116: **missing**. The take was stopped by the 15:41 kill, and its rerun was cut off by the machine restart and then by the render halt. (b+) therefore stands on two seeds, not three.
+
+#### Verdict against round 2
+
+Columns: take, arm, seed, steps, neg CFG, Long CFG ("windows" = Flash's continued windows), hand score, worst 0.5 s, SyncNet, identity, wrist travel, travel per window, clasped rest per window, holds (min later / first), wall s, peak VRAM MiB. The round-2 references are `c8-s1116-notc-a45` (best 5 s) and `long-s7-notc-ac113` (best passage).
+
+| take | arm | seed | steps | neg CFG | long CFG | hand | worst 0.5 s | SyncNet | identity | wrist travel | travel / window | clasped rest / window | holds | wall s | VRAM MiB |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| c8-s1116-notc-a45 | flash | 1116 | 8 | - | - | 0.87 | 0.3077 at 2.68 s | 9.18 | 0.853 | 0.95 | - | - | - | 278.3 | 18794 |
+| full-s1116-st25-neg | full | 1116 | 25 | 1.5/2 | - | 0.76 | 0.2308 at 1.8 s | 4.30 | 0.803 | 1.02 | - | - | - | 994.1 | 14430 |
+| full-s1116-st15-noneg | full | 1116 | 15 | off | - | 0.76 | 0.0 at 1.52 s | 4.29 | 0.814 | 0.83 | - | - | - | 629.0 | 14415 |
+| long-s7-notc-ac113 | flash | 7 | 8 | - | windows | 0.86 | 0.0 at 15.56 s | 5.68 | 0.816 | 0.37 | 0.26 / 0.29 / 0.09 / 0.12 | 0.00 / 0.22 / 1.00 / 0.73 | no (0.342) | 800.0 | 19830 |
+| beats-s7 | flash | 7 | 8 | - | windows | 1.00 | 1.0 at 0.0 s | 5.74 | 0.787 | 0.26 | 0.11 / 0.19 / 0.04 / 0.10 | 0.00 / 0.59 / 1.00 / 1.00 | no (0.351) | 837.8 | 19228 |
+| pose-s7 | flash | 7 | 8 | - | windows | 0.83 | 0.0 at 6.72 s | 5.60 | 0.804 | 0.40 | 0.27 / 0.34 / 0.06 / 0.19 | 0.00 / 0.24 / 1.00 / 0.76 | no (0.223) | 1654.4 | 22425 |
+| poseend-s7 | flash | 7 | 8 | - | windows | 0.74 | 0.0 at 8.8 s | 5.93 | 0.831 | 0.55 | 0.26 / 0.20 / 0.85 / 0.69 | 0.00 / 0.00 / 0.00 / 0.33 | yes (0.75) | 817.9 | 21172 |
+| poseend-s42 | flash | 42 | 8 | - | windows | 0.50 | 0.0 at 8.72 s | 6.04 | 0.827 | 0.79 | 0.29 / 0.33 / 0.67 / 1.03 | 0.12 / 0.89 / 0.20 / 0.04 | yes (1.162) | 824.3 | 21183 |
+| full arm Long-CFG passage | full | 1116 | 15 | off | on | missing | missing | missing | missing | missing | missing | missing | missing | (2252 est.) | 14400 |
+| poseend-s1116 | flash | 1116 | 8 | - | windows | missing | missing | missing | missing | missing | missing | missing | missing | - | - |
+| LongCat-Video-Avatar 1.6 (internal comparison) | longcat | 42 | 8 | - | segments | not run | | | | | | | | | |
+
+- **Did any lever keep the gestures alive across the passage without breaking the hands? Not cleanly.**
+  - The only lever that holds is the Flash pose keyframe (b+), on both seeds rendered. It holds by pulling the hands up to a chest-height pose at the end of every 4.5 s window, which reads as a periodic lift, and it costs hand quality: 0.74 and 0.50 against round 2's 0.86 / 0.80, with more smeared and translucent hands in the bigger gestures.
+  - Per-window prompts make the clasp worse. A fresh CLIP reference alone changes nothing that matters.
+- **The full EchoMimicV3 arm gestures wider in 5 s** (wrist travel 0.8-1.0 on every take), and its real negative CFG and 25 steps help a little. It does not beat Flash on hands (0.55-0.76 vs 0.87), and it is much worse on lip-sync (SyncNet 3.0-4.7 vs 9.2) at 2-4x the cost. Its Long-CFG passage could not be finished on this machine this round.
+- **Picks unchanged as the cleanest.** Round 2's `c8-s1116-notc-a45` stays the best 5 s take and `long-s7-notc-ac113` the cleanest passage. `poseend-s7` is the best passage that keeps gesturing (hand score 0.74, SyncNet 5.93, identity 0.831).
+- **Next.** The owner should judge (b+) by eye: is the lift natural enough? If yes, a softer keyframe should be tried: the pose only every second window, or a pose frame nearer the clasp. The full-arm Long-CFG passage and LongCat wait for the memory cap and the go-ahead to render.
+
+#### Picks (`live-review-r6/hands/picks/`)
+
+- `best-5s-full-full-s1116-st25-neg.mp4`: the best full-arm 5 s take (hand score 0.76, worst 0.5 s 0.23, wrist travel 1.02, SyncNet 4.30), with its sheet, worst-window, flagged and every-5th-frame hand sheets. It does not beat round 2's `round2-best-5s-c8-s1116-notc-a45.mp4`, copied here for comparison.
+- `best-passage-holds-poseend-s7.mp4`: the best passage that holds its gestures (Flash, pose keyframe, seed 7). By eye on the every-17th-frame sheet: hands plausible throughout, motion-blurred smears at 8.8, 9.5 and 12.9 s, and the hands rest open at chest height instead of clasped in windows 3-4.
+- `alt-passage-keyframe-poseend-s42.mp4`: the livelier keyframe take (wrist travel up to 1.03 in window 4). Its hands are worse: translucent and lost in the fast gestures.
+- `round2-best-passage-long-s7-notc-ac113.mp4`: round 2's cleanest passage, for comparison.
+
+#### Cost per finished video-minute
+
+Measured on the 4090 (render wall time per take; the 3 seeds needed to pick a take are counted in the second figure). Cloud figures use the A100 rate at the 4090's speed, as in round 2.
+
+| take type | 4090 GPU-h per video-minute, one take | with 3 seeds | A100 $ with 3 seeds | local kWh with 3 seeds |
+| --- | --- | --- | --- | --- |
+| Flash passage (8 steps, windows, TeaCache off), incl. (a), (b), (b+) | 0.81 | 2.4 | 5.34 | 1.4 |
+| full arm 5 s, 15 steps | 2.10 | 6.3 | 13.83 | 3.6 |
+| full arm 5 s, 25 steps | 3.31 | 9.9 | 21.78 | 5.7 |
+| full arm Long-CFG passage, 15 steps (from the step timing; no finished take) | 2.21 | 6.6 | 14.52 | 3.8 |
+
+Re-anchoring costs nothing extra over a plain Flash passage.
+
+#### Run notes
+
+- **Host memory is the binding limit on this machine, not VRAM.** With nothing of ours running, system commit sits at about 82 of 107 GB. The big holders are a 10 GB VR emulator VM, a 17.6 GB kernel paged pool and many node/claude processes. A Flash take needs about 43 GB of host commit at load (umT5 and the offloaded components), and the first full-arm take needed more. Failures seen this round:
+  - three Flash takes died at load with 0xC0000005 (`failed/*-crash`);
+  - the first full-arm passage finished all 15 denoising steps and then died at the VAE decode (WinError 1450 "insufficient system resources", 36 GPU-min lost);
+  - one diagnostic hit WinError 1455 (paging file too small).
+
+  Fixes: the full driver now drops umT5 after encoding (11 GB less), and `run.py` retries a run that dies with 0xC0000005 up to twice and notes it in `run.json`. Renders still run strictly one at a time. Raising the pagefile (admin and a reboot) is the owner's call.
+- **The owner had to stop two renders** (15:11 and 15:41) because the PC ran out of memory. After that, rendering was halted until every render runs under a hard host-memory cap (the Director is building it). A GPU driver error (nvlddmkm 153) is logged in the same seconds. The Director counts 19 such events since the day before, so the driver is unstable on its own as well.
+- The Flash driver is unchanged for existing takes. Round 2's commands give the same output; `--beats`, `--pose` and `--pose-end` are opt-in.
+- GPU time this round: about 6 h of GPU-lock time, including about 1.5 h lost to the spill before the umT5 fix, the commit and memory failures and the killed renders.
+
+#### LongCat-Video-Avatar 1.6 (req 12): prepared, not run
+
+Internal comparison only (owner ruling 2026-11-24). Status:
+
+- **Ready.** The code is cloned at `58eb336` into `$TH_HOME/repos/hands-longcat`, and the env `envs/hands-longcat` is built. It runs natively on Windows: torch 2.6.0+cu124, transformers 4.41.0, diffusers 0.35.1, flash-attn 2.7.4 from the community Windows build (as the diffusion-it arm) and triton-windows. No WSL or Docker is needed, and the imports and a gloo process group were checked.
+- **The driver** (`longcat_driver.py`, `longcat.py`, `longcatcli.py`, command `longcat`) runs upstream's single-audio demo, unedited, in one process on one GPU:
+  - gloo instead of NCCL, and no libuv TCP store;
+  - a 1-rank context-parallel group;
+  - no vocal separator (`audio-separator` and its UVR model, whose licence is unverified, are not installed; the lines are clean TTS);
+  - the INT8 DiT with loraB and the README's LoRA mix (4 / 1.0), 8 distilled steps, 480p;
+  - umT5 loaded lazily and released after the prompts are cached, and Whisper's encoder only, on the CPU;
+  - the seed patched into upstream's hard-coded `global_seed = 42`.
+- **Every output is marked.** Each output folder gets `INTERNAL-ONLY.txt` and `figures.json` gets `"internalOnly": true`.
+- **Not run.** The first smoke stopped at a Windows-only TCP-store error, `use_libuv` (fixed). After that, rendering was halted (see run notes). The 5 s and passage cells are missing.
 
 # Doc text, round 5 H1 (LivePortrait over FlashHead): for docs/talking-head.md, "Live" section
 

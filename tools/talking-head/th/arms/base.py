@@ -21,6 +21,7 @@ from typing import Callable, ClassVar, Iterable, Sequence
 
 import numpy as np
 
+from ..guard import Guard
 from ..paths import models_dir, th_home
 from ..schema import Weight
 
@@ -195,12 +196,22 @@ def _stream(argv: list[str], cwd: Path | None, log: Path | None, env: dict[str, 
     full_env = {**os.environ, **(env or {}), "PYTHONUNBUFFERED": "1"}
     t0 = time.perf_counter()
     fh = open(log, "a", encoding="utf-8") if log else None
+
+    def note(line: str) -> None:
+        sys.stderr.write(line + "\n")
+        if fh:
+            fh.write(line + "\n")
+            fh.flush()
+
+    guard = Guard(log=note)  # resource thresholds: admission, a memory cap, a pausing watchdog
     try:
         if fh:
             fh.write("$ " + " ".join(argv) + "\n")
             fh.flush()
+        guard.admit()
         proc = subprocess.Popen(argv, cwd=cwd, env=full_env, stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT, text=True, encoding="utf-8", errors="replace")
+        guard.attach(proc.pid)
         assert proc.stdout is not None
         for line in proc.stdout:
             sys.stderr.write(line)
@@ -208,7 +219,11 @@ def _stream(argv: list[str], cwd: Path | None, log: Path | None, env: dict[str, 
                 fh.write(line)
                 fh.flush()
         code = proc.wait()
+        summary = guard.close()
+        if summary:
+            note(summary)
     finally:
+        guard.close()
         if fh:
             fh.close()
     if code != 0:
