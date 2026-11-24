@@ -18,7 +18,9 @@ upstream `infer_flash.main()` after three opt-in patches, each driven by an envi
 - TH_EMV3_REANCHOR=<json file> (round 3, with TH_EMV3_WINDOW): {"prompts": [...], "poses": [...]},
   one entry per window (the last repeats): window k is prompted with prompts[k] instead of the
   command line's prompt, and its CLIP identity image becomes the image poses[k] (an open-hands pose
-  frame; "" keeps the reference); the motion frames are kept either way.
+  frame; "" keeps the reference); the motion frames are kept either way. With "endPose": true the
+  pose image is also the last frame of every later window, kept by the mask (a keyframe the window
+  has to reach), as upstream's end-image conditioning does.
 """
 import json
 import math
@@ -64,10 +66,10 @@ def plan(total, window, overlap):
 def _reanchor():
     path = os.environ.get("TH_EMV3_REANCHOR", "")
     if not path:
-        return [], []
+        return [], [], False
     with open(path, encoding="utf-8") as f:
         d = json.load(f)
-    return list(d.get("prompts") or []), list(d.get("poses") or [])
+    return list(d.get("prompts") or []), list(d.get("poses") or []), bool(d.get("endPose"))
 
 
 def pick(items, k):
@@ -89,7 +91,7 @@ def _windowed(self, prompt, **kw):
     out = None
     windows = plan(total, window, overlap)
     print(f"th: {total} frames in windows {windows} (overlap {overlap})", flush=True)
-    prompts, poses = _reanchor()
+    prompts, poses, end_pose = _reanchor()
     for k, (start, n) in enumerate(windows):
         p_k, pose_k = pick(prompts, k) or prompt, pick(poses, k)
         clip_k = _pose(pose_k, kw["clip_image"]) if pose_k else kw["clip_image"]
@@ -101,6 +103,12 @@ def _windowed(self, prompt, **kw):
         if out is not None:
             v[:, :, :overlap] = out[:, :, -overlap:].to(v.dtype)
             m[:, :, :overlap] = 0
+            if end_pose and pose_k:  # the window must arrive at the pose: its last frame is kept
+                import numpy as np
+
+                img = torch.from_numpy(np.array(clip_k)).permute(2, 0, 1)[None, :, None] / 255.0
+                v[:, :, -1:] = img.to(v.dtype)
+                m[:, :, -1:] = 0
         seg = _call(self, p_k, **{**kw, "num_frames": n, "video": v, "mask_video": m,
                                   "clip_image": clip_k, "audio_embeds": audio[:, start:start + n]}).videos
         if out is None:

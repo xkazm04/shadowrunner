@@ -121,7 +121,7 @@ def config(base_dir: Path, save_path: Path, face: tuple[int, int, int, int, int,
            steps: int, text_cfg: float, audio_cfg: float, negative: str, neg_scale: float,
            neg_steps: int, long_cfg: bool, partial: int = PARTIAL, overlap: int = OVERLAP,
            dynamic_cfg: bool = True, teacache: bool = False, audio_chunk: int = 0,
-           offload: bool = True, shift: float = 5.0) -> dict:
+           offload: bool = True, shift: float = 5.0, cfg_split: bool = True) -> dict:
     """The driver's JSON: `config` overrides upstream's Config attributes one by one (names as
     upstream spells them); the rest drives the patches. `face` is get_mask_coord's tuple
     (y1, y2, x1, x2, height, width) on the reference image."""
@@ -136,7 +136,8 @@ def config(base_dir: Path, save_path: Path, face: tuple[int, int, int, int, int,
         "overlap_video_length": overlap, "use_dynamic_cfg": dynamic_cfg,
         "use_dynamic_acfg": dynamic_cfg, "enable_teacache": teacache, "shift": shift,
     }
-    return {"config": cfg, "face": list(face), "offload": offload, "audioChunk": audio_chunk}
+    return {"config": cfg, "face": list(face), "offload": offload, "audioChunk": audio_chunk,
+            "cfgSplit": cfg_split}
 
 
 def write_driver() -> Path:

@@ -188,3 +188,165 @@ def test_clasped_rest_needs_clasped_and_still_hands() -> None:
     checks = [FrameCheck(0, 2), FrameCheck(0, 2), FrameCheck(2, 0), FrameCheck(0, 2),
               FrameCheck(0, 2), FrameCheck(1, 1)]
     assert persist.clasped_rest(checks, speed).tolist() == [False, True, False, True, False, False]
+
+
+def test_drivers_compile_on_the_venv_python() -> None:
+    """The drivers run on their venvs' Python 3.10 (no PEP 701 f-strings)."""
+    import subprocess
+
+    from th.experiments.hands import longcat
+
+    pairs = [(emv3.env().python, "full_driver.py"), (emv3.env().python, "flash_driver.py"),
+             (longcat.env().python, "longcat_driver.py")]
+    if not any(py.is_file() for py, _ in pairs):
+        pytest.skip("no driver venv built")
+    for py, f in pairs:
+        if not py.is_file():
+            continue
+        src = (HERE / f).read_text(encoding="utf-8")
+        r = subprocess.run([str(py), "-c", "import sys; compile(sys.stdin.read(), 'd', 'exec')"],
+                           input=src, capture_output=True, text=True, encoding="utf-8", timeout=60)
+        assert r.returncode == 0, r.stderr
+
+
+# --- LongCat (internal comparison only) -----------------------------------------------------
+
+def test_longcat_segments_cover_the_line() -> None:
+    from th.experiments.hands import longcat
+
+    assert longcat.segments_for(93) == 1
+    assert longcat.segments_for(125) == 2     # 93 + 80 = 173 >= 125
+    assert longcat.segments_for(425) == 6     # 93 + 5 x 80 = 493 >= 425; 4 x 80 falls short
+    for n in (94, 173, 174, 425, 600):
+        k = longcat.segments_for(n)
+        assert 93 + (k - 1) * 80 >= n > 93 + (k - 2) * 80
+
+
+def test_longcat_command_is_single_gpu_int8_distilled(tmp_path: Path) -> None:
+    from th.experiments.hands import longcat
+
+    argv = longcat.command(tmp_path / "in.json", tmp_path / "w", 6)
+    assert argv[:2] == ["python", "th_hands_longcat.py"]
+    assert "--use_int8" in argv and "--use_distill" in argv and "torchrun" not in argv
+    assert argv[argv.index("--context_parallel_size") + 1] == "1"
+    assert argv[argv.index("--num_segments") + 1] == "6"
+    assert longcat.INTERNAL["internalOnly"] is True
+    assert "audio-separator" not in " ".join(longcat.DEPS)
+
+
+def test_longcat_driver_seed_patch_and_no_separator() -> None:
+    src = (HERE / "longcat_driver.py").read_text(encoding="utf-8")
+    ns: dict = {}
+    exec(src[src.index("def _demo_source("):src.index("def main(")], ns)  # noqa: S102
+    demo = Path(__file__).parent / "_demo_fixture.py"
+    try:
+        demo.write_text("a = 1\n    global_seed = 42\nb = 2\n", encoding="utf-8")
+        assert "global_seed = 7\n" in ns["_demo_source"](str(demo), "7")
+        demo.write_text("global_seed = 43\n", encoding="utf-8")
+        with pytest.raises(SystemExit):
+            ns["_demo_source"](str(demo), "7")
+    finally:
+        demo.unlink(missing_ok=True)
+    code = src[src.index('"""', 3) + 3:]
+    assert 'sys.modules.update({"audio_separator"' in code
+    assert code.index("sys.modules.update") < code.index("from longcat_video")
+
+
+def test_full_driver_cfg_split_matches_the_batched_call() -> None:
+    """Splitting the three CFG branches gives each sample its own text, audio, mask and image."""
+    import torch
+
+    src = _driver_src()
+    calls: list[int] = []
+
+    def stub(self, x, t, context, seq_len, clip_fea=None, y=None):
+        text, audio, _lt, ip_mask, scale = context
+        calls.append(x.shape[0])
+        tx = torch.stack([u.sum() for u in text]).view(-1, 1)
+        return (x + t.view(-1, 1) + tx + audio.sum(1, keepdim=True) + ip_mask.sum(1, keepdim=True)
+                + clip_fea.sum(1, keepdim=True) + y) * scale
+
+    ns: dict = {"torch": torch, "_forward": stub}
+    exec(src[src.index("def _split_forward("):src.index("_t5_load = ")], ns)  # noqa: S102
+    g = torch.Generator().manual_seed(0)
+    x, y = torch.randn(3, 4, generator=g), torch.randn(3, 4, generator=g)
+    ctx = ([torch.randn(5, 2, generator=g) for _ in range(3)], torch.randn(3, 6, generator=g), 7,
+           torch.randn(3, 8, generator=g), 0.5)
+    t, clip = torch.randn(3, generator=g), torch.randn(3, 9, generator=g)
+    whole = stub(None, x, t, ctx, 99, clip_fea=clip, y=y)
+    calls.clear()
+    split = ns["_split_forward"](None, x, t, ctx, 99, clip_fea=clip, y=y)
+    assert calls == [1, 1, 1]
+    assert torch.allclose(whole, split)
+
+
+def test_flash_windows_keep_motion_frames_and_the_end_pose(tmp_path: Path, monkeypatch) -> None:
+    """The windowed call with a stub pipeline: window k > 0 keeps the last 9 frames of the clip
+    so far (mask 0), gets its own prompt and CLIP pose, and with endPose its last frame is the
+    pose, kept."""
+    import json
+    import types
+
+    import torch
+    from PIL import Image
+
+    src = (HERE / "flash_driver.py").read_text(encoding="utf-8")
+    seen: list[dict] = []
+
+    def call(_self, prompt, **kw):
+        seen.append({"prompt": prompt, **kw})
+        n = kw["num_frames"]
+        return types.SimpleNamespace(videos=torch.full((1, 3, n, 4, 6), float(len(seen))))
+
+    ns: dict = {"os": __import__("os"), "json": json, "math": __import__("math"), "torch": torch,
+                "_call": call, "WanPipelineOutput": lambda videos: videos}
+    exec(src[src.index("def plan("):src.index("_embed = ")], ns)  # noqa: S102
+    pose = tmp_path / "pose.png"
+    Image.new("RGB", (6, 4), (255, 0, 0)).save(pose)
+    cfg = tmp_path / "r.json"
+    cfg.write_text(json.dumps({"prompts": ["a", "b"], "poses": ["", str(pose)], "endPose": True}))
+    monkeypatch.setenv("TH_EMV3_WINDOW", "121")
+    monkeypatch.setenv("TH_EMV3_OVERLAP", "9")
+    monkeypatch.setenv("TH_EMV3_REANCHOR", str(cfg))
+    ref = Image.new("RGB", (6, 4), (0, 0, 255))
+    out = ns["_windowed"](None, "base", num_frames=225, video=torch.zeros(1, 3, 225, 4, 6),
+                          audio_embeds=torch.zeros(1, 225, 5), clip_image=ref)
+    assert out.shape[2] == 225 and [s["prompt"] for s in seen] == ["a", "b"]
+    assert seen[0]["clip_image"] is ref and seen[1]["clip_image"].getpixel((0, 0)) == (255, 0, 0)
+    m1, v1 = seen[1]["mask_video"], seen[1]["video"]
+    assert (m1[:, :, :9] == 0).all() and (m1[:, :, 9:-1] == 255).all() and (m1[:, :, -1] == 0).all()
+    assert torch.allclose(v1[:, :, :9], torch.ones(1)) and v1[0, 0, -1].min() == 1.0
+    assert v1[0, 2, -1].max() == 0.0          # the red pose, not the blue reference
+    assert (seen[0]["mask_video"][:, :, -1] == 255).all()   # the first window has no end pose
+
+
+def test_run_retries_only_the_access_violation(tmp_path: Path, monkeypatch) -> None:
+    from th.experiments.hands import run as runmod
+
+    assert runmod.is_access_violation("x: command failed (3221225477): python ...")
+    assert not runmod.is_access_violation("x: command failed (1): python ...")
+
+    class Env:
+        repo = tmp_path
+        calls = 0
+
+        def run(self, *a, **k):
+            Env.calls += 1
+            if Env.calls == 1:
+                raise RuntimeError("command failed (3221225477): python d.py")
+
+    monkeypatch.setenv("TH_GPU_LOCK", str(tmp_path / "gpu.lock"))
+    monkeypatch.setattr(runmod, "check", lambda: type("H", (), {"line": lambda s: "",
+                                                                "driver_errors": None})())
+    rec = runmod.run("c", Env(), ["python"], tmp_path / "o", {})
+    assert Env.calls == 2 and rec.error is None and "retried" in rec.notes[0]
+
+    class Bad(Env):
+        def run(self, *a, **k):
+            Env.calls += 1
+            raise RuntimeError("command failed (1): python d.py")
+
+    Env.calls = 0
+    with pytest.raises(SystemExit):
+        runmod.run("c", Bad(), ["python"], tmp_path / "o2", {})
+    assert Env.calls == 1

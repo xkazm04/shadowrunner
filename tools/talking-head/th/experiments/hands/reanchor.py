@@ -70,10 +70,11 @@ def pick_pose(frames: list[list[Hand]], checks: list[FrameCheck], min_open: floa
     return best
 
 
-def write(path: Path, prompts: list[str] | None, poses: list[str] | None) -> Path:
+def write(path: Path, prompts: list[str] | None, poses: list[str] | None,
+          end_pose: bool = False) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps({"prompts": prompts or [], "poses": poses or []}, indent=1) + "\n",
-                    encoding="utf-8")
+    body = {"prompts": prompts or [], "poses": poses or [], "endPose": end_pose}
+    path.write_text(json.dumps(body, indent=1) + "\n", encoding="utf-8")
     return path
 
 

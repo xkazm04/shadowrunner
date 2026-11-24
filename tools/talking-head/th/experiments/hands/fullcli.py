@@ -27,6 +27,8 @@ def add_arguments(p: argparse.ArgumentParser) -> None:
     p.add_argument("--audio-chunk", type=int, default=0,
                    help="wav2vec features per N-frame chunk (0 = over the whole line, upstream)")
     p.add_argument("--shift", type=float, default=5.0)
+    p.add_argument("--cfg-batch", action="store_true",
+                   help="upstream's batch of 3 CFG branches (spills past 24 GB at 125 frames)")
     p.add_argument("--prompt", choices=("presenter", "gesture"), default="gesture")
     p.add_argument("--image", help="waist-up reference (default <out>/gen/waist-c.png)")
     p.add_argument("--wav", help="line audio (default <out>/line-short.wav)")
@@ -56,11 +58,12 @@ def run_full(args: argparse.Namespace, root: Path, portrait: Path) -> dict:
                       negative=full.NEGATIVES[args.negative], neg_scale=args.neg_scale,
                       neg_steps=args.neg_steps, long_cfg=args.long_cfg, partial=partial,
                       overlap=args.overlap, dynamic_cfg=not args.no_dynamic_cfg,
-                      teacache=args.teacache, audio_chunk=args.audio_chunk, shift=args.shift)
+                      teacache=args.teacache, audio_chunk=args.audio_chunk, shift=args.shift,
+                      cfg_split=not args.cfg_batch)
     path = full.write_config(cfg, out / "full.json")
     settings = {**cfg["config"], "frames": frames, "image": str(image), "wav": str(wav),
                 "prompt": args.prompt, "negativeName": args.negative, "faceBox": list(face),
-                "audioChunk": args.audio_chunk, "offload": True}
+                "audioChunk": args.audio_chunk, "offload": True, "cfgSplit": not args.cfg_batch}
     full.write_driver()
     rec = run("echomimicv3-full", emv3.env(), ["python", "th_hands_full.py", str(path.resolve())],
               out, settings)
@@ -68,7 +71,7 @@ def run_full(args: argparse.Namespace, root: Path, portrait: Path) -> dict:
     shutil.copyfile(full.output(out / "work"), raw)
     fig = finish(raw, wav, portrait, out,
                  {"renderS": rec.render_s, "vramPeakMiB": rec.vram_peak_mib, "settings": settings})
-    if frames > emv3.WINDOW:
+    if frames > emv3.MAX_FRAMES:   # a passage, not one window
         fig["persistence"] = report(out / "clip.mp4", emv3.window_plan(frames))
     print(json.dumps(fig, indent=2))
     return fig

@@ -16,6 +16,14 @@ from ...arms.base import ArmEnv
 from ...gpu import VramSampler, gpu_lock
 from .health import check
 
+ACCESS_VIOLATION = 3221225477   # 0xC0000005: on this machine, host commit running out mid-load
+RETRIES = 2
+
+
+def is_access_violation(error: str) -> bool:
+    """A failed run whose process died with 0xC0000005 (printed as the unsigned exit code)."""
+    return f"({ACCESS_VIOLATION})" in error
+
 
 @dataclass
 class RunRecord:
@@ -40,15 +48,24 @@ def run(candidate: str, env: ArmEnv, argv: Sequence[str | Path], out_dir: Path, 
     rec.health_before = before.line()
     print(f"hands: before {rec.health_before}", flush=True)
     t0 = time.perf_counter()
-    try:
-        with gpu_lock(), VramSampler(1.0) as vram:
-            env.run(argv, cwd=cwd or env.repo, log=out_dir / "log.txt",
-                    env={"PYTHONIOENCODING": "utf-8", "TOKENIZERS_PARALLELISM": "false",
-                         **(extra_env or {})})
-        rec.vram_baseline_mib, rec.vram_peak_mib = vram.baseline, vram.peak
-    except Exception as e:  # noqa: BLE001 - recorded, then re-raised after run.json is written
-        rec.error = f"{datetime.now().isoformat(timespec='seconds')}: {e}"
-    rec.render_s = round(time.perf_counter() - t0, 1)
+    for attempt in range(RETRIES + 1):
+        rec.error = None
+        t0 = time.perf_counter()
+        try:
+            with gpu_lock(), VramSampler(1.0) as vram:
+                env.run(argv, cwd=cwd or env.repo, log=out_dir / "log.txt",
+                        env={"PYTHONIOENCODING": "utf-8", "TOKENIZERS_PARALLELISM": "false",
+                             **(extra_env or {})})
+            rec.vram_baseline_mib, rec.vram_peak_mib = vram.baseline, vram.peak
+        except Exception as e:  # noqa: BLE001 - recorded, then re-raised after run.json is written
+            rec.error = f"{datetime.now().isoformat(timespec='seconds')}: {e}"
+        if rec.error and is_access_violation(rec.error) and attempt < RETRIES:
+            rec.notes.append(f"attempt {attempt + 1} died with 0xC0000005 after "
+                             f"{time.perf_counter() - t0:.0f} s; retried")
+            print(f"hands: {rec.notes[-1]}", flush=True)
+            continue
+        break
+    rec.render_s = round(time.perf_counter() - t0, 1)   # the successful (last) attempt
     after = check()
     rec.health_after = after.line()
     if before.driver_errors is not None and after.driver_errors is not None:

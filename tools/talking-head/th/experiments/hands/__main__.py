@@ -14,6 +14,7 @@
                                    CLIP reference for every window after the first)
   full [--steps 25] ...            full (non-Flash) EchoMimicV3, MediaPipe face mask, then finish
                                    (levers: --negative --neg-scale --neg-steps --long-cfg ...)
+  longcat [--seed 42] ...          LongCat-Video-Avatar 1.6, INT8, one GPU: internal comparison only
   pose <clip.mp4> <out.png>        the open-hands frame of a take (for emv3 --pose)
   persist <clip.mp4>...            gesture persistence per window, into figures.json
 """
@@ -135,13 +136,15 @@ def _emv3(args: argparse.Namespace) -> None:
         from . import reanchor as ra
 
         reanchor = ra.write(out / "reanchor.json", ra.beat_prompts() if args.beats else None,
-                            ["", str(Path(args.pose).resolve())] if args.pose else None)
+                            ["", str(Path(args.pose).resolve())] if args.pose else None,
+                            args.pose_end)
     settings = {"steps": args.steps, "frames": frames, "seed": args.seed, "audioCfg": args.audio_cfg,
                 "textCfg": args.text_cfg, "offload": not args.full_load, "image": str(image),
                 "wav": str(wav), "sampleArea": list(emv3.SAMPLE_AREA), "prompt": args.prompt,
                 "negative": args.negative, "teacache": not args.no_teacache, "shift": args.shift,
                 "window": window, "overlap": args.overlap if window else 0,
-                "audioChunk": args.audio_chunk, "beats": args.beats, "pose": args.pose}
+                "audioChunk": args.audio_chunk, "beats": args.beats, "pose": args.pose,
+                "poseEnd": args.pose_end}
     emv3.write_driver()
     argv = emv3.command(ref, wav, work, args.seed, args.steps, frames, args.audio_cfg, args.text_cfg,
                         emv3.PROMPTS[args.prompt], emv3.NEGATIVES[args.negative], args.shift)
@@ -189,6 +192,12 @@ def _full(args: argparse.Namespace) -> None:
     from .fullcli import run_full
 
     run_full(args, out_root(), main_checkout() / PORTRAIT)
+
+
+def _longcat(args: argparse.Namespace) -> None:
+    from .longcatcli import run_longcat
+
+    run_longcat(args, out_root(), main_checkout() / PORTRAIT)
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -244,12 +253,19 @@ def main(argv: list[str] | None = None) -> None:
                    help="wav2vec features per N-frame chunk (0 = over the whole line, upstream)")
     p.add_argument("--beats", action="store_true", help="--long: one beat prompt per window")
     p.add_argument("--pose", help="--long: CLIP reference image for every window after the first")
+    p.add_argument("--pose-end", action="store_true",
+                   help="--pose also as the kept last frame of every window after the first")
     p.set_defaults(fn=_emv3)
     p = sub.add_parser("full", help="full (non-Flash) EchoMimicV3 candidate")
     from .fullcli import add_arguments
 
     add_arguments(p)
     p.set_defaults(fn=_full)
+    p = sub.add_parser("longcat", help="LongCat-Video-Avatar 1.6 (internal comparison only)")
+    from .longcatcli import add_arguments as add_longcat
+
+    add_longcat(p)
+    p.set_defaults(fn=_longcat)
     p = sub.add_parser("pose", help="the open-hands frame of a take")
     p.add_argument("clip")
     p.add_argument("out")
