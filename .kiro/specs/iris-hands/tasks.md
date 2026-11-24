@@ -7,4 +7,4 @@ Builder: Claude Opus subagent (Kiro out of quota this month). Experiment code li
 - [ ] 3. Round 3: full EchoMimicV3 arm with a MediaPipe face mask; negative CFG, steps, Long Video CFG (req 9)
 - [ ] 4. Round 3: Flash re-anchoring: per-window prompt, fresh reference per window (req 10)
 - [ ] 5. Round 3: gesture persistence measure (req 11), picks, verdict, docs (req 13)
-- [ ] 6. Round 3: LongCat-Video-Avatar 1.6 probe - BLOCKED on the owner's licence ruling (req 12)
+- [ ] 6. Round 3: LongCat-Video-Avatar 1.6 probe on one 4090 (INT8), internal comparison only - owner ruling 2026-11-24 (req 12)
