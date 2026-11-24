@@ -1800,7 +1800,7 @@ Columns: take, arm, seed, steps, neg CFG, Long CFG ("windows" = Flash's continue
   - Per-window prompts make the clasp worse. A fresh CLIP reference alone changes nothing that matters.
 - **The full EchoMimicV3 arm gestures wider in 5 s** (wrist travel 0.8-1.0 on every take), and its real negative CFG and 25 steps help a little. It does not beat Flash on hands (0.55-0.76 vs 0.87), and it is much worse on lip-sync (SyncNet 3.0-4.7 vs 9.2) at 2-4x the cost. Its Long-CFG passage could not be finished on this machine this round.
 - **Picks unchanged as the cleanest.** Round 2's `c8-s1116-notc-a45` stays the best 5 s take and `long-s7-notc-ac113` the cleanest passage. `poseend-s7` is the best passage that keeps gesturing (hand score 0.74, SyncNet 5.93, identity 0.831).
-- **Next.** The owner should judge (b+) by eye: is the lift natural enough? If yes, a softer keyframe should be tried: the pose only every second window, or a pose frame nearer the clasp. The full-arm Long-CFG passage and LongCat wait for the memory cap and the go-ahead to render.
+- **Next.** The owner should judge (b+) by eye: is the lift natural enough? If yes, a softer keyframe should be tried: the pose only every second window, or a pose frame nearer the clasp. Closed: the full arm was rejected and LongCat dropped (owner, 2026-11-24); EMV3-Flash with the pose keyframe is the route.
 
 #### Picks (`live-review-r6/hands/picks/`)
 
@@ -1844,6 +1844,8 @@ Re-anchoring costs nothing extra over a plain Flash passage.
 - GPU time this round: about 6 h of GPU-lock time, including about 1.5 h lost to the spill before the umT5 fix, the commit and memory failures and the killed renders.
 
 #### LongCat-Video-Avatar 1.6 (req 12): fits one 4090, no take finished yet
+
+**Dropped (owner, 2026-11-24).** Local renders of 20-40 GB host commit are too heavy for the PC the owner works on, so LongCat was dropped without a finished take; its weights (45 GB), env and clone were deleted from `$TH_HOME`, and so were the rejected full-arm transformer and wav2vec2-base-960h. The driver code below stays for reference; `longcat.py setup` and the full arm's fetch would have to run again to use them.
 
 Internal comparison only (owner ruling 2026-11-24).
 
