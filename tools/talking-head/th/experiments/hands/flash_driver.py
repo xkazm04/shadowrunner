@@ -15,7 +15,12 @@ upstream `infer_flash.main()` after three opt-in patches, each driven by an envi
 - TH_EMV3_AUDIO_CHUNK=<n>: wav2vec features are computed per n-frame chunk (with 1 s of audio
   context on each side, kept only for the chunk's own frames) instead of over the whole line, so a
   long line's features see the few-second context of a training clip.
+- TH_EMV3_REANCHOR=<json file> (round 3, with TH_EMV3_WINDOW): {"prompts": [...], "poses": [...]},
+  one entry per window (the last repeats): window k is prompted with prompts[k] instead of the
+  command line's prompt, and its CLIP identity image becomes the image poses[k] (an open-hands pose
+  frame; "" keeps the reference); the motion frames are kept either way.
 """
+import json
 import math
 import os
 import sys
@@ -56,6 +61,26 @@ def plan(total, window, overlap):
         start += n - overlap
 
 
+def _reanchor():
+    path = os.environ.get("TH_EMV3_REANCHOR", "")
+    if not path:
+        return [], []
+    with open(path, encoding="utf-8") as f:
+        d = json.load(f)
+    return list(d.get("prompts") or []), list(d.get("poses") or [])
+
+
+def pick(items, k):
+    """The k-th per-window entry; the last one repeats; None when there are none."""
+    return items[min(k, len(items) - 1)] if items else None
+
+
+def _pose(path, like):
+    from PIL import Image
+
+    return Image.open(path).convert("RGB").resize(like.size, Image.LANCZOS)
+
+
 def _windowed(self, prompt, **kw):
     window = int(os.environ["TH_EMV3_WINDOW"])
     overlap = int(os.environ.get("TH_EMV3_OVERLAP", "9"))
@@ -64,15 +89,20 @@ def _windowed(self, prompt, **kw):
     out = None
     windows = plan(total, window, overlap)
     print(f"th: {total} frames in windows {windows} (overlap {overlap})", flush=True)
+    prompts, poses = _reanchor()
     for k, (start, n) in enumerate(windows):
+        p_k, pose_k = pick(prompts, k) or prompt, pick(poses, k)
+        clip_k = _pose(pose_k, kw["clip_image"]) if pose_k else kw["clip_image"]
+        if prompts or poses:
+            print(f"th: window {k + 1} prompt {p_k[:80]!r}... pose {pose_k or 'reference'}", flush=True)
         v = video[:, :, :n].clone()
         m = torch.full_like(v[:, :1], 255.0)
         m[:, :, :1] = 0
         if out is not None:
             v[:, :, :overlap] = out[:, :, -overlap:].to(v.dtype)
             m[:, :, :overlap] = 0
-        seg = _call(self, prompt, **{**kw, "num_frames": n, "video": v, "mask_video": m,
-                                     "audio_embeds": audio[:, start:start + n]}).videos
+        seg = _call(self, p_k, **{**kw, "num_frames": n, "video": v, "mask_video": m,
+                                  "clip_image": clip_k, "audio_embeds": audio[:, start:start + n]}).videos
         if out is None:
             out = seg
         else:

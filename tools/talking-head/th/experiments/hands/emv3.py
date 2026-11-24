@@ -110,10 +110,13 @@ def command(reference: Path, wav: Path, work: Path, seed: int, steps: int, frame
 
 
 def driver_env(offload: bool, teacache: bool, window: int = 0, overlap: int = OVERLAP,
-               audio_chunk: int = 0) -> dict[str, str]:
-    return {"TH_EMV3_OFFLOAD": "1" if offload else "0", "TH_EMV3_TEACACHE": "1" if teacache else "0",
-            "TH_EMV3_WINDOW": str(window), "TH_EMV3_OVERLAP": str(overlap),
-            "TH_EMV3_AUDIO_CHUNK": str(audio_chunk)}
+               audio_chunk: int = 0, reanchor: Path | None = None) -> dict[str, str]:
+    env = {"TH_EMV3_OFFLOAD": "1" if offload else "0", "TH_EMV3_TEACACHE": "1" if teacache else "0",
+           "TH_EMV3_WINDOW": str(window), "TH_EMV3_OVERLAP": str(overlap),
+           "TH_EMV3_AUDIO_CHUNK": str(audio_chunk)}
+    if reanchor is not None:
+        env["TH_EMV3_REANCHOR"] = str(reanchor)
+    return env
 
 
 def write_driver() -> Path:
