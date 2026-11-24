@@ -12,7 +12,11 @@ Three layers, Windows only (elsewhere the guard is a no-op):
   processes are suspended, and resumed once it is back above reserve + hysteresis; a render
   paused longer than TH_PAUSE_MAX_S is terminated.
 
-Thresholds come from the environment (GB unless noted): TH_MEM_CAP_GB 40, TH_MEM_RESERVE_GB 12,
+WDDM charges VRAM allocations to the process's committed memory (measured: +4.01 GB commit
+per 4 GB of torch VRAM, `experiments/hands/wddm_commit.py`), so the job cap is the host budget
+plus the GPU's VRAM (TH_MEM_VRAM_GB, default: nvidia-smi's total, 0 without a GPU).
+
+Thresholds come from the environment (GB unless noted): TH_MEM_CAP_GB 40 (host budget), TH_MEM_RESERVE_GB 12,
 TH_MEM_FLOOR_GB 8, TH_MEM_HYST_GB 4, TH_ADMIT_WAIT_S 900, TH_PAUSE_MAX_S 900, TH_GUARD_POLL_S 2,
 TH_PRIORITY below_normal|idle|normal, TH_GUARD 0 to switch it off. Note: a `docker run` client is
 capped, not the container (Docker's VM has its own limit)."""
@@ -41,6 +45,7 @@ class Limits:
     poll_s: float = 2.0
     priority: str = "below_normal"
     enabled: bool = True
+    vram_gb: float | None = None   # None: read the GPU's total at admission
 
     @classmethod
     def from_env(cls, env: dict[str, str] | None = None) -> "Limits":
@@ -56,15 +61,17 @@ class Limits:
                    admit_wait_s=f("TH_ADMIT_WAIT_S", d.admit_wait_s),
                    pause_max_s=f("TH_PAUSE_MAX_S", d.pause_max_s), poll_s=f("TH_GUARD_POLL_S", d.poll_s),
                    priority=e.get("TH_PRIORITY", d.priority) or d.priority,
-                   enabled=e.get("TH_GUARD", "1") != "0")
+                   enabled=e.get("TH_GUARD", "1") != "0",
+                   vram_gb=float(e["TH_MEM_VRAM_GB"]) if e.get("TH_MEM_VRAM_GB") else None)
 
 
 # --- pure decisions (unit-tested) ------------------------------------------------------------
 
-def admit_cap_gb(avail_gb: float, lim: Limits) -> float | None:
-    """The cap a render may start with when `avail_gb` of commit is free: what is free beyond the
-    reserve, at most the configured cap. None when that is under the floor (wait, or refuse)."""
-    room = min(lim.cap_gb, avail_gb - lim.reserve_gb)
+def admit_cap_gb(avail_gb: float, lim: Limits, vram_gb: float = 0.0) -> float | None:
+    """The job cap a render may start with when `avail_gb` of commit is free: what is free beyond
+    the reserve, at most the host budget plus the VRAM WDDM charges to commit. None when that is
+    under the floor (wait, or refuse)."""
+    room = min(lim.cap_gb + vram_gb, avail_gb - lim.reserve_gb)
     return room if room >= lim.floor_gb else None
 
 
@@ -181,6 +188,15 @@ class Job:
         _k32.CloseHandle(self.handle)
 
 
+def gpu_total_gb() -> float:
+    """The GPU's VRAM, GB (nvidia-smi); 0 when there is none or it can't be read."""
+    from .gpu import _smi
+    try:
+        return int(_smi("gpu=memory.total")[0][0]) / 1024
+    except (IndexError, ValueError, OSError):
+        return 0.0
+
+
 class ResourceRefused(RuntimeError):
     """Admission timed out: the machine never had room for the render."""
 
@@ -206,14 +222,15 @@ class Guard:
         if not self.active:
             return None
         waited = 0.0
+        vram = self.lim.vram_gb if self.lim.vram_gb is not None else gpu_total_gb()
         while True:
             avail = self.read_avail()
             if avail is None:
                 return None
-            cap = admit_cap_gb(avail, self.lim)
+            cap = admit_cap_gb(avail, self.lim, vram)
             if cap is not None:
                 self.cap_gb = cap
-                self.log(f"guard: admitted, {avail:.1f} GB free, cap {cap:.1f} GB, "
+                self.log(f"guard: admitted, {avail:.1f} GB free, cap {cap:.1f} GB (host {self.lim.cap_gb:.0f} + VRAM {vram:.0f}), "
                          f"reserve {self.lim.reserve_gb:.0f} GB, priority {self.lim.priority}")
                 return cap
             if waited >= self.lim.admit_wait_s:

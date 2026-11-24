@@ -9,7 +9,8 @@ import pytest
 
 from th.guard import WINDOWS, Guard, Limits, ResourceRefused, admit_cap_gb, watch_action
 
-LIM = Limits(cap_gb=40, reserve_gb=12, floor_gb=8, hyst_gb=4, admit_wait_s=10, pause_max_s=60, poll_s=1)
+LIM = Limits(cap_gb=40, reserve_gb=12, floor_gb=8, hyst_gb=4, admit_wait_s=10, pause_max_s=60, poll_s=1,
+             vram_gb=0)
 
 
 def test_limits_from_env() -> None:
@@ -22,6 +23,16 @@ def test_limits_from_env() -> None:
 @pytest.mark.parametrize("avail, cap", [(80, 40), (52, 40), (40, 28), (20, 8), (19.9, None), (5, None)])
 def test_admit_cap_keeps_the_reserve(avail: float, cap: float | None) -> None:
     assert admit_cap_gb(avail, LIM) == cap
+
+
+@pytest.mark.parametrize("avail, cap", [(100, 64), (60, 48), (19.9, None)])
+def test_admit_cap_adds_the_vram_wddm_charges(avail: float, cap: float | None) -> None:
+    assert admit_cap_gb(avail, LIM, vram_gb=24) == cap
+
+
+def test_vram_from_env() -> None:
+    assert Limits.from_env({"TH_MEM_VRAM_GB": "24"}).vram_gb == 24
+    assert Limits.from_env({}).vram_gb is None
 
 
 @pytest.mark.parametrize("avail, paused, for_s, action", [
@@ -64,7 +75,7 @@ def test_disabled_guard_does_nothing() -> None:
 def test_job_cap_stops_a_runaway_child() -> None:
     """A child allocating 256 MB at a time past a ~1 GB cap fails with MemoryError, the guard
     reports a peak at the cap, and the parent (this test) is untouched."""
-    g = Guard(lim=Limits(cap_gb=1.0, reserve_gb=0, floor_gb=0.5), log=lambda s: None)
+    g = Guard(lim=Limits(cap_gb=1.0, reserve_gb=0, floor_gb=0.5, vram_gb=0), log=lambda s: None)
     assert g.admit() is not None
     code = ("import time\nb=[]\ntime.sleep(0.5)\n"
             "for i in range(16):\n    b.append(bytearray(256*1024*1024))\nprint('UNCAPPED')")
@@ -83,7 +94,7 @@ def test_watchdog_pauses_and_resumes_a_render() -> None:
     import time
 
     state = {"avail": 50.0}
-    lim = Limits(cap_gb=2, reserve_gb=12, floor_gb=0.5, hyst_gb=4, pause_max_s=60, poll_s=0.1)
+    lim = Limits(cap_gb=2, reserve_gb=12, floor_gb=0.5, hyst_gb=4, pause_max_s=60, poll_s=0.1, vram_gb=0)
     g = Guard(lim=lim, log=lambda s: None, read_avail=lambda: state["avail"])
     assert g.admit() is not None
     code = "import time\nfor i in range(60):\n    print(i, flush=True); time.sleep(0.05)"

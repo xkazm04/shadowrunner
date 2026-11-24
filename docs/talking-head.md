@@ -185,7 +185,8 @@ Every heavy subprocess (`ArmEnv.run`, so every arm, experiment and measure that 
 
 | variable | default | meaning |
 | --- | --- | --- |
-| `TH_MEM_CAP_GB` | 40 | most host commit one render may hold |
+| `TH_MEM_CAP_GB` | 40 | host budget of one render; the job cap adds `TH_MEM_VRAM_GB` |
+| `TH_MEM_VRAM_GB` | GPU total (nvidia-smi) | VRAM added to the cap: WDDM charges VRAM allocations to commit (+4.01 GB per 4 GB, `wddm_commit.py`) |
 | `TH_MEM_RESERVE_GB` | 12 | commit always left free for the desktop |
 | `TH_MEM_FLOOR_GB` | 8 | smallest cap worth starting with |
 | `TH_MEM_HYST_GB` | 4 | resume only this far above the reserve |
