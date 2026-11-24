@@ -330,6 +330,8 @@ pitch-45s (44.89 s), seed 1116. `gpuExclusive` was false for every run: an unrel
 
 ## Rig arms (`baseline`, `a2f-keys`, `dub-ls`)
 
+**Not installed (owner, 2026-11-24).** `a2f-keys` and `dub-ls` were never picked; their envs, clones, weights and Docker images (`th-a2f-sdk`, `nvidia/cuda:12.9.1-devel-ubuntu22.04`) were deleted. The code stays; `th fetch` / setup and the Docker build would have to run again to use them.
+
 The three rig arms render through the PRODUCT avatar player, not a re-implementation. 
 `scripts/portrait/timeline-capture.mjs` opens `apps/web/bench/timeline.html` in headless Chromium.
 The page runs Iris's pack (`apps/web/public/packs/iris.srpack`) through `createAvatarPlayer`, and
