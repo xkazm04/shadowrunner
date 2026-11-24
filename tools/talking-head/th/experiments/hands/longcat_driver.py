@@ -17,7 +17,7 @@ video.py's arguments) after these run-time patches (upstream files unedited):
   first builds the whole 13.6B model in fp32 on the CPU (54 GB), past the guard's 40 GB cap;
 - both LoRAs (DMD, OPSD) are held in bf16 instead of fp32 (2.4 GB of VRAM less; upstream's 24 GB
   budget assumes neither LoRA nor display); the INT8 layers cannot take a static merge;
-- the last TH_LC_OFFLOAD_BLOCKS (16) of the 48 INT8 DiT blocks stay on the CPU and move to the GPU
+- the last TH_LC_OFFLOAD_BLOCKS (32) of the 48 INT8 DiT blocks stay on the CPU and move to the GPU
   for their own forward only: all on the GPU (17.6 GiB) plus 480p activations and the display
   spills past 24 GB and crawls through shared memory;
 - the seed: upstream hard-codes `global_seed = 42`; TH_LC_SEED replaces that one line in the
@@ -60,6 +60,8 @@ import torch  # noqa: E402
 import torch.distributed as dist  # noqa: E402
 from longcat_video.context_parallel import context_parallel_util as cpu_  # noqa: E402
 from longcat_video.pipeline_longcat_video_avatar import LongCatVideoAvatarPipeline as P  # noqa: E402
+from th_longcat_parts import (demo_negative, load_int8_lean, offload_blocks,  # noqa: E402
+                              trace)
 
 _init_pg = dist.init_process_group
 
@@ -99,10 +101,11 @@ def _to_keep_encoders(self, device):
         _to(self, device)
     finally:
         self.text_encoder = te
-    n = int(os.environ.get("TH_LC_OFFLOAD_BLOCKS", "16") or 0)
+    n = int(os.environ.get("TH_LC_OFFLOAD_BLOCKS", "32") or 0)
     if n and self.dit is not None:
         offload_blocks(self.dit.blocks, n)
         torch.cuda.empty_cache()
+    trace("pipeline on the GPU")
     print(f"th: on the GPU: {torch.cuda.memory_allocated() / 2**30:.1f} GiB allocated "
           f"({n} DiT blocks streamed from the CPU)", flush=True)
     return self
@@ -125,115 +128,6 @@ class _T5Gone:
 
     def eval(self):
         return self
-
-
-def params_on_meta():
-    """Modules built inside get their parameters on the meta device (each layer's real tensor
-    lives only while it is registered), their buffers real: accelerate's init_empty_weights."""
-    import contextlib
-
-    @contextlib.contextmanager
-    def ctx():
-        old = torch.nn.Module.register_parameter
-
-        def reg(self, name, param):
-            old(self, name, param)
-            if param is not None:
-                p = self._parameters[name]
-                self._parameters[name] = torch.nn.Parameter(p.to("meta"),
-                                                            requires_grad=p.requires_grad)
-
-        torch.nn.Module.register_parameter = reg
-        try:
-            yield
-        finally:
-            torch.nn.Module.register_parameter = old
-
-    return ctx()
-
-
-def load_int8_lean(checkpoint_dir, subfolder="base_model_int8", *, model_cls, ql_cls, skip,
-                   **kwargs):
-    """upstream load_quantized_dit without its first step, which builds the 13.6B-parameter DiT
-    for real in fp32 on the CPU (54 GB) only to replace its Linear layers: here the model and the
-    INT8 layers are built on the meta device and every shard is loaded into them with
-    assign=True, one shard at a time, so host memory holds the 15 GB of INT8 weights and nothing
-    else. Then upstream's cast of the remaining fp32 parameters to bf16."""
-    from safetensors.torch import load_file
-
-    qdir = os.path.join(checkpoint_dir, subfolder)
-    with open(os.path.join(qdir, "config.json"), encoding="utf-8") as f:
-        config = json.load(f)
-    for k in ("_class_name", "architectures", "_diffusers_version", "model_max_length"):
-        config.pop(k, None)
-    config.update(kwargs)
-    with params_on_meta():
-        model = model_cls(**config)
-    with torch.device("meta"):
-        swap = {name: ql_cls(m.in_features, m.out_features, bias=m.bias is not None)
-                for name, m in model.named_modules()
-                if isinstance(m, torch.nn.Linear) and not any(p in name for p in skip)}
-    for name, ql in swap.items():
-        parent = model
-        for part in name.split(".")[:-1]:
-            parent = getattr(parent, part)
-        setattr(parent, name.split(".")[-1], ql)
-    index = os.path.join(qdir, "quantized_model.safetensors.index.json")
-    if os.path.exists(index):
-        with open(index, encoding="utf-8") as f:
-            shards = sorted(set(json.load(f)["weight_map"].values()))
-    else:
-        shards = sorted(x for x in os.listdir(qdir)
-                        if x.endswith(".safetensors") and "index" not in x)
-    loaded = set()
-    for shard in shards:
-        sd = load_file(os.path.join(qdir, shard), device="cpu")
-        model.load_state_dict(sd, strict=False, assign=True)
-        loaded |= set(sd)
-        del sd
-    missing = set(model.state_dict()) - loaded
-    meta = [n for n, t in list(model.named_parameters()) + list(model.named_buffers())
-            if t.is_meta]
-    if missing or meta:
-        raise SystemExit(f"th: INT8 DiT incomplete: missing {sorted(missing)[:5]}, meta {meta[:5]}")
-    model.eval()
-    for module in model.modules():
-        if isinstance(module, ql_cls):
-            continue
-        for param in module.parameters(recurse=False):
-            if param.dtype == torch.float32:
-                param.data = param.data.to(torch.bfloat16)
-    return model
-
-
-def offload_blocks(blocks, count, device="cuda"):
-    """Keep the last `count` transformer blocks on the CPU and bring each to `device` only for its
-    own forward (a forward pre-hook moves it in, a forward hook moves it back). With 8 distilled
-    steps the transfer is cheap; it frees count x ~0.28 GB of VRAM for the activations."""
-    moved = list(blocks)[len(blocks) - count:] if count else []
-
-    def pre(module, args, kwargs=None):
-        module.to(device)
-
-    def post(module, args, output):
-        module.to("cpu")
-        return output
-
-    for b in moved:
-        b.to("cpu")
-        b.register_forward_pre_hook(pre)
-        b.register_forward_hook(post)
-    return len(moved)
-
-
-def demo_negative(src):
-    """upstream's negative prompt, read from the demo's source (a literal inside generate())."""
-    import re
-
-    m = re.search(r'negative_prompt = "([^"]+)"', src)
-    if not m:
-        raise SystemExit("th: the demo's negative prompt was not found; the pinned commit changed")
-    return m.group(1)
 
 
 def _encode_at_load(prompts):
@@ -259,6 +153,7 @@ def _encode_at_load(prompts):
         gc.collect()
         torch.cuda.empty_cache()
         print(f"th: {len(prompts)} prompts encoded with umT5-XXL (bf16), encoder dropped", flush=True)
+        trace("prompts encoded")
         return _T5Gone(config)
 
     return load
@@ -308,10 +203,47 @@ def main():
         casts its input to the LoRA's own dtype"""
         _load_lora(self, path, key, *a, **k)
         self.lora_dict[key].to(torch.bfloat16)
+        trace(f"LoRA {key} loaded")
 
     Dit.load_lora = _lora_bf16
-    demo.load_quantized_dit = lambda d, subfolder="base_model_int8", **k: load_int8_lean(
-        d, subfolder, model_cls=Dit, ql_cls=q.QuantizedLinear, skip=q.DEFAULT_SKIP_PATTERNS, **k)
+    def _dit(d, subfolder="base_model_int8", **k):
+        m = load_int8_lean(d, subfolder, model_cls=Dit, ql_cls=q.QuantizedLinear,
+                           skip=q.DEFAULT_SKIP_PATTERNS, **k)
+        trace("INT8 DiT loaded")
+        return m
+
+    demo.load_quantized_dit = _dit
+    if os.environ.get("TH_HOST_TRACE") == "1":
+        _fwd, _cnt = Dit.forward, [0]
+
+        def _dit_fwd(self, *a, **k):
+            _cnt[0] += 1
+            trace(f"DiT forward {_cnt[0]} start")
+            out = _fwd(self, *a, **k)
+            trace(f"DiT forward {_cnt[0]} end")
+            return out
+
+        Dit.forward = _dit_fwd
+        for _vn in ("encode", "decode"):
+            _vf = getattr(demo.AutoencoderKLWan, _vn)
+
+            def _vt(self, *a, _vf=_vf, _vn=_vn, **k):
+                trace(f"VAE {_vn} start")
+                out = _vf(self, *a, **k)
+                trace(f"VAE {_vn} end")
+                return out
+
+            setattr(demo.AutoencoderKLWan, _vn, _vt)
+    for _name in ("generate_ai2v", "generate_avc"):
+        _f = getattr(P, _name)
+
+        def _traced(self, *a, _f=_f, _n=_name, **k):
+            trace(f"{_n} start")
+            out = _f(self, *a, **k)
+            trace(f"{_n} end")
+            return out
+
+        setattr(P, _name, _traced)
     with open(sys.argv[sys.argv.index("--input_json") + 1], encoding="utf-8") as f:
         prompt = json.load(f)["prompt"]
     demo.UMT5EncoderModel = types.SimpleNamespace(

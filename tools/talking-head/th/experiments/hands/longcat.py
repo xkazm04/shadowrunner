@@ -66,6 +66,8 @@ def segments_for(frames: int, n: int = NUM_FRAMES, cond: int = COND_FRAMES) -> i
 
 
 def write_driver() -> Path:
+    (env().repo / "th_longcat_parts.py").write_bytes(
+        (Path(__file__).parent / "longcat_parts.py").read_bytes())
     p = env().repo / "th_hands_longcat.py"
     p.write_bytes((Path(__file__).parent / "longcat_driver.py").read_bytes())
     return p

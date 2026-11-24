@@ -1837,24 +1837,37 @@ Re-anchoring costs nothing extra over a plain Flash passage.
   - the reference is a one-frame view expanded in time.
 
   `poseend-s1116` ran with them: guard peak 30.2 GB (it was 43 GB measured, and over the 40 GB cap three times out of three), about 27 GB while denoising. The peak is still the CLIP load; the 25 GB target is not met. The full driver gets the same patches, plus uint8 decoding when there is no crossfade (Long CFG or one window); it has not been re-rendered since.
+- **VRAM is host commit here.** On this Windows (WDDM) GPU every byte of VRAM a process allocates is also charged to its commit (measured +4.01 GB per 4 GB), so the guard's 40 GB cap covers host memory and VRAM together. A Flash passage at a 30.2 GB peak therefore uses about 10-12 GB of it on the GPU.
 - **The owner had to stop two renders** (15:11 and 15:41) because the PC ran out of memory. After that, rendering was halted until every render runs under a hard host-memory cap (the Director is building it). A GPU driver error (nvlddmkm 153) is logged in the same seconds. The Director counts 19 such events since the day before, so the driver is unstable on its own as well.
 - The Flash driver is unchanged for existing takes. Round 2's commands give the same output; `--beats`, `--pose` and `--pose-end` are opt-in.
 - GPU time this round: about 6 h of GPU-lock time, including about 1.5 h lost to the spill before the umT5 fix, the commit and memory failures and the killed renders.
 
-#### LongCat-Video-Avatar 1.6 (req 12): prepared, not run
+#### LongCat-Video-Avatar 1.6 (req 12): fits one 4090, no take finished yet
 
-Internal comparison only (owner ruling 2026-11-24). Status:
+Internal comparison only (owner ruling 2026-11-24).
 
-- **Ready.** The code is cloned at `58eb336` into `$TH_HOME/repos/hands-longcat`, and the env `envs/hands-longcat` is built. It runs natively on Windows: torch 2.6.0+cu124, transformers 4.41.0, diffusers 0.35.1, flash-attn 2.7.4 from the community Windows build (as the diffusion-it arm) and triton-windows. No WSL or Docker is needed, and the imports and a gloo process group were checked.
-- **The driver** (`longcat_driver.py`, `longcat.py`, `longcatcli.py`, command `longcat`) runs upstream's single-audio demo, unedited, in one process on one GPU:
-  - gloo instead of NCCL, and no libuv TCP store;
-  - a 1-rank context-parallel group;
-  - no vocal separator (`audio-separator` and its UVR model, whose licence is unverified, are not installed; the lines are clean TTS);
-  - the INT8 DiT with loraB and the README's LoRA mix (4 / 1.0), 8 distilled steps, 480p;
-  - umT5 loaded lazily and released after the prompts are cached, and Whisper's encoder only, on the CPU;
-  - the seed patched into upstream's hard-coded `global_seed = 42`.
-- **Every output is marked.** Each output folder gets `INTERNAL-ONLY.txt` and `figures.json` gets `"internalOnly": true`.
-- **Not run.** The first smoke stopped at a Windows-only TCP-store error, `use_libuv` (fixed). After that, rendering was halted (see run notes). The 5 s and passage cells are missing.
+**Setup.** The code is cloned at `58eb336` into `$TH_HOME/repos/hands-longcat`, and the env `envs/hands-longcat` is built. It runs natively on Windows: torch 2.6.0+cu124, transformers 4.41.0, diffusers 0.35.1, flash-attn 2.7.4 from the community Windows build, and triton-windows. No WSL or Docker is needed.
+
+**The driver** (`longcat_driver.py` with `longcat_parts.py`, `longcat.py`, `longcatcli.py`, command `longcat`) runs upstream's single-audio demo, unedited, in one process on one GPU:
+
+- gloo instead of NCCL, and no libuv TCP store;
+- a 1-rank context-parallel group;
+- no vocal separator (`audio-separator` and its UVR model, whose licence is unverified, are not installed; the lines are clean TTS);
+- the INT8 DiT with the README's LoRA mix (loraA DMD and loraB OPSD, 4 / 1.0), 8 distilled steps, 480p;
+- Whisper's encoder only, on the CPU;
+- the seed patched into upstream's hard-coded `global_seed = 42`.
+
+Each output folder gets `INTERNAL-ONLY.txt` and `figures.json` gets `"internalOnly": true`.
+
+**Making it fit one 4090 under the guard's 40 GB cap.** Each fix was measured with a per-stage commit trace (`TH_HOST_TRACE=1`):
+
+- **umT5 encodes the prompts at load.** It is the demo's first model: loaded in bf16, it encodes the take's prompt and upstream's negative prompt on the still-empty GPU, and is dropped before the DiT is read. Host commit: 5.5 GB.
+- **The INT8 DiT is loaded lean.** Upstream's `load_quantized_dit` first builds the whole 13.6B-parameter model in fp32 on the CPU, about 54 GB, only to swap its Linear layers. That took the first smoke past the cap. The driver builds the model and its INT8 layers on the meta device and fills them shard by shard (`assign=True`). Host commit: 18.7 GB.
+- **LoRAs in bf16.** Upstream keeps both LoRA networks in fp32 (2 x 2.4 GB of VRAM). The driver holds them in bf16, which is safe because the LoRA forward casts its input to the LoRA's dtype. A static merge is impossible: upstream refuses non-Linear (INT8) targets.
+- **32 of the 48 DiT blocks stay on the CPU.** The whole model on the GPU (17.6 GiB) plus 480p activations and the display spilled past 24 GB, at 70-120 s per step and 600 s per step in the continuation segment. With 16 blocks streamed the first segment ran but the continuation still spilled. With 32 blocks streamed (pinned CPU masters, a fresh GPU copy for each block's forward), 7.7 GiB sits on the GPU and a step takes 20-24 s at 370-420 W, compute-bound.
+- **VRAM counts as host commit on this machine.** Measured with `th/experiments/hands/wddm_commit.py` in a Job Object: allocating 4 GB of VRAM raises the process's commit, and the job's, by 4.01 GB; 8 GB raises it by 8.02 GB; `empty_cache` returns it. So the guard's cap is host memory plus VRAM. LongCat's trace: 28.4 GB before the first DiT forward, 38.6 GB after it (the activations), flat after that. That is under the cap, but with less than 2 GB to spare.
+
+**Takes.** The 5 s smoke (seed 42) got to step 7/8 of its first segment, at 20.6 s per step with the guard peak at 38.6 GB. Then it and its queue loop were stopped from outside at 18:33: no traceback, and not the guard. Rendering is on hold until the Director clears it. The 5 s and passage cells are missing; task 6 stays open.
 
 # Doc text, round 5 H1 (LivePortrait over FlashHead): for docs/talking-head.md, "Live" section
 

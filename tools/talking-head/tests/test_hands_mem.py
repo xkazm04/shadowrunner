@@ -241,9 +241,10 @@ def test_cached_encode_runs_once_then_empties_the_encoder() -> None:
 def test_longcat_negative_prompt_is_read_from_the_demo() -> None:
     import pytest
 
+    from th.experiments.hands import longcat_parts as ns_mod
+
+    ns = vars(ns_mod)
     src = (HERE / "longcat_driver.py").read_text(encoding="utf-8")
-    ns: dict = {}
-    exec(src[src.index("def demo_negative("):src.index("def _encode_at_load(")], ns)  # noqa: S102
     demo = 'def generate(a):\n    negative_prompt = "Close-up, blurred, extra fingers"\n'
     assert ns["demo_negative"](demo) == "Close-up, blurred, extra fingers"
     with pytest.raises(SystemExit):
@@ -261,9 +262,9 @@ def test_int8_dit_loads_on_meta_shard_by_shard(tmp_path: Path) -> None:
     import torch
     from safetensors.torch import save_file
 
-    src = (HERE / "longcat_driver.py").read_text(encoding="utf-8")
-    ns: dict = {"os": __import__("os"), "json": json, "torch": torch}
-    exec(src[src.index("def params_on_meta("):src.index("def demo_negative(")], ns)  # noqa: S102
+    from th.experiments.hands import longcat_parts as ns_mod
+
+    ns = vars(ns_mod)
 
     class QL(torch.nn.Module):
         def __init__(self, i, o, bias=False):
@@ -297,25 +298,36 @@ def test_int8_dit_loads_on_meta_shard_by_shard(tmp_path: Path) -> None:
 def test_offloaded_blocks_visit_the_device_only_for_their_forward() -> None:
     import torch
 
-    src = (HERE / "longcat_driver.py").read_text(encoding="utf-8")
-    ns: dict = {}
-    exec(src[src.index("def offload_blocks("):src.index("def demo_negative(")], ns)  # noqa: S102
-    seen: list[str] = []
+    from th.experiments.hands import longcat_parts as ns_mod
+
+    ns = vars(ns_mod)
+    seen: list[int] = []
 
     class Spy(torch.nn.Linear):
         def forward(self, x):
-            seen.append(str(self.weight.device))
+            seen.append(self.weight.data_ptr())
             return super().forward(x)
 
     blocks = torch.nn.ModuleList([Spy(2, 2) for _ in range(4)])
-    assert ns["offload_blocks"](blocks, 2, device="meta") == 2
-    assert [str(b.weight.device) for b in blocks] == ["cpu"] * 4
-    x = torch.ones(1, 2)
-    for b in blocks[:2]:
-        b(x)
-    try:
-        blocks[2](x.to("meta"))
-    except Exception:   # meta compute may not run everywhere; the move is what matters
-        pass
-    assert seen[2] == "meta" and str(blocks[2].weight.device) in ("cpu", "meta")
+    masters = [b.weight.data_ptr() for b in blocks]
+    assert ns["offload_blocks"](blocks, 2, device="cpu", pin=False) == 2
+    for b in blocks:
+        b(torch.ones(1, 2))
+    assert seen[:2] == masters[:2]                 # resident blocks: untouched
+    assert seen[2] != masters[2] and seen[3] != masters[3]   # streamed: a device copy in forward
+    assert [b.weight.data_ptr() for b in blocks] == masters  # back on the masters after
     assert ns["offload_blocks"](blocks, 0) == 0
+
+
+def test_streamed_blocks_reuse_one_cpu_master() -> None:
+    """After a forward the block's tensors are the very same CPU storages as before it."""
+    import torch
+
+    from th.experiments.hands import longcat_parts as ns_mod
+
+    ns = vars(ns_mod)
+    blocks = torch.nn.ModuleList([torch.nn.Linear(2, 2) for _ in range(2)])
+    ns["offload_blocks"](blocks, 1, device="cpu", pin=False)
+    before = blocks[1].weight.data_ptr()
+    out = blocks[1](torch.ones(1, 2))
+    assert out.shape == (1, 2) and blocks[1].weight.data_ptr() == before

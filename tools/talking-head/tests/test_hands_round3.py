@@ -197,7 +197,8 @@ def test_drivers_compile_on_the_venv_python() -> None:
     from th.experiments.hands import longcat
 
     pairs = [(emv3.env().python, "full_driver.py"), (emv3.env().python, "flash_driver.py"),
-             (longcat.env().python, "longcat_driver.py")]
+             (longcat.env().python, "longcat_driver.py"), (longcat.env().python, "longcat_parts.py"),
+             (emv3.env().python, "mem_patches.py"), (emv3.env().python, "stream_frames.py")]
     if not any(py.is_file() for py, _ in pairs):
         pytest.skip("no driver venv built")
     for py, f in pairs:
