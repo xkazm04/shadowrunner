@@ -23,3 +23,6 @@ apps/web/public/packs/
 
 # tiger run logs (raw seat output, machine paths)
 tiger/hunts/*/_logs/
+
+# local skill/agent run logs (registry consults, skill runs)
+.ai/
