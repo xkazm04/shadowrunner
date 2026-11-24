@@ -16,6 +16,10 @@ after these patches:
   DiT and the VAE take the GPU in turn), as in the Flash driver.
 - `cfgSplit`: the transformer runs the three CFG branches one by one (batch 1) instead of as one
   batch of 3, so a 125-frame window fits in 24 GB without spilling into shared memory.
+- host memory (th_hands_mem.py): upstream's DiT state dict is dropped once loaded, frames are
+  written one at a time, and with `decodeU8` (Long Video CFG or a single window, where upstream
+  never crossfades the decoded clip) the reference is a one-frame view expanded in time and the
+  clip leaves the VAE as uint8.
 - `audioChunk` > 0: wav2vec features per chunk of that many video frames (1 s of audio context on
   each side, kept only for the chunk's own frames) instead of over the whole line.
 """
@@ -32,6 +36,7 @@ _face.get_mask_coord = lambda _path: tuple(CFG["face"])
 sys.modules["src.face_detect"] = _face
 
 import infer_preview  # noqa: E402
+import th_hands_mem as mem  # noqa: E402
 import torch  # noqa: E402
 from src.pipeline_wan_fun_inpaint_audio import WanFunInpaintAudioPipeline as P  # noqa: E402
 
@@ -198,6 +203,19 @@ def _chunked_features(audio_path, processor, model):
     return torch.cat(parts, 0)
 
 
+def _decode_u8(self, latents):
+    """upstream decode_latents, but the clip leaves the GPU as uint8 (what save_videos_grid makes
+    of it anyway: (x * 255) truncated) instead of float32: 1 byte a sample instead of 4."""
+    frames = self.vae.decode(latents.to(self.vae.dtype)).sample
+    frames = (frames / 2 + 0.5).clamp(0, 1)
+    out = torch.empty(frames.shape, dtype=torch.uint8)
+    for i in range(0, frames.shape[2], 16):
+        out[:, :, i:i + 16] = (frames[:, :, i:i + 16].float() * 255).to(torch.uint8).cpu()
+    del frames
+    mem.free()
+    return out.numpy()
+
+
 if __name__ == "__main__":
     P.to = _offload_to
     P.encode_prompt = _cached_encode
@@ -210,4 +228,12 @@ if __name__ == "__main__":
         if CFG["config"].get("enable_teacache"):
             raise SystemExit("th: cfgSplit counts three transformer calls per step; TeaCache off")
         infer_preview.WanTransformerAudioMask3DModel.forward = _split_forward
+    mem.release_state_dicts()
+    infer_preview.save_videos_grid = mem.stream_save
+    infer_preview.CLIPModel.from_pretrained = mem.cast_after_load(
+        infer_preview.CLIPModel.from_pretrained)
+    if CFG.get("decodeU8"):   # one pipeline call (Long Video CFG, or one window): no crossfade
+        P.decode_latents = _decode_u8
+        infer_preview.get_image_to_video_latent3 = mem.expanded_reference(
+            infer_preview.get_image_to_video_latent3)
     infer_preview.main()

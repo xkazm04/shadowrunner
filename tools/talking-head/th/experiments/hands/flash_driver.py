@@ -21,6 +21,12 @@ upstream `infer_flash.main()` after three opt-in patches, each driven by an envi
   frame; "" keeps the reference); the motion frames are kept either way. With "endPose": true the
   pose image is also the last frame of every later window, kept by the mask (a keyframe the window
   has to reach), as upstream's end-image conditioning does.
+- Host memory (always on; th_hands_mem.py, th_stream_frames.py): umT5-XXL encodes the prompts
+  once (as before, through the offload hook) and its weights are then emptied, unless the windows
+  have their own prompts (11 GB); CLIP is cast to bf16 as it loads; upstream's DiT state dict is
+  dropped once loaded, frames are written one at a time instead of as a list of PIL images, and a
+  windowed take writes each window's finished frames as it goes (only the last `overlap` frames
+  stay in memory, the reference is a one-frame view expanded in time).
 """
 import json
 import math
@@ -29,6 +35,8 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import infer_flash  # noqa: E402
+import th_hands_mem as mem  # noqa: E402
+import th_stream_frames as sf  # noqa: E402
 import torch  # noqa: E402
 from src.pipeline_wan_fun_inpaint_audio_2512 import WanFunInpaintAudioPipeline as P  # noqa: E402
 from src.pipeline_wan_fun_inpaint_audio_2512 import WanPipelineOutput  # noqa: E402
@@ -41,6 +49,7 @@ def _offload_to(self, *args, **kwargs):
     dev = kwargs.get("device", args[0] if args else None)
     if os.environ.get("TH_EMV3_OFFLOAD") == "1" and dev is not None and str(dev).startswith("cuda"):
         if not getattr(self, "_th_offloaded", False):
+            mem.trace("models loaded")
             self.enable_model_cpu_offload(device=dev)
             self._th_offloaded = True
         return self
@@ -83,15 +92,30 @@ def _pose(path, like):
     return Image.open(path).convert("RGB").resize(like.size, Image.LANCZOS)
 
 
+def _argv(flag, default):
+    a = sys.argv
+    return a[a.index(flag) + 1] if flag in a else default
+
+
+def _torch_blend(overlap):
+    r = torch.linspace(0, 1, overlap).view(-1, 1, 1, 1)
+    return lambda a, b: a * (1 - r) + b * r
+
+
 def _windowed(self, prompt, **kw):
+    """Windows rendered in turn; finished frames go straight to the video file (uint8, colour
+    transfer as upstream) and only the last `overlap` frames stay in memory between windows."""
     window = int(os.environ["TH_EMV3_WINDOW"])
     overlap = int(os.environ.get("TH_EMV3_OVERLAP", "9"))
     total = kw["num_frames"]
     video, audio = kw["video"], kw["audio_embeds"]
-    out = None
     windows = plan(total, window, overlap)
     print(f"th: {total} frames in windows {windows} (overlap {overlap})", flush=True)
     prompts, poses, end_pose = _reanchor()
+    path = os.path.join(_argv("--save_path", "."), "th_stream.mp4")
+    writer = mem.frame_writer(path, int(_argv("--fps", "25")))
+    stitch = sf.Stitcher(overlap, _torch_blend(overlap))
+    done = 0
     for k, (start, n) in enumerate(windows):
         p_k, pose_k = pick(prompts, k) or prompt, pick(poses, k)
         clip_k = _pose(pose_k, kw["clip_image"]) if pose_k else kw["clip_image"]
@@ -100,8 +124,9 @@ def _windowed(self, prompt, **kw):
         v = video[:, :, :n].clone()
         m = torch.full_like(v[:, :1], 255.0)
         m[:, :, :1] = 0
-        if out is not None:
-            v[:, :, :overlap] = out[:, :, -overlap:].to(v.dtype)
+        tail = stitch.tail()
+        if tail is not None:   # the previous window's last frames, (overlap, 3, H, W)
+            v[:, :, :overlap] = tail.permute(1, 0, 2, 3)[None].to(v.dtype)
             m[:, :, :overlap] = 0
             if end_pose and pose_k:  # the window must arrive at the pose: its last frame is kept
                 import numpy as np
@@ -111,14 +136,15 @@ def _windowed(self, prompt, **kw):
                 m[:, :, -1:] = 0
         seg = _call(self, p_k, **{**kw, "num_frames": n, "video": v, "mask_video": m,
                                   "clip_image": clip_k, "audio_embeds": audio[:, start:start + n]}).videos
-        if out is None:
-            out = seg
-        else:
-            r = torch.linspace(0, 1, overlap).view(1, 1, -1, 1, 1)
-            out[:, :, -overlap:] = out[:, :, -overlap:] * (1 - r) + seg[:, :, :overlap] * r
-            out = torch.cat([out, seg[:, :, overlap:]], dim=2)
-        print(f"th: window {k + 1}/{len(windows)} done ({out.shape[2]} frames)", flush=True)
-    return WanPipelineOutput(videos=out)
+        for f in stitch.push(seg[0].permute(1, 0, 2, 3)):
+            writer.append(sf.to_uint8(f.permute(1, 2, 0).numpy()))
+            done += 1
+        del seg, v, m
+        mem.free()
+        print(f"th: window {k + 1}/{len(windows)} done ({done} frames written)", flush=True)
+    for f in stitch.finish():
+        writer.append(sf.to_uint8(f.permute(1, 2, 0).numpy()))
+    return WanPipelineOutput(videos=mem.Streamed(path, writer.close()))
 
 
 _embed = infer_flash.get_audio_embed
@@ -151,10 +177,34 @@ def _remove_tolerant(path, *a, **k):
 _remove = os.remove
 os.remove = _remove_tolerant
 P.to = _offload_to
+mem.release_state_dicts()
+infer_flash.save_videos_grid = mem.stream_save
+P.encode_prompt = mem.cached_encode(P.encode_prompt, release=not _reanchor()[0])
+infer_flash.CLIPModel.from_pretrained = mem.cast_after_load(infer_flash.CLIPModel.from_pretrained)
+if os.environ.get("TH_HOST_TRACE") == "1":   # where the host commit goes, stage by stage
+    P.encode_prompt = mem.traced(P.encode_prompt, "encode_prompt")
+    P.prepare_mask_latents = mem.traced(P.prepare_mask_latents, "vae encode")
+    infer_flash.WanTransformer.forward = mem.traced(infer_flash.WanTransformer.forward,
+                                                    "transformer forward", first=3)
+    infer_flash.get_audio_embed = mem.traced(infer_flash.get_audio_embed, "audio features")
+    _call = mem.traced(_call, "pipeline call")
+    infer_flash.CLIPModel.forward = mem.traced(infer_flash.CLIPModel.forward, "clip encode")
+    for _n in ("WanTransformer", "AutoencoderKLWan", "WanT5EncoderModel", "CLIPModel"):
+        _c = getattr(infer_flash, _n)
+        _c.from_pretrained = mem.traced(_c.from_pretrained, f"load {_n}")
+    for _n in ("Wav2Vec2Model", "Wav2Vec2FeatureExtractor"):
+        if hasattr(infer_flash, _n):
+            _c = getattr(infer_flash, _n)
+            _c.from_pretrained = mem.traced(_c.from_pretrained, f"load {_n}")
+    import accelerate.hooks as _ah
+
+    _ah.CpuOffload.pre_forward = mem.traced(_ah.CpuOffload.pre_forward, "offload hook")
 if os.environ.get("TH_EMV3_TEACACHE") == "0":
     infer_flash.WanTransformer.enable_teacache = lambda self, *a, **k: None
 if int(os.environ.get("TH_EMV3_AUDIO_CHUNK", "0") or 0) > 0:
     infer_flash.get_audio_embed = _chunked_embed
 if int(os.environ.get("TH_EMV3_WINDOW", "0") or 0) > 0:
     P.__call__ = _windowed
+    infer_flash.get_image_to_video_latent2 = mem.expanded_reference(
+        infer_flash.get_image_to_video_latent2)
 infer_flash.main()

@@ -120,10 +120,20 @@ def driver_env(offload: bool, teacache: bool, window: int = 0, overlap: int = OV
 
 
 def write_driver() -> Path:
-    """Copy flash_driver.py (offload, TeaCache and window patches) into the clone."""
+    """Copy flash_driver.py (offload, TeaCache, window and memory patches) into the clone, with
+    the helpers both drivers import."""
+    copy_helpers()
     p = env().repo / "th_hands_flash.py"
     p.write_bytes((Path(__file__).parent / "flash_driver.py").read_bytes())
     return p
+
+
+HELPERS = {"th_hands_mem.py": "mem_patches.py", "th_stream_frames.py": "stream_frames.py"}
+
+
+def copy_helpers() -> None:
+    for dst, src in HELPERS.items():
+        (env().repo / dst).write_bytes((Path(__file__).parent / src).read_bytes())
 
 
 def output(work: Path, reference: Path) -> Path:

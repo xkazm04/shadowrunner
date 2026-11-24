@@ -59,7 +59,7 @@ def run_full(args: argparse.Namespace, root: Path, portrait: Path) -> dict:
                       neg_steps=args.neg_steps, long_cfg=args.long_cfg, partial=partial,
                       overlap=args.overlap, dynamic_cfg=not args.no_dynamic_cfg,
                       teacache=args.teacache, audio_chunk=args.audio_chunk, shift=args.shift,
-                      cfg_split=not args.cfg_batch)
+                      cfg_split=not args.cfg_batch, frames=frames)
     path = full.write_config(cfg, out / "full.json")
     settings = {**cfg["config"], "frames": frames, "image": str(image), "wav": str(wav),
                 "prompt": args.prompt, "negativeName": args.negative, "faceBox": list(face),

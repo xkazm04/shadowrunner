@@ -1766,6 +1766,7 @@ Both round-2 follow-ups, on the 17 s passage with round 2's passage recipe (TeaC
 | long-s1116-notc-ac113 | round 2 | 1116 | 0.47 | 0.00 at 5.16 s | 5.72 (4.8 / 6.8 / 5.2 / 5.4) | 0.816 | 1.80 | 0.47 / 0.31 / 0.23 / 0.56 | 0.00 / 0.00 / 0.73 / 0.38 | no (0.50) | 2.9 / 2.9 | 803 |
 | beats-s1116 | (a) beats | 1116 | 0.52 | 0.00 at 2.84 s | 5.76 (4.8 / 7.1 / 5.3 / 5.3) | 0.813 | 0.56 | 0.55 / 0.15 / 0.04 / 0.81 | 0.02 / 0.94 / 1.00 / 0.42 | no (0.07) | 3.1 / 3.9 | 828 |
 | pose-s1116 | (b) pose | 1116 | 0.42 | 0.00 at 5.12 s | 5.65 (4.7 / 6.7 / 5.1 / 5.7) | 0.809 | 0.61 | 0.47 / 0.32 / 0.24 / 0.99 | 0.00 / 0.00 / 0.75 / 0.34 | no (0.52) | 3.5 / 2.9 | 863 |
+| poseend-s1116 | (b+) pose keyframe | 1116 | 0.44 | 0.00 at 12.84 s | 5.97 (4.7 / 7.0 / 5.4 / 5.6) | 0.829 | 0.71 | 0.48 / 0.58 / 0.67 / 0.67 | 0.00 / 0.55 / 0.72 / 0.00 | yes (1.21) | 3.6 / 3.5 | 808 |
 
 (`pose-s7`'s wall time includes about 14 min of waiting for the GPU lock behind another take; the render itself took about 830 s, like the others. Round-2 rows are re-measured here for persistence only; their other figures are round 2's.)
 
@@ -1773,7 +1774,7 @@ What the passages show:
 
 - **(a) Per-window prompts make it worse.** On all three seeds the hands clasp sooner and stay clasped: seed 42 is clasped through windows 2-4 (1.00 / 1.00 / 1.00) where round 2 still gestured in window 3. The hand score of 1.00 on seeds 7 and 42 only means there was almost nothing to judge. The gesture words in the prompt ("raises one finger", "opens both palms") do not reach the hands; the motion prior wins. SyncNet and identity are unchanged.
 - **(b) A fresh CLIP reference alone changes little.** Windows 2-4 differ from round 2 (frame difference 2.4-3.5 grey levels against round 2's take of the same seed), but each seed keeps its round-2 motion pattern: seed 7 clasps in window 3 (1.00), seed 42 gestures in window 3 and clasps again in window 4. The hands are a little worse (0.83 / 0.68 / 0.42 against 0.86 / 0.80 / 0.47). The CLIP image carries identity and look; it does not pose the body.
-- **(b+) The pose as a kept last frame is the only lever that holds.** Seeds 7 and 42 both pass the rule (0.75 and 1.16), and the clasped rest almost disappears from windows 3-4 (0.00 / 0.33 and 0.20 / 0.04). But it is mechanical, and the hands pay for it. Every window ends with the hands rising from wherever they are to the chest-height open pose in its last 0.2-0.4 s. That reads as a lift every 4 s. The faster motion costs hand quality: flags are about twice as dense in the 0.6 s before each later window's end as elsewhere (about 20 of 99-123 flagged frames sit in those 11 % of the frames), and most of the rest are smeared or translucent hands in the bigger gestures between (seed 42: faded 111, lost 35). Hand score is 0.74 on seed 7 and 0.50 on seed 42 (round 2: 0.86 / 0.80). One join per take steps a little past the clip's own 99th percentile (4.2 vs 3.7, 3.8 vs 3.4), and the face jumps 5.5x its median step at seed 42's second join. Seed 1116: **missing**. The take was stopped by the 15:41 kill, and its rerun was cut off by the machine restart and then by the render halt. (b+) therefore stands on two seeds, not three.
+- **(b+) The pose as a kept last frame is the only lever that holds.** Seeds 7 and 42 both pass the rule (0.75 and 1.16), and the clasped rest almost disappears from windows 3-4 (0.00 / 0.33 and 0.20 / 0.04). But it is mechanical, and the hands pay for it. Every window ends with the hands rising from wherever they are to the chest-height open pose in its last 0.2-0.4 s. That reads as a lift every 4 s. The faster motion costs hand quality: flags are about twice as dense in the 0.6 s before each later window's end as elsewhere (about 20 of 99-123 flagged frames sit in those 11 % of the frames), and most of the rest are smeared or translucent hands in the bigger gestures between (seed 42: faded 111, lost 35). Hand score is 0.74 on seed 7 and 0.50 on seed 42 (round 2: 0.86 / 0.80). One join per take steps a little past the clip's own 99th percentile (4.2 vs 3.7, 3.8 vs 3.4), and the face jumps 5.5x its median step at seed 42's second join. Seed 1116 (rendered last, with the host-memory fixes below) holds too (1.21, travel 0.48 / 0.58 / 0.67 / 0.67), with that seed's usual weak hands (0.44; round 2 0.47, (b) 0.42). So (b+) holds on all three seeds.
 
 #### Verdict against round 2
 
@@ -1790,7 +1791,7 @@ Columns: take, arm, seed, steps, neg CFG, Long CFG ("windows" = Flash's continue
 | poseend-s7 | flash | 7 | 8 | - | windows | 0.74 | 0.0 at 8.8 s | 5.93 | 0.831 | 0.55 | 0.26 / 0.20 / 0.85 / 0.69 | 0.00 / 0.00 / 0.00 / 0.33 | yes (0.75) | 817.9 | 21172 |
 | poseend-s42 | flash | 42 | 8 | - | windows | 0.50 | 0.0 at 8.72 s | 6.04 | 0.827 | 0.79 | 0.29 / 0.33 / 0.67 / 1.03 | 0.12 / 0.89 / 0.20 / 0.04 | yes (1.162) | 824.3 | 21183 |
 | full arm Long-CFG passage | full | 1116 | 15 | off | on | missing | missing | missing | missing | missing | missing | missing | missing | (2252 est.) | 14400 |
-| poseend-s1116 | flash | 1116 | 8 | - | windows | missing | missing | missing | missing | missing | missing | missing | missing | - | - |
+| poseend-s1116 | flash | 1116 | 8 | - | windows | 0.44 | 0.0 at 12.84 s | 5.97 | 0.829 | 0.71 | 0.48 / 0.58 / 0.67 / 0.67 | 0.00 / 0.55 / 0.72 / 0.00 | yes (1.209) | 808.3 | 12738 |
 | LongCat-Video-Avatar 1.6 (internal comparison) | longcat | 42 | 8 | - | segments | not run | | | | | | | | | |
 
 - **Did any lever keep the gestures alive across the passage without breaking the hands? Not cleanly.**
@@ -1828,6 +1829,14 @@ Re-anchoring costs nothing extra over a plain Flash passage.
   - one diagnostic hit WinError 1455 (paging file too small).
 
   Fixes: the full driver now drops umT5 after encoding (11 GB less), and `run.py` retries a run that dies with 0xC0000005 up to twice and notes it in `run.json`. Renders still run strictly one at a time. Raising the pagefile (admin and a reboot) is the owner's call.
+- **Host-memory fixes (after the kills; `mem_patches.py`, `stream_frames.py`, measured with a per-stage commit trace, `TH_HOST_TRACE=1`).** A Flash take reached 30 GB of process commit just loading the models: DiT 8.7 GB, umT5 11.2 GB in bf16, and CLIP +10.6 GB because it loads in fp32. The offload hooks then moved umT5 back to the host, and the VAE encode added 5 GB, which pushed it past the guard's 40 GB cap three times out of three. Now:
+  - umT5 encodes the prompts once through upstream's own path, the embeddings are cached and its weights emptied (minus 10 GB; skipped when the windows have their own prompts);
+  - CLIP is cast to bf16 as it loads;
+  - upstream's DiT state dict is dropped once loaded;
+  - windows are streamed into the video file as uint8, keeping only the 9 overlap frames, with the same crossfade and colour transfer (unit-tested frame for frame against round 2's whole-clip stitching);
+  - the reference is a one-frame view expanded in time.
+
+  `poseend-s1116` ran with them: guard peak 30.2 GB (it was 43 GB measured, and over the 40 GB cap three times out of three), about 27 GB while denoising. The peak is still the CLIP load; the 25 GB target is not met. The full driver gets the same patches, plus uint8 decoding when there is no crossfade (Long CFG or one window); it has not been re-rendered since.
 - **The owner had to stop two renders** (15:11 and 15:41) because the PC ran out of memory. After that, rendering was halted until every render runs under a hard host-memory cap (the Director is building it). A GPU driver error (nvlddmkm 153) is logged in the same seconds. The Director counts 19 such events since the day before, so the driver is unstable on its own as well.
 - The Flash driver is unchanged for existing takes. Round 2's commands give the same output; `--beats`, `--pose` and `--pose-end` are opt-in.
 - GPU time this round: about 6 h of GPU-lock time, including about 1.5 h lost to the spill before the umT5 fix, the commit and memory failures and the killed renders.

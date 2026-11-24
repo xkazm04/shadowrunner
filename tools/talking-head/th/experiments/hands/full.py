@@ -121,7 +121,8 @@ def config(base_dir: Path, save_path: Path, face: tuple[int, int, int, int, int,
            steps: int, text_cfg: float, audio_cfg: float, negative: str, neg_scale: float,
            neg_steps: int, long_cfg: bool, partial: int = PARTIAL, overlap: int = OVERLAP,
            dynamic_cfg: bool = True, teacache: bool = False, audio_chunk: int = 0,
-           offload: bool = True, shift: float = 5.0, cfg_split: bool = True) -> dict:
+           offload: bool = True, shift: float = 5.0, cfg_split: bool = True,
+           frames: int | None = None) -> dict:
     """The driver's JSON: `config` overrides upstream's Config attributes one by one (names as
     upstream spells them); the rest drives the patches. `face` is get_mask_coord's tuple
     (y1, y2, x1, x2, height, width) on the reference image."""
@@ -137,10 +138,12 @@ def config(base_dir: Path, save_path: Path, face: tuple[int, int, int, int, int,
         "use_dynamic_acfg": dynamic_cfg, "enable_teacache": teacache, "shift": shift,
     }
     return {"config": cfg, "face": list(face), "offload": offload, "audioChunk": audio_chunk,
-            "cfgSplit": cfg_split}
+            "cfgSplit": cfg_split,
+            "decodeU8": bool(long_cfg or (frames is not None and partial >= frames))}
 
 
 def write_driver() -> Path:
+    emv3.copy_helpers()
     p = emv3.env().repo / "th_hands_full.py"
     p.write_bytes((Path(__file__).parent / "full_driver.py").read_bytes())
     return p

@@ -8,13 +8,15 @@ video.py's arguments) after these run-time patches (upstream files unedited):
   builds them with a CUDA DeviceMesh, which needs NCCL);
 - no vocal separation: `audio_separator` (and its ONNX UVR model, licence unverified) is replaced
   by a stub, and `separate_vocals` just loads the line at 16 kHz (our lines are clean TTS speech);
-- memory on 24 GB VRAM and about 24 GB of free system commit: umT5-XXL is loaded lazily on the
-  CPU at the first prompt (after the INT8 DiT has moved to the GPU), its embeddings are cached per
-  prompt and the encoder is released after the first encode; Whisper-large-v3 stays on the CPU
-  without its unused decoder; the INT8 DiT, its LoRAs and the VAE go to the GPU as upstream does;
+- memory (one render under the guard's host cap): umT5-XXL is loaded in bf16 as the demo's first
+  model, encodes the take's prompt and upstream's negative prompt on the still-empty GPU and is
+  dropped before the INT8 DiT is read (the pipeline gets the cached embeddings); Whisper-large-v3
+  stays on the CPU without its unused decoder; the INT8 DiT, its LoRAs and the VAE go to the GPU
+  as upstream does;
 - the seed: upstream hard-codes `global_seed = 42`; TH_LC_SEED replaces that one line in the
   source as it is compiled (the file on disk is untouched).
 """
+import json
 import os
 import sys
 import types
@@ -82,7 +84,6 @@ def separate_vocals(_separator, source_path, sample_rate=16000, batch_size=2, du
 _to = P.to
 _t5 = P._get_t5_prompt_embeds
 _audio = P.get_audio_embedding
-_T5_CACHE = {}
 
 
 def _to_keep_encoders(self, device):
@@ -94,41 +95,17 @@ def _to_keep_encoders(self, device):
     return self
 
 
-def _t5_on_cpu(self, prompt=None, num_videos_per_prompt=1, max_sequence_length=512, device=None,
-               dtype=None):
-    key = (str(prompt), num_videos_per_prompt, max_sequence_length, str(dtype))
-    if key not in _T5_CACHE:
-        print("th: encoding a prompt on the CPU (umT5-XXL)", flush=True)
-        _T5_CACHE[key] = _t5(self, prompt, num_videos_per_prompt, max_sequence_length, "cpu", dtype)
-    return tuple(t.to(device) for t in _T5_CACHE[key])
+_EMB = {}   # prompt text -> (embeddings, mask) on the CPU
 
 
-class _LazyT5:
-    """umT5-XXL (11 GB) loaded on the CPU at its first prompt, not at start-up next to the INT8 DiT
-    (15 GB, still on the CPU until it moves to the GPU), and released once the prompts are cached:
-    this machine has about 24 GB of free commit."""
+class _T5Gone:
+    """What the pipeline keeps in place of umT5 once the prompts are encoded: its config (the
+    pipeline reads d_model) and its dtype, no weights."""
 
     dtype = torch.bfloat16
 
-    def __init__(self, *a, **k):
-        from transformers import AutoConfig
-
-        self._args, self._kw, self.m = a, k, None
-        self.config = AutoConfig.from_pretrained(*a, **{x: v for x, v in k.items() if x == "subfolder"})
-
-    def __call__(self, *a, **k):
-        if self.m is None:
-            from transformers import UMT5EncoderModel
-
-            print("th: loading umT5-XXL on the CPU", flush=True)
-            self.m = UMT5EncoderModel.from_pretrained(*self._args, **self._kw).eval()
-        return self.m(*a, **k)
-
-    def release(self):
-        import gc
-
-        self.m = None
-        gc.collect()
+    def __init__(self, config):
+        self.config = config
 
     def to(self, *a, **k):
         return self
@@ -137,14 +114,51 @@ class _LazyT5:
         return self
 
 
-_encode = P.encode_prompt
+def demo_negative(src):
+    """upstream's negative prompt, read from the demo's source (a literal inside generate())."""
+    import re
+
+    m = re.search(r'negative_prompt = "([^"]+)"', src)
+    if not m:
+        raise SystemExit("th: the demo's negative prompt was not found; the pinned commit changed")
+    return m.group(1)
 
 
-def _encode_then_release(self, *a, **k):
-    out = _encode(self, *a, **k)
-    if isinstance(self.text_encoder, _LazyT5):
-        self.text_encoder.release()   # the prompt and the negative are cached now
-    return out
+def _encode_at_load(prompts):
+    """The demo's first model load (umT5-XXL): load it in bf16, encode the take's prompt and the
+    negative prompt on the GPU (still empty: nothing else is loaded yet), keep the embeddings on
+    the CPU and drop the encoder, all before the 15 GB INT8 DiT is read."""
+
+    def load(path, subfolder="text_encoder", torch_dtype=torch.bfloat16, **k):
+        import gc
+
+        from transformers import AutoTokenizer, UMT5EncoderModel
+
+        tok = AutoTokenizer.from_pretrained(path, subfolder="tokenizer")
+        te = UMT5EncoderModel.from_pretrained(path, subfolder=subfolder,
+                                              torch_dtype=torch.bfloat16).eval().to("cuda")
+        ns = types.SimpleNamespace(tokenizer=tok, text_encoder=te)
+        with torch.no_grad():
+            for text in prompts:
+                e, m = _t5(ns, [text], 1, 512, "cuda", torch.bfloat16)
+                _EMB[text] = (e.cpu(), m.cpu())
+        config = te.config
+        del te, ns
+        gc.collect()
+        torch.cuda.empty_cache()
+        print(f"th: {len(prompts)} prompts encoded with umT5-XXL (bf16), encoder dropped", flush=True)
+        return _T5Gone(config)
+
+    return load
+
+
+def _t5_cached(self, prompt=None, num_videos_per_prompt=1, max_sequence_length=512, device=None,
+               dtype=None):
+    text = prompt[0] if isinstance(prompt, list) else prompt
+    if text not in _EMB or num_videos_per_prompt != 1 or max_sequence_length != 512:
+        raise SystemExit("th: a prompt that was not encoded at load time")
+    e, m = _EMB[text]
+    return e.to(device=device, dtype=dtype or torch.bfloat16), m.to(device)
 
 
 def _audio_on_cpu(self, speech_array, fps=32, device="cpu", **kw):
@@ -163,16 +177,18 @@ def main():
     dist.init_process_group = _gloo_init
     cpu_.init_context_parallel = _single_cp
     P.to = _to_keep_encoders
-    P._get_t5_prompt_embeds = _t5_on_cpu
+    P._get_t5_prompt_embeds = _t5_cached
     P.get_audio_embedding = _audio_on_cpu
-    P.encode_prompt = _encode_then_release
     path = os.path.join(HERE, "run_demo_avatar_single_audio_to_video.py")
     demo = types.ModuleType("th_longcat_demo")
     demo.__file__ = path
-    exec(compile(_demo_source(path, os.environ.get("TH_LC_SEED", "42")), path, "exec"),
-         demo.__dict__)
+    src = _demo_source(path, os.environ.get("TH_LC_SEED", "42"))
+    exec(compile(src, path, "exec"), demo.__dict__)
     demo.separate_vocals = separate_vocals
-    demo.UMT5EncoderModel = types.SimpleNamespace(from_pretrained=_LazyT5)
+    with open(sys.argv[sys.argv.index("--input_json") + 1], encoding="utf-8") as f:
+        prompt = json.load(f)["prompt"]
+    demo.UMT5EncoderModel = types.SimpleNamespace(
+        from_pretrained=_encode_at_load([prompt, demo_negative(src)]))
     _enc = demo.get_audio_encoder
 
     def _cpu_encoder(*a, **k):

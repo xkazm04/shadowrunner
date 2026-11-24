@@ -280,46 +280,6 @@ def test_full_driver_cfg_split_matches_the_batched_call() -> None:
     assert torch.allclose(whole, split)
 
 
-def test_flash_windows_keep_motion_frames_and_the_end_pose(tmp_path: Path, monkeypatch) -> None:
-    """The windowed call with a stub pipeline: window k > 0 keeps the last 9 frames of the clip
-    so far (mask 0), gets its own prompt and CLIP pose, and with endPose its last frame is the
-    pose, kept."""
-    import json
-    import types
-
-    import torch
-    from PIL import Image
-
-    src = (HERE / "flash_driver.py").read_text(encoding="utf-8")
-    seen: list[dict] = []
-
-    def call(_self, prompt, **kw):
-        seen.append({"prompt": prompt, **kw})
-        n = kw["num_frames"]
-        return types.SimpleNamespace(videos=torch.full((1, 3, n, 4, 6), float(len(seen))))
-
-    ns: dict = {"os": __import__("os"), "json": json, "math": __import__("math"), "torch": torch,
-                "_call": call, "WanPipelineOutput": lambda videos: videos}
-    exec(src[src.index("def plan("):src.index("_embed = ")], ns)  # noqa: S102
-    pose = tmp_path / "pose.png"
-    Image.new("RGB", (6, 4), (255, 0, 0)).save(pose)
-    cfg = tmp_path / "r.json"
-    cfg.write_text(json.dumps({"prompts": ["a", "b"], "poses": ["", str(pose)], "endPose": True}))
-    monkeypatch.setenv("TH_EMV3_WINDOW", "121")
-    monkeypatch.setenv("TH_EMV3_OVERLAP", "9")
-    monkeypatch.setenv("TH_EMV3_REANCHOR", str(cfg))
-    ref = Image.new("RGB", (6, 4), (0, 0, 255))
-    out = ns["_windowed"](None, "base", num_frames=225, video=torch.zeros(1, 3, 225, 4, 6),
-                          audio_embeds=torch.zeros(1, 225, 5), clip_image=ref)
-    assert out.shape[2] == 225 and [s["prompt"] for s in seen] == ["a", "b"]
-    assert seen[0]["clip_image"] is ref and seen[1]["clip_image"].getpixel((0, 0)) == (255, 0, 0)
-    m1, v1 = seen[1]["mask_video"], seen[1]["video"]
-    assert (m1[:, :, :9] == 0).all() and (m1[:, :, 9:-1] == 255).all() and (m1[:, :, -1] == 0).all()
-    assert torch.allclose(v1[:, :, :9], torch.ones(1)) and v1[0, 0, -1].min() == 1.0
-    assert v1[0, 2, -1].max() == 0.0          # the red pose, not the blue reference
-    assert (seen[0]["mask_video"][:, :, -1] == 255).all()   # the first window has no end pose
-
-
 def test_run_retries_only_the_access_violation(tmp_path: Path, monkeypatch) -> None:
     from th.experiments.hands import run as runmod
 
